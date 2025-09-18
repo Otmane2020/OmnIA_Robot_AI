@@ -265,7 +265,7 @@ export const GoogleMerchantTab: React.FC = () => {
           <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
             <h4 className="font-semibold text-blue-200 mb-3">💡 Instructions Google Merchant Center :</h4>
             <ol className="text-blue-300 text-sm space-y-2">
-              <li><strong>1.</strong> Connectez-vous à <a href="https://merchants.google.com" target="_blank" className="text-blue-400 underline">Google Merchant Center</a></li>
+              <li><strong>1.</strong> Connectez-vous à <a href="https://merchants.google.com" target=\"_blank" className="text-blue-400 underline">Google Merchant Center</a></li>
               <li><strong>2.</strong> Allez dans <strong>Produits → Flux</strong></li>
               <li><strong>3.</strong> Cliquez <strong>+ Ajouter un flux</strong></li>
               <li><strong>4.</strong> Sélectionnez <strong>Flux programmé</strong></li>
