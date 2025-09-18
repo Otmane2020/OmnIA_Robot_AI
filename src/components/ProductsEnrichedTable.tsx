@@ -668,7 +668,7 @@ export const ProductsEnrichedTable: React.FC = () => {
         !newEnrichedProducts.find(np => np.handle === p.handle) &&
         !mockEnrichedProducts.find(mp => mp.handle === p.handle)
       );
-      const allEnrichedProducts = [...existingEnriched, ...newEnrichedProducts];
+      const allEnrichedProducts = [...mockEnrichedProducts, ...newEnrichedProducts];
       
       setProducts(allEnrichedProducts);
       localStorage.setItem('enriched_products', JSON.stringify(allEnrichedProducts));
