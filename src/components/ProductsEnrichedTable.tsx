@@ -451,7 +451,7 @@ export const ProductsEnrichedTable: React.FC = () => {
     if (lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
     if (lowerText.includes('osier') || lowerText.includes('wicker')) return 'Osier';
     if (lowerText.includes('bambou') || lowerText.includes('bamboo')) return 'Bambou';
-    return '';
+    return 'Autre';
   };
 
   const detectFabric = (text: string) => {
@@ -619,9 +619,9 @@ export const ProductsEnrichedTable: React.FC = () => {
   };
 
   const extractCapacity = (text: string) => {
-    const capacityRegex = /(\d+)\s*(?:places?|personnes?)/i;
+    const capacityRegex = /(\d+)\s*places?/i;
     const match = text.match(capacityRegex);
-    return match ? `${match[1]} ${match[0].includes('place') ? 'places' : 'personnes'}` : '';
+    return match ? `${match[1]} places` : '';
   };
 
   const generateImageAlt = (product: any) => {
@@ -677,7 +677,14 @@ export const ProductsEnrichedTable: React.FC = () => {
   };
 
   const calculateMatchingScore = (product: any) => {
-    return calculateConfidenceScore(product);
+    let score = 50;
+    
+    if (product.title) score += 15;
+    if (product.description) score += 15;
+    if (product.price) score += 10;
+    if (product.image_url) score += 10;
+    
+    return Math.min(score, 100);
   };
 
   const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -725,14 +732,14 @@ export const ProductsEnrichedTable: React.FC = () => {
         return;
       }
       
-      const products = JSON.parse(catalogProducts);
-      console.log('📦 Produits à enrichir:', products.length);
+      const catalogProductsData = JSON.parse(catalogProducts);
+      console.log('📦 Produits à enrichir:', catalogProductsData.length);
       
       // Simuler l'enrichissement IA
       await new Promise(resolve => setTimeout(resolve, cronMode === 'auto' ? 1000 : 3000));
       
       // Enrichir automatiquement tous les produits du catalogue
-      const newEnrichedProducts = products.map((product: any) => ({
+      const newEnrichedProducts = catalogProductsData.map((product: any) => ({
         id: `enriched-${product.id || Date.now()}`,
         sku: product.sku || generateSKU(product),
         gtin: generateGTIN(product),
