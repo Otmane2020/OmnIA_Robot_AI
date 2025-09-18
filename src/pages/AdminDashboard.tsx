@@ -41,7 +41,6 @@ interface DashboardStats {
   revenue: number;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
