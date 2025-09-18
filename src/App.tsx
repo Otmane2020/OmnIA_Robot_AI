@@ -15,6 +15,7 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
+import { ThankYou } from './pages/ThankYou';
 
 interface Retailer {
   id: string;
