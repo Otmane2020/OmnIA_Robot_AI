@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Camera, ArrowLeft, Loader2, CheckCircle, QrCode, X, Bot } from 'lucide-react';
-import { ensureAuthenticated } from '../lib/webcontainer-auth';
+import { ensureWebContainerAuth } from '../lib/webcontainer-auth';
 
 export const UploadPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -16,7 +16,7 @@ export const UploadPage: React.FC = () => {
     }
 
     // Ensure WebContainer authentication for upload
-    ensureAuthenticated().then(authenticated => {
+    ensureWebContainerAuth().then(authenticated => {
       if (!authenticated) {
         console.warn('⚠️ WebContainer authentication failed, proceeding with local upload');
       }
