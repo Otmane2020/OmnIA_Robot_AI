@@ -16,7 +16,6 @@ import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
-import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 import { supabase } from '../lib/supabase';
 import { QrCode } from 'lucide-react';
@@ -65,7 +64,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'catalogue', label: 'Catalogue', icon: Database },
     { id: 'integration', label: 'Intégration', icon: Globe },
-    { id: 'google-merchant', label: 'Google Merchant', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
@@ -483,7 +481,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'dashboard': return renderDashboard();
       case 'catalogue': return renderCatalogue();
       case 'integration': return renderIntegration();
-      case 'google-merchant': return <GoogleMerchantTab />;
       case 'ml-training': return renderMLTraining();
       case 'robot': return renderRobot();
       case 'historique': return renderHistorique();
