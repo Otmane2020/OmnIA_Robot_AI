@@ -934,6 +934,8 @@ export const ProductsEnrichedTable: React.FC = () => {
             </div>
           </div>
         </div>
+        
+        <div>
               <div className="flex gap-4 mb-6">
                 <button
                   onClick={() => {
@@ -958,6 +960,7 @@ export const ProductsEnrichedTable: React.FC = () => {
                   Exporter CSV
                 </button>
                 
+        </div>
                 <input
                   type="file"
                   accept=".csv"
