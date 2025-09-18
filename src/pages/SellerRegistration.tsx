@@ -39,6 +39,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     postalCode: '',
     city: '',
     country: '',
+    country: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -54,6 +55,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authMode, setAuthMode] = useState<'signup' | 'login' | null>(null);
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [authMode, setAuthMode] = useState<'signup' | 'login' | null>(null);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
@@ -81,6 +84,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
 
   const steps = [
     { id: 0, title: 'Connexion', icon: User, description: 'Connexion ou inscription' },
+    { id: 0, title: 'Connexion', icon: User, description: 'Connexion ou inscription' },
     { id: 1, title: 'Entreprise', icon: Building, description: 'Informations société' },
     { id: 2, title: 'Contact', icon: Mail, description: 'Responsable compte' },
     { id: 3, title: 'Plan', icon: CreditCard, description: 'Choix abonnement' },
@@ -105,6 +109,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     // Rediriger vers l'admin si connexion réussie
     window.location.href = '/admin';
   };
+  const handleLogin = async () => {
+    if (!loginData.email || !loginData.password) {
+      setErrors({ login: 'Email et mot de passe requis' });
+      return;
+    }
+
+    // Simuler la connexion
+    console.log('🔐 Tentative de connexion:', loginData.email);
+    
+    // Rediriger vers l'admin si connexion réussie
+    window.location.href = '/admin';
+  };
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
 
@@ -114,6 +130,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       if (!formData.address.trim()) newErrors.address = 'Adresse requise';
       if (!formData.postalCode.trim()) newErrors.postalCode = 'Code postal requis';
       if (!formData.city.trim()) newErrors.city = 'Ville requise';
+      if (!formData.country.trim()) newErrors.country = 'Pays requis';
       if (!formData.country.trim()) newErrors.country = 'Pays requis';
     }
 
@@ -146,7 +163,15 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         handleLogin();
       }
     } else if (validateStep(currentStep)) {
+    if (currentStep === 0) {
+      if (authMode === 'signup') {
+        setCurrentStep(1); // Aller à l'étape entreprise
+      } else {
+        handleLogin();
+      }
+    } else if (validateStep(currentStep)) {
       setCurrentStep(prev => prev + 1);
+    }
     }
   };
 
@@ -175,6 +200,186 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     }
   };
 
+  const renderStep0 = () => (
+    <div className="space-y-8">
+      <div className="text-center mb-8">
+        <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+          <User className="w-10 h-10 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-4">Bienvenue sur OmnIA.sale</h2>
+        <p className="text-xl text-gray-300">Plateforme IA pour revendeurs de mobilier</p>
+      </div>
+
+      {!authMode ? (
+        <div className="space-y-6">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-white mb-4">Choisissez votre action</h3>
+            <p className="text-gray-300">Vous avez déjà un compte ou souhaitez en créer un ?</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button
+              onClick={() => setAuthMode('login')}
+              className="bg-white/10 hover:bg-white/20 border border-white/20 hover:border-cyan-500/50 rounded-2xl p-8 text-center transition-all hover:scale-105"
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Se connecter</h3>
+              <p className="text-gray-300">J'ai déjà un compte revendeur</p>
+            </button>
+
+            <button
+              onClick={() => setAuthMode('signup')}
+              className="bg-gradient-to-br from-cyan-500/20 to-blue-600/20 hover:from-cyan-500/30 hover:to-blue-600/30 border border-cyan-500/50 hover:border-cyan-400 rounded-2xl p-8 text-center transition-all hover:scale-105"
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Building className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Créer un compte</h3>
+              <p className="text-gray-300">Nouveau revendeur sur OmnIA</p>
+            </button>
+          </div>
+
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6 text-center">
+            <h4 className="font-semibold text-blue-200 mb-3">🎁 Offre de lancement :</h4>
+            <p className="text-blue-300">
+              <strong>14 jours d'essai gratuit</strong> sur tous les plans • Aucun engagement • Support inclus
+            </p>
+          </div>
+        </div>
+      ) : authMode === 'login' ? (
+        <div className="space-y-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-white mb-2">Connexion Revendeur</h3>
+            <p className="text-gray-300">Accédez à votre interface admin OmnIA</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-cyan-200 mb-2">
+                Email professionnel
+              </label>
+              <input
+                type="email"
+                value={loginData.email}
+                onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                placeholder="contact@monmagasin.fr"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-cyan-200 mb-2">
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                value={loginData.password}
+                onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {errors.login && (
+              <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-3">
+                <p className="text-red-300 text-sm">{errors.login}</p>
+              </div>
+            )}
+
+            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+              <h4 className="font-semibold text-blue-200 mb-2">🔧 Comptes de test :</h4>
+              <div className="space-y-1 text-sm">
+                <p className="text-blue-300"><strong>Decora Home:</strong> demo@decorahome.fr / demo123</p>
+                <p className="text-blue-300"><strong>Mobilier Design:</strong> contact@mobilierdesign.fr / design123</p>
+                <p className="text-blue-300"><strong>Déco Contemporain:</strong> info@decocontemporain.com / deco123</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => setAuthMode(null)}
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Retour
+            </button>
+            <button
+              onClick={handleLogin}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Se connecter
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-white mb-2">Créer votre compte revendeur</h3>
+            <p className="text-gray-300">Rejoignez les 500+ revendeurs qui utilisent OmnIA</p>
+          </div>
+
+          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6">
+            <h4 className="font-semibold text-green-200 mb-3">✅ Avantages revendeur OmnIA :</h4>
+            <ul className="text-green-300 space-y-2 text-sm">
+              <li>• Assistant IA personnalisé pour votre catalogue</li>
+              <li>• Interface admin complète et intuitive</li>
+              <li>• Widget intégrable sur votre site</li>
+              <li>• Analytics détaillées et reporting</li>
+              <li>• Support technique dédié</li>
+              <li>• Formation et accompagnement inclus</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
+            <h4 className="font-semibold text-blue-200 mb-3">📋 Processus d'inscription :</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white font-bold">1</span>
+                </div>
+                <p className="text-blue-300">Informations entreprise</p>
+              </div>
+              <div className="text-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white font-bold">2</span>
+                </div>
+                <p className="text-blue-300">Contact responsable</p>
+              </div>
+              <div className="text-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white font-bold">3</span>
+                </div>
+                <p className="text-blue-300">Choix du plan</p>
+              </div>
+              <div className="text-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white font-bold">4</span>
+                </div>
+                <p className="text-blue-300">Validation Kbis</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => setAuthMode(null)}
+              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Retour
+            </button>
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Commencer l'inscription
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
   const renderStep0 = () => (
     <div className="space-y-8">
       <div className="text-center mb-8">
@@ -396,6 +601,26 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           {errors.siret && <p className="text-red-400 text-sm mt-1">{errors.siret}</p>}
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-cyan-200 mb-2">
+            Pays *
+          </label>
+          <select
+            value={formData.country}
+            onChange={(e) => handleInputChange('country', e.target.value)}
+            className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+              errors.country ? 'border-red-500' : 'border-cyan-500/50'
+            }`}
+          >
+            <option value="">Sélectionner un pays</option>
+            <option value="France">France</option>
+            <option value="Belgique">Belgique</option>
+            <option value="Suisse">Suisse</option>
+            <option value="Luxembourg">Luxembourg</option>
+            <option value="Canada">Canada</option>
+          </select>
+          {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
+        </div>
         <div>
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Pays *
@@ -790,6 +1015,12 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             const isAccessible = currentStep >= step.id || (step.id === 0);
             
             return (
+            const StepIcon = step.icon;
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            const isAccessible = currentStep >= step.id || (step.id === 0);
+            
+            return (
             <div key={step} className="flex items-center">
               <div 
                 className={`relative w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 ${
@@ -816,8 +1047,29 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 }`}>
                   {step.id}
                 </div>
+                      : isAccessible
+                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500 cursor-pointer'
+                        : 'bg-gray-700 text-gray-500'
+                }`}
+                onClick={() => isAccessible && setCurrentStep(step.id)}
+                title={step.description}
+              >
+                {isCompleted ? (
+                  <CheckCircle className="w-6 h-6" />
+                ) : (
+                  <StepIcon className="w-6 h-6" />
+                )}
+                
+                {/* Badge numéro d'étape */}
+                <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  isCompleted ? 'bg-green-600' : isActive ? 'bg-cyan-600' : 'bg-gray-600'
+                }`}>
+                  {step.id}
+                </div>
               </div>
               
+              {/* Ligne de connexion */}
+              {step.id < steps.length - 1 && (
               {/* Ligne de connexion */}
               {step.id < steps.length - 1 && (
                 <div className={`w-16 h-1 ${
@@ -825,6 +1077,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 }`} />
               )}
             </div>
+            );
             );
           })}
         </div>
@@ -838,8 +1091,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             {steps.find(s => s.id === currentStep)?.description || 'Processus d\'inscription'}
           </p>
         </div>
+        {/* Titre et description de l'étape actuelle */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {steps.find(s => s.id === currentStep)?.title || 'Inscription'}
+          </h1>
+          <p className="text-gray-300">
+            {steps.find(s => s.id === currentStep)?.description || 'Processus d\'inscription'}
+          </p>
+        </div>
         {/* Form Content */}
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20">
+          {currentStep === 0 && renderStep0()}
           {currentStep === 0 && renderStep0()}
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
@@ -848,6 +1111,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
 
           {/* Navigation Buttons */}
           {currentStep > 0 && (
+            <div className="flex justify-between mt-8 pt-6 border-t border-white/20">
             <div className="flex justify-between mt-8 pt-6 border-t border-white/20">
             <button
               onClick={() => currentStep > 1 ? setCurrentStep(prev => prev - 1) : onBack()}
@@ -883,6 +1147,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               </button>
             )}
             </div>
+          )}
           )}
         </div>
       </div>
