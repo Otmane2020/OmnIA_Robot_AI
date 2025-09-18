@@ -8,17 +8,13 @@ import {
 import { Logo } from '../components/Logo';
 import { VendorDashboard } from '../components/VendorDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
-import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
 import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
-import { ProductDetailModal } from '../components/ProductDetailModal';
-import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
-import { supabase } from '../lib/supabase';
 import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -329,6 +325,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
       <ProductsEnrichedTable />
     </div>
   );
+  
   const renderIntegration = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
