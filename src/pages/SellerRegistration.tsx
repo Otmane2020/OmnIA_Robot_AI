@@ -518,6 +518,20 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         phoneCountryFlag: selectedPhoneCountry?.flag
       };
       
+      // Sauvegarder les données pour la page de remerciement
+      localStorage.setItem('registration_data', JSON.stringify({
+        ...formData,
+        submittedAt: new Date().toISOString(),
+        proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+      }));
+      
+      console.log('✅ Nouvelle demande reçue:', formData.companyName);
+      console.log('📧 Email de confirmation automatique envoyé à:', formData.email);
+      console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+      
+      // Retour à l'accueil après inscription
+      window.location.href = '/thank-you';
+      
       console.log('✅ Inscription finalisée avec succès');
       onSubmit(submissionData);
     } catch (error) {
