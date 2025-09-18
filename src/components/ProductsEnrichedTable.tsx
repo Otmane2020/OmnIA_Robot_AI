@@ -20,6 +20,7 @@ interface EnrichedProduct {
   dimensions: string;
   room: string;
   price: number;
+  compare_at_price?: number;
   stock_qty: number;
   image_url: string;
   product_url: string;
