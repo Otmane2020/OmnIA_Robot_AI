@@ -6,23 +6,28 @@ import {
   Clock, Star, X, ShoppingBag
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { VendorDashboard } from '../components/VendorDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
-import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
 import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
-import { ProductDetailModal } from '../components/ProductDetailModal';
-import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
-import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
-import { supabase } from '../lib/supabase';
 import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  currentVendor?: {
+    id: string;
+    email: string;
+    company_name: string;
+    subdomain: string;
+    plan: string;
+    status: string;
+    contact_name: string;
+  };
 }
 
 interface DashboardStats {
@@ -32,9 +37,14 @@ interface DashboardStats {
   revenue: number;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
+  // Si un vendeur est connecté, afficher son dashboard personnalisé
+  if (currentVendor) {
+    return <VendorDashboard vendor={currentVendor} onLogout={onLogout} />;
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
@@ -47,9 +57,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showQR, setShowQR] = useState(false);
 
   // Fonction pour compter les produits actifs
-  function getActiveProductsCount(): number {
+  function getActiveProductsCount(vendorId?: string): number {
     try {
-      const savedProducts = localStorage.getItem('catalog_products');
+      const storageKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
+      const savedProducts = localStorage.getItem(storageKey);
       if (savedProducts) {
         const products = JSON.parse(savedProducts);
         const activeProducts = products.filter((p: any) => p.status === 'active');
@@ -64,8 +75,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'catalogue', label: 'Catalogue', icon: Database },
+    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
     { id: 'integration', label: 'Intégration', icon: Globe },
-    { id: 'merchant', label: 'Google Merchant', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
@@ -78,9 +89,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     
     setConnectedPlatforms(prev => [...prev, platformData]);
     
-    // Sauvegarder les produits dans localStorage si fournis
+    // Sauvegarder les produits dans localStorage avec vendor_id si fournis
     if (platformData.products && Array.isArray(platformData.products)) {
-      const existingProducts = localStorage.getItem('catalog_products');
+      const storageKey = currentVendor ? `vendor_${currentVendor.id}_products` : 'catalog_products';
+      const existingProducts = localStorage.getItem(storageKey);
       let allProducts = platformData.products;
       
       if (existingProducts) {
@@ -92,7 +104,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         }
       }
       
-      localStorage.setItem('catalog_products', JSON.stringify(allProducts));
+      localStorage.setItem(storageKey, JSON.stringify(allProducts));
       console.log('✅ Produits sauvegardés dans localStorage:', allProducts.length);
     }
     
@@ -100,7 +112,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (platformData.products_count) {
       setStats(prev => ({
         ...prev,
-        products: getActiveProductsCount()
+        products: getActiveProductsCount(currentVendor?.id)
       }));
     }
     
@@ -300,6 +312,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderEnriched = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-300 text-sm">Enrichissement automatique actif</span>
+        </div>
+      </div>
+
+      <ProductsEnrichedTable />
+    </div>
+  );
+  
   const renderIntegration = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -482,8 +508,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'catalogue': return renderCatalogue();
+      case 'enriched': return renderEnriched();
       case 'integration': return renderIntegration();
-      case 'merchant': return <GoogleMerchantTab />;
       case 'ml-training': return renderMLTraining();
       case 'robot': return renderRobot();
       case 'historique': return renderHistorique();
