@@ -934,10 +934,84 @@ export const ProductsEnrichedTable: React.FC = () => {
             </div>
           </div>
         </div>
+              <div className="flex gap-4 mb-6">
+                <button
+                  onClick={() => {
+                    const csvContent = [
+                      'category,subcategory,google_code,google_category',
+                      ...googleCategories.map(cat => 
+                        `"${cat.category}","${cat.subcategory}","${cat.google_code}","${cat.google_category}"`
+                      )
+                    ].join('\n');
+                    
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'google-categories-mapping.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Exporter CSV
+                </button>
+                
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // Importer CSV de catégories
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const csv = event.target?.result as string;
+                          const lines = csv.split('\n');
+                          const headers = lines[0].split(',');
+                          const newCategories = [];
+                          
+                          for (let i = 1; i < lines.length; i++) {
+                            if (lines[i].trim()) {
+                              const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
+                              newCategories.push({
+                                category: values[0],
+                                subcategory: values[1],
+                                google_code: values[2],
+                                google_category: values[3]
+                              });
+                            }
+                          }
+                          
+                          setGoogleCategories(newCategories);
+                          localStorage.setItem('google_categories', JSON.stringify(newCategories));
+                          showSuccess('Import réussi', `${newCategories.length} catégories importées !`);
+                        } catch (error) {
+                          showError('Erreur import', 'Format CSV invalide.');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="hidden"
+                  id="csv-import"
+                />
+                <label
+                  htmlFor="csv-import"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Upload className="w-4 h-4" />
+                  Importer CSV
+                </label>
+              </div>
+              
       )}
 
       {/* Tableau des produits enrichis */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+                  Correspondance automatique entre vos catégories et les codes Google Shopping officiels.
+                  Cette base sert pour tous les revendeurs et optimise Google Ads/Merchant Center.
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-black/20">
