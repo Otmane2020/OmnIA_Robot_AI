@@ -119,11 +119,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const validateSIRET = async (siret: string): Promise<boolean> => {
     // Supprimer tous les espaces, tirets et caractères non numériques
     const cleanSiret = siret.replace(/[\s-]/g, '');
-    console.log('🔍 Validation SIRET:', cleanSiret);
     
     // Vérifier le format (14 chiffres)
     if (!/^\d{14}$/.test(cleanSiret)) {
-      console.log('❌ SIRET longueur incorrecte:', cleanSiret.length);
       return false;
     }
 
@@ -1160,7 +1158,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                           : isAccessible
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500 cursor-pointer'
                             : 'bg-gray-700 text-gray-500'
-                    }`}
+                      Email *
                     onClick={() => isAccessible && authMode === 'signup' && setCurrentStep(step.id)}
                     title={step.description}
                   >
@@ -1169,13 +1167,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                     ) : (
                       <StepIcon className="w-6 h-6" />
                     )}
-                    
+                      placeholder="contact@monentreprise.fr ou email@gmail.com"
                     {/* Badge numéro d'étape */}
                     <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                       isCompleted ? 'bg-green-600' : isActive ? 'bg-cyan-600' : 'bg-gray-600'
-                    }`}>
-                      {index + 1}
-                    </div>
                   </div>
                   
                   {/* Ligne de connexion */}

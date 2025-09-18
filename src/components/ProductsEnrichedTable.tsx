@@ -296,52 +296,75 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       showInfo('Enrichissement démarré', 'Analyse IA des produits en cours...');
       
-      // Simuler l'enrichissement automatique
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Récupérer les produits du catalogue principal
+      const catalogProducts = localStorage.getItem('catalog_products');
+      if (!catalogProducts) {
+        showError('Aucun produit', 'Aucun produit trouvé dans le catalogue principal à enrichir.');
+        return;
+      }
       
-      // Ajouter quelques produits enrichis
-      const newEnrichedProducts = [
-        {
-          id: `enriched-${Date.now()}`,
-          handle: 'nouveau-produit-enrichi',
-          title: 'Nouveau produit enrichi par IA',
-          description: 'Produit automatiquement enrichi par le cron',
-          category: 'Mobilier',
-          type: 'Table',
-          color: 'Blanc',
-          material: 'Bois',
-          fabric: '',
-          style: 'Scandinave',
-          dimensions: '120x80x75cm',
-          room: 'Bureau',
-          price: 299,
-          stock_qty: 25,
-          image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
-          product_url: '#',
-          created_at: new Date().toISOString()
-        }
-      ];
+      const products = JSON.parse(catalogProducts);
+      console.log('📦 Produits à enrichir:', products.length);
       
-      const updatedProducts = [...products, ...newEnrichedProducts];
-      setProducts(updatedProducts);
-      localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
+      // Simuler l'enrichissement IA
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Enrichir automatiquement tous les produits du catalogue
+      const newEnrichedProducts = products.map((product: any) => ({
+        id: `enriched-${product.id || Date.now()}`,
+        handle: product.handle || product.id || 'produit-enrichi',
+        title: product.title || product.name || 'Produit sans nom',
+        description: product.description || '',
+        category: detectCategory(product.title || product.name || ''),
+        subcategory: detectSubcategory(product.title || product.name || ''),
+        color: detectColor(product.title + ' ' + product.description),
+        material: detectMaterial(product.title + ' ' + product.description),
+        fabric: detectFabric(product.title + ' ' + product.description),
+        style: detectStyle(product.title + ' ' + product.description),
+        dimensions: extractDimensions(product.description || ''),
+        room: detectRoom(product.title + ' ' + product.description),
+        price: product.price || 0,
+        compare_at_price: product.compare_at_price || product.compareAtPrice,
+        stock_qty: product.stock || product.quantityAvailable || 0,
+        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        product_url: product.product_url || '#',
+        tags: generateTags(product),
+        seo_title: generateSEOTitle(product),
+        seo_description: generateSEODescription(product),
+        ad_headline: generateAdHeadline(product),
+        ad_description: generateAdDescription(product),
+        google_product_category: getGoogleCategory(product),
+        gtin: '',
+        brand: product.vendor || 'Decora Home',
+        confidence_score: calculateConfidenceScore(product),
+        enriched_at: new Date().toISOString(),
+        enrichment_source: 'cron_auto',
+        created_at: product.created_at || new Date().toISOString()
+      }));
+      
+      // Fusionner avec les produits enrichis existants (éviter doublons)
+      const existingEnriched = products.filter((p: any) => !newEnrichedProducts.find(np => np.handle === p.handle));
+      const allEnrichedProducts = [...existingEnriched, ...newEnrichedProducts];
+      
+      setProducts(allEnrichedProducts);
+      localStorage.setItem('enriched_products', JSON.stringify(allEnrichedProducts));
       
       showSuccess(
         'Enrichissement terminé', 
         `${newEnrichedProducts.length} nouveau(x) produit(s) enrichi(s) ajouté(s) !`,
         [
           {
-            label: 'Voir les nouveaux',
-            action: () => setSearchTerm('nouveau'),
+            label: 'Voir le catalogue enrichi',
+            action: () => setSearchTerm(''),
             variant: 'primary'
           }
         ]
       );
       
     } catch (error) {
+      console.error('❌ Erreur enrichissement:', error);
       showError('Erreur enrichissement', 'Erreur lors de l\'enrichissement automatique.');
     }
-  };
 
   const categories = [...new Set(products.map(p => p.category))];
   const materials = [...new Set(products.map(p => p.material).filter(Boolean))];
