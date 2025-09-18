@@ -18,6 +18,24 @@ import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
 
 interface Retailer {
+  id: string;
+  company_name: string;
+  email: string;
+  subdomain: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended' | 'pending_validation';
+  contact_name: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  siret?: string;
+  position?: string;
+  password?: string;
+  created_at: string;
+  validated_at?: string;
+}
+
 interface Vendor {
   id: string;
   company_name: string;
