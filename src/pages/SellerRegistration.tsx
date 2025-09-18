@@ -1061,7 +1061,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 )}
                 
                 {/* Badge numéro d'étape */}
-                <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                <div className={\`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                   isCompleted ? 'bg-green-600' : isActive ? 'bg-cyan-600' : 'bg-gray-600'
                 }`}>
                   {step.id}
@@ -1072,7 +1072,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               {step.id < steps.length - 1 && (
               {/* Ligne de connexion */}
               {step.id < steps.length - 1 && (
-                <div className={`w-16 h-1 ${
+                <div className={\`w-16 h-1 ${
                   currentStep > step.id ? 'bg-cyan-500' : 'bg-gray-600'
                 }`} />
               )}
