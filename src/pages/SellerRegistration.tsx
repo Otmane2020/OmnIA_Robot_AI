@@ -250,11 +250,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     }
 
     // Algorithme de validation SIRET officiel français
-    // Algorithme de validation SIRET officiel français
     let sum = 0;
     
     for (let i = 0; i < 14; i++) {
-      if (i % 2 === 1) { // Position impaire dans l'algorithme SIRET
+      let digit = parseInt(cleanSiret[i]);
       // Pour les positions paires (index impair en base 0), multiplier par 2
       if (i % 2 === 1) {
         digit *= 2;
@@ -268,13 +267,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     // Le SIRET est valide si la somme est divisible par 10
     const isValid = sum % 10 === 0;
     console.log('🔍 Validation SIRET:', cleanSiret, 'Somme:', sum, 'Valide:', isValid);
-    console.log('🔍 Validation SIRET:', {
-      siret: cleanSiret,
-      sum,
-      calculated: calculatedCheckDigit,
-      provided: providedCheckDigit,
-      valid: calculatedCheckDigit === providedCheckDigit
-    });
     
     return isValid;
   };
