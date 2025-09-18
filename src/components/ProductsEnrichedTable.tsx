@@ -446,10 +446,11 @@ export const ProductsEnrichedTable: React.FC = () => {
     if (lowerText.includes('marbre') || lowerText.includes('marble')) return 'Marbre';
     if (lowerText.includes('travertin')) return 'Travertin';
     if (lowerText.includes('céramique') || lowerText.includes('ceramic')) return 'Céramique';
-    if (
-    )
+    if (lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
+    
+    return 'Autre';
   }
-}lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
+}
     if (lowerText.includes('osier') || lowerText.includes('wicker')) return 'Osier';
     if (lowerText.includes('bambou') || lowerText.includes('bamboo')) return 'Bambou';
     return '';
