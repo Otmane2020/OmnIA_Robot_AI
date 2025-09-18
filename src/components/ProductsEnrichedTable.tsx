@@ -8,9 +8,12 @@ import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {
   id: string;
+  sku: string;
+  gtin: string;
   handle: string;
   title: string;
   description: string;
+  short_description: string;
   category: string;
   subcategory: string;
   color: string;
@@ -18,20 +21,31 @@ interface EnrichedProduct {
   fabric: string;
   style: string;
   dimensions: string;
+  weight: string;
+  capacity: string;
   room: string;
   price: number;
   compare_at_price?: number;
+  currency: string;
+  stock_quantity: number;
+  availability: string;
   stock_qty: number;
   image_url: string;
+  image_alt: string;
+  gallery_urls: string[];
   product_url: string;
   tags: string[];
   seo_title: string;
   seo_description: string;
+  google_category: string;
+  pmax_score: number;
   ad_headline: string;
   ad_description: string;
   google_product_category: string;
-  gtin: string;
   brand: string;
+  intent_tags: any;
+  matching_score: number;
+  chat_history_ref: string;
   confidence_score: number;
   enriched_at: string;
   enrichment_source: string;
@@ -52,15 +66,20 @@ export const ProductsEnrichedTable: React.FC = () => {
   const [editValues, setEditValues] = useState<Partial<EnrichedProduct>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [cronStatus, setCronStatus] = useState<any>(null);
+  const [cronMode, setCronMode] = useState<'auto' | 'manual'>('auto');
+  const [isRunningCron, setIsRunningCron] = useState(false);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   // Mock enriched products data
   const mockEnrichedProducts: EnrichedProduct[] = [
     {
       id: 'enriched-1',
+      sku: 'ALYAAVCOTBEI-DH',
+      gtin: '3701234567890',
       handle: 'canape-alyana-beige',
       title: 'Canapé ALYANA convertible - Beige',
       description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
+      short_description: 'Canapé d\'angle convertible 4 places velours côtelé beige',
       category: 'Canapé',
       subcategory: 'Canapé d\'angle convertible',
       color: 'Beige',
@@ -68,19 +87,41 @@ export const ProductsEnrichedTable: React.FC = () => {
       fabric: 'Velours côtelé',
       style: 'Moderne',
       dimensions: '280x180x75cm',
+      weight: '45kg',
+      capacity: '4 places',
       room: 'Salon',
       price: 799,
+      compare_at_price: 1399,
+      currency: 'EUR',
+      stock_quantity: 100,
+      availability: 'En stock',
       stock_qty: 100,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
+      image_alt: 'Canapé d\'angle convertible ALYANA beige velours côtelé',
+      gallery_urls: [
+        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_c424b028-7399-4639-ba8f-487e0d71d0f6.png',
+        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_329df0e2-31cd-4628-a3ac-06213e4e2741.png'
+      ],
       product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
       tags: ['convertible', 'angle', 'velours', 'rangement', '4-places'],
       seo_title: 'Canapé d\'angle convertible ALYANA beige - Velours côtelé',
       seo_description: 'Canapé d\'angle convertible 4 places en velours côtelé beige. Couchage intégré, coffre rangement. Livraison gratuite.',
+      google_category: 'Furniture > Living Room Furniture > Sofas',
+      pmax_score: 92,
       ad_headline: 'Canapé ALYANA Convertible',
       ad_description: 'Canapé d\'angle 4 places velours côtelé. Convertible + rangement. Promo -43%',
       google_product_category: '635',
-      gtin: '',
       brand: 'Decora Home',
+      intent_tags: {
+        category: 'canapé',
+        material: 'velours',
+        color: 'beige',
+        feature: 'convertible',
+        storage: 'coffre',
+        seating: '4-places'
+      },
+      matching_score: 95,
+      chat_history_ref: '',
       confidence_score: 95,
       enriched_at: '2025-01-15T10:30:00Z',
       enrichment_source: 'ai',
@@ -88,9 +129,12 @@ export const ProductsEnrichedTable: React.FC = () => {
     },
     {
       id: 'enriched-2',
+      sku: 'TB18T100-DH',
+      gtin: '3701234567891',
       handle: 'table-aurea-100',
       title: 'Table AUREA Ø100cm - Travertin',
       description: 'Table ronde en travertin naturel avec pieds métal noir',
+      short_description: 'Table ronde travertin naturel Ø100cm pieds métal',
       category: 'Table',
       subcategory: 'Table à manger ronde',
       color: 'Naturel',
@@ -98,19 +142,39 @@ export const ProductsEnrichedTable: React.FC = () => {
       fabric: '',
       style: 'Contemporain',
       dimensions: '100x100x75cm',
+      weight: '25kg',
+      capacity: '4 personnes',
       room: 'Salle à manger',
       price: 499,
+      compare_at_price: 859,
+      currency: 'EUR',
+      stock_quantity: 50,
+      availability: 'En stock',
       stock_qty: 50,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
+      image_alt: 'Table ronde AUREA travertin naturel Ø100cm',
+      gallery_urls: [
+        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/2_89637aec-60b5-403f-9f0f-57c9a2fa42e4.png'
+      ],
       product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
       tags: ['travertin', 'ronde', 'naturel', 'élégant', 'minérale'],
       seo_title: 'Table ronde AUREA travertin naturel Ø100cm - Decora Home',
       seo_description: 'Table à manger ronde AUREA en travertin naturel Ø100cm. Pieds métal noir. Design contemporain élégant. Livraison offerte.',
+      google_category: 'Furniture > Dining Room Furniture > Tables',
+      pmax_score: 88,
       ad_headline: 'Table AUREA Travertin Ø100cm',
       ad_description: 'Table ronde travertin naturel. Design contemporain. Pieds métal noir. -42%',
       google_product_category: '443',
-      gtin: '',
       brand: 'Decora Home',
+      intent_tags: {
+        category: 'table',
+        material: 'travertin',
+        shape: 'ronde',
+        size: '100cm',
+        style: 'contemporain'
+      },
+      matching_score: 88,
+      chat_history_ref: '',
       confidence_score: 92,
       enriched_at: '2025-01-15T09:15:00Z',
       enrichment_source: 'ai',
@@ -118,9 +182,12 @@ export const ProductsEnrichedTable: React.FC = () => {
     },
     {
       id: 'enriched-3',
+      sku: 'DC11PNNCHLG-DH',
+      gtin: '3701234567892',
       handle: 'chaise-inaya-gris',
       title: 'Chaise INAYA - Gris chenille',
       description: 'Chaise en tissu chenille avec pieds métal noir',
+      short_description: 'Chaise chenille gris pieds métal noir design contemporain',
       category: 'Chaise',
       subcategory: 'Chaise de salle à manger',
       color: 'Gris',
@@ -128,19 +195,39 @@ export const ProductsEnrichedTable: React.FC = () => {
       fabric: 'Chenille',
       style: 'Industriel',
       dimensions: '45x50x85cm',
+      weight: '5kg',
+      capacity: '1 personne',
       room: 'Salle à manger',
       price: 99,
+      compare_at_price: 149,
+      currency: 'EUR',
+      stock_quantity: 96,
+      availability: 'En stock',
       stock_qty: 96,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
+      image_alt: 'Chaise INAYA chenille gris pieds métal noir',
+      gallery_urls: [
+        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_aae7ccd2-f2cb-4418-8c84-210ace00d753.png'
+      ],
       product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
       tags: ['chenille', 'métal', 'contemporain', 'élégant', 'gris'],
       seo_title: 'Chaise INAYA chenille gris - Pieds métal noir - Decora Home',
       seo_description: 'Chaise INAYA en tissu chenille gris avec pieds métal noir. Design contemporain élégant. Confort optimal. Livraison rapide.',
+      google_category: 'Furniture > Dining Room Furniture > Chairs',
+      pmax_score: 85,
       ad_headline: 'Chaise INAYA Chenille Gris',
       ad_description: 'Chaise chenille + métal noir. Design contemporain. Confort optimal. -34%',
       google_product_category: '436',
-      gtin: '',
       brand: 'Decora Home',
+      intent_tags: {
+        category: 'chaise',
+        material: 'chenille',
+        color: 'gris',
+        style: 'industriel',
+        frame: 'métal'
+      },
+      matching_score: 85,
+      chat_history_ref: '',
       confidence_score: 88,
       enriched_at: '2025-01-15T08:22:00Z',
       enrichment_source: 'ai',
@@ -513,6 +600,7 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const handleRunEnrichmentCron = async () => {
     try {
+      setIsRunningCron(true);
       showInfo('Enrichissement démarré', 'Analyse IA des produits en cours...');
       
       // Récupérer les produits du catalogue principal
@@ -526,14 +614,17 @@ export const ProductsEnrichedTable: React.FC = () => {
       console.log('📦 Produits à enrichir:', products.length);
       
       // Simuler l'enrichissement IA
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, cronMode === 'auto' ? 1000 : 3000));
       
       // Enrichir automatiquement tous les produits du catalogue
       const newEnrichedProducts = products.map((product: any) => ({
         id: `enriched-${product.id || Date.now()}`,
+        sku: product.sku || generateSKU(product),
+        gtin: generateGTIN(product),
         handle: product.handle || product.id || 'produit-enrichi',
         title: product.title || product.name || 'Produit sans nom',
         description: product.description || '',
+        short_description: generateShortDescription(product),
         category: detectCategory(product.title || product.name || ''),
         subcategory: detectSubcategory(product.title || product.name || ''),
         color: detectColor(product.title + ' ' + product.description),
@@ -541,35 +632,49 @@ export const ProductsEnrichedTable: React.FC = () => {
         fabric: detectFabric(product.title + ' ' + product.description),
         style: detectStyle(product.title + ' ' + product.description),
         dimensions: extractDimensions(product.description || ''),
+        weight: extractWeight(product.description || ''),
+        capacity: extractCapacity(product.title + ' ' + product.description),
         room: detectRoom(product.title + ' ' + product.description),
         price: product.price || 0,
         compare_at_price: product.compare_at_price || product.compareAtPrice,
+        currency: 'EUR',
+        stock_quantity: product.stock || product.quantityAvailable || 0,
+        availability: (product.stock || product.quantityAvailable || 0) > 0 ? 'En stock' : 'Rupture',
         stock_qty: product.stock || product.quantityAvailable || 0,
         image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        image_alt: generateImageAlt(product),
+        gallery_urls: extractGalleryUrls(product),
         product_url: product.product_url || '#',
         tags: generateTags(product),
         seo_title: generateSEOTitle(product),
         seo_description: generateSEODescription(product),
+        google_category: generateGoogleCategory(product),
+        pmax_score: calculatePMaxScore(product),
         ad_headline: generateAdHeadline(product),
         ad_description: generateAdDescription(product),
         google_product_category: getGoogleCategory(product),
-        gtin: '',
         brand: product.vendor || 'Decora Home',
+        intent_tags: generateIntentTags(product),
+        matching_score: calculateMatchingScore(product),
+        chat_history_ref: '',
         confidence_score: calculateConfidenceScore(product),
         enriched_at: new Date().toISOString(),
-        enrichment_source: 'cron_auto',
+        enrichment_source: cronMode === 'auto' ? 'cron_auto' : 'manual',
         created_at: product.created_at || new Date().toISOString()
       }));
       
       // Fusionner avec les produits enrichis existants (éviter doublons)
-      const existingEnriched = products.filter((p: any) => !newEnrichedProducts.find(np => np.handle === p.handle));
+      const existingEnriched = products.filter((p: any) => 
+        !newEnrichedProducts.find(np => np.handle === p.handle) &&
+        !mockEnrichedProducts.find(mp => mp.handle === p.handle)
+      );
       const allEnrichedProducts = [...existingEnriched, ...newEnrichedProducts];
       
       setProducts(allEnrichedProducts);
       localStorage.setItem('enriched_products', JSON.stringify(allEnrichedProducts));
       
       showSuccess(
-        'Enrichissement terminé', 
+        cronMode === 'auto' ? 'Cron automatique terminé' : 'Enrichissement manuel terminé', 
         `${newEnrichedProducts.length} nouveau(x) produit(s) enrichi(s) ajouté(s) !`,
         [
           {
@@ -583,6 +688,8 @@ export const ProductsEnrichedTable: React.FC = () => {
     } catch (error) {
       console.error('❌ Erreur enrichissement:', error);
       showError('Erreur enrichissement', 'Erreur lors de l\'enrichissement automatique.');
+    } finally {
+      setIsRunningCron(false);
     }
   };
 
@@ -615,12 +722,46 @@ export const ProductsEnrichedTable: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap gap-3">
+          {/* Mode Cron */}
+          <div className="flex items-center gap-2 bg-black/40 rounded-xl p-2 border border-gray-600">
+            <button
+              onClick={() => setCronMode('auto')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                cronMode === 'auto' 
+                  ? 'bg-green-500 text-white' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Auto
+            </button>
+            <button
+              onClick={() => setCronMode('manual')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                cronMode === 'manual' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Manuel
+            </button>
+          </div>
+          
           <button
             onClick={handleRunEnrichmentCron}
+            disabled={isRunningCron}
             className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
           >
-            <Brain className="w-4 h-4" />
-            Enrichir avec IA
+            {isRunningCron ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Enrichissement...
+              </>
+            ) : (
+              <>
+                <Brain className="w-4 h-4" />
+                {cronMode === 'auto' ? 'Cron Auto' : 'Enrichir Manuel'}
+              </>
+            )}
           </button>
           
           {selectedProducts.length > 0 && (
@@ -637,17 +778,34 @@ export const ProductsEnrichedTable: React.FC = () => {
 
       {/* Statut du cron d'enrichissement */}
       {cronStatus && (
-        <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+        <div className={`border rounded-xl p-4 ${
+          cronMode === 'auto' 
+            ? 'bg-green-500/20 border-green-400/50' 
+            : 'bg-blue-500/20 border-blue-400/50'
+        }`}>
           <h3 className="font-semibold text-purple-200 mb-3 flex items-center gap-2">
             <Brain className="w-5 h-5" />
-            Cron d'enrichissement automatique
+            {cronMode === 'auto' ? 'Cron d\'enrichissement automatique' : 'Enrichissement manuel'}
           </h3>
+          
+          {cronMode === 'auto' && (
+            <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-3 mb-4">
+              <h4 className="font-semibold text-green-200 mb-2">🤖 Mode automatique actif :</h4>
+              <ul className="text-green-300 text-sm space-y-1">
+                <li>• Détection automatique des nouveaux produits</li>
+                <li>• Enrichissement IA toutes les 6h</li>
+                <li>• Mise à jour des attributs manquants</li>
+                <li>• Génération SEO et Google Shopping</li>
+              </ul>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">
-                {cronStatus.enabled ? 'ACTIF' : 'INACTIF'}
+                {cronMode === 'auto' ? 'AUTO' : 'MANUEL'}
               </div>
-              <div className="text-green-300">Statut</div>
+              <div className="text-green-300">Mode</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">{cronStatus.products_enriched}</div>
@@ -659,9 +817,14 @@ export const ProductsEnrichedTable: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-400">
-                {new Date(cronStatus.next_run).toLocaleDateString('fr-FR')}
+                {cronMode === 'auto' 
+                  ? new Date(cronStatus.next_run).toLocaleDateString('fr-FR')
+                  : 'Sur demande'
+                }
               </div>
-              <div className="text-orange-300">Prochaine exécution</div>
+              <div className="text-orange-300">
+                {cronMode === 'auto' ? 'Prochaine exécution' : 'Exécution'}
+              </div>
             </div>
           </div>
         </div>
