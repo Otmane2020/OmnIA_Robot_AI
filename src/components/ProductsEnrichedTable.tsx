@@ -1007,7 +1007,81 @@ export const ProductsEnrichedTable: React.FC = () => {
                 <button
                   onClick={() => {
                     const csvContent = [
-                      'category,subcategory,google_code,google_category',
+                 >
+                   <X className="w-4 h-4" />
+                 </button>
+               </div>
+             </div>
+           )}
+         </div>
+       )}
+
+       {/* Export/Import Actions */}
+       <div className="flex gap-4 mb-6">
+         <button
+           onClick={() => {
+             const csvContent = [
+               'handle,title,description,category,subcategory,color,material,fabric,style,dimensions,room,price,stock_qty,image_url,product_url,tags,seo_title,seo_description,ad_headline,ad_description,google_product_category,gtin,brand,confidence_score,enriched_at,enrichment_source',
+               ...enrichedProducts.map(product => [
+                 product.handle,
+                 product.title,
+                 product.description,
+                 product.category,
+                 product.subcategory,
+                 product.color,
+                 product.material,
+                 product.fabric,
+                 product.style,
+                 product.dimensions,
+                 product.room,
+                 product.price,
+                 product.stock_qty,
+                 product.image_url,
+                 product.product_url,
+                 Array.isArray(product.tags) ? product.tags.join(';') : product.tags,
+                 product.seo_title,
+                 product.seo_description,
+                 product.ad_headline,
+                 product.ad_description,
+                 product.google_product_category,
+                 product.gtin,
+                 product.brand,
+                 product.confidence_score,
+                 product.enriched_at,
+                 product.enrichment_source
+               ].join(','))
+             ].join('\n');
+             
+             const blob = new Blob([csvContent], { type: 'text/csv' });
+             const url = URL.createObjectURL(blob);
+             const a = document.createElement('a');
+             a.href = url;
+             a.download = 'catalogue-enrichi-omnia.csv';
+             a.click();
+             URL.revokeObjectURL(url);
+           }}
+           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+         >
+           <Download className="w-4 h-4" />
+           Exporter CSV
+         </button>
+         
+         <input
+           ref={fileInputRef}
+           type="file"
+           accept=".csv"
+           onChange={handleImportCSV}
+           className="hidden"
+         />
+         
+         <button
+           onClick={() => fileInputRef.current?.click()}
+           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+         >
+           <Upload className="w-4 h-4" />
+           Importer CSV
+         </button>
+       </div>
                       ...googleCategories.map(cat => 
                         `"${cat.category}","${cat.subcategory}","${cat.google_code}","${cat.google_category}"`
                       )
