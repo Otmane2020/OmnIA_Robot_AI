@@ -16,6 +16,7 @@ import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
 import { ThankYou } from './pages/ThankYou';
+import { SuperAdmin } from './pages/SuperAdmin';
 
 interface Retailer {
   id: string;
