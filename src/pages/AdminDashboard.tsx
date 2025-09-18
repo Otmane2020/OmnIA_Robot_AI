@@ -6,6 +6,7 @@ import {
   Clock, Star, X, ShoppingBag
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { VendorDashboard } from '../components/VendorDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
 import { AITrainingInterface } from '../components/AITrainingInterface';
@@ -22,6 +23,15 @@ import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  currentVendor?: {
+    id: string;
+    email: string;
+    company_name: string;
+    subdomain: string;
+    plan: string;
+    status: string;
+    contact_name: string;
+  };
 }
 
 interface DashboardStats {
@@ -32,8 +42,14 @@ interface DashboardStats {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
+  // Si un vendeur est connecté, afficher son dashboard personnalisé
+  if (currentVendor) {
+    return <VendorDashboard vendor={currentVendor} onLogout={onLogout} />;
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
@@ -46,9 +62,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showQR, setShowQR] = useState(false);
 
   // Fonction pour compter les produits actifs
-  function getActiveProductsCount(): number {
+  function getActiveProductsCount(vendorId?: string): number {
     try {
-      const savedProducts = localStorage.getItem('catalog_products');
+      const storageKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
+      const savedProducts = localStorage.getItem(storageKey);
       if (savedProducts) {
         const products = JSON.parse(savedProducts);
         const activeProducts = products.filter((p: any) => p.status === 'active');
@@ -77,9 +94,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     
     setConnectedPlatforms(prev => [...prev, platformData]);
     
-    // Sauvegarder les produits dans localStorage si fournis
+    // Sauvegarder les produits dans localStorage avec vendor_id si fournis
     if (platformData.products && Array.isArray(platformData.products)) {
-      const existingProducts = localStorage.getItem('catalog_products');
+      const storageKey = currentVendor ? `vendor_${currentVendor.id}_products` : 'catalog_products';
+      const existingProducts = localStorage.getItem(storageKey);
       let allProducts = platformData.products;
       
       if (existingProducts) {
@@ -91,7 +109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         }
       }
       
-      localStorage.setItem('catalog_products', JSON.stringify(allProducts));
+      localStorage.setItem(storageKey, JSON.stringify(allProducts));
       console.log('✅ Produits sauvegardés dans localStorage:', allProducts.length);
     }
     
@@ -99,7 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (platformData.products_count) {
       setStats(prev => ({
         ...prev,
-        products: getActiveProductsCount()
+        products: getActiveProductsCount(currentVendor?.id)
       }));
     }
     

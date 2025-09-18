@@ -56,6 +56,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authMode, setAuthMode] = useState<'signup' | 'login' | null>(null);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const plans = [
     {
@@ -80,12 +81,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   ];
 
   const steps = [
-    { id: 0, title: 'Connexion', icon: User, description: 'Connexion ou inscription' },
+    { id: 0, title: 'Connexion', icon: User, description: 'Email et mot de passe' },
     { id: 1, title: 'Entreprise', icon: Building, description: 'Informations société' },
     { id: 2, title: 'Contact', icon: Mail, description: 'Responsable compte' },
     { id: 3, title: 'Plan', icon: CreditCard, description: 'Choix abonnement' },
     { id: 4, title: 'Documents', icon: FileText, description: 'Validation Kbis' }
   ];
+
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -99,12 +101,22 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       return;
     }
 
-    // Simuler la connexion
-    console.log('🔐 Tentative de connexion:', loginData.email);
+    setIsLoggingIn(true);
     
-    // Rediriger vers l'admin si connexion réussie
-    window.location.href = '/admin';
+    try {
+      // Simuler la connexion
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🔐 Connexion réussie:', loginData.email);
+      
+      // Rediriger vers l'admin
+      window.location.href = '/admin';
+    } catch (error) {
+      setErrors({ login: 'Erreur de connexion' });
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
+
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
 
@@ -120,13 +132,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (step === 2) {
       if (!formData.firstName.trim()) newErrors.firstName = 'Prénom requis';
       if (!formData.lastName.trim()) newErrors.lastName = 'Nom requis';
-      if (!formData.email.trim()) newErrors.email = 'Email requis';
-      if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email invalide';
       if (!formData.phone.trim()) newErrors.phone = 'Téléphone requis';
       if (!formData.position.trim()) newErrors.position = 'Fonction requise';
-      if (!formData.password.trim()) newErrors.password = 'Mot de passe requis';
-      if (formData.password.length < 6) newErrors.password = 'Minimum 6 caractères';
-      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Mots de passe différents';
     }
 
     if (step === 4) {
@@ -141,7 +148,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const handleNext = () => {
     if (currentStep === 0) {
       if (authMode === 'signup') {
-        setCurrentStep(1); // Aller à l'étape entreprise
+        setCurrentStep(1);
       } else {
         handleLogin();
       }
@@ -282,17 +289,93 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             </button>
             <button
               onClick={handleLogin}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white py-3 rounded-xl font-semibold transition-all"
+              disabled={isLoggingIn}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
             >
-              Se connecter
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Connexion...
+                </>
+              ) : (
+                'Se connecter'
+              )}
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-bold text-white mb-2">Créer votre compte revendeur</h3>
-            <p className="text-gray-300">Rejoignez les 500+ revendeurs qui utilisent OmnIA</p>
+            <h3 className="text-2xl font-bold text-white mb-2">Email et Mot de Passe</h3>
+            <p className="text-gray-300">Créez vos identifiants de connexion</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-cyan-200 mb-2">
+                Email professionnel *
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+                  errors.email ? 'border-red-500' : 'border-cyan-500/50'
+                }`}
+                placeholder="contact@monmagasin.fr"
+              />
+              {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-cyan-200 mb-2">
+                Mot de passe *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className={`w-full bg-black/40 border rounded-xl px-4 py-3 pr-12 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+                    errors.password ? 'border-red-500' : 'border-cyan-500/50'
+                  }`}
+                  placeholder="Minimum 6 caractères"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-cyan-400 hover:text-cyan-300"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-cyan-200 mb-2">
+                Confirmer le mot de passe *
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  className={`w-full bg-black/40 border rounded-xl px-4 py-3 pr-12 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+                    errors.confirmPassword ? 'border-red-500' : 'border-cyan-500/50'
+                  }`}
+                  placeholder="Répéter le mot de passe"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-cyan-400 hover:text-cyan-300"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.confirmPassword && <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>}
+            </div>
           </div>
 
           <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6">
@@ -300,41 +383,11 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <ul className="text-green-300 space-y-2 text-sm">
               <li>• Assistant IA personnalisé pour votre catalogue</li>
               <li>• Interface admin complète et intuitive</li>
+              <li>• Sous-domaine personnalisé (votre-boutique.omnia.sale)</li>
               <li>• Widget intégrable sur votre site</li>
               <li>• Analytics détaillées et reporting</li>
               <li>• Support technique dédié</li>
-              <li>• Formation et accompagnement inclus</li>
             </ul>
-          </div>
-
-          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
-            <h4 className="font-semibold text-blue-200 mb-3">📋 Processus d'inscription :</h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div className="text-center">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white font-bold">1</span>
-                </div>
-                <p className="text-blue-300">Informations entreprise</p>
-              </div>
-              <div className="text-center">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white font-bold">2</span>
-                </div>
-                <p className="text-blue-300">Contact responsable</p>
-              </div>
-              <div className="text-center">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white font-bold">3</span>
-                </div>
-                <p className="text-blue-300">Choix du plan</p>
-              </div>
-              <div className="text-center">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white font-bold">4</span>
-                </div>
-                <p className="text-blue-300">Validation Kbis</p>
-              </div>
-            </div>
           </div>
 
           <div className="flex gap-4">
@@ -345,16 +398,27 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               Retour
             </button>
             <button
-              onClick={() => setCurrentStep(1)}
+              onClick={() => {
+                if (!formData.email || !formData.password || formData.password !== formData.confirmPassword) {
+                  const newErrors: any = {};
+                  if (!formData.email) newErrors.email = 'Email requis';
+                  if (!formData.password) newErrors.password = 'Mot de passe requis';
+                  if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Mots de passe différents';
+                  setErrors(newErrors);
+                  return;
+                }
+                setCurrentStep(1);
+              }}
               className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all"
             >
-              Commencer l'inscription
+              Continuer l'inscription
             </button>
           </div>
         </div>
       )}
     </div>
   );
+
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center mb-8">
@@ -479,7 +543,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-cyan-200 mb-2">
-            Prénom *
+            Prénom du responsable *
           </label>
           <input
             type="text"
@@ -495,7 +559,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
 
         <div>
           <label className="block text-sm font-medium text-cyan-200 mb-2">
-            Nom *
+            Nom du responsable *
           </label>
           <input
             type="text"
@@ -507,22 +571,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             placeholder="Dupont"
           />
           {errors.lastName && <p className="text-red-400 text-sm mt-1">{errors.lastName}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-cyan-200 mb-2">
-            Email professionnel *
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
-              errors.email ? 'border-red-500' : 'border-cyan-500/50'
-            }`}
-            placeholder="contact@monmagasin.fr"
-          />
-          {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
         </div>
 
         <div>
@@ -556,55 +604,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           />
           {errors.position && <p className="text-red-400 text-sm mt-1">{errors.position}</p>}
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-cyan-200 mb-2">
-            Mot de passe *
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              className={`w-full bg-black/40 border rounded-xl px-4 py-3 pr-12 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
-                errors.password ? 'border-red-500' : 'border-cyan-500/50'
-              }`}
-              placeholder="Minimum 6 caractères"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-cyan-400 hover:text-cyan-300"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+      <div className="bg-cyan-500/20 border border-cyan-400/50 rounded-xl p-6">
+        <h4 className="font-semibold text-cyan-200 mb-3">🌐 Votre sous-domaine OmnIA :</h4>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-cyan-400 mb-2">
+            {formData.companyName ? 
+              `${formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}.omnia.sale` : 
+              'votre-boutique.omnia.sale'
+            }
           </div>
-          {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-cyan-200 mb-2">
-            Confirmer le mot de passe *
-          </label>
-          <div className="relative">
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              className={`w-full bg-black/40 border rounded-xl px-4 py-3 pr-12 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
-                errors.confirmPassword ? 'border-red-500' : 'border-cyan-500/50'
-              }`}
-              placeholder="Répéter le mot de passe"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-cyan-400 hover:text-cyan-300"
-            >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-          {errors.confirmPassword && <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>}
+          <p className="text-cyan-300 text-sm">Interface admin et chat client personnalisés</p>
         </div>
       </div>
     </div>
@@ -714,6 +725,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <div className="flex justify-between">
               <span>Email :</span>
               <span className="font-semibold">{formData.email || 'Non renseigné'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Mot de passe :</span>
+              <span className="font-semibold">••••••••</span>
             </div>
             <div className="flex justify-between">
               <span>Plan :</span>
@@ -847,13 +862,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           {currentStep === 4 && renderStep4()}
 
           {/* Navigation Buttons */}
-          {currentStep > 0 && (
+          {currentStep > 0 && authMode === 'signup' && (
             <div className="flex justify-between mt-8 pt-6 border-t border-white/20">
             <button
-              onClick={() => currentStep > 1 ? setCurrentStep(prev => prev - 1) : onBack()}
+              onClick={() => currentStep > 1 ? setCurrentStep(prev => prev - 1) : setCurrentStep(0)}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
             >
-              {currentStep > 1 ? 'Précédent' : 'Annuler'}
+              {currentStep > 1 ? 'Précédent' : 'Retour'}
             </button>
 
             {currentStep < 4 ? (
