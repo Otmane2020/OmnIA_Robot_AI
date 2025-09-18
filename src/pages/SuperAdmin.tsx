@@ -4,7 +4,7 @@ import {
   Search, Filter, Eye, Edit, Trash2, Plus,
   CheckCircle, XCircle, AlertTriangle, Crown,
   TrendingUp, DollarSign, Calendar, Mail,
-  FileText
+  FileText, Download, ExternalLink
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
@@ -12,7 +12,7 @@ import { NotificationSystem, useNotifications } from '../components/Notification
 interface SuperAdminProps {
   onLogout: () => void;
   pendingApplications: any[];
-  onValidateApplication: (id: string) => void;
+  onValidateApplication: (id: string, approved: boolean) => void;
 }
 
 interface Retailer {
@@ -26,6 +26,8 @@ interface Retailer {
   products: number;
   joinDate: string;
   lastActive: string;
+  password?: string;
+  applicationData?: any;
 }
 
 export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplications, onValidateApplication }) => {
@@ -37,6 +39,15 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showKbisModal, setShowKbisModal] = useState(false);
   const [selectedKbis, setSelectedKbis] = useState<any>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showAddRetailerModal, setShowAddRetailerModal] = useState(false);
+  const [newRetailerData, setNewRetailerData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    plan: 'professional',
+    status: 'active'
+  });
   const [retailers, setRetailers] = useState<Retailer[]>(() => {
     // Charger les revendeurs depuis localStorage
     try {
@@ -46,6 +57,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
           id: '1',
           name: 'Mobilier Design Paris',
           email: 'contact@mobilierdesign.fr',
+          password: 'design123',
           plan: 'enterprise',
           status: 'active',
           revenue: 5890,
@@ -58,6 +70,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
           id: '2',
           name: 'Déco Contemporain',
           email: 'info@decocontemporain.com',
+          password: 'deco123',
           plan: 'professional',
           status: 'active',
           revenue: 3200,
@@ -70,6 +83,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
           id: '3',
           name: 'Decora Home',
           email: 'admin@decorahome.fr',
+          password: 'demo123',
           plan: 'professional',
           status: 'active',
           revenue: 2450,
@@ -82,6 +96,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
           id: '4',
           name: 'Meubles Lyon',
           email: 'contact@meubleslyon.fr',
+          password: 'lyon123',
           plan: 'starter',
           status: 'active',
           revenue: 890,
@@ -97,11 +112,82 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
     }
   });
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
+
+  // Sauvegarder les revendeurs dans localStorage à chaque changement
+  React.useEffect(() => {
+    localStorage.setItem('retailers', JSON.stringify(retailers));
+  }, [retailers]);
   const handleViewKbis = (application: any) => {
     setSelectedKbis(application);
     setShowKbisModal(true);
   };
 
+  const handleViewApplication = (application: any) => {
+    setSelectedApplication(application);
+    setShowApplicationModal(true);
+  };
+
+  const handleEditRetailer = (retailer: Retailer) => {
+    setNewRetailerData({
+      name: retailer.name,
+      email: retailer.email,
+      password: retailer.password || '',
+      plan: retailer.plan,
+      status: retailer.status
+    });
+    setSelectedApplication(retailer);
+    setShowAddRetailerModal(true);
+  };
+
+  const handleDeleteRetailer = (retailerId: string) => {
+    if (confirm('Supprimer ce revendeur ? Cette action est irréversible.')) {
+      setRetailers(prev => prev.filter(r => r.id !== retailerId));
+      showSuccess('Revendeur supprimé', 'Le revendeur a été supprimé avec succès.');
+    }
+  };
+
+  const handleAddRetailer = () => {
+    if (!newRetailerData.name || !newRetailerData.email || !newRetailerData.password) {
+      showError('Champs manquants', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    const newRetailer: Retailer = {
+      id: Date.now().toString(),
+      name: newRetailerData.name,
+      email: newRetailerData.email,
+      password: newRetailerData.password,
+      plan: newRetailerData.plan as any,
+      status: newRetailerData.status as any,
+      revenue: 0,
+      conversations: 0,
+      products: 0,
+      joinDate: new Date().toISOString(),
+      lastActive: new Date().toISOString()
+    };
+
+    if (selectedApplication && selectedApplication.id) {
+      // Mode édition
+      setRetailers(prev => prev.map(r => 
+        r.id === selectedApplication.id ? { ...r, ...newRetailerData } : r
+      ));
+      showSuccess('Revendeur modifié', 'Les informations ont été mises à jour.');
+    } else {
+      // Mode création
+      setRetailers(prev => [...prev, newRetailer]);
+      showSuccess('Revendeur créé', `${newRetailer.name} a été créé avec succès.`);
+    }
+
+    setShowAddRetailerModal(false);
+    setSelectedApplication(null);
+    setNewRetailerData({
+      name: '',
+      email: '',
+      password: '',
+      plan: 'professional',
+      status: 'active'
+    });
+  };
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'retailers', label: 'Revendeurs', icon: Store },
@@ -133,13 +219,18 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
     if (approved) {
       console.log(`✅ Application approuvée: ${application.companyName}`);
       console.log(`🌐 Sous-domaine créé: ${application.proposedSubdomain}`);
-      console.log(`📧 Email d'approbation simulé pour: ${application.email}`);
+      
+      // Simuler l'envoi d'email d'approbation
+      console.log(`📧 Email d'approbation envoyé à: ${application.email}`);
+      console.log(`📧 Contenu: Compte activé, identifiants: ${application.email} / ${application.password}`);
       
       // Créer le nouveau revendeur
       const newRetailer: Retailer = {
         id: Date.now().toString(),
         name: application.companyName,
         email: application.email,
+        password: application.password,
+        applicationData: application,
         plan: application.selectedPlan,
         status: 'active',
         revenue: 0,
@@ -153,7 +244,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
       
       showSuccess(
         'Demande approuvée',
-        `${application.companyName} a été approuvé ! Sous-domaine ${application.proposedSubdomain}.omnia.sale créé. Identifiants: ${application.email} / ${application.password || 'motdepasse123'}`,
+        `${application.companyName} a été approuvé ! Email envoyé avec identifiants: ${application.email} / ${application.password}`,
         [
           {
             label: 'Voir les revendeurs',
@@ -166,11 +257,14 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
       onValidateApplication(application.id, true);
     } else {
       console.log(`❌ Application rejetée: ${application.companyName}`);
+      
+      // Simuler l'envoi d'email de rejet
       console.log(`📧 Email de rejet envoyé à: ${application.email}`);
+      console.log(`📧 Contenu: Demande rejetée, informations complémentaires requises`);
       
       showInfo(
         'Demande rejetée',
-        `${application.companyName} a été rejeté. Email d'explication envoyé à ${application.email}.`
+        `${application.companyName} a été rejeté. Email d'explication envoyé.`
       );
 
       onValidateApplication(application.id, false);
@@ -442,6 +536,9 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                   <p className="text-gray-300 flex items-center gap-2">
                     📄 SIRET: {application.siret}
                   </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    🔑 Mot de passe: {application.password}
+                  </p>
                 </div>
                 <div className="text-sm text-gray-400 mt-3 space-y-1">
                   <p>📅 Soumis le {application.submittedDate || new Date(application.submittedAt || Date.now()).toLocaleDateString('fr-FR')}</p>
@@ -479,6 +576,24 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
             <div className="flex gap-3">
               <button
                 onClick={() => {
+            {/* Actions rapides */}
+            <div className="flex gap-3 mb-4">
+              <button
+                onClick={() => handleViewApplication(application)}
+                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl flex items-center gap-2 text-sm"
+              >
+                <Eye className="w-4 h-4" />
+                Voir détails
+              </button>
+              <button
+                onClick={() => handleViewKbis(application)}
+                className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-xl flex items-center gap-2 text-sm"
+                disabled={!application.kbisFile}
+              >
+                <FileText className="w-4 h-4" />
+                Voir Kbis
+              </button>
+            </div>
                   setSelectedApplication(application);
                   setShowValidationModal(true);
                 }}
@@ -504,11 +619,57 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
         <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          onClick={() => {
+            setSelectedApplication(null);
+            setNewRetailerData({
+              name: '',
+              email: '',
+              password: '',
+              plan: 'professional',
+              status: 'active'
+            });
+            setShowAddRetailerModal(true);
+          }}
           <Plus className="w-4 h-4" />
           Nouveau revendeur
         </button>
       </div>
 
+      {/* Filtres */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400"
+            />
+          </div>
+          <select
+            value={filterPlan}
+            onChange={(e) => setFilterPlan(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="all">Tous les plans</option>
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+            <option value="suspended">Suspendu</option>
+          </select>
+        </div>
+      </div>
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -519,6 +680,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                 <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Revenus</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Conversations</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
               </tr>
             </thead>
@@ -548,8 +710,15 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                     <div className="font-semibold text-white">{retailer.conversations.toLocaleString()}</div>
                   </td>
                   <td className="p-4">
+                    <div className="text-sm">
+                      <div className="text-cyan-400 font-mono">{retailer.email}</div>
+                      <div className="text-gray-400 font-mono">{retailer.password || '••••••••'}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
                     <div className="flex gap-2">
                       <button className="text-blue-400 hover:text-blue-300 p-1">
+                        onClick={() => handleViewApplication(retailer)}
                         <Eye className="w-4 h-4" />
                       </button>
                       <button className="text-yellow-400 hover:text-yellow-300 p-1">
@@ -711,6 +880,151 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
               >
                 ×
               </button>
+      {/* Modal détails application */}
+      {showApplicationModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-xl font-bold text-white">📋 Détails - {selectedApplication.companyName}</h3>
+              <button
+                onClick={() => setShowApplicationModal(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">🏢 Informations entreprise</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Nom :</span> <span className="text-white">{selectedApplication.companyName}</span></div>
+                    <div><span className="text-gray-400">SIRET :</span> <span className="text-white">{selectedApplication.siret}</span></div>
+                    <div><span className="text-gray-400">Adresse :</span> <span className="text-white">{selectedApplication.address}</span></div>
+                    <div><span className="text-gray-400">Ville :</span> <span className="text-white">{selectedApplication.postalCode} {selectedApplication.city}</span></div>
+                    <div><span className="text-gray-400">Pays :</span> <span className="text-white">{selectedApplication.country}</span></div>
+                  </div>
+                </div>
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">👤 Contact responsable</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Nom :</span> <span className="text-white">{selectedApplication.firstName} {selectedApplication.lastName}</span></div>
+                    <div><span className="text-gray-400">Email :</span> <span className="text-white">{selectedApplication.email}</span></div>
+                    <div><span className="text-gray-400">Téléphone :</span> <span className="text-white">{selectedApplication.phone}</span></div>
+                    <div><span className="text-gray-400">Fonction :</span> <span className="text-white">{selectedApplication.position}</span></div>
+                    <div><span className="text-gray-400">Mot de passe :</span> <span className="text-cyan-400 font-mono">{selectedApplication.password}</span></div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-black/20 rounded-xl p-4">
+                <h4 className="font-semibold text-white mb-3">📊 Informations abonnement</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div><span className="text-gray-400">Plan :</span> <span className="text-white">{selectedApplication.selectedPlan}</span></div>
+                  <div><span className="text-gray-400">Sous-domaine :</span> <span className="text-cyan-400">{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
+                  <div><span className="text-gray-400">Soumis le :</span> <span className="text-white">{new Date(selectedApplication.submittedAt).toLocaleDateString('fr-FR')}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ajout/édition revendeur */}
+      {showAddRetailerModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-md w-full border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-xl font-bold text-white">
+                {selectedApplication ? 'Modifier revendeur' : 'Nouveau revendeur'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddRetailerModal(false);
+                  setSelectedApplication(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Nom de l'entreprise *</label>
+                <input
+                  type="text"
+                  value={newRetailerData.name}
+                  onChange={(e) => setNewRetailerData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="Nom de l'entreprise"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Email *</label>
+                <input
+                  type="email"
+                  value={newRetailerData.email}
+                  onChange={(e) => setNewRetailerData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="contact@entreprise.fr"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
+                <input
+                  type="text"
+                  value={newRetailerData.password}
+                  onChange={(e) => setNewRetailerData(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="motdepasse123"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Plan</label>
+                  <select
+                    value={newRetailerData.plan}
+                    onChange={(e) => setNewRetailerData(prev => ({ ...prev, plan: e.target.value }))}
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="starter">Starter</option>
+                    <option value="professional">Professional</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Statut</label>
+                  <select
+                    value={newRetailerData.status}
+                    onChange={(e) => setNewRetailerData(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="active">Actif</option>
+                    <option value="inactive">Inactif</option>
+                    <option value="suspended">Suspendu</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={() => {
+                    setShowAddRetailerModal(false);
+                    setSelectedApplication(null);
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddRetailer}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 rounded-xl font-semibold"
+                >
+                  {selectedApplication ? 'Modifier' : 'Créer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
             </div>
             <div className="p-6">
               <div className="bg-white rounded-xl p-6 text-center">
@@ -727,10 +1041,13 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                           window.open(url, '_blank');
                         }}
                         className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                        title="Voir détails"
                       >
                         📥 Télécharger le PDF
+                  <li>• Email envoyé avec identifiants de connexion</li>
                       </button>
                     </div>
+                        onClick={() => handleEditRetailer(retailer)}
                   ) : (
                     <img 
                       src={URL.createObjectURL(selectedKbis.kbisFile)} 
@@ -741,11 +1058,28 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                 ) : selectedKbis.kbisFile ? (
                   <div>
                     <FileText className="w-24 h-24 text-orange-400 mx-auto mb-4" />
+              <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                <h3 className="font-semibold text-blue-300 mb-2">🔑 Identifiants de connexion</h3>
+                <div className="bg-black/40 rounded-lg p-3 space-y-2">
+                        <Download className="w-4 h-4" />
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Email :</span>
+                    <code className="text-blue-300">{selectedApplication.email}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Mot de passe :</span>
+                    <code className="text-blue-300">{selectedApplication.password}</code>
+                  </div>
+                </div>
+              </div>
+                        title="Modifier"
                     <p className="text-gray-600 text-lg font-semibold">Document Kbis disponible</p>
                     <p className="text-orange-500">Fichier: {selectedKbis.kbisFile.name || 'Document uploadé'}</p>
                     <p className="text-sm text-gray-400 mt-2">⚠️ Prévisualisation non disponible - Le fichier n'est plus accessible après rechargement de la page</p>
                     <p className="text-xs text-gray-400 mt-1">Les fichiers ne sont pas persistés dans localStorage pour des raisons de performance</p>
+                        onClick={() => handleDeleteRetailer(retailer.id)}
                   </div>
+                        title="Supprimer"
                 ) : (
                   <div>
                     <AlertTriangle className="w-24 h-24 text-yellow-400 mx-auto mb-4" />

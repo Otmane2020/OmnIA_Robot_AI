@@ -106,9 +106,21 @@ function App() {
   };
 
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
+    console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
+    
+    // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
       prev.filter(app => app.id !== applicationId)
     );
+    
+    if (approved) {
+      console.log('📧 Email d\'approbation envoyé');
+      console.log('🌐 Sous-domaine créé');
+      console.log('🔑 Identifiants de connexion communiqués');
+    } else {
+      console.log('📧 Email de rejet envoyé');
+      console.log('📋 Demande d\'informations complémentaires');
+    }
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
@@ -126,7 +138,8 @@ function App() {
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    console.log('📧 Email de confirmation envoyé à:', newApplication.email);
+    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
+    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
   };
 
   return (
