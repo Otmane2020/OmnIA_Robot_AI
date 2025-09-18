@@ -117,15 +117,15 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
 
   // Validation SIRET française
   const validateSIRET = async (siret: string): Promise<boolean> => {
-    // Nettoyer le SIRET (supprimer espaces et caractères spéciaux)
-    const cleanSiret = siret.replace(/\s/g, '');
+    // Supprimer tous les espaces, tirets et caractères non numériques
+    const cleanSiret = siret.replace(/[\s-]/g, '');
     
     // Vérifier le format (14 chiffres)
     if (!/^\d{14}$/.test(cleanSiret)) {
       return false;
     }
 
-    // Algorithme de validation SIRET (Luhn modifié)
+    // Algorithme de validation SIRET officiel
     const digits = cleanSiret.split('').map(Number);
     let sum = 0;
     
@@ -140,7 +140,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       sum += digit;
     }
     
-    return sum % 10 === 0;
+    // Le SIRET est valide si la somme modulo 10 égale 0
+    const isValid = sum % 10 === 0;
+    console.log('🔍 Validation SIRET:', cleanSiret, 'Somme:', sum, 'Valide:', isValid);
+    return isValid;
   };
 
   // Validation email professionnel
@@ -401,7 +404,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   };
 
   const formatSIRET = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
+    const cleaned = value.replace(/\D/g, '').substring(0, 14);
     const formatted = cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
     return formatted.substring(0, 17); // 14 chiffres + 3 espaces
   };
@@ -1135,8 +1138,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-12 overflow-x-auto">
-          <div className="flex items-center min-w-max px-4">
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 px-4">
             {steps.map((step, index) => {
               const StepIcon = step.icon;
               const isActive = currentStep === step.id;
@@ -1144,7 +1147,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               const isAccessible = currentStep >= step.id || (step.id === 0);
               
               return (
-                <div key={step.id} className="flex items-center">
+                <React.Fragment key={step.id}>
                   <div 
                     className={`relative w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 ${
                       isCompleted 
@@ -1174,11 +1177,11 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                   
                   {/* Ligne de connexion */}
                   {index < steps.length - 1 && (
-                    <div className={`w-16 h-1 ${
+                    <div className={`w-4 sm:w-8 lg:w-16 h-1 transition-all ${
                       currentStep > step.id ? 'bg-cyan-500' : 'bg-gray-600'
                     }`} />
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
