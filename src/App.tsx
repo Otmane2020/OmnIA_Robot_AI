@@ -151,6 +151,7 @@ function App() {
       } else {
         alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
       }
+    }
   };
 
   const handleLogout = () => {
