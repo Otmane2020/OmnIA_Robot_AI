@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { SuperAdmin } from './pages/SuperAdmin';
 import { SellerRegistration } from './pages/SellerRegistration';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
@@ -77,49 +76,6 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
-    // Définir les vendeurs de test
-    const testVendors: Vendor[] = [
-      {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        email: 'demo@decorahome.fr',
-        company_name: 'Decora Home',
-        subdomain: 'decorahome',
-        plan: 'professional',
-        status: 'active',
-        contact_name: 'Marie Dubois',
-        phone: '+33 1 23 45 67 89',
-        address: '123 Rue de la Paix',
-        city: 'Paris',
-        postal_code: '75001',
-        siret: '12345678901234',
-        position: 'Directrice',
-        created_at: '2024-01-15T10:00:00Z',
-        validated_at: '2024-01-15T12:00:00Z'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        email: 'contact@mobilierdesign.fr',
-        company_name: 'Mobilier Design Paris',
-        subdomain: 'mobilierdesign',
-        plan: 'professional',
-        status: 'active',
-        contact_name: 'Jean Martin',
-        phone: '+33 1 23 45 67 90',
-        created_at: '2024-02-10T14:00:00Z',
-        validated_at: '2024-02-10T16:00:00Z'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440003',
-        email: 'info@decocontemporain.com',
-        company_name: 'Déco Contemporain',
-        subdomain: 'decocontemporain',
-        plan: 'starter',
-        status: 'active',
-        contact_name: 'Sophie Laurent',
-        created_at: '2024-03-05T09:00:00Z',
-        validated_at: '2024-03-05T11:00:00Z'
-      },
-      {
         id: '550e8400-e29b-41d4-a716-446655440004',
         email: 'contact@meubleslyon.fr',
         company_name: 'Meubles Lyon',
