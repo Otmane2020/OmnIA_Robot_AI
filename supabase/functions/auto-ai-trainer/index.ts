@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
 
     // Store in database with upsert (update or insert)
     if (processedProducts.length > 0) {
-      // NOUVEAU: Insérer dans ai_products ET products_enriched
+      // Insérer dans ai_products
       const { error: upsertError } = await supabase
         .from('ai_products')
         .upsert(processedProducts, { 
@@ -141,51 +141,39 @@ Deno.serve(async (req: Request) => {
         throw upsertError;
       }
 
-      // NOUVEAU: Synchroniser vers products_enriched automatiquement
-      console.log('🔄 Synchronisation vers products_enriched...');
-      const enrichedProducts = processedProducts.map(product => ({
-        id: product.id,
-        handle: product.id,
-        title: product.name,
+      // NOUVEAU: Insérer aussi dans imported_products pour déclencher le trigger de sync
+      console.log('🔄 Synchronisation vers imported_products pour trigger...');
+      const importedProducts = processedProducts.map(product => ({
+        external_id: product.id,
+        retailer_id: store_id || 'demo-retailer-id',
+        name: product.name,
         description: product.description || '',
-        category: product.extracted_attributes?.categories?.[0] || product.category || 'Mobilier',
-        subcategory: product.extracted_attributes?.categories?.[1] || '',
-        color: product.extracted_attributes?.colors?.[0] || '',
-        material: product.extracted_attributes?.materials?.[0] || '',
-        fabric: product.extracted_attributes?.materials?.[1] || '',
-        style: product.extracted_attributes?.styles?.[0] || '',
-        dimensions: extractDimensionsString(product.extracted_attributes?.dimensions),
-        room: product.extracted_attributes?.room?.[0] || '',
         price: product.price,
-        stock_qty: product.stock,
+        compare_at_price: undefined,
+        category: product.category,
+        vendor: product.vendor || 'Decora Home',
         image_url: product.image_url,
         product_url: product.product_url,
-        tags: product.extracted_attributes?.features || [],
-        seo_title: generateSEOTitle(product.name, product.extracted_attributes),
-        seo_description: generateSEODescription(product.name, product.description, product.extracted_attributes),
-        ad_headline: generateAdHeadline(product.name),
-        ad_description: generateAdDescription(product.name, product.extracted_attributes),
-        google_product_category: getGoogleCategory(product.category),
-        gtin: '',
-        brand: product.vendor || 'Decora Home',
-        confidence_score: product.confidence_score,
-        enriched_at: new Date().toISOString(),
-        enrichment_source: 'auto_ai_trainer',
-        created_at: new Date().toISOString()
+        stock: product.stock,
+        source_platform: source,
+        status: 'active',
+        extracted_attributes: product.extracted_attributes,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }));
 
-      const { error: enrichedError } = await supabase
-        .from('products_enriched')
-        .upsert(enrichedProducts, { 
-          onConflict: 'handle',
+      const { error: importedError } = await supabase
+        .from('imported_products')
+        .upsert(importedProducts, { 
+          onConflict: 'retailer_id,external_id,source_platform',
           ignoreDuplicates: false 
         });
 
-      if (enrichedError) {
-        console.error('❌ Erreur sync products_enriched:', enrichedError);
+      if (importedError) {
+        console.error('❌ Erreur sync imported_products:', importedError);
         // Ne pas faire échouer tout le processus
       } else {
-        console.log('✅ Produits synchronisés vers products_enriched:', enrichedProducts.length);
+        console.log('✅ Produits synchronisés vers imported_products (trigger auto vers enriched):', importedProducts.length);
       }
     }
 

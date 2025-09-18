@@ -371,18 +371,79 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     showInfo('Synchronisation', 'Synchronisation du catalogue vers les produits enrichis...');
     
     try {
-      // Charger les produits du catalogue normal
+      // Charger les produits du catalogue normal ET imported_products
       const savedProducts = localStorage.getItem('catalog_products');
+      let allProducts = [];
+      
       if (savedProducts) {
-        const catalogProducts = JSON.parse(savedProducts);
-        const newEnrichedProducts = catalogProducts.map((product: any) => enrichProduct(product));
+        try {
+          const catalogProducts = JSON.parse(savedProducts);
+          allProducts = [...allProducts, ...catalogProducts];
+          console.log('📦 Produits du catalogue chargés:', catalogProducts.length);
+        } catch (error) {
+          console.error('Erreur parsing catalogue:', error);
+        }
+      }
+      
+      // NOUVEAU: Forcer la synchronisation via Supabase
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseKey) {
+          console.log('🔄 Déclenchement synchronisation forcée...');
+          
+          const syncResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              retailer_id: 'demo-retailer-id',
+              force_full_enrichment: true,
+              source_filter: null // Tous les produits
+            }),
+          });
+          
+          if (syncResponse.ok) {
+            const syncResult = await syncResponse.json();
+            console.log('✅ Synchronisation forcée réussie:', syncResult);
+            
+            showSuccess(
+              'Synchronisation réussie', 
+              `${syncResult.enriched_products || 0} produits synchronisés vers le catalogue enrichi !`,
+              [
+                {
+                  label: 'Actualiser',
+                  action: () => window.location.reload(),
+                  variant: 'primary'
+                }
+              ]
+            );
+            
+            // Recharger les données
+            await loadEnrichedProducts();
+            return;
+          } else {
+            console.log('⚠️ Synchronisation Supabase échouée, fallback local');
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Erreur synchronisation Supabase:', error);
+      }
+      
+      // Fallback: enrichissement local
+      if (allProducts.length > 0) {
+        const newEnrichedProducts = allProducts.map((product: any) => enrichProduct(product));
         
         setProducts(newEnrichedProducts);
-        showSuccess('Synchronisation réussie', `${newEnrichedProducts.length} produits synchronisés depuis le catalogue !`);
+        showSuccess('Synchronisation locale', `${newEnrichedProducts.length} produits enrichis localement !`);
       } else {
         showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue principal.');
       }
     } catch (error) {
+      console.error('❌ Erreur synchronisation:', error);
       showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
     }
   };

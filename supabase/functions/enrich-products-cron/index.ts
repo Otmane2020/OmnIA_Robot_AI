@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     if (!products || products.length === 0) {
       console.log('⚠️ Aucun produit à enrichir dans ai_products');
       
-      // NOUVEAU: Essayer aussi depuis imported_products si ai_products est vide
+      // Essayer depuis imported_products si ai_products est vide
       const { data: importedProducts } = await supabase
         .from('imported_products')
         .select('*')
@@ -108,23 +108,40 @@ Deno.serve(async (req: Request) => {
         );
       }
       
-      // Utiliser les produits importés
+      // Forcer la synchronisation vers products_enriched
       console.log('🔄 Utilisation des produits importés:', importedProducts.length);
-      const convertedProducts = importedProducts.map(p => ({
-        id: p.external_id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        category: p.category,
-        vendor: p.vendor,
-        image_url: p.image_url,
-        product_url: p.product_url,
-        stock: p.stock,
-        source_platform: p.source_platform,
-        extracted_attributes: p.extracted_attributes || {}
-      }));
       
-      products = convertedProducts;
+      // Déclencher manuellement la synchronisation
+      for (const importedProduct of importedProducts) {
+        try {
+          await supabase.rpc('sync_to_products_enriched_manual', {
+            p_external_id: importedProduct.external_id,
+            p_name: importedProduct.name,
+            p_description: importedProduct.description || '',
+            p_price: importedProduct.price,
+            p_category: importedProduct.category,
+            p_vendor: importedProduct.vendor,
+            p_image_url: importedProduct.image_url,
+            p_product_url: importedProduct.product_url,
+            p_stock: importedProduct.stock
+          });
+        } catch (error) {
+          console.error('❌ Erreur sync manuel:', error);
+        }
+      }
+      
+      console.log('✅ Synchronisation manuelle terminée');
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Synchronisation forcée: ${importedProducts.length} produits transférés vers catalogue enrichi`,
+          stats: { products_processed: importedProducts.length }
+        }),
+        {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
     }
 
     console.log('📦 Produits à enrichir:', products.length);
