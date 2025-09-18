@@ -526,15 +526,44 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             console.log('✅ Entraînement IA réussi:', trainingResult.stats);
             showSuccess(
               'IA Entraînée !', 
-              `OmnIA a analysé ${trainingResult.stats?.products_processed || activeProducts.length} produits ! Réponses optimisées.`,
+              `OmnIA a analysé ${trainingResult.stats?.products_processed || activeProducts.length} produits et les a enrichis automatiquement !`,
               [
                 {
                   label: 'Tester OmnIA',
                   action: () => window.open('/robot', '_blank'),
                   variant: 'primary'
+                },
+                {
+                  label: 'Voir catalogue enrichi',
+                  action: () => window.location.href = '/admin#enriched',
+                  variant: 'secondary'
                 }
               ]
             );
+            
+            // NOUVEAU: Déclencher aussi l'enrichissement automatique
+            try {
+              const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  retailer_id: 'demo-retailer-id',
+                  force_full_enrichment: true,
+                  source_filter: 'csv'
+                }),
+              });
+              
+              if (enrichResponse.ok) {
+                const enrichResult = await enrichResponse.json();
+                console.log('✅ Enrichissement automatique réussi:', enrichResult.stats);
+                showInfo('Catalogue enrichi', `${enrichResult.enriched_products || 0} produits enrichis automatiquement !`);
+              }
+            } catch (enrichError) {
+              console.log('⚠️ Erreur enrichissement automatique:', enrichError);
+            }
             
             // NOUVEAU: Configurer le cron quotidien automatiquement
             try {
