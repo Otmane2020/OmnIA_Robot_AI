@@ -115,6 +115,130 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     { id: 4, title: 'Documents', icon: FileText, description: 'Validation Kbis' }
   ];
 
+  // Fonctions d'enrichissement automatique
+  const detectCategory = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('canapé') || lowerText.includes('sofa')) return 'Canapé';
+    if (lowerText.includes('table')) return 'Table';
+    if (lowerText.includes('chaise') || lowerText.includes('fauteuil')) return 'Chaise';
+    if (lowerText.includes('lit') || lowerText.includes('matelas')) return 'Lit';
+    if (lowerText.includes('armoire') || lowerText.includes('commode')) return 'Rangement';
+    if (lowerText.includes('meuble tv') || lowerText.includes('télé')) return 'Meuble TV';
+    return 'Mobilier';
+  };
+
+  const detectSubcategory = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('angle')) return 'Canapé d\'angle';
+    if (lowerText.includes('convertible')) return 'Canapé convertible';
+    if (lowerText.includes('basse')) return 'Table basse';
+    if (lowerText.includes('manger')) return 'Table à manger';
+    if (lowerText.includes('bureau')) return 'Chaise de bureau';
+    return detectCategory(text);
+  };
+
+  const detectColor = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+    for (const color of colors) {
+      if (lowerText.includes(color)) return color.charAt(0).toUpperCase() + color.slice(1);
+    }
+    return '';
+  };
+
+  const detectMaterial = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
+    for (const material of materials) {
+      if (lowerText.includes(material)) return material.charAt(0).toUpperCase() + material.slice(1);
+    }
+    return '';
+  };
+
+  const detectFabric = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
+    for (const fabric of fabrics) {
+      if (lowerText.includes(fabric)) return fabric.charAt(0).toUpperCase() + fabric.slice(1);
+    }
+    return '';
+  };
+
+  const detectStyle = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+    for (const style of styles) {
+      if (lowerText.includes(style)) return style.charAt(0).toUpperCase() + style.slice(1);
+    }
+    return '';
+  };
+
+  const detectRoom = (text: string): string => {
+    const lowerText = text.toLowerCase();
+    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
+    for (const room of rooms) {
+      if (lowerText.includes(room)) return room.charAt(0).toUpperCase() + room.slice(1);
+    }
+    return '';
+  };
+
+  const extractDimensions = (text: string): string => {
+    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/i);
+    return dimensionMatch ? dimensionMatch[0] : '';
+  };
+
+  const generateTags = (product: any): string[] => {
+    const tags = [];
+    const text = (product.title + ' ' + product.description).toLowerCase();
+    
+    if (text.includes('convertible')) tags.push('convertible');
+    if (text.includes('angle')) tags.push('angle');
+    if (text.includes('rangement')) tags.push('rangement');
+    if (text.includes('moderne')) tags.push('moderne');
+    if (text.includes('naturel')) tags.push('naturel');
+    
+    return tags;
+  };
+
+  const generateSEOTitle = (product: any): string => {
+    const title = product.title || product.name || 'Produit';
+    return `${title} - Decora Home`.substring(0, 70);
+  };
+
+  const generateSEODescription = (product: any): string => {
+    const title = product.title || product.name || 'Produit';
+    const price = product.price || 0;
+    return `${title} à ${price}€. Livraison gratuite. Qualité premium Decora Home.`.substring(0, 155);
+  };
+
+  const generateAdHeadline = (product: any): string => {
+    const title = product.title || product.name || 'Produit';
+    return title.substring(0, 30);
+  };
+
+  const generateAdDescription = (product: any): string => {
+    const title = product.title || product.name || 'Produit';
+    const price = product.price || 0;
+    return `${title} ${price}€. Qualité premium.`.substring(0, 90);
+  };
+
+  const getGoogleCategory = (product: any): string => {
+    const text = (product.title || '').toLowerCase();
+    if (text.includes('canapé')) return '635';
+    if (text.includes('table')) return '443';
+    if (text.includes('chaise')) return '436';
+    return '';
+  };
+
+  const calculateConfidenceScore = (product: any): number => {
+    let score = 30; // Base
+    if (product.title) score += 20;
+    if (product.description) score += 20;
+    if (product.price > 0) score += 15;
+    if (product.image_url) score += 15;
+    return Math.min(score, 100);
+  };
+
   // Validation SIRET française
   const validateSIRET = async (siret: string): Promise<boolean> => {
     // Supprimer tous les espaces, tirets et caractères non numériques
@@ -1158,7 +1282,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                           : isAccessible
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500 cursor-pointer'
                             : 'bg-gray-700 text-gray-500'
-                      Email *
+                    }`}
                     onClick={() => isAccessible && authMode === 'signup' && setCurrentStep(step.id)}
                     title={step.description}
                   >
@@ -1167,10 +1291,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                     ) : (
                       <StepIcon className="w-6 h-6" />
                     )}
-                      placeholder="contact@monentreprise.fr ou email@gmail.com"
+                    
                     {/* Badge numéro d'étape */}
                     <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                       isCompleted ? 'bg-green-600' : isActive ? 'bg-cyan-600' : 'bg-gray-600'
+                    }`}>
+                      {index + 1}
+                    </div>
                   </div>
                   
                   {/* Ligne de connexion */}
