@@ -120,6 +120,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
 
+    if (step === 0 && authMode === 'signup') {
+      if (!formData.email.trim()) newErrors.email = 'Email requis';
+      if (!formData.password.trim()) newErrors.password = 'Mot de passe requis';
+      if (formData.password.length < 6) newErrors.password = 'Mot de passe trop court (min 6 caractères)';
+      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Mots de passe différents';
+    }
+
     if (step === 1) {
       if (!formData.companyName.trim()) newErrors.companyName = 'Nom de l\'entreprise requis';
       if (!formData.siret.trim()) newErrors.siret = 'SIRET requis';
@@ -148,7 +155,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const handleNext = () => {
     if (currentStep === 0) {
       if (authMode === 'signup') {
-        setCurrentStep(1);
+        if (validateStep(0)) {
+          setCurrentStep(1);
+        }
       } else {
         handleLogin();
       }
@@ -158,13 +167,41 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(4)) return;
+    console.log('🔄 Tentative de finalisation inscription...');
+    console.log('📋 Données actuelles:', {
+      companyName: formData.companyName,
+      email: formData.email,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      selectedPlan: formData.selectedPlan,
+      kbisFile: formData.kbisFile?.name,
+      acceptTerms: formData.acceptTerms
+    });
+
+    // Validation complète avant soumission
+    const finalErrors: {[key: string]: string} = {};
+    
+    if (!formData.companyName.trim()) finalErrors.companyName = 'Nom entreprise requis';
+    if (!formData.email.trim()) finalErrors.email = 'Email requis';
+    if (!formData.firstName.trim()) finalErrors.firstName = 'Prénom requis';
+    if (!formData.lastName.trim()) finalErrors.lastName = 'Nom requis';
+    if (!formData.phone.trim()) finalErrors.phone = 'Téléphone requis';
+    if (!formData.kbisFile) finalErrors.kbisFile = 'Document Kbis requis';
+    if (!formData.acceptTerms) finalErrors.acceptTerms = 'Acceptation des conditions requise';
+    
+    if (Object.keys(finalErrors).length > 0) {
+      setErrors(finalErrors);
+      console.log('❌ Erreurs de validation:', finalErrors);
+      return;
+    }
 
     setIsSubmitting(true);
+    console.log('✅ Validation réussie, envoi en cours...');
     
     try {
-      // Simuler l'envoi
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simuler l'envoi avec progression
+      console.log('📤 Envoi des données...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       const submissionData = {
         ...formData,
@@ -174,9 +211,11 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
       };
       
+      console.log('✅ Inscription finalisée avec succès');
       onSubmit(submissionData);
     } catch (error) {
       console.error('Erreur soumission:', error);
+      setErrors({ submit: 'Erreur lors de l\'envoi. Veuillez réessayer.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -688,7 +727,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 if (file) handleInputChange('kbisFile', file);
               }}
               className="hidden"
-              id="kbis-upload"
+              className={`w-5 h-5 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500 mt-1 ${
+                errors.acceptTerms ? 'border-red-500' : ''
+              }`}
             />
             <label htmlFor="kbis-upload" className="cursor-pointer">
               {formData.kbisFile ? (
@@ -709,6 +750,14 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             </label>
           </div>
           {errors.kbisFile && <p className="text-red-400 text-sm mt-1">{errors.kbisFile}</p>}
+          {errors.submit && (
+            <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span className="text-red-300">{errors.submit}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
@@ -874,6 +923,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             {currentStep < 4 ? (
               <button
                 onClick={handleNext}
+                disabled={currentStep === 0 && authMode === 'signup' && (!formData.email || !formData.password || formData.password !== formData.confirmPassword)}
                 className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
                 Suivant
@@ -881,8 +931,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                disabled={isSubmitting || !formData.acceptTerms || !formData.kbisFile}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2 shadow-lg hover:shadow-green-500/30"
               >
                 {isSubmitting ? (
                   <>

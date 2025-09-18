@@ -144,6 +144,8 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
+    console.log('📝 Réception demande inscription:', applicationData);
+    
     // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
@@ -160,6 +162,14 @@ function App() {
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
     console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
     console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+    
+    // Rediriger vers une page de confirmation
+    alert(`✅ Inscription envoyée avec succès !\n\n🏢 Entreprise: ${newApplication.companyName}\n📧 Email: ${newApplication.email}\n🌐 Sous-domaine: ${newApplication.proposedSubdomain}.omnia.sale\n\n⏱️ Validation sous 24-48h\nVous recevrez un email de confirmation.`);
+    
+    // Retour à l'accueil après inscription
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 2000);
   };
 
   return (
