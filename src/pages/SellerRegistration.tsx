@@ -1172,7 +1172,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                     <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                       isCompleted ? 'bg-green-600' : isActive ? 'bg-cyan-600' : 'bg-gray-600'
                     }`}>
-                      {index + 1}
+                      {step.id + 1}
                     </div>
                   </div>
                   
