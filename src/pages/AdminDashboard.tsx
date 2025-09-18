@@ -63,6 +63,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'catalogue', label: 'Catalogue', icon: Database },
+    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
@@ -298,6 +299,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderEnriched = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-300 text-sm">Enrichissement automatique actif</span>
+        </div>
+      </div>
+
+      <ProductsEnrichedTable />
+    </div>
+  );
   const renderIntegration = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -480,6 +494,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'catalogue': return renderCatalogue();
+      case 'enriched': return renderEnriched();
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
       case 'robot': return renderRobot();
