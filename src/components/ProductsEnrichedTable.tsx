@@ -1,298 +1,196 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Search, Filter, Plus, Eye, Edit, Trash2, Save, X,
-  Brain, Palette, Hammer, Home, Ruler, Tag, DollarSign,
-  ChevronDown, ChevronUp, CheckCircle, AlertCircle, Download, Upload
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Package, Tag, DollarSign, Image, BarChart3, Settings,
+  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
+  Upload, Download, Brain, Zap, RefreshCw, Globe, Star,
+  FileText, Loader2
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {
   id: string;
-  sku: string;
-  gtin: string;
   handle: string;
   title: string;
   description: string;
-  short_description: string;
   category: string;
   subcategory: string;
+  type: string;
   color: string;
   material: string;
   fabric: string;
   style: string;
   dimensions: string;
-  weight: string;
-  capacity: string;
   room: string;
   price: number;
-  compare_at_price?: number;
-  currency: string;
-  stock_quantity: number;
-  availability: string;
   stock_qty: number;
   image_url: string;
-  image_alt: string;
-  gallery_urls: string[];
   product_url: string;
   tags: string[];
   seo_title: string;
   seo_description: string;
-  google_category: string;
-  pmax_score: number;
   ad_headline: string;
   ad_description: string;
   google_product_category: string;
+  gtin: string;
   brand: string;
-  intent_tags: any;
-  matching_score: number;
-  chat_history_ref: string;
   confidence_score: number;
   enriched_at: string;
   enrichment_source: string;
   created_at: string;
 }
 
+interface GoogleCategory {
+  id: string;
+  category: string;
+  subcategory: string;
+  google_product_category: string;
+  description: string;
+}
+
 export const ProductsEnrichedTable: React.FC = () => {
   const [products, setProducts] = useState<EnrichedProduct[]>([]);
+  const [googleCategories, setGoogleCategories] = useState<GoogleCategory[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<EnrichedProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedMaterial, setSelectedMaterial] = useState('all');
-  const [selectedColor, setSelectedColor] = useState('all');
-  const [selectedRoom, setSelectedRoom] = useState('all');
+  const [selectedConfidence, setSelectedConfidence] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<EnrichedProduct>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [cronStatus, setCronStatus] = useState<any>(null);
-  const [cronMode, setCronMode] = useState<'auto' | 'manual'>('auto');
-  const [isRunningCron, setIsRunningCron] = useState(false);
-  const [googleCategories, setGoogleCategories] = useState<any[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentProgress, setEnrichmentProgress] = useState(0);
+  const [showGoogleCategoryModal, setShowGoogleCategoryModal] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [editingProduct, setEditingProduct] = useState<EnrichedProduct | null>(null);
   const { showSuccess, showError, showInfo } = useNotifications();
-
-  // Mock enriched products data
-  const mockEnrichedProducts: EnrichedProduct[] = [
-    {
-      id: 'enriched-1',
-      sku: 'ALYAAVCOTBEI-DH',
-      gtin: '3701234567890',
-      handle: 'canape-alyana-beige',
-      title: 'Canapé ALYANA convertible - Beige',
-      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-      short_description: 'Canapé d\'angle convertible 4 places velours côtelé beige',
-      category: 'Canapé',
-      subcategory: 'Canapé d\'angle convertible',
-      color: 'Beige',
-      material: 'Velours',
-      fabric: 'Velours côtelé',
-      style: 'Moderne',
-      dimensions: '280x180x75cm',
-      weight: '45kg',
-      capacity: '4 places',
-      room: 'Salon',
-      price: 799,
-      compare_at_price: 1399,
-      currency: 'EUR',
-      stock_quantity: 100,
-      availability: 'En stock',
-      stock_qty: 100,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-      image_alt: 'Canapé d\'angle convertible ALYANA beige velours côtelé',
-      gallery_urls: [
-        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_c424b028-7399-4639-ba8f-487e0d71d0f6.png',
-        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_329df0e2-31cd-4628-a3ac-06213e4e2741.png'
-      ],
-      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-      tags: ['convertible', 'angle', 'velours', 'rangement', '4-places'],
-      seo_title: 'Canapé d\'angle convertible ALYANA beige - Velours côtelé',
-      seo_description: 'Canapé d\'angle convertible 4 places en velours côtelé beige. Couchage intégré, coffre rangement. Livraison gratuite.',
-      google_category: 'Furniture > Living Room Furniture > Sofas',
-      pmax_score: 92,
-      ad_headline: 'Canapé ALYANA Convertible',
-      ad_description: 'Canapé d\'angle 4 places velours côtelé. Convertible + rangement. Promo -43%',
-      google_product_category: '635',
-      brand: 'Decora Home',
-      intent_tags: {
-        category: 'canapé',
-        material: 'velours',
-        color: 'beige',
-        feature: 'convertible',
-        storage: 'coffre',
-        seating: '4-places'
-      },
-      matching_score: 95,
-      chat_history_ref: '',
-      confidence_score: 95,
-      enriched_at: '2025-01-15T10:30:00Z',
-      enrichment_source: 'ai',
-      created_at: '2024-12-15T10:30:00Z'
-    },
-    {
-      id: 'enriched-2',
-      sku: 'TB18T100-DH',
-      gtin: '3701234567891',
-      handle: 'table-aurea-100',
-      title: 'Table AUREA Ø100cm - Travertin',
-      description: 'Table ronde en travertin naturel avec pieds métal noir',
-      short_description: 'Table ronde travertin naturel Ø100cm pieds métal',
-      category: 'Table',
-      subcategory: 'Table à manger ronde',
-      color: 'Naturel',
-      material: 'Travertin',
-      fabric: '',
-      style: 'Contemporain',
-      dimensions: '100x100x75cm',
-      weight: '25kg',
-      capacity: '4 personnes',
-      room: 'Salle à manger',
-      price: 499,
-      compare_at_price: 859,
-      currency: 'EUR',
-      stock_quantity: 50,
-      availability: 'En stock',
-      stock_qty: 50,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-      image_alt: 'Table ronde AUREA travertin naturel Ø100cm',
-      gallery_urls: [
-        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/2_89637aec-60b5-403f-9f0f-57c9a2fa42e4.png'
-      ],
-      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-      tags: ['travertin', 'ronde', 'naturel', 'élégant', 'minérale'],
-      seo_title: 'Table ronde AUREA travertin naturel Ø100cm - Decora Home',
-      seo_description: 'Table à manger ronde AUREA en travertin naturel Ø100cm. Pieds métal noir. Design contemporain élégant. Livraison offerte.',
-      google_category: 'Furniture > Dining Room Furniture > Tables',
-      pmax_score: 88,
-      ad_headline: 'Table AUREA Travertin Ø100cm',
-      ad_description: 'Table ronde travertin naturel. Design contemporain. Pieds métal noir. -42%',
-      google_product_category: '443',
-      brand: 'Decora Home',
-      intent_tags: {
-        category: 'table',
-        material: 'travertin',
-        shape: 'ronde',
-        size: '100cm',
-        style: 'contemporain'
-      },
-      matching_score: 88,
-      chat_history_ref: '',
-      confidence_score: 92,
-      enriched_at: '2025-01-15T09:15:00Z',
-      enrichment_source: 'ai',
-      created_at: '2024-11-20T09:15:00Z'
-    },
-    {
-      id: 'enriched-3',
-      sku: 'DC11PNNCHLG-DH',
-      gtin: '3701234567892',
-      handle: 'chaise-inaya-gris',
-      title: 'Chaise INAYA - Gris chenille',
-      description: 'Chaise en tissu chenille avec pieds métal noir',
-      short_description: 'Chaise chenille gris pieds métal noir design contemporain',
-      category: 'Chaise',
-      subcategory: 'Chaise de salle à manger',
-      color: 'Gris',
-      material: 'Métal',
-      fabric: 'Chenille',
-      style: 'Industriel',
-      dimensions: '45x50x85cm',
-      weight: '5kg',
-      capacity: '1 personne',
-      room: 'Salle à manger',
-      price: 99,
-      compare_at_price: 149,
-      currency: 'EUR',
-      stock_quantity: 96,
-      availability: 'En stock',
-      stock_qty: 96,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-      image_alt: 'Chaise INAYA chenille gris pieds métal noir',
-      gallery_urls: [
-        'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_aae7ccd2-f2cb-4418-8c84-210ace00d753.png'
-      ],
-      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-      tags: ['chenille', 'métal', 'contemporain', 'élégant', 'gris'],
-      seo_title: 'Chaise INAYA chenille gris - Pieds métal noir - Decora Home',
-      seo_description: 'Chaise INAYA en tissu chenille gris avec pieds métal noir. Design contemporain élégant. Confort optimal. Livraison rapide.',
-      google_category: 'Furniture > Dining Room Furniture > Chairs',
-      pmax_score: 85,
-      ad_headline: 'Chaise INAYA Chenille Gris',
-      ad_description: 'Chaise chenille + métal noir. Design contemporain. Confort optimal. -34%',
-      google_product_category: '436',
-      brand: 'Decora Home',
-      intent_tags: {
-        category: 'chaise',
-        material: 'chenille',
-        color: 'gris',
-        style: 'industriel',
-        frame: 'métal'
-      },
-      matching_score: 85,
-      chat_history_ref: '',
-      confidence_score: 88,
-      enriched_at: '2025-01-15T08:22:00Z',
-      enrichment_source: 'ai',
-      created_at: '2024-10-05T14:22:00Z'
-    }
-  ];
 
   useEffect(() => {
     loadEnrichedProducts();
-    loadCronStatus();
+    loadGoogleCategories();
   }, []);
 
   useEffect(() => {
     filterProducts();
-  }, [products, searchTerm, selectedCategory, selectedMaterial, selectedColor, selectedRoom]);
+  }, [products, searchTerm, selectedCategory, selectedConfidence]);
 
   const loadEnrichedProducts = async () => {
     try {
       setIsLoading(true);
       
-      // Simuler le chargement depuis la DB
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Charger depuis localStorage si disponible
+      // Charger les produits enrichis depuis localStorage
       const savedProducts = localStorage.getItem('enriched_products');
-      let allProducts = [...mockEnrichedProducts];
+      const catalogProducts = localStorage.getItem('catalog_products');
+      
+      let enrichedProducts: EnrichedProduct[] = [];
       
       if (savedProducts) {
         try {
-          const parsed = JSON.parse(savedProducts);
-          allProducts = [...parsed, ...mockEnrichedProducts];
+          enrichedProducts = JSON.parse(savedProducts);
+          console.log('📦 Produits enrichis chargés:', enrichedProducts.length);
         } catch (error) {
           console.error('Erreur parsing produits enrichis:', error);
         }
       }
       
-      setProducts(allProducts);
-      console.log('✅ Produits enrichis chargés:', allProducts.length);
+      // Si pas de produits enrichis, créer à partir du catalogue principal
+      if (enrichedProducts.length === 0 && catalogProducts) {
+        try {
+          const mainCatalog = JSON.parse(catalogProducts);
+          enrichedProducts = mainCatalog.map((product: any) => ({
+            id: product.id || `enriched-${Date.now()}-${Math.random()}`,
+            handle: product.handle || product.id,
+            title: product.title || product.name || 'Produit sans nom',
+            description: product.description || '',
+            category: detectCategory(product.title || product.name || ''),
+            subcategory: detectSubcategory(product.title || product.name || '', product.description || ''),
+            type: product.productType || product.category || 'Mobilier',
+            color: detectColor(product.title + ' ' + product.description),
+            material: detectMaterial(product.title + ' ' + product.description),
+            fabric: detectFabric(product.title + ' ' + product.description),
+            style: detectStyle(product.title + ' ' + product.description),
+            dimensions: extractDimensions(product.description || ''),
+            room: detectRoom(product.title + ' ' + product.description),
+            price: product.price || 0,
+            stock_qty: product.stock || product.quantityAvailable || 0,
+            image_url: product.image_url || '',
+            product_url: product.product_url || '',
+            tags: Array.isArray(product.tags) ? product.tags : [],
+            seo_title: generateSEOTitle(product.title || product.name || ''),
+            seo_description: generateSEODescription(product.title || product.name || '', product.description || ''),
+            ad_headline: generateAdHeadline(product.title || product.name || ''),
+            ad_description: generateAdDescription(product.title || product.name || ''),
+            google_product_category: getGoogleCategoryCode(detectCategory(product.title || product.name || '')),
+            gtin: '',
+            brand: product.vendor || 'Decora Home',
+            confidence_score: 75,
+            enriched_at: new Date().toISOString(),
+            enrichment_source: 'auto',
+            created_at: product.created_at || new Date().toISOString()
+          }));
+          
+          // Sauvegarder les produits enrichis
+          localStorage.setItem('enriched_products', JSON.stringify(enrichedProducts));
+          console.log('✅ Catalogue principal converti en catalogue enrichi:', enrichedProducts.length);
+        } catch (error) {
+          console.error('Erreur conversion catalogue:', error);
+        }
+      }
+      
+      setProducts(enrichedProducts);
+      setFilteredProducts(enrichedProducts);
       
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
-      showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
+      showError('Erreur de chargement', 'Impossible de charger le catalogue enrichi.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadCronStatus = async () => {
+  const loadGoogleCategories = async () => {
     try {
-      // Simuler le statut du cron d'enrichissement
-      const mockCronStatus = {
-        enabled: true,
-        last_run: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        next_run: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(),
-        products_enriched: 247,
-        success_rate: 94
-      };
+      // Charger les catégories Google depuis localStorage ou créer par défaut
+      const savedCategories = localStorage.getItem('google_categories');
       
-      setCronStatus(mockCronStatus);
+      let categories: GoogleCategory[] = [];
+      
+      if (savedCategories) {
+        categories = JSON.parse(savedCategories);
+      } else {
+        // Créer les catégories par défaut
+        categories = getDefaultGoogleCategories();
+        localStorage.setItem('google_categories', JSON.stringify(categories));
+      }
+      
+      setGoogleCategories(categories);
+      console.log('✅ Catégories Google chargées:', categories.length);
+      
     } catch (error) {
-      console.error('❌ Erreur chargement statut cron:', error);
+      console.error('❌ Erreur chargement catégories Google:', error);
     }
   };
+
+  const getDefaultGoogleCategories = (): GoogleCategory[] => [
+    { id: '1', category: 'Canapé', subcategory: 'Canapé fixe', google_product_category: '635', description: 'Canapés fixes et droits' },
+    { id: '2', category: 'Canapé', subcategory: 'Canapé d\'angle', google_product_category: '635', description: 'Canapés d\'angle et modulaires' },
+    { id: '3', category: 'Canapé', subcategory: 'Canapé convertible', google_product_category: '635', description: 'Canapés-lits et convertibles' },
+    { id: '4', category: 'Chaise', subcategory: 'Chaise de salle à manger', google_product_category: '436', description: 'Chaises pour salle à manger' },
+    { id: '5', category: 'Chaise', subcategory: 'Chaise de bureau', google_product_category: '436', description: 'Chaises et fauteuils de bureau' },
+    { id: '6', category: 'Chaise', subcategory: 'Fauteuil', google_product_category: '436', description: 'Fauteuils et sièges d\'appoint' },
+    { id: '7', category: 'Table', subcategory: 'Table à manger', google_product_category: '443', description: 'Tables de salle à manger' },
+    { id: '8', category: 'Table', subcategory: 'Table basse', google_product_category: '443', description: 'Tables basses et tables de salon' },
+    { id: '9', category: 'Table', subcategory: 'Table de bureau', google_product_category: '443', description: 'Tables et bureaux de travail' },
+    { id: '10', category: 'Lit', subcategory: 'Lit simple', google_product_category: '630', description: 'Lits simples et 1 place' },
+    { id: '11', category: 'Lit', subcategory: 'Lit double', google_product_category: '630', description: 'Lits doubles et 2 places' },
+    { id: '12', category: 'Rangement', subcategory: 'Armoire', google_product_category: '443', description: 'Armoires et penderies' },
+    { id: '13', category: 'Rangement', subcategory: 'Commode', google_product_category: '443', description: 'Commodes et chiffonniers' },
+    { id: '14', category: 'Rangement', subcategory: 'Bibliothèque', google_product_category: '443', description: 'Bibliothèques et étagères' },
+    { id: '15', category: 'Éclairage', subcategory: 'Lampe de table', google_product_category: '594', description: 'Lampes de table et de chevet' },
+    { id: '16', category: 'Éclairage', subcategory: 'Lampadaire', google_product_category: '594', description: 'Lampadaires et éclairage sur pied' },
+    { id: '17', category: 'Décoration', subcategory: 'Miroir', google_product_category: '696', description: 'Miroirs décoratifs' },
+    { id: '18', category: 'Décoration', subcategory: 'Tapis', google_product_category: '696', description: 'Tapis et moquettes' }
+  ];
 
   const filterProducts = () => {
     let filtered = products;
@@ -301,9 +199,8 @@ export const ProductsEnrichedTable: React.FC = () => {
       filtered = filtered.filter(product =>
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.color.toLowerCase().includes(searchTerm.toLowerCase())
+        product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -311,19 +208,279 @@ export const ProductsEnrichedTable: React.FC = () => {
       filtered = filtered.filter(product => product.category === selectedCategory);
     }
 
-    if (selectedMaterial !== 'all') {
-      filtered = filtered.filter(product => product.material === selectedMaterial);
-    }
-
-    if (selectedColor !== 'all') {
-      filtered = filtered.filter(product => product.color === selectedColor);
-    }
-
-    if (selectedRoom !== 'all') {
-      filtered = filtered.filter(product => product.room === selectedRoom);
+    if (selectedConfidence !== 'all') {
+      const confidenceRanges = {
+        'high': [80, 100],
+        'medium': [50, 79],
+        'low': [0, 49]
+      };
+      const range = confidenceRanges[selectedConfidence as keyof typeof confidenceRanges];
+      if (range) {
+        filtered = filtered.filter(product => 
+          product.confidence_score >= range[0] && product.confidence_score <= range[1]
+        );
+      }
     }
 
     setFilteredProducts(filtered);
+  };
+
+  const handleManualEnrichment = async () => {
+    if (selectedProducts.length === 0) {
+      showError('Sélection requise', 'Veuillez sélectionner au moins un produit à enrichir.');
+      return;
+    }
+
+    setIsEnriching(true);
+    setEnrichmentProgress(0);
+    
+    try {
+      showInfo('Enrichissement démarré', `Enrichissement IA de ${selectedProducts.length} produit(s) avec DeepSeek...`);
+      
+      const productsToEnrich = products.filter(p => selectedProducts.includes(p.id));
+      const enrichedResults = [];
+      
+      for (let i = 0; i < productsToEnrich.length; i++) {
+        const product = productsToEnrich[i];
+        
+        try {
+          console.log(`🤖 Enrichissement ${i + 1}/${productsToEnrich.length}: ${product.title.substring(0, 30)}...`);
+          
+          // Enrichir avec IA
+          const enrichedAttributes = await enrichProductWithAI(product);
+          
+          const enrichedProduct = {
+            ...product,
+            ...enrichedAttributes,
+            confidence_score: enrichedAttributes.confidence_score || 85,
+            enriched_at: new Date().toISOString(),
+            enrichment_source: 'manual'
+          };
+          
+          enrichedResults.push(enrichedProduct);
+          
+          // Mettre à jour le progrès
+          setEnrichmentProgress(Math.round(((i + 1) / productsToEnrich.length) * 100));
+          
+        } catch (error) {
+          console.error(`❌ Erreur enrichissement ${product.title}:`, error);
+          // Garder le produit original en cas d'erreur
+          enrichedResults.push(product);
+        }
+        
+        // Pause entre les enrichissements
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Mettre à jour les produits dans la liste
+      const updatedProducts = products.map(product => {
+        const enriched = enrichedResults.find(r => r.id === product.id);
+        return enriched || product;
+      });
+      
+      setProducts(updatedProducts);
+      
+      // Sauvegarder dans localStorage
+      localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
+      
+      setSelectedProducts([]);
+      
+      showSuccess(
+        'Enrichissement terminé',
+        `${enrichedResults.length} produit(s) enrichi(s) avec succès !`,
+        [
+          {
+            label: 'Voir les résultats',
+            action: () => setSelectedCategory('all'),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Erreur enrichissement manuel:', error);
+      showError('Erreur d\'enrichissement', 'Erreur lors de l\'enrichissement manuel des produits.');
+    } finally {
+      setIsEnriching(false);
+      setEnrichmentProgress(0);
+    }
+  };
+
+  const enrichProductWithAI = async (product: EnrichedProduct) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase non configuré');
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: [product]
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur API enrichissement');
+      }
+
+      const result = await response.json();
+      
+      if (result.enriched_products && result.enriched_products.length > 0) {
+        return result.enriched_products[0].enriched_attributes;
+      }
+      
+      // Fallback enrichissement local
+      return enrichProductLocally(product);
+      
+    } catch (error) {
+      console.error('❌ Erreur enrichissement IA:', error);
+      // Fallback enrichissement local
+      return enrichProductLocally(product);
+    }
+  };
+
+  const enrichProductLocally = (product: EnrichedProduct) => {
+    const text = `${product.title} ${product.description}`.toLowerCase();
+    
+    return {
+      category: detectCategory(product.title),
+      subcategory: detectSubcategory(product.title, product.description),
+      color: detectColor(text),
+      material: detectMaterial(text),
+      fabric: detectFabric(text),
+      style: detectStyle(text),
+      dimensions: extractDimensions(product.description),
+      room: detectRoom(text),
+      tags: generateTags(text),
+      seo_title: generateSEOTitle(product.title),
+      seo_description: generateSEODescription(product.title, product.description),
+      ad_headline: generateAdHeadline(product.title),
+      ad_description: generateAdDescription(product.title),
+      google_product_category: getGoogleCategoryCode(detectCategory(product.title)),
+      gtin: '',
+      brand: product.brand || 'Decora Home',
+      confidence_score: 75
+    };
+  };
+
+  const handleBulkEnrichment = async () => {
+    setIsEnriching(true);
+    setEnrichmentProgress(0);
+    
+    try {
+      showInfo('Enrichissement global', 'Enrichissement IA de tous les produits du catalogue...');
+      
+      const enrichedResults = [];
+      
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+        
+        try {
+          const enrichedAttributes = await enrichProductWithAI(product);
+          
+          const enrichedProduct = {
+            ...product,
+            ...enrichedAttributes,
+            confidence_score: enrichedAttributes.confidence_score || 85,
+            enriched_at: new Date().toISOString(),
+            enrichment_source: 'bulk'
+          };
+          
+          enrichedResults.push(enrichedProduct);
+          
+          setEnrichmentProgress(Math.round(((i + 1) / products.length) * 100));
+          
+        } catch (error) {
+          console.error(`❌ Erreur enrichissement ${product.title}:`, error);
+          enrichedResults.push(product);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      setProducts(enrichedResults);
+      localStorage.setItem('enriched_products', JSON.stringify(enrichedResults));
+      
+      showSuccess(
+        'Enrichissement global terminé',
+        `${enrichedResults.length} produits enrichis avec IA !`
+      );
+      
+    } catch (error) {
+      console.error('❌ Erreur enrichissement global:', error);
+      showError('Erreur d\'enrichissement', 'Erreur lors de l\'enrichissement global.');
+    } finally {
+      setIsEnriching(false);
+      setEnrichmentProgress(0);
+    }
+  };
+
+  const handleGoogleCategoryImport = async (file: File) => {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      const newCategories: GoogleCategory[] = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const category: any = {};
+        
+        headers.forEach((header, index) => {
+          category[header] = values[index] || '';
+        });
+        
+        if (category.category && category.google_product_category) {
+          newCategories.push({
+            id: `cat-${Date.now()}-${i}`,
+            category: category.category,
+            subcategory: category.subcategory || '',
+            google_product_category: category.google_product_category,
+            description: category.description || ''
+          });
+        }
+      }
+      
+      setGoogleCategories(prev => [...prev, ...newCategories]);
+      localStorage.setItem('google_categories', JSON.stringify([...googleCategories, ...newCategories]));
+      
+      showSuccess('Import réussi', `${newCategories.length} catégories Google importées !`);
+      
+    } catch (error) {
+      console.error('❌ Erreur import catégories:', error);
+      showError('Erreur d\'import', 'Erreur lors de l\'import des catégories Google.');
+    }
+  };
+
+  const handleUpdateProduct = (updatedProduct: EnrichedProduct) => {
+    const updatedProducts = products.map(p => 
+      p.id === updatedProduct.id ? updatedProduct : p
+    );
+    
+    setProducts(updatedProducts);
+    localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
+    
+    showSuccess('Produit modifié', 'Le produit a été modifié avec succès.');
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (confirm('Supprimer ce produit du catalogue enrichi ?')) {
+      const updatedProducts = products.filter(p => p.id !== productId);
+      setProducts(updatedProducts);
+      localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
+      showSuccess('Produit supprimé', 'Le produit a été supprimé du catalogue enrichi.');
+    }
   };
 
   const handleSelectProduct = (productId: string) => {
@@ -342,490 +499,149 @@ export const ProductsEnrichedTable: React.FC = () => {
     }
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedProducts.length === 0) return;
-    
-    if (confirm(`Supprimer ${selectedProducts.length} produit(s) enrichi(s) sélectionné(s) ?`)) {
-      const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
-      setProducts(updatedProducts);
-      localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
-      setSelectedProducts([]);
-      showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) enrichi(s) supprimé(s).`);
-    }
-  };
-
-  const handleEditProduct = (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    if (product) {
-      setEditingProduct(productId);
-      setEditValues(product);
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingProduct) return;
-
-    const updatedProducts = products.map(p => 
-      p.id === editingProduct ? { ...p, ...editValues } : p
-    );
-    
-    setProducts(updatedProducts);
-    localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
-    setEditingProduct(null);
-    setEditValues({});
-    showSuccess('Produit modifié', 'Les attributs enrichis ont été mis à jour.');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingProduct(null);
-    setEditValues({});
-  };
-
-  const detectCategory = (title: string) => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('canapé') || lowerTitle.includes('sofa')) return 'Canapé';
-    if (lowerTitle.includes('table')) return 'Table';
-    if (lowerTitle.includes('chaise')) return 'Chaise';
-    if (lowerTitle.includes('lit')) return 'Lit';
-    if (lowerTitle.includes('armoire') || lowerTitle.includes('placard')) return 'Armoire';
-    if (lowerTitle.includes('commode') || lowerTitle.includes('tiroir')) return 'Commode';
-    if (lowerTitle.includes('étagère') || lowerTitle.includes('bibliothèque')) return 'Étagère';
-    if (lowerTitle.includes('fauteuil')) return 'Fauteuil';
-    if (lowerTitle.includes('bureau')) return 'Bureau';
-    if (lowerTitle.includes('miroir')) return 'Miroir';
-    if (lowerTitle.includes('lampe') || lowerTitle.includes('luminaire')) return 'Éclairage';
-    if (lowerTitle.includes('tapis')) return 'Tapis';
-    if (lowerTitle.includes('coussin')) return 'Coussin';
-    if (lowerTitle.includes('rideau') || lowerTitle.includes('voilage')) return 'Rideau';
-    return 'Mobilier';
-  };
-
-  const detectSubcategory = (title: string) => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('convertible')) return 'Canapé convertible';
-    if (lowerTitle.includes('angle')) return 'Canapé d\'angle';
-    if (lowerTitle.includes('ronde')) return 'Table ronde';
-    if (lowerTitle.includes('rectangulaire')) return 'Table rectangulaire';
-    if (lowerTitle.includes('bar')) return 'Table de bar';
-    if (lowerTitle.includes('basse')) return 'Table basse';
-    if (lowerTitle.includes('chevet')) return 'Table de chevet';
-    if (lowerTitle.includes('console')) return 'Console';
-    if (lowerTitle.includes('extensible')) return 'Table extensible';
-    return '';
-  };
-
-  const detectColor = (text: string) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('blanc') || lowerText.includes('white')) return 'Blanc';
-    if (lowerText.includes('noir') || lowerText.includes('black')) return 'Noir';
-    if (lowerText.includes('gris') || lowerText.includes('grey') || lowerText.includes('gray')) return 'Gris';
-    if (lowerText.includes('beige') || lowerText.includes('sable')) return 'Beige';
-    if (lowerText.includes('marron') || lowerText.includes('brun') || lowerText.includes('brown')) return 'Marron';
-    if (lowerText.includes('bleu') || lowerText.includes('blue')) return 'Bleu';
-    if (lowerText.includes('rouge') || lowerText.includes('red')) return 'Rouge';
-    if (lowerText.includes('vert') || lowerText.includes('green')) return 'Vert';
-    if (lowerText.includes('jaune') || lowerText.includes('yellow')) return 'Jaune';
-    if (lowerText.includes('rose') || lowerText.includes('pink')) return 'Rose';
-    if (lowerText.includes('violet') || lowerText.includes('purple')) return 'Violet';
-    if (lowerText.includes('orange')) return 'Orange';
-    if (lowerText.includes('naturel') || lowerText.includes('natural')) return 'Naturel';
-    if (lowerText.includes('doré') || lowerText.includes('gold')) return 'Doré';
-    if (lowerText.includes('argenté') || lowerText.includes('silver')) return 'Argenté';
-    return '';
-  };
-
-  const detectMaterial = (text: string) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('bois') || lowerText.includes('wood')) return 'Bois';
-    if (lowerText.includes('métal') || lowerText.includes('metal')) return 'Métal';
-    if (lowerText.includes('verre') || lowerText.includes('glass')) return 'Verre';
-    if (lowerText.includes('plastique') || lowerText.includes('plastic')) return 'Plastique';
-    if (lowerText.includes('cuir') || lowerText.includes('leather')) return 'Cuir';
-    if (lowerText.includes('tissu') || lowerText.includes('fabric')) return 'Tissu';
-    if (lowerText.includes('velours') || lowerText.includes('velvet')) return 'Velours';
-    if (lowerText.includes('lin') || lowerText.includes('linen')) return 'Lin';
-    if (lowerText.includes('coton') || lowerText.includes('cotton')) return 'Coton';
-    if (lowerText.includes('marbre') || lowerText.includes('marble')) return 'Marbre';
-    if (lowerText.includes('travertin')) return 'Travertin';
-    if (lowerText.includes('céramique') || lowerText.includes('ceramic')) return 'Céramique';
-    if (lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
-    if (lowerText.includes('osier') || lowerText.includes('wicker')) return 'Osier';
-    if (lowerText.includes('bambou') || lowerText.includes('bamboo')) return 'Bambou';
-    return 'Autre';
-  };
-
-  const detectFabric = (text: string) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('chenille')) return 'Chenille';
-    if (lowerText.includes('côtelé')) return 'Velours côtelé';
-    if (lowerText.includes('bouclé')) return 'Bouclé';
-    if (lowerText.includes('sergé')) return 'Sergé';
-    if (lowerText.includes('jacquard')) return 'Jacquard';
-    if (lowerText.includes('tweed')) return 'Tweed';
-    if (lowerText.includes('denim')) return 'Denim';
-    if (lowerText.includes('satin')) return 'Satin';
-    if (lowerText.includes('soie') || lowerText.includes('silk')) return 'Soie';
-    return '';
-  };
-
-  const detectStyle = (text: string) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('moderne') || lowerText.includes('modern')) return 'Moderne';
-    if (lowerText.includes('contemporain') || lowerText.includes('contemporary')) return 'Contemporain';
-    if (lowerText.includes('industriel') || lowerText.includes('industrial')) return 'Industriel';
-    if (lowerText.includes('scandinave') || lowerText.includes('scandinavian')) return 'Scandinave';
-    if (lowerText.includes('vintage') || lowerText.includes('rétro')) return 'Vintage';
-    if (lowerText.includes('classique') || lowerText.includes('classic')) return 'Classique';
-    if (lowerText.includes('rustique') || lowerText.includes('rustic')) return 'Rustique';
-    if (lowerText.includes('bohème') || lowerText.includes('boho')) return 'Bohème';
-    if (lowerText.includes('minimaliste') || lowerText.includes('minimalist')) return 'Minimaliste';
-    if (lowerText.includes('art déco')) return 'Art Déco';
-    return '';
-  };
-
-  const extractDimensions = (text: string) => {
-    const dimensionRegex = /(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i;
-    const match = text.match(dimensionRegex);
-    if (match) {
-      return match[3] ? `${match[1]}x${match[2]}x${match[3]}cm` : `${match[1]}x${match[2]}cm`;
-    }
-    return '';
-  };
-
-  const detectRoom = (text: string) => {
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('salon') || lowerText.includes('living')) return 'Salon';
-    if (lowerText.includes('chambre') || lowerText.includes('bedroom')) return 'Chambre';
-    if (lowerText.includes('cuisine') || lowerText.includes('kitchen')) return 'Cuisine';
-    if (lowerText.includes('salle à manger') || lowerText.includes('dining')) return 'Salle à manger';
-    if (lowerText.includes('bureau') || lowerText.includes('office')) return 'Bureau';
-    if (lowerText.includes('salle de bain') || lowerText.includes('bathroom')) return 'Salle de bain';
-    if (lowerText.includes('entrée') || lowerText.includes('entrance')) return 'Entrée';
-    if (lowerText.includes('terrasse') || lowerText.includes('terrace')) return 'Terrasse';
-    if (lowerText.includes('jardin') || lowerText.includes('garden')) return 'Jardin';
-    return '';
-  };
-
-  const generateTags = (product: any) => {
-    const tags = [];
-    const title = (product.title || '').toLowerCase();
-    const description = (product.description || '').toLowerCase();
-    
-    if (title.includes('convertible')) tags.push('convertible');
-    if (title.includes('angle')) tags.push('angle');
-    if (title.includes('rangement')) tags.push('rangement');
-    if (title.includes('places')) tags.push(title.match(/(\d+)\s*places?/)?.[1] + '-places');
-    if (description.includes('livraison')) tags.push('livraison');
-    if (description.includes('gratuite')) tags.push('gratuite');
-    
-    return tags.filter(Boolean);
-  };
-
-  const generateSEOTitle = (product: any) => {
-    const title = product.title || 'Produit';
-    const category = detectCategory(title);
-    const material = detectMaterial(title + ' ' + (product.description || ''));
-    const color = detectColor(title + ' ' + (product.description || ''));
-    
-    let seoTitle = title;
-    if (material) seoTitle += ` - ${material}`;
-    if (color) seoTitle += ` ${color}`;
-    seoTitle += ' - Decora Home';
-    
-    return seoTitle.substring(0, 60);
-  };
-
-  const generateSEODescription = (product: any) => {
-    const title = product.title || 'Produit';
-    const category = detectCategory(title);
-    const material = detectMaterial(title + ' ' + (product.description || ''));
-    const color = detectColor(title + ' ' + (product.description || ''));
-    
-    let description = `${title}`;
-    if (material) description += ` en ${material.toLowerCase()}`;
-    if (color) description += ` ${color.toLowerCase()}`;
-    description += '. Design contemporain élégant. Livraison offerte.';
-    
-    return description.substring(0, 160);
-  };
-
-  const generateAdHeadline = (product: any) => {
-    const title = product.title || 'Produit';
-    return title.substring(0, 30);
-  };
-
-  const generateAdDescription = (product: any) => {
-    const material = detectMaterial(product.title + ' ' + (product.description || ''));
-    const style = detectStyle(product.title + ' ' + (product.description || ''));
-    
-    let description = '';
-    if (material) description += `${material}. `;
-    if (style) description += `${style}. `;
-    description += 'Promo exceptionnelle.';
-    
-    return description.substring(0, 90);
-  };
-
-  const getGoogleCategory = (product: any) => {
-    const category = detectCategory(product.title || '');
-    const categoryMap: { [key: string]: string } = {
-      'Canapé': '635',
-      'Table': '443',
-      'Chaise': '436',
-      'Lit': '569',
-      'Armoire': '436',
-      'Commode': '436',
-      'Étagère': '436',
-      'Fauteuil': '436',
-      'Bureau': '443',
-      'Miroir': '594',
-      'Éclairage': '594',
-      'Tapis': '505',
-      'Coussin': '569',
-      'Rideau': '569'
-    };
-    return categoryMap[category] || '436';
-  };
-
-  const calculateConfidenceScore = (product: any) => {
-    let score = 50;
-    
-    if (product.title) score += 10;
-    if (product.description) score += 10;
-    if (product.price) score += 10;
-    if (product.image_url) score += 10;
-    if (detectCategory(product.title || '')) score += 5;
-    if (detectMaterial(product.title + ' ' + (product.description || ''))) score += 5;
-    
-    return Math.min(score, 100);
-  };
-
-  const generateSKU = (product: any) => {
-    return `SKU-${product.id || Date.now()}`;
-  };
-
-  const generateGTIN = (product: any) => {
-    return `370123456789${Math.floor(Math.random() * 10)}`;
-  };
-
-  const generateShortDescription = (product: any) => {
-    return (product.description || product.title || '').substring(0, 100);
-  };
-
-  const extractWeight = (text: string) => {
-    const weightRegex = /(\d+)\s*kg/i;
-    const match = text.match(weightRegex);
-    return match ? `${match[1]}kg` : '';
-  };
-
-  const extractCapacity = (text: string) => {
-    const capacityRegex = /(\d+)\s*places?/i;
-    const match = text.match(capacityRegex);
-    return match ? `${match[1]} places` : '';
-  };
-
-  const generateImageAlt = (product: any) => {
-    return `${product.title || 'Produit'} - ${detectCategory(product.title || '')}`;
-  };
-
-  const extractGalleryUrls = (product: any) => {
-    return product.gallery_urls || [];
-  };
-
-  const generateGoogleCategory = (product: any) => {
-    const category = detectCategory(product.title || '');
-    const categoryMap: { [key: string]: string } = {
-      'Canapé': 'Furniture > Living Room Furniture > Sofas',
-      'Table': 'Furniture > Dining Room Furniture > Tables',
-      'Chaise': 'Furniture > Dining Room Furniture > Chairs',
-      'Lit': 'Furniture > Bedroom Furniture > Beds',
-      'Armoire': 'Furniture > Bedroom Furniture > Wardrobes',
-      'Commode': 'Furniture > Bedroom Furniture > Dressers',
-      'Étagère': 'Furniture > Shelving',
-      'Fauteuil': 'Furniture > Living Room Furniture > Chairs',
-      'Bureau': 'Furniture > Office Furniture > Desks',
-      'Miroir': 'Home & Garden > Decor > Mirrors',
-      'Éclairage': 'Home & Garden > Lighting',
-      'Tapis': 'Home & Garden > Decor > Rugs',
-      'Coussin': 'Home & Garden > Decor > Pillows',
-      'Rideau': 'Home & Garden > Window Treatments > Curtains'
-    };
-    return categoryMap[category] || 'Furniture';
-  };
-
-  const calculatePMaxScore = (product: any) => {
-    let score = 50;
-    
-    if (product.title) score += 10;
-    if (product.description) score += 10;
-    if (product.price) score += 10;
-    if (product.image_url) score += 10;
-    if (detectCategory(product.title || '')) score += 5;
-    if (detectMaterial(product.title + ' ' + (product.description || ''))) score += 5;
-    
-    return Math.min(score, 100);
-  };
-
-  const generateIntentTags = (product: any) => {
-    return {
-      category: detectCategory(product.title || '').toLowerCase(),
-      material: detectMaterial(product.title + ' ' + (product.description || '')).toLowerCase(),
-      color: detectColor(product.title + ' ' + (product.description || '')).toLowerCase(),
-      style: detectStyle(product.title + ' ' + (product.description || '')).toLowerCase(),
-      room: detectRoom(product.title + ' ' + (product.description || '')).toLowerCase()
-    };
-  };
-
-  const calculateMatchingScore = (product: any) => {
-    let score = 50;
-    
-    if (product.title) score += 15;
-    if (product.description) score += 15;
-    if (product.price) score += 10;
-    if (product.image_url) score += 10;
-    
-    return Math.min(score, 100);
-  };
-
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const csv = e.target?.result as string;
-          const lines = csv.split('\n');
-          const headers = lines[0].split(',');
-          const newProducts = [];
-          
-          for (let i = 1; i < lines.length; i++) {
-            if (lines[i].trim()) {
-              const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
-              const product: any = {};
-              headers.forEach((header, index) => {
-                product[header.trim()] = values[index] || '';
-              });
-              newProducts.push(product);
-            }
-          }
-          
-          setProducts(prev => [...prev, ...newProducts]);
-          localStorage.setItem('enriched_products', JSON.stringify([...products, ...newProducts]));
-          showSuccess('Import réussi', `${newProducts.length} produits importés !`);
-        } catch (error) {
-          showError('Erreur import', 'Format CSV invalide.');
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleRunEnrichmentCron = async () => {
-    try {
-      setIsRunningCron(true);
-      showInfo('Enrichissement démarré', 'Analyse IA des produits en cours...');
-      
-      // Récupérer les produits du catalogue principal
-      const catalogProducts = localStorage.getItem('catalog_products');
-      if (!catalogProducts) {
-        showError('Aucun produit', 'Aucun produit trouvé dans le catalogue principal à enrichir.');
-        return;
-      }
-      
-      const catalogProductsData = JSON.parse(catalogProducts);
-      console.log('📦 Produits à enrichir:', catalogProductsData.length);
-      
-      // Simuler l'enrichissement IA
-      await new Promise(resolve => setTimeout(resolve, cronMode === 'auto' ? 1000 : 3000));
-      
-      // Enrichir automatiquement tous les produits du catalogue
-      const newEnrichedProducts = catalogProductsData.map((product: any) => ({
-        id: `enriched-${product.id || Date.now()}`,
-        sku: product.sku || generateSKU(product),
-        gtin: generateGTIN(product),
-        handle: product.handle || product.id || 'produit-enrichi',
-        title: product.title || product.name || 'Produit sans nom',
-        description: product.description || '',
-        short_description: generateShortDescription(product),
-        category: detectCategory(product.title || product.name || ''),
-        subcategory: detectSubcategory(product.title || product.name || ''),
-        color: detectColor(product.title + ' ' + product.description),
-        material: detectMaterial(product.title + ' ' + product.description),
-        fabric: detectFabric(product.title + ' ' + product.description),
-        style: detectStyle(product.title + ' ' + product.description),
-        dimensions: extractDimensions(product.description || ''),
-        weight: extractWeight(product.description || ''),
-        capacity: extractCapacity(product.title + ' ' + product.description),
-        room: detectRoom(product.title + ' ' + product.description),
-        price: product.price || 0,
-        compare_at_price: product.compare_at_price || product.compareAtPrice,
-        currency: 'EUR',
-        stock_quantity: product.stock || product.quantityAvailable || 0,
-        availability: (product.stock || product.quantityAvailable || 0) > 0 ? 'En stock' : 'Rupture',
-        stock_qty: product.stock || product.quantityAvailable || 0,
-        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        image_alt: generateImageAlt(product),
-        gallery_urls: extractGalleryUrls(product),
-        product_url: product.product_url || '#',
-        tags: generateTags(product),
-        seo_title: generateSEOTitle(product),
-        seo_description: generateSEODescription(product),
-        google_category: generateGoogleCategory(product),
-        pmax_score: calculatePMaxScore(product),
-        ad_headline: generateAdHeadline(product),
-        ad_description: generateAdDescription(product),
-        google_product_category: getGoogleCategory(product),
-        brand: product.vendor || 'Decora Home',
-        intent_tags: generateIntentTags(product),
-        matching_score: calculateMatchingScore(product),
-        chat_history_ref: '',
-        confidence_score: calculateConfidenceScore(product),
-        enriched_at: new Date().toISOString(),
-        enrichment_source: cronMode === 'auto' ? 'cron_auto' : 'manual',
-        created_at: product.created_at || new Date().toISOString()
-      }));
-      
-      // Fusionner avec les produits enrichis existants (éviter doublons)
-      const existingEnriched = products.filter((p: any) => 
-        !newEnrichedProducts.find(np => np.handle === p.handle) &&
-        !mockEnrichedProducts.find(mp => mp.handle === p.handle)
-      );
-      const allEnrichedProducts = [...mockEnrichedProducts, ...newEnrichedProducts];
-      
-      setProducts(allEnrichedProducts);
-      localStorage.setItem('enriched_products', JSON.stringify(allEnrichedProducts));
-      
-      showSuccess(
-        cronMode === 'auto' ? 'Cron automatique terminé' : 'Enrichissement manuel terminé', 
-        `${newEnrichedProducts.length} nouveau(x) produit(s) enrichi(s) ajouté(s) !`,
-        [
-          {
-            label: 'Voir le catalogue enrichi',
-            action: () => setSearchTerm(''),
-            variant: 'primary'
-          }
-        ]
-      );
-      
-    } catch (error) {
-      console.error('❌ Erreur enrichissement:', error);
-      showError('Erreur enrichissement', 'Erreur lors de l\'enrichissement automatique.');
-    } finally {
-      setIsRunningCron(false);
-    }
+  const getConfidenceColor = (score: number) => {
+    if (score >= 80) return 'bg-green-500/20 text-green-300';
+    if (score >= 50) return 'bg-yellow-500/20 text-yellow-300';
+    return 'bg-red-500/20 text-red-300';
   };
 
   const categories = [...new Set(products.map(p => p.category))];
-  const materials = [...new Set(products.map(p => p.material).filter(Boolean))];
-  const colors = [...new Set(products.map(p => p.color).filter(Boolean))];
-  const rooms = [...new Set(products.map(p => p.room).filter(Boolean))];
+
+  // Fonctions de détection et génération
+  const detectCategory = (title: string): string => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('canapé') || lowerTitle.includes('sofa')) return 'Canapé';
+    if (lowerTitle.includes('table')) return 'Table';
+    if (lowerTitle.includes('chaise') || lowerTitle.includes('fauteuil')) return 'Chaise';
+    if (lowerTitle.includes('lit')) return 'Lit';
+    if (lowerTitle.includes('armoire') || lowerTitle.includes('commode')) return 'Rangement';
+    if (lowerTitle.includes('lampe') || lowerTitle.includes('éclairage')) return 'Éclairage';
+    if (lowerTitle.includes('miroir') || lowerTitle.includes('tapis')) return 'Décoration';
+    return 'Mobilier';
+  };
+
+  const detectSubcategory = (title: string, description: string): string => {
+    const text = `${title} ${description}`.toLowerCase();
+    
+    if (text.includes('canapé')) {
+      if (text.includes('angle')) return 'Canapé d\'angle';
+      if (text.includes('convertible')) return 'Canapé convertible';
+      return 'Canapé fixe';
+    }
+    
+    if (text.includes('table')) {
+      if (text.includes('basse')) return 'Table basse';
+      if (text.includes('manger')) return 'Table à manger';
+      if (text.includes('bureau')) return 'Table de bureau';
+      return 'Table';
+    }
+    
+    if (text.includes('chaise')) {
+      if (text.includes('bureau')) return 'Chaise de bureau';
+      return 'Chaise de salle à manger';
+    }
+    
+    if (text.includes('fauteuil')) return 'Fauteuil';
+    
+    return '';
+  };
+
+  const detectColor = (text: string): string => {
+    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+    for (const color of colors) {
+      if (text.includes(color)) return color;
+    }
+    return '';
+  };
+
+  const detectMaterial = (text: string): string => {
+    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
+    for (const material of materials) {
+      if (text.includes(material)) return material;
+    }
+    return '';
+  };
+
+  const detectFabric = (text: string): string => {
+    const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
+    for (const fabric of fabrics) {
+      if (text.includes(fabric)) return fabric;
+    }
+    return '';
+  };
+
+  const detectStyle = (text: string): string => {
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+    for (const style of styles) {
+      if (text.includes(style)) return style;
+    }
+    return '';
+  };
+
+  const detectRoom = (text: string): string => {
+    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
+    for (const room of rooms) {
+      if (text.includes(room)) return room;
+    }
+    return '';
+  };
+
+  const extractDimensions = (description: string): string => {
+    const dimensionMatch = description.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/i);
+    return dimensionMatch ? dimensionMatch[0] : '';
+  };
+
+  const generateTags = (text: string): string[] => {
+    const tags = [];
+    const color = detectColor(text);
+    const material = detectMaterial(text);
+    const style = detectStyle(text);
+    
+    if (color) tags.push(color);
+    if (material) tags.push(material);
+    if (style) tags.push(style);
+    if (text.includes('convertible')) tags.push('convertible');
+    if (text.includes('rangement')) tags.push('rangement');
+    
+    return tags;
+  };
+
+  const generateSEOTitle = (title: string): string => {
+    return `${title} - Decora Home`.substring(0, 70);
+  };
+
+  const generateSEODescription = (title: string, description: string): string => {
+    const shortDesc = description.substring(0, 100) || title;
+    return `${shortDesc}. Livraison gratuite. Decora Home.`.substring(0, 155);
+  };
+
+  const generateAdHeadline = (title: string): string => {
+    return title.substring(0, 30);
+  };
+
+  const generateAdDescription = (title: string): string => {
+    return `${title}. Promo !`.substring(0, 90);
+  };
+
+  const getGoogleCategoryCode = (category: string): string => {
+    const mapping: { [key: string]: string } = {
+      'Canapé': '635',
+      'Chaise': '436',
+      'Table': '443',
+      'Lit': '630',
+      'Rangement': '443',
+      'Éclairage': '594',
+      'Décoration': '696'
+    };
+    return mapping[category] || '443';
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Chargement catalogue enrichi...</p>
+          <Loader2 className="w-16 h-16 text-cyan-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg">Chargement du catalogue enrichi...</p>
         </div>
       </div>
     );
@@ -833,124 +649,58 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header avec statut cron */}
+      {/* Header avec actions */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Brain className="w-8 h-8 text-purple-400" />
-            Catalogue Enrichi IA
-          </h2>
+          <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
           <p className="text-gray-300">{filteredProducts.length} produit(s) enrichi(s) sur {products.length}</p>
         </div>
         
         <div className="flex flex-wrap gap-3">
-          {/* Mode Cron */}
-          <div className="flex items-center gap-2 bg-black/40 rounded-xl p-2 border border-gray-600">
-            <button
-              onClick={() => setCronMode('auto')}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                cronMode === 'auto' 
-                  ? 'bg-green-500 text-white' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Auto
-            </button>
-            <button
-              onClick={() => setCronMode('manual')}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                cronMode === 'manual' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Manuel
-            </button>
-          </div>
-          
           <button
-            onClick={handleRunEnrichmentCron}
-            disabled={isRunningCron}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
+            onClick={handleManualEnrichment}
+            disabled={selectedProducts.length === 0 || isEnriching}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
           >
-            {isRunningCron ? (
+            {isEnriching ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Enrichissement...
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Enrichissement... ({enrichmentProgress}%)
               </>
             ) : (
               <>
                 <Brain className="w-4 h-4" />
-                {cronMode === 'auto' ? 'Cron Auto' : 'Enrichir Manuel'}
+                Enrichir Manuel ({selectedProducts.length})
               </>
             )}
           </button>
           
-          {selectedProducts.length > 0 && (
-            <button
-              onClick={handleDeleteSelected}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-            >
-              <Trash2 className="w-4 h-4" />
-              Supprimer ({selectedProducts.length})
-            </button>
-          )}
+          <button
+            onClick={handleBulkEnrichment}
+            disabled={isEnriching}
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
+          >
+            <Zap className="w-4 h-4" />
+            Enrichir Tout
+          </button>
+          
+          <button
+            onClick={() => setShowGoogleCategoryModal(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+          >
+            <Globe className="w-4 h-4" />
+            Google Categories
+          </button>
+          
+          <button
+            onClick={loadEnrichedProducts}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Actualiser
+          </button>
         </div>
       </div>
-
-      {/* Statut du cron d'enrichissement */}
-      {cronStatus && (
-        <div className={`border rounded-xl p-4 ${
-          cronMode === 'auto' 
-            ? 'bg-green-500/20 border-green-400/50' 
-            : 'bg-blue-500/20 border-blue-400/50'
-        }`}>
-          <h3 className="font-semibold text-purple-200 mb-3 flex items-center gap-2">
-            <Brain className="w-5 h-5" />
-            {cronMode === 'auto' ? 'Cron d\'enrichissement automatique' : 'Enrichissement manuel'}
-          </h3>
-          
-          {cronMode === 'auto' && (
-            <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-3 mb-4">
-              <h4 className="font-semibold text-green-200 mb-2">🤖 Mode automatique actif :</h4>
-              <ul className="text-green-300 text-sm space-y-1">
-                <li>• Détection automatique des nouveaux produits</li>
-                <li>• Enrichissement IA toutes les 6h</li>
-                <li>• Mise à jour des attributs manquants</li>
-                <li>• Génération SEO et Google Shopping</li>
-              </ul>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {cronMode === 'auto' ? 'AUTO' : 'MANUEL'}
-              </div>
-              <div className="text-green-300">Mode</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-400">{cronStatus.products_enriched}</div>
-              <div className="text-purple-300">Produits enrichis</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{cronStatus.success_rate}%</div>
-              <div className="text-blue-300">Taux de succès</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-400">
-                {cronMode === 'auto' 
-                  ? new Date(cronStatus.next_run).toLocaleDateString('fr-FR')
-                  : 'Sur demande'
-                }
-              </div>
-              <div className="text-orange-300">
-                {cronMode === 'auto' ? 'Prochaine exécution' : 'Exécution'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Barre de recherche et filtres */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
@@ -959,7 +709,7 @@ export const ProductsEnrichedTable: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Rechercher par titre, catégorie, matériau, couleur..."
+              placeholder="Rechercher par titre, catégorie, marque, tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
@@ -968,17 +718,17 @@ export const ProductsEnrichedTable: React.FC = () => {
           
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
           >
             <Filter className="w-4 h-4" />
-            Filtres enrichis
+            Filtres
             {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
 
         {showFilters && (
           <div className="mt-6 pt-6 border-t border-gray-600/50">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm text-gray-300 mb-2">Catégorie</label>
                 <select
@@ -994,45 +744,38 @@ export const ProductsEnrichedTable: React.FC = () => {
               </div>
               
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Matériau</label>
+                <label className="block text-sm text-gray-300 mb-2">Confiance IA</label>
                 <select
-                  value={selectedMaterial}
-                  onChange={(e) => setSelectedMaterial(e.target.value)}
+                  value={selectedConfidence}
+                  onChange={(e) => setSelectedConfidence(e.target.value)}
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
                 >
-                  <option value="all">Tous les matériaux</option>
-                  {materials.map(material => (
-                    <option key={material} value={material}>{material}</option>
-                  ))}
+                  <option value="all">Tous les niveaux</option>
+                  <option value="high">Élevée (80-100%)</option>
+                  <option value="medium">Moyenne (50-79%)</option>
+                  <option value="low">Faible (0-49%)</option>
                 </select>
               </div>
               
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Couleur</label>
-                <select
-                  value={selectedColor}
-                  onChange={(e) => setSelectedColor(e.target.value)}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
-                >
-                  <option value="all">Toutes les couleurs</option>
-                  {colors.map(color => (
-                    <option key={color} value={color}>{color}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Pièce</label>
-                <select
-                  value={selectedRoom}
-                  onChange={(e) => setSelectedRoom(e.target.value)}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
-                >
-                  <option value="all">Toutes les pièces</option>
-                  {rooms.map(room => (
-                    <option key={room} value={room}>{room}</option>
-                  ))}
-                </select>
+                <label className="block text-sm text-gray-300 mb-2">Actions</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const csvContent = generateCSVExport(filteredProducts);
+                      const blob = new Blob([csvContent], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'catalogue-enrichi.csv';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1044,7 +787,7 @@ export const ProductsEnrichedTable: React.FC = () => {
         <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <span className="text-purple-300 font-semibold">
-              {selectedProducts.length} produit(s) enrichi(s) sélectionné(s)
+              {selectedProducts.length} produit(s) sélectionné(s)
             </span>
             <div className="flex gap-2">
               <button
@@ -1057,73 +800,6 @@ export const ProductsEnrichedTable: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Export/Import Actions */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => {
-            const csvContent = [
-              'handle,title,description,category,subcategory,color,material,fabric,style,dimensions,room,price,stock_qty,image_url,product_url,tags,seo_title,seo_description,ad_headline,ad_description,google_product_category,gtin,brand,confidence_score,enriched_at,enrichment_source',
-              ...filteredProducts.map(product => [
-                product.handle,
-                product.title,
-                product.description,
-                product.category,
-                product.subcategory,
-                product.color,
-                product.material,
-                product.fabric,
-                product.style,
-                product.dimensions,
-                product.room,
-                product.price,
-                product.stock_qty,
-                product.image_url,
-                product.product_url,
-                Array.isArray(product.tags) ? product.tags.join(';') : product.tags,
-                product.seo_title,
-                product.seo_description,
-                product.ad_headline,
-                product.ad_description,
-                product.google_product_category,
-                product.gtin,
-                product.brand,
-                product.confidence_score,
-                product.enriched_at,
-                product.enrichment_source
-              ].join(','))
-            ].join('\n');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'catalogue-enrichi-omnia.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-        >
-          <Download className="w-4 h-4" />
-          Exporter CSV
-        </button>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          onChange={handleImportCSV}
-          className="hidden"
-        />
-        
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-        >
-          <Upload className="w-4 h-4" />
-          Importer CSV
-        </button>
-      </div>
 
       {/* Tableau des produits enrichis */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
@@ -1141,17 +817,9 @@ export const ProductsEnrichedTable: React.FC = () => {
                 </th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Catégorie</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Sous-catégorie</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Couleur</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Matériau</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Tissu</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Style</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Dimensions</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Pièce</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Tags</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">SEO</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Score IA</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Google Category</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Confiance</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
               </tr>
             </thead>
@@ -1181,167 +849,86 @@ export const ProductsEnrichedTable: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-white text-sm">{product.title}</div>
-                        <div className="text-gray-400 text-xs">{product.handle}</div>
+                        <div className="text-gray-400 text-xs">{product.brand}</div>
+                        <div className="text-green-400 font-bold">{product.price}€</div>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.category || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, category: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.category}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.subcategory || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, subcategory: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.subcategory}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.color || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, color: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.color}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.material || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, material: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.material}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.fabric || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, fabric: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.fabric}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.style || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, style: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.style}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.dimensions || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, dimensions: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.dimensions}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {editingProduct === product.id ? (
-                      <input
-                        type="text"
-                        value={editValues.room || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, room: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-                      />
-                    ) : (
-                      <span className="text-white">{product.room}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap gap-1 max-w-32">
-                      {(product.tags || []).slice(0, 3).map((tag, index) => (
-                        <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                          {tag}
-                        </span>
-                      ))}
-                      {(product.tags || []).length > 3 && (
-                        <span className="text-gray-400 text-xs">+{(product.tags || []).length - 3}</span>
+                    <div className="space-y-1">
+                      <span className="text-white font-medium">{product.category}</span>
+                      {product.subcategory && (
+                        <div className="text-gray-400 text-xs">{product.subcategory}</div>
                       )}
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="text-center">
-                      <div className="text-sm text-white font-semibold">{product.seo_title?.substring(0, 20) || 'Non défini'}...</div>
-                      <div className="text-xs text-gray-400">{product.seo_description?.substring(0, 30) || 'Aucune description'}...</div>
+                    <div className="space-y-1">
+                      {product.color && (
+                        <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
+                          {product.color}
+                        </span>
+                      )}
+                      {product.material && (
+                        <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
+                          {product.material}
+                        </span>
+                      )}
+                      {product.style && (
+                        <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
+                          {product.style}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="text-center">
-                      <div className={`text-lg font-bold ${
-                        (product.confidence_score || 0) >= 80 ? 'text-green-400' :
-                        (product.confidence_score || 0) >= 60 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`}>
-                        {product.confidence_score || 0}%
+                    <div className="space-y-1">
+                      <span className="text-orange-400 font-mono text-sm">{product.google_product_category}</span>
+                      <div className="text-gray-400 text-xs">
+                        {googleCategories.find(cat => cat.google_product_category === product.google_product_category)?.description || 'Non mappé'}
                       </div>
-                      <div className="text-xs text-gray-400">Confiance IA</div>
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className="font-bold text-green-400">{product.price}€</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getConfidenceColor(product.confidence_score)}`}>
+                        {product.confidence_score}%
+                      </span>
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            className={`w-3 h-3 ${i < Math.floor(product.confidence_score / 20) ? 'text-yellow-400 fill-current' : 'text-gray-600'}`} 
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="flex gap-2">
-                      {editingProduct === product.id ? (
-                        <>
-                          <button
-                            onClick={handleSaveEdit}
-                            className="text-green-400 hover:text-green-300 p-1"
-                            title="Sauvegarder"
-                          >
-                            <Save className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="text-red-400 hover:text-red-300 p-1"
-                            title="Annuler"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleEditProduct(product.id)}
-                          className="text-yellow-400 hover:text-yellow-300 p-1"
-                          title="Modifier"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setEditingProduct(product)}
+                        className="text-yellow-400 hover:text-yellow-300 p-1"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <a
+                        href={product.product_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-400 hover:text-purple-300 p-1"
+                        title="Voir le produit"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteProduct(product.id)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1357,18 +944,332 @@ export const ProductsEnrichedTable: React.FC = () => {
           <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Aucun produit enrichi trouvé</h3>
           <p className="text-gray-400 mb-6">
-            {searchTerm || selectedCategory !== 'all' || selectedMaterial !== 'all' || selectedColor !== 'all'
+            {searchTerm || selectedCategory !== 'all' || selectedConfidence !== 'all'
               ? 'Aucun produit ne correspond à vos critères de recherche.'
-              : 'Votre catalogue enrichi est vide. Lancez l\'enrichissement IA.'}
+              : 'Votre catalogue enrichi est vide. Enrichissez vos produits avec l\'IA.'}
           </p>
           <button
-            onClick={handleRunEnrichmentCron}
+            onClick={handleBulkEnrichment}
             className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
           >
             Enrichir le catalogue avec IA
           </button>
         </div>
       )}
+
+      {/* Modal Google Categories */}
+      {showGoogleCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h2 className="text-2xl font-bold text-white">Gestion Catégories Google Shopping</h2>
+              <button
+                onClick={() => setShowGoogleCategoryModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Import CSV */}
+              <div className="bg-black/20 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-white mb-4">Import CSV Catégories</h3>
+                <div className="flex gap-4">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleGoogleCategoryImport(file);
+                    }}
+                    className="hidden"
+                    id="google-csv-upload"
+                  />
+                  <label
+                    htmlFor="google-csv-upload"
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importer CSV
+                  </label>
+                  <button
+                    onClick={() => {
+                      const csvContent = generateGoogleCategoriesCSV();
+                      const blob = new Blob([csvContent], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'google-categories-template.csv';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Template CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Liste des catégories */}
+              <div className="bg-black/20 rounded-xl p-4 max-h-96 overflow-y-auto">
+                <h3 className="text-lg font-bold text-white mb-4">Catégories Google Shopping ({googleCategories.length})</h3>
+                <div className="space-y-2">
+                  {googleCategories.map((category) => (
+                    <div key={category.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">{category.category} → {category.subcategory}</div>
+                        <div className="text-gray-400 text-sm">{category.description}</div>
+                      </div>
+                      <div className="text-orange-400 font-mono font-bold">
+                        {category.google_product_category}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition produit */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h2 className="text-2xl font-bold text-white">Modifier le produit enrichi</h2>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <ProductEditForm
+                product={editingProduct}
+                googleCategories={googleCategories}
+                onSave={handleUpdateProduct}
+                onCancel={() => setEditingProduct(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+};
+
+// Composant de formulaire d'édition
+const ProductEditForm: React.FC<{
+  product: EnrichedProduct;
+  googleCategories: GoogleCategory[];
+  onSave: (product: EnrichedProduct) => void;
+  onCancel: () => void;
+}> = ({ product, googleCategories, onSave, onCancel }) => {
+  const [formData, setFormData] = useState(product);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...formData,
+      enriched_at: new Date().toISOString(),
+      enrichment_source: 'manual'
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Titre</label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Catégorie</label>
+          <input
+            type="text"
+            value={formData.category}
+            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Sous-catégorie</label>
+          <input
+            type="text"
+            value={formData.subcategory}
+            onChange={(e) => setFormData(prev => ({ ...prev, subcategory: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Couleur</label>
+          <input
+            type="text"
+            value={formData.color}
+            onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Matériau</label>
+          <input
+            type="text"
+            value={formData.material}
+            onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Style</label>
+          <input
+            type="text"
+            value={formData.style}
+            onChange={(e) => setFormData(prev => ({ ...prev, style: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Pièce</label>
+          <select
+            value={formData.room}
+            onChange={(e) => setFormData(prev => ({ ...prev, room: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="">Sélectionner une pièce</option>
+            <option value="salon">Salon</option>
+            <option value="chambre">Chambre</option>
+            <option value="cuisine">Cuisine</option>
+            <option value="bureau">Bureau</option>
+            <option value="salle à manger">Salle à manger</option>
+            <option value="entrée">Entrée</option>
+            <option value="terrasse">Terrasse</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Google Category</label>
+          <select
+            value={formData.google_product_category}
+            onChange={(e) => setFormData(prev => ({ ...prev, google_product_category: e.target.value }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="">Sélectionner une catégorie Google</option>
+            {googleCategories.map((cat) => (
+              <option key={cat.id} value={cat.google_product_category}>
+                {cat.google_product_category} - {cat.category} → {cat.subcategory}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-300 mb-2">Description</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          rows={4}
+          className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white resize-none"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">SEO Title (≤70 caractères)</label>
+          <input
+            type="text"
+            value={formData.seo_title}
+            onChange={(e) => setFormData(prev => ({ ...prev, seo_title: e.target.value.substring(0, 70) }))}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            maxLength={70}
+          />
+          <div className="text-xs text-gray-400 mt-1">{formData.seo_title.length}/70</div>
+        </div>
+        
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">SEO Description (≤155 caractères)</label>
+          <textarea
+            value={formData.seo_description}
+            onChange={(e) => setFormData(prev => ({ ...prev, seo_description: e.target.value.substring(0, 155) }))}
+            rows={3}
+            className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white resize-none"
+            maxLength={155}
+          />
+          <div className="text-xs text-gray-400 mt-1">{formData.seo_description.length}/155</div>
+        </div>
+      </div>
+
+      <div className="flex justify-between pt-6 border-t border-gray-600/50">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+        >
+          Annuler
+        </button>
+        
+        <button
+          type="submit"
+          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
+        >
+          <Save className="w-4 h-4" />
+          Sauvegarder
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// Fonction pour générer le CSV d'export
+const generateCSVExport = (products: EnrichedProduct[]): string => {
+  const headers = [
+    'id', 'title', 'category', 'subcategory', 'color', 'material', 'fabric', 
+    'style', 'dimensions', 'room', 'price', 'stock_qty', 'google_product_category',
+    'seo_title', 'seo_description', 'ad_headline', 'ad_description', 'brand',
+    'confidence_score', 'enriched_at'
+  ];
+  
+  const csvContent = [
+    headers.join(','),
+    ...products.map(product => 
+      headers.map(header => {
+        const value = product[header as keyof EnrichedProduct];
+        if (Array.isArray(value)) return `"${value.join(', ')}"`;
+        return `"${value || ''}"`;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  return csvContent;
+};
+
+// Fonction pour générer le template CSV Google Categories
+const generateGoogleCategoriesCSV = (): string => {
+  const headers = ['category', 'subcategory', 'google_product_category', 'description'];
+  const examples = [
+    ['Canapé', 'Canapé fixe', '635', 'Canapés fixes et droits'],
+    ['Chaise', 'Chaise de bureau', '436', 'Chaises et fauteuils de bureau'],
+    ['Table', 'Table à manger', '443', 'Tables de salle à manger']
+  ];
+  
+  return [
+    headers.join(','),
+    ...examples.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n');
 };

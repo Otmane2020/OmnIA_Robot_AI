@@ -387,8 +387,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       
       if (!formData.siret.trim()) {
         newErrors.siret = 'SIRET requis';
-      } else if (siretValidation === 'invalid') {
-        newErrors.siret = 'SIRET invalide (14 chiffres requis)';
+      } else if (formData.siret.length !== 14) {
+        newErrors.siret = 'SIRET doit contenir exactement 14 chiffres';
+      } else if (!/^\d{14}$/.test(formData.siret)) {
+        newErrors.siret = 'SIRET doit contenir uniquement des chiffres';
       }
       
       if (!formData.address.trim()) {
@@ -826,21 +828,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               type="text"
               value={formData.siret}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, ''); // Supprimer tout sauf les chiffres
-                if (value.length <= 14) { // Limiter à 14 caractères
-                  setFormData(prev => ({ ...prev, siret: value }));
-                }
+                const formatted = formatSIRET(e.target.value);
+                handleInputChange('siret', formatted);
               }}
-              className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
-                errors.siret ? 'border-red-500' : 'border-cyan-500/50'
+              className={`w-full bg-black/40 border rounded-xl px-4 py-3 pr-12 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+                errors.siret ? 'border-red-500' : 
+                siretValidation === 'valid' ? 'border-green-500' :
+                siretValidation === 'invalid' ? 'border-red-500' :
+                'border-cyan-500/50'
               }`}
-              placeholder="12345678901234 (14 chiffres)"
-              maxLength={14}
-              required
+              placeholder="123 456 789 01234"
+              maxLength={17}
             />
-            <div className="text-xs text-cyan-400 mt-1">
-              Format: 14 chiffres exactement (ex: 12345678901234)
-            </div>
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               {siretValidation === 'validating' && <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" />}
               {siretValidation === 'valid' && <CheckCircle className="w-5 h-5 text-green-400" />}
