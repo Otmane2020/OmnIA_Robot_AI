@@ -119,9 +119,11 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const validateSIRET = async (siret: string): Promise<boolean> => {
     // Supprimer tous les espaces, tirets et caractères non numériques
     const cleanSiret = siret.replace(/[\s-]/g, '');
+    console.log('🔍 Validation SIRET:', cleanSiret);
     
     // Vérifier le format (14 chiffres)
     if (!/^\d{14}$/.test(cleanSiret)) {
+      console.log('❌ SIRET longueur incorrecte:', cleanSiret.length);
       return false;
     }
 
