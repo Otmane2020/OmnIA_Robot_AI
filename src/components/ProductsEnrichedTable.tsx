@@ -212,7 +212,7 @@ export const ProductsEnrichedTable: React.FC = () => {
       filtered = filtered.filter(product =>
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.color.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -257,11 +257,7 @@ export const ProductsEnrichedTable: React.FC = () => {
     if (selectedProducts.length === 0) return;
     
     if (confirm(`Supprimer ${selectedProducts.length} produit(s) enrichi(s) sélectionné(s) ?`)) {
-      // Filtrer les produits sélectionnés ET les produits mock pour éviter les conflits
-      const updatedProducts = products.filter(p => 
-        !selectedProducts.includes(p.id) && 
-        !p.id.startsWith('enriched-') // Éviter de supprimer les produits mock
-      );
+      const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
       setProducts(updatedProducts);
       localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
       setSelectedProducts([]);
@@ -296,53 +292,296 @@ export const ProductsEnrichedTable: React.FC = () => {
     setEditValues({});
   };
 
+  const detectCategory = (title: string) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('canapé') || lowerTitle.includes('sofa')) return 'Canapé';
+    if (lowerTitle.includes('table')) return 'Table';
+    if (lowerTitle.includes('chaise')) return 'Chaise';
+    if (lowerTitle.includes('lit')) return 'Lit';
+    if (lowerTitle.includes('armoire') || lowerTitle.includes('placard')) return 'Armoire';
+    if (lowerTitle.includes('commode') || lowerTitle.includes('tiroir')) return 'Commode';
+    if (lowerTitle.includes('étagère') || lowerTitle.includes('bibliothèque')) return 'Étagère';
+    if (lowerTitle.includes('fauteuil')) return 'Fauteuil';
+    if (lowerTitle.includes('bureau')) return 'Bureau';
+    if (lowerTitle.includes('miroir')) return 'Miroir';
+    if (lowerTitle.includes('lampe') || lowerTitle.includes('luminaire')) return 'Éclairage';
+    if (lowerTitle.includes('tapis')) return 'Tapis';
+    if (lowerTitle.includes('coussin')) return 'Coussin';
+    if (lowerTitle.includes('rideau') || lowerTitle.includes('voilage')) return 'Rideau';
+    return 'Mobilier';
+  };
+
+  const detectSubcategory = (title: string) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('convertible')) return 'Canapé convertible';
+    if (lowerTitle.includes('angle')) return 'Canapé d\'angle';
+    if (lowerTitle.includes('ronde')) return 'Table ronde';
+    if (lowerTitle.includes('rectangulaire')) return 'Table rectangulaire';
+    if (lowerTitle.includes('bar')) return 'Table de bar';
+    if (lowerTitle.includes('basse')) return 'Table basse';
+    if (lowerTitle.includes('chevet')) return 'Table de chevet';
+    if (lowerTitle.includes('console')) return 'Console';
+    if (lowerTitle.includes('extensible')) return 'Table extensible';
+    return '';
+  };
+
+  const detectColor = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('blanc') || lowerText.includes('white')) return 'Blanc';
+    if (lowerText.includes('noir') || lowerText.includes('black')) return 'Noir';
+    if (lowerText.includes('gris') || lowerText.includes('grey') || lowerText.includes('gray')) return 'Gris';
+    if (lowerText.includes('beige') || lowerText.includes('sable')) return 'Beige';
+    if (lowerText.includes('marron') || lowerText.includes('brun') || lowerText.includes('brown')) return 'Marron';
+    if (lowerText.includes('bleu') || lowerText.includes('blue')) return 'Bleu';
+    if (lowerText.includes('rouge') || lowerText.includes('red')) return 'Rouge';
+    if (lowerText.includes('vert') || lowerText.includes('green')) return 'Vert';
+    if (lowerText.includes('jaune') || lowerText.includes('yellow')) return 'Jaune';
+    if (lowerText.includes('rose') || lowerText.includes('pink')) return 'Rose';
+    if (lowerText.includes('violet') || lowerText.includes('purple')) return 'Violet';
+    if (lowerText.includes('orange')) return 'Orange';
+    if (lowerText.includes('naturel') || lowerText.includes('natural')) return 'Naturel';
+    if (lowerText.includes('doré') || lowerText.includes('gold')) return 'Doré';
+    if (lowerText.includes('argenté') || lowerText.includes('silver')) return 'Argenté';
+    return '';
+  };
+
+  const detectMaterial = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('bois') || lowerText.includes('wood')) return 'Bois';
+    if (lowerText.includes('métal') || lowerText.includes('metal')) return 'Métal';
+    if (lowerText.includes('verre') || lowerText.includes('glass')) return 'Verre';
+    if (lowerText.includes('plastique') || lowerText.includes('plastic')) return 'Plastique';
+    if (lowerText.includes('cuir') || lowerText.includes('leather')) return 'Cuir';
+    if (lowerText.includes('tissu') || lowerText.includes('fabric')) return 'Tissu';
+    if (lowerText.includes('velours') || lowerText.includes('velvet')) return 'Velours';
+    if (lowerText.includes('lin') || lowerText.includes('linen')) return 'Lin';
+    if (lowerText.includes('coton') || lowerText.includes('cotton')) return 'Coton';
+    if (lowerText.includes('marbre') || lowerText.includes('marble')) return 'Marbre';
+    if (lowerText.includes('travertin')) return 'Travertin';
+    if (lowerText.includes('céramique') || lowerText.includes('ceramic')) return 'Céramique';
+    if (lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
+    if (lowerText.includes('osier') || lowerText.includes('wicker')) return 'Osier';
+    if (lowerText.includes('bambou') || lowerText.includes('bamboo')) return 'Bambou';
+    return '';
+  };
+
+  const detectFabric = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('chenille')) return 'Chenille';
+    if (lowerText.includes('côtelé')) return 'Velours côtelé';
+    if (lowerText.includes('bouclé')) return 'Bouclé';
+    if (lowerText.includes('sergé')) return 'Sergé';
+    if (lowerText.includes('jacquard')) return 'Jacquard';
+    if (lowerText.includes('tweed')) return 'Tweed';
+    if (lowerText.includes('denim')) return 'Denim';
+    if (lowerText.includes('satin')) return 'Satin';
+    if (lowerText.includes('soie') || lowerText.includes('silk')) return 'Soie';
+    return '';
+  };
+
+  const detectStyle = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('moderne') || lowerText.includes('modern')) return 'Moderne';
+    if (lowerText.includes('contemporain') || lowerText.includes('contemporary')) return 'Contemporain';
+    if (lowerText.includes('industriel') || lowerText.includes('industrial')) return 'Industriel';
+    if (lowerText.includes('scandinave') || lowerText.includes('scandinavian')) return 'Scandinave';
+    if (lowerText.includes('vintage') || lowerText.includes('rétro')) return 'Vintage';
+    if (lowerText.includes('classique') || lowerText.includes('classic')) return 'Classique';
+    if (lowerText.includes('rustique') || lowerText.includes('rustic')) return 'Rustique';
+    if (lowerText.includes('bohème') || lowerText.includes('boho')) return 'Bohème';
+    if (lowerText.includes('minimaliste') || lowerText.includes('minimalist')) return 'Minimaliste';
+    if (lowerText.includes('art déco')) return 'Art Déco';
+    return '';
+  };
+
+  const extractDimensions = (text: string) => {
+    const dimensionRegex = /(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?/i;
+    const match = text.match(dimensionRegex);
+    if (match) {
+      return match[3] ? `${match[1]}x${match[2]}x${match[3]}cm` : `${match[1]}x${match[2]}cm`;
+    }
+    return '';
+  };
+
+  const detectRoom = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('salon') || lowerText.includes('living')) return 'Salon';
+    if (lowerText.includes('chambre') || lowerText.includes('bedroom')) return 'Chambre';
+    if (lowerText.includes('cuisine') || lowerText.includes('kitchen')) return 'Cuisine';
+    if (lowerText.includes('salle à manger') || lowerText.includes('dining')) return 'Salle à manger';
+    if (lowerText.includes('bureau') || lowerText.includes('office')) return 'Bureau';
+    if (lowerText.includes('salle de bain') || lowerText.includes('bathroom')) return 'Salle de bain';
+    if (lowerText.includes('entrée') || lowerText.includes('entrance')) return 'Entrée';
+    if (lowerText.includes('terrasse') || lowerText.includes('terrace')) return 'Terrasse';
+    if (lowerText.includes('jardin') || lowerText.includes('garden')) return 'Jardin';
+    return '';
+  };
+
+  const generateTags = (product: any) => {
+    const tags = [];
+    const title = (product.title || '').toLowerCase();
+    const description = (product.description || '').toLowerCase();
+    
+    if (title.includes('convertible')) tags.push('convertible');
+    if (title.includes('angle')) tags.push('angle');
+    if (title.includes('rangement')) tags.push('rangement');
+    if (title.includes('places')) tags.push(title.match(/(\d+)\s*places?/)?.[1] + '-places');
+    if (description.includes('livraison')) tags.push('livraison');
+    if (description.includes('gratuite')) tags.push('gratuite');
+    
+    return tags.filter(Boolean);
+  };
+
+  const generateSEOTitle = (product: any) => {
+    const title = product.title || 'Produit';
+    const category = detectCategory(title);
+    const material = detectMaterial(title + ' ' + (product.description || ''));
+    const color = detectColor(title + ' ' + (product.description || ''));
+    
+    let seoTitle = title;
+    if (material) seoTitle += ` - ${material}`;
+    if (color) seoTitle += ` ${color}`;
+    seoTitle += ' - Decora Home';
+    
+    return seoTitle.substring(0, 60);
+  };
+
+  const generateSEODescription = (product: any) => {
+    const title = product.title || 'Produit';
+    const category = detectCategory(title);
+    const material = detectMaterial(title + ' ' + (product.description || ''));
+    const color = detectColor(title + ' ' + (product.description || ''));
+    
+    let description = `${title}`;
+    if (material) description += ` en ${material.toLowerCase()}`;
+    if (color) description += ` ${color.toLowerCase()}`;
+    description += '. Design contemporain élégant. Livraison offerte.';
+    
+    return description.substring(0, 160);
+  };
+
+  const generateAdHeadline = (product: any) => {
+    const title = product.title || 'Produit';
+    return title.substring(0, 30);
+  };
+
+  const generateAdDescription = (product: any) => {
+    const material = detectMaterial(product.title + ' ' + (product.description || ''));
+    const style = detectStyle(product.title + ' ' + (product.description || ''));
+    
+    let description = '';
+    if (material) description += `${material}. `;
+    if (style) description += `${style}. `;
+    description += 'Promo exceptionnelle.';
+    
+    return description.substring(0, 90);
+  };
+
+  const getGoogleCategory = (product: any) => {
+    const category = detectCategory(product.title || '');
+    const categoryMap: { [key: string]: string } = {
+      'Canapé': '635',
+      'Table': '443',
+      'Chaise': '436',
+      'Lit': '569',
+      'Armoire': '436',
+      'Commode': '436',
+      'Étagère': '436',
+      'Fauteuil': '436',
+      'Bureau': '443',
+      'Miroir': '594',
+      'Éclairage': '594',
+      'Tapis': '505',
+      'Coussin': '569',
+      'Rideau': '569'
+    };
+    return categoryMap[category] || '436';
+  };
+
+  const calculateConfidenceScore = (product: any) => {
+    let score = 50;
+    
+    if (product.title) score += 10;
+    if (product.description) score += 10;
+    if (product.price) score += 10;
+    if (product.image_url) score += 10;
+    if (detectCategory(product.title || '')) score += 5;
+    if (detectMaterial(product.title + ' ' + (product.description || ''))) score += 5;
+    
+    return Math.min(score, 100);
+  };
+
   const handleRunEnrichmentCron = async () => {
     try {
       showInfo('Enrichissement démarré', 'Analyse IA des produits en cours...');
       
-      // Simuler l'enrichissement automatique
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Récupérer les produits du catalogue principal
+      const catalogProducts = localStorage.getItem('catalog_products');
+      if (!catalogProducts) {
+        showError('Aucun produit', 'Aucun produit trouvé dans le catalogue principal à enrichir.');
+        return;
+      }
       
-      // Ajouter quelques produits enrichis
-      const newEnrichedProducts = [
-        {
-          id: `enriched-${Date.now()}`,
-          handle: 'nouveau-produit-enrichi',
-          title: 'Nouveau produit enrichi par IA',
-          description: 'Produit automatiquement enrichi par le cron',
-          category: 'Mobilier',
-          type: 'Table',
-          color: 'Blanc',
-          material: 'Bois',
-          fabric: '',
-          style: 'Scandinave',
-          dimensions: '120x80x75cm',
-          room: 'Bureau',
-          price: 299,
-          stock_qty: 25,
-          image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
-          product_url: '#',
-          created_at: new Date().toISOString()
-        }
-      ];
+      const products = JSON.parse(catalogProducts);
+      console.log('📦 Produits à enrichir:', products.length);
       
-      const updatedProducts = [...products, ...newEnrichedProducts];
-      setProducts(updatedProducts);
-      localStorage.setItem('enriched_products', JSON.stringify(updatedProducts));
+      // Simuler l'enrichissement IA
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Enrichir automatiquement tous les produits du catalogue
+      const newEnrichedProducts = products.map((product: any) => ({
+        id: `enriched-${product.id || Date.now()}`,
+        handle: product.handle || product.id || 'produit-enrichi',
+        title: product.title || product.name || 'Produit sans nom',
+        description: product.description || '',
+        category: detectCategory(product.title || product.name || ''),
+        subcategory: detectSubcategory(product.title || product.name || ''),
+        color: detectColor(product.title + ' ' + product.description),
+        material: detectMaterial(product.title + ' ' + product.description),
+        fabric: detectFabric(product.title + ' ' + product.description),
+        style: detectStyle(product.title + ' ' + product.description),
+        dimensions: extractDimensions(product.description || ''),
+        room: detectRoom(product.title + ' ' + product.description),
+        price: product.price || 0,
+        compare_at_price: product.compare_at_price || product.compareAtPrice,
+        stock_qty: product.stock || product.quantityAvailable || 0,
+        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        product_url: product.product_url || '#',
+        tags: generateTags(product),
+        seo_title: generateSEOTitle(product),
+        seo_description: generateSEODescription(product),
+        ad_headline: generateAdHeadline(product),
+        ad_description: generateAdDescription(product),
+        google_product_category: getGoogleCategory(product),
+        gtin: '',
+        brand: product.vendor || 'Decora Home',
+        confidence_score: calculateConfidenceScore(product),
+        enriched_at: new Date().toISOString(),
+        enrichment_source: 'cron_auto',
+        created_at: product.created_at || new Date().toISOString()
+      }));
+      
+      // Fusionner avec les produits enrichis existants (éviter doublons)
+      const existingEnriched = products.filter((p: any) => !newEnrichedProducts.find(np => np.handle === p.handle));
+      const allEnrichedProducts = [...existingEnriched, ...newEnrichedProducts];
+      
+      setProducts(allEnrichedProducts);
+      localStorage.setItem('enriched_products', JSON.stringify(allEnrichedProducts));
       
       showSuccess(
         'Enrichissement terminé', 
         `${newEnrichedProducts.length} nouveau(x) produit(s) enrichi(s) ajouté(s) !`,
         [
           {
-            label: 'Voir les nouveaux',
-            action: () => setSearchTerm('nouveau'),
+            label: 'Voir le catalogue enrichi',
+            action: () => setSearchTerm(''),
             variant: 'primary'
           }
         ]
       );
       
     } catch (error) {
+      console.error('❌ Erreur enrichissement:', error);
       showError('Erreur enrichissement', 'Erreur lors de l\'enrichissement automatique.');
     }
   };
