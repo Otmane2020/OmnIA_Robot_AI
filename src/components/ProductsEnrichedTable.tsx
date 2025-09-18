@@ -935,8 +935,71 @@ export const ProductsEnrichedTable: React.FC = () => {
           </div>
         </div>
         
-        <div>
-              <div className="flex gap-4 mb-6">
+      {/* Export/Import Actions */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => {
+            const csvContent = [
+              'id,sku,gtin,handle,title,description,short_description,vendor,brand,category,subcategory,material,color,style,room,dimensions,weight,capacity,price,compare_at_price,currency,stock_quantity,availability,seo_title,seo_description,google_category,pmax_score,image_url,image_alt,gallery_urls,intent_tags,matching_score,chat_history_ref',
+              ...enrichedProducts.map(product => [
+                product.id,
+                product.sku || '',
+                product.gtin || '',
+                product.handle || '',
+                product.title || '',
+                product.description || '',
+                product.short_description || '',
+                product.vendor || '',
+                product.brand || '',
+                product.category || '',
+                product.subcategory || '',
+                product.material || '',
+                product.color || '',
+                product.style || '',
+                product.room || '',
+                product.dimensions || '',
+                product.weight || '',
+                product.capacity || '',
+                product.price || 0,
+                product.compare_at_price || '',
+                product.currency || 'EUR',
+                product.stock_quantity || 0,
+                product.availability || 'En stock',
+                product.seo_title || '',
+                product.seo_description || '',
+                product.google_category || '',
+                product.pmax_score || 0,
+                product.image_url || '',
+                product.image_alt || '',
+                product.gallery_urls ? product.gallery_urls.join(';') : '',
+                product.intent_tags ? JSON.stringify(product.intent_tags) : '{}',
+                product.matching_score || 0,
+                product.chat_history_ref || ''
+              ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'catalogue-enrichi-omnia.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+        >
+          <Download className="w-4 h-4" />
+          Exporter CSV
+        </button>
+        
+        <button
+          onClick={() => setShowGoogleCategoriesModal(true)}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+        >
+          <Globe className="w-4 h-4" />
+          Google Categories
+        </button>
+      </div>
                 <button
                   onClick={() => {
                     const csvContent = [
