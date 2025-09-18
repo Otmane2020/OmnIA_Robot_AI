@@ -63,47 +63,92 @@ Deno.serve(async (req: Request) => {
 
 async function getRelevantProductsForQuery(query: string, retailerId: string) {
   try {
+    console.log('🔍 Recherche produits pour:', query);
+    
+    // NOUVEAU: Essayer d'abord products_enriched, puis fallback vers ai_products
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('🔍 Recherche dans products_enriched pour:', query);
-
     const productIntent = analyzeProductIntent(query);
     const extractedAttributes = extractAttributesFromQuery(query);
 
+    // Recherche dans products_enriched d'abord
     let qb = supabase
       .from('products_enriched')
-      .select('id, title, description, category, type, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
-      .eq('retailer_id', retailerId)
+      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
       .gt('stock_qty', 0);
 
     if (productIntent.category) {
-      qb = qb.ilike('type', `%${productIntent.category}%`);
+      qb = qb.or(`category.ilike.%${productIntent.category}%,subcategory.ilike.%${productIntent.category}%`);
     }
     if (extractedAttributes.colors.length > 0) {
-      qb = qb.in('color', extractedAttributes.colors);
+      qb = qb.or(extractedAttributes.colors.map(color => `color.ilike.%${color}%`).join(','));
     }
     if (extractedAttributes.materials.length > 0) {
-      qb = qb.in('material', extractedAttributes.materials);
+      qb = qb.or(extractedAttributes.materials.map(material => `material.ilike.%${material}%,fabric.ilike.%${material}%`).join(','));
     }
     if (extractedAttributes.dimensions.length > 0) {
       qb = qb.or(extractedAttributes.dimensions.map(dim => `dimensions.ilike.%${dim}%`).join(','));
     }
 
     qb = qb.limit(5);
-    const { data, error } = await qb;
+    const { data: enrichedData, error: enrichedError } = await qb;
 
-    if (error) {
-      console.error('❌ Erreur DB products_enriched:', error);
-      return [];
+    if (enrichedError) {
+      console.error('❌ Erreur DB products_enriched:', enrichedError);
     }
 
-    console.log('✅ Produits trouvés:', data?.length || 0);
-    return data || [];
+    let products = enrichedData || [];
+    console.log('✅ Produits enrichis trouvés:', products.length);
+
+    // FALLBACK: Si pas assez de produits enrichis, chercher dans ai_products
+    if (products.length < 3) {
+      console.log('🔄 Fallback vers ai_products...');
+      
+      let aiQuery = supabase
+        .from('ai_products')
+        .select('id, name as title, description, category, price, stock, image_url, product_url')
+        .gt('stock', 0);
+
+      if (productIntent.category) {
+        aiQuery = aiQuery.ilike('category', `%${productIntent.category}%`);
+      }
+
+      aiQuery = aiQuery.limit(5 - products.length);
+      const { data: aiData } = await aiQuery;
+      
+      if (aiData && aiData.length > 0) {
+        // Convertir format ai_products vers format products_enriched
+        const convertedProducts = aiData.map(product => ({
+          id: product.id,
+          handle: product.id,
+          title: product.title,
+          description: product.description,
+          category: product.category,
+          subcategory: '',
+          color: '',
+          material: '',
+          fabric: '',
+          style: '',
+          dimensions: '',
+          room: '',
+          price: product.price,
+          stock_qty: product.stock,
+          image_url: product.image_url,
+          product_url: product.product_url
+        }));
+        
+        products = [...products, ...convertedProducts];
+        console.log('✅ Produits AI ajoutés:', convertedProducts.length);
+      }
+    }
+
+    console.log('✅ Total produits trouvés:', products.length);
+    return products;
   } catch (error) {
-    console.error('❌ Erreur filtrage products_enriched:', error);
+    console.error('❌ Erreur recherche produits:', error);
     return [];
   }
 }

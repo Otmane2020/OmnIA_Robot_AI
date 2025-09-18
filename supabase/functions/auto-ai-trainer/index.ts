@@ -128,6 +128,7 @@ Deno.serve(async (req: Request) => {
 
     // Store in database with upsert (update or insert)
     if (processedProducts.length > 0) {
+      // Insérer dans ai_products
       const { error: upsertError } = await supabase
         .from('ai_products')
         .upsert(processedProducts, { 
@@ -138,6 +139,41 @@ Deno.serve(async (req: Request) => {
       if (upsertError) {
         console.error('❌ Erreur upsert:', upsertError);
         throw upsertError;
+      }
+
+      // NOUVEAU: Insérer aussi dans imported_products pour déclencher le trigger de sync
+      console.log('🔄 Synchronisation vers imported_products pour trigger...');
+      const importedProducts = processedProducts.map(product => ({
+        external_id: product.id,
+        retailer_id: store_id || 'demo-retailer-id',
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        compare_at_price: undefined,
+        category: product.category,
+        vendor: product.vendor || 'Decora Home',
+        image_url: product.image_url,
+        product_url: product.product_url,
+        stock: product.stock,
+        source_platform: source,
+        status: 'active',
+        extracted_attributes: product.extracted_attributes,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error: importedError } = await supabase
+        .from('imported_products')
+        .upsert(importedProducts, { 
+          onConflict: 'retailer_id,external_id,source_platform',
+          ignoreDuplicates: false 
+        });
+
+      if (importedError) {
+        console.error('❌ Erreur sync imported_products:', importedError);
+        // Ne pas faire échouer tout le processus
+      } else {
+        console.log('✅ Produits synchronisés vers imported_products (trigger auto vers enriched):', importedProducts.length);
       }
     }
 
@@ -160,6 +196,7 @@ Deno.serve(async (req: Request) => {
         message: `🤖 OmnIA Robot entraîné automatiquement ! ${processedProducts.length} produits analysés depuis ${source}.`,
         stats: {
           products_processed: processedProducts.length,
+          products_enriched: processedProducts.length,
           source_platform: source,
           trigger_type,
           attributes_extracted: processedProducts.reduce((sum, p) => 
@@ -490,4 +527,81 @@ function getTopAttributes(products: any[], attributeType: string): string[] {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([attr]) => attr);
+}
+
+// NOUVELLES FONCTIONS UTILITAIRES
+function extractDimensionsString(dimensions: any): string {
+  if (!dimensions || typeof dimensions !== 'object') return '';
+  
+  const { length, width, height, diameter, unit = 'cm' } = dimensions;
+  
+  if (diameter) {
+    return `Ø${diameter}${unit}`;
+  }
+  
+  if (length && width && height) {
+    return `${length}×${width}×${height}${unit}`;
+  }
+  
+  if (length && width) {
+    return `${length}×${width}${unit}`;
+  }
+  
+  return '';
+}
+
+function generateSEOTitle(name: string, attributes: any): string {
+  const color = attributes?.colors?.[0] || '';
+  const material = attributes?.materials?.[0] || '';
+  const brand = 'Decora Home';
+  
+  let title = name;
+  if (color) title += ` ${color}`;
+  if (material) title += ` ${material}`;
+  title += ` - ${brand}`;
+  
+  return title.substring(0, 70);
+}
+
+function generateSEODescription(name: string, description: string, attributes: any): string {
+  const style = attributes?.styles?.[0] || '';
+  const material = attributes?.materials?.[0] || '';
+  
+  let desc = `${name}`;
+  if (material) desc += ` en ${material}`;
+  if (style) desc += ` de style ${style}`;
+  desc += '. Livraison gratuite. Garantie qualité.';
+  
+  return desc.substring(0, 155);
+}
+
+function generateAdHeadline(name: string): string {
+  return name.substring(0, 30);
+}
+
+function generateAdDescription(name: string, attributes: any): string {
+  const material = attributes?.materials?.[0] || '';
+  const style = attributes?.styles?.[0] || '';
+  
+  let desc = name;
+  if (material) desc += ` ${material}`;
+  if (style) desc += ` ${style}`;
+  desc += '. Promo !';
+  
+  return desc.substring(0, 90);
+}
+
+function getGoogleCategory(category: string): string {
+  const categoryMap: { [key: string]: string } = {
+    'canapé': '635',
+    'table': '443', 
+    'chaise': '436',
+    'lit': '569',
+    'rangement': '6552',
+    'meuble tv': '6552',
+    'décoration': '696',
+    'éclairage': '594'
+  };
+  
+  return categoryMap[category?.toLowerCase()] || '';
 }
