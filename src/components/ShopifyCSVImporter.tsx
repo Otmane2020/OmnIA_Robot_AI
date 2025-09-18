@@ -468,6 +468,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         image_url: product['Image Src'] || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
         product_url: product['Product URL'] || '#',
         stock: parseInt(product['Variant Inventory Qty']) || 0,
+        stock_quantity: parseInt(product['Stock Quantity']) || parseInt(product['Variant Inventory Qty']) || 0,
         status: product.Status || 'active', // Respecter le statut du CSV
         source_platform: 'csv',
         sku: product['Variant SKU'] || '',
