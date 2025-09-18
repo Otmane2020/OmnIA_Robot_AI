@@ -12,7 +12,7 @@ interface EnrichedProduct {
   title: string;
   description: string;
   category: string;
-  type: string;
+  subcategory: string;
   color: string;
   material: string;
   fabric: string;
@@ -23,6 +23,17 @@ interface EnrichedProduct {
   stock_qty: number;
   image_url: string;
   product_url: string;
+  tags: string[];
+  seo_title: string;
+  seo_description: string;
+  ad_headline: string;
+  ad_description: string;
+  google_product_category: string;
+  gtin: string;
+  brand: string;
+  confidence_score: number;
+  enriched_at: string;
+  enrichment_source: string;
   created_at: string;
 }
 
@@ -49,8 +60,8 @@ export const ProductsEnrichedTable: React.FC = () => {
       handle: 'canape-alyana-beige',
       title: 'Canapé ALYANA convertible - Beige',
       description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-      category: 'Mobilier',
-      type: 'Canapé',
+      category: 'Canapé',
+      subcategory: 'Canapé d\'angle convertible',
       color: 'Beige',
       material: 'Velours',
       fabric: 'Velours côtelé',
@@ -61,6 +72,17 @@ export const ProductsEnrichedTable: React.FC = () => {
       stock_qty: 100,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
       product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+      tags: ['convertible', 'angle', 'velours', 'rangement', '4-places'],
+      seo_title: 'Canapé d\'angle convertible ALYANA beige - Velours côtelé',
+      seo_description: 'Canapé d\'angle convertible 4 places en velours côtelé beige. Couchage intégré, coffre rangement. Livraison gratuite.',
+      ad_headline: 'Canapé ALYANA Convertible',
+      ad_description: 'Canapé d\'angle 4 places velours côtelé. Convertible + rangement. Promo -43%',
+      google_product_category: '635',
+      gtin: '',
+      brand: 'Decora Home',
+      confidence_score: 95,
+      enriched_at: '2025-01-15T10:30:00Z',
+      enrichment_source: 'ai',
       created_at: '2024-12-15T10:30:00Z'
     },
     {
@@ -68,8 +90,8 @@ export const ProductsEnrichedTable: React.FC = () => {
       handle: 'table-aurea-100',
       title: 'Table AUREA Ø100cm - Travertin',
       description: 'Table ronde en travertin naturel avec pieds métal noir',
-      category: 'Mobilier',
-      type: 'Table',
+      category: 'Table',
+      subcategory: 'Table à manger ronde',
       color: 'Naturel',
       material: 'Travertin',
       fabric: '',
@@ -80,6 +102,17 @@ export const ProductsEnrichedTable: React.FC = () => {
       stock_qty: 50,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
       product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
+      tags: ['travertin', 'ronde', 'naturel', 'élégant', 'minérale'],
+      seo_title: 'Table ronde AUREA travertin naturel Ø100cm - Decora Home',
+      seo_description: 'Table à manger ronde AUREA en travertin naturel Ø100cm. Pieds métal noir. Design contemporain élégant. Livraison offerte.',
+      ad_headline: 'Table AUREA Travertin Ø100cm',
+      ad_description: 'Table ronde travertin naturel. Design contemporain. Pieds métal noir. -42%',
+      google_product_category: '443',
+      gtin: '',
+      brand: 'Decora Home',
+      confidence_score: 92,
+      enriched_at: '2025-01-15T09:15:00Z',
+      enrichment_source: 'ai',
       created_at: '2024-11-20T09:15:00Z'
     },
     {
@@ -87,8 +120,8 @@ export const ProductsEnrichedTable: React.FC = () => {
       handle: 'chaise-inaya-gris',
       title: 'Chaise INAYA - Gris chenille',
       description: 'Chaise en tissu chenille avec pieds métal noir',
-      category: 'Mobilier',
-      type: 'Chaise',
+      category: 'Chaise',
+      subcategory: 'Chaise de salle à manger',
       color: 'Gris',
       material: 'Métal',
       fabric: 'Chenille',
@@ -99,6 +132,17 @@ export const ProductsEnrichedTable: React.FC = () => {
       stock_qty: 96,
       image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
       product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+      tags: ['chenille', 'métal', 'contemporain', 'élégant', 'gris'],
+      seo_title: 'Chaise INAYA chenille gris - Pieds métal noir - Decora Home',
+      seo_description: 'Chaise INAYA en tissu chenille gris avec pieds métal noir. Design contemporain élégant. Confort optimal. Livraison rapide.',
+      ad_headline: 'Chaise INAYA Chenille Gris',
+      ad_description: 'Chaise chenille + métal noir. Design contemporain. Confort optimal. -34%',
+      google_product_category: '436',
+      gtin: '',
+      brand: 'Decora Home',
+      confidence_score: 88,
+      enriched_at: '2025-01-15T08:22:00Z',
+      enrichment_source: 'ai',
       created_at: '2024-10-05T14:22:00Z'
     }
   ];
@@ -500,12 +544,17 @@ export const ProductsEnrichedTable: React.FC = () => {
                   />
                 </th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Type</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Catégorie</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Sous-catégorie</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Couleur</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Matériau</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Tissu</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Style</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Dimensions</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Pièce</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Tags</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">SEO</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Score IA</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
               </tr>
@@ -544,12 +593,24 @@ export const ProductsEnrichedTable: React.FC = () => {
                     {editingProduct === product.id ? (
                       <input
                         type="text"
-                        value={editValues.type || ''}
-                        onChange={(e) => setEditValues(prev => ({ ...prev, type: e.target.value }))}
+                        value={editValues.category || ''}
+                        onChange={(e) => setEditValues(prev => ({ ...prev, category: e.target.value }))}
                         className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
                       />
                     ) : (
-                      <span className="text-white">{product.type}</span>
+                      <span className="text-white">{product.category}</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {editingProduct === product.id ? (
+                      <input
+                        type="text"
+                        value={editValues.subcategory || ''}
+                        onChange={(e) => setEditValues(prev => ({ ...prev, subcategory: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                      />
+                    ) : (
+                      <span className="text-white">{product.subcategory}</span>
                     )}
                   </td>
                   <td className="p-4">
@@ -574,6 +635,18 @@ export const ProductsEnrichedTable: React.FC = () => {
                       />
                     ) : (
                       <span className="text-white">{product.material}</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {editingProduct === product.id ? (
+                      <input
+                        type="text"
+                        value={editValues.fabric || ''}
+                        onChange={(e) => setEditValues(prev => ({ ...prev, fabric: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                      />
+                    ) : (
+                      <span className="text-white">{product.fabric}</span>
                     )}
                   </td>
                   <td className="p-4">
@@ -611,6 +684,36 @@ export const ProductsEnrichedTable: React.FC = () => {
                     ) : (
                       <span className="text-white">{product.room}</span>
                     )}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-wrap gap-1 max-w-32">
+                      {(product.tags || []).slice(0, 3).map((tag, index) => (
+                        <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                      {(product.tags || []).length > 3 && (
+                        <span className="text-gray-400 text-xs">+{(product.tags || []).length - 3}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-center">
+                      <div className="text-sm text-white font-semibold">{product.seo_title?.substring(0, 20) || 'Non défini'}...</div>
+                      <div className="text-xs text-gray-400">{product.seo_description?.substring(0, 30) || 'Aucune description'}...</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-center">
+                      <div className={`text-lg font-bold ${
+                        (product.confidence_score || 0) >= 80 ? 'text-green-400' :
+                        (product.confidence_score || 0) >= 60 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {product.confidence_score || 0}%
+                      </div>
+                      <div className="text-xs text-gray-400">Confiance IA</div>
+                    </div>
                   </td>
                   <td className="p-4">
                     <span className="font-bold text-green-400">{product.price}€</span>

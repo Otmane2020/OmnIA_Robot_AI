@@ -14,15 +14,24 @@ interface ProductEnrichmentRequest {
 
 interface EnrichedAttributes {
   category: string;
-  type: string;
+  subcategory: string;
   color: string;
+  material: string;
+  fabric: string;
+  style: string;
   material: string;
   fabric: string;
   style: string;
   dimensions: string;
   room: string;
-  shape?: string;
-  features?: string[];
+  tags: string[];
+  seo_title: string;
+  seo_description: string;
+  ad_headline: string;
+  ad_description: string;
+  google_product_category: string;
+  gtin: string;
+  brand: string;
   confidence_score: number;
 }
 
@@ -107,17 +116,28 @@ Deno.serve(async (req: Request) => {
           title: product.name,
           description: product.description || '',
           category: enrichedAttributes.category,
-          type: enrichedAttributes.type,
+          subcategory: enrichedAttributes.subcategory,
           color: enrichedAttributes.color,
           material: enrichedAttributes.material,
           fabric: enrichedAttributes.fabric,
           style: enrichedAttributes.style,
           dimensions: enrichedAttributes.dimensions,
           room: enrichedAttributes.room,
+          tags: enrichedAttributes.tags,
+          seo_title: enrichedAttributes.seo_title,
+          seo_description: enrichedAttributes.seo_description,
+          ad_headline: enrichedAttributes.ad_headline,
+          ad_description: enrichedAttributes.ad_description,
+          google_product_category: enrichedAttributes.google_product_category,
+          gtin: enrichedAttributes.gtin,
+          brand: enrichedAttributes.brand,
           price: product.price,
           stock_qty: product.stock,
           image_url: product.image_url,
           product_url: product.product_url,
+          confidence_score: enrichedAttributes.confidence_score,
+          enriched_at: new Date().toISOString(),
+          enrichment_source: 'ai',
           created_at: new Date().toISOString()
         };
 
@@ -217,25 +237,36 @@ PRIX: ${product.price || 0}€
 
 ${productText}
 
-Extrait UNIQUEMENT ces attributs au format JSON :
+Enrichis COMPLÈTEMENT ce produit au format JSON :
 {
-  "category": "Mobilier",
-  "type": "canapé|table|chaise|lit|rangement|meuble tv|decoration",
+  "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration|Éclairage",
+  "subcategory": "Description précise (ex: Canapé d'angle convertible, Table basse en verre)",
   "color": "blanc|noir|gris|beige|marron|bleu|vert|rouge|jaune|orange|rose|violet|naturel|chêne|noyer|taupe",
   "material": "bois|métal|verre|tissu|cuir|velours|travertin|marbre|plastique|rotin|chenille",
   "fabric": "velours|chenille|lin|coton|cuir|tissu|polyester",
   "style": "moderne|contemporain|scandinave|industriel|vintage|rustique|classique|minimaliste|bohème",
   "dimensions": "LxlxH en cm",
   "room": "salon|chambre|cuisine|bureau|salle à manger|entrée|terrasse",
-  "shape": "rond|carré|rectangulaire|ovale|angle",
-  "features": ["convertible", "rangement", "pliable"],
+  "tags": ["mot-clé1", "mot-clé2", "fonctionnalité"],
+  "seo_title": "Titre SEO optimisé ≤70 caractères",
+  "seo_description": "Meta description SEO ≤155 caractères",
+  "ad_headline": "Titre publicitaire ≤30 caractères",
+  "ad_description": "Description pub ≤90 caractères",
+  "google_product_category": "ID Google Shopping (635=Canapés, 443=Tables, 436=Chaises)",
+  "gtin": "Code-barres si disponible",
+  "brand": "Marque/Fabricant",
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- Utilise UNIQUEMENT les valeurs listées
-- dimensions: format "LxlxH cm" si trouvé
-- features: tableau des fonctionnalités détectées
+- category: Catégorie principale uniquement
+- subcategory: Description précise du type de produit
+- tags: 3-5 mots-clés pertinents
+- seo_title: Optimisé pour le référencement, inclure marque
+- seo_description: Inclure bénéfices, livraison, promo si applicable
+- ad_headline: Accrocheur pour Google Ads
+- ad_description: Inclure USP et promo
+- google_product_category: Utiliser les codes Google Shopping officiels
 - confidence_score: 0-100 basé sur la qualité des informations
 
 RÉPONSE JSON UNIQUEMENT:`;
@@ -298,14 +329,26 @@ RÉPONSE JSON UNIQUEMENT:`;
 function enrichProductBasic(product: any): EnrichedAttributes {
   const text = `${product.name || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
   
-  // Détecter type
-  let type = 'mobilier';
-  if (text.includes('canapé') || text.includes('sofa')) type = 'canapé';
-  else if (text.includes('table')) type = 'table';
-  else if (text.includes('chaise') || text.includes('fauteuil')) type = 'chaise';
-  else if (text.includes('lit') || text.includes('matelas')) type = 'lit';
-  else if (text.includes('armoire') || text.includes('commode')) type = 'rangement';
-  else if (text.includes('meuble tv')) type = 'meuble tv';
+  // Détecter catégorie
+  let category = 'Mobilier';
+  let subcategory = '';
+  
+  if (text.includes('canapé') || text.includes('sofa')) {
+    category = 'Canapé';
+    if (text.includes('angle')) subcategory = 'Canapé d\'angle';
+    else if (text.includes('convertible')) subcategory = 'Canapé convertible';
+    else subcategory = 'Canapé fixe';
+  } else if (text.includes('table')) {
+    category = 'Table';
+    if (text.includes('basse')) subcategory = 'Table basse';
+    else if (text.includes('manger')) subcategory = 'Table à manger';
+    else subcategory = 'Table';
+  } else if (text.includes('chaise') || text.includes('fauteuil')) {
+    category = 'Chaise';
+    if (text.includes('bureau')) subcategory = 'Chaise de bureau';
+    else if (text.includes('fauteuil')) subcategory = 'Fauteuil';
+    else subcategory = 'Chaise de salle à manger';
+  }
 
   // Détecter couleur
   let color = '';
@@ -357,20 +400,38 @@ function enrichProductBasic(product: any): EnrichedAttributes {
     }
   }
 
+  // Générer tags
+  const tags = [];
+  if (color) tags.push(color);
+  if (material) tags.push(material);
+  if (fabric) tags.push(fabric);
+  if (style) tags.push(style);
+  if (text.includes('convertible')) tags.push('convertible');
+  if (text.includes('rangement')) tags.push('rangement');
+  if (text.includes('angle')) tags.push('angle');
+
+  // Générer contenu SEO
+  const productName = product.name || 'Produit';
+  const brand = 'Decora Home';
+  
+  const seo_title = `${productName} ${color ? color : ''} - ${brand}`.substring(0, 70);
+  const seo_description = `${productName} ${material ? 'en ' + material : ''} ${color ? color : ''}. ${style ? 'Style ' + style : ''}. Livraison gratuite.`.substring(0, 155);
+  const ad_headline = productName.substring(0, 30);
+  const ad_description = `${productName} ${material ? material : ''}. ${style ? style : ''}. Promo !`.substring(0, 90);
+
+  // Code Google Shopping basique
+  let google_product_category = '';
+  if (category === 'Canapé') google_product_category = '635';
+  else if (category === 'Table') google_product_category = '443';
+  else if (category === 'Chaise') google_product_category = '436';
+
   // Extraire dimensions
   const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
   const dimensions = dimensionMatch ? dimensionMatch[0] : '';
 
-  // Détecter fonctionnalités
-  const features = [];
-  const featurePatterns = ['convertible', 'rangement', 'pliable', 'extensible', 'réversible', 'angle', 'coffre'];
-  featurePatterns.forEach(feature => {
-    if (text.includes(feature)) features.push(feature);
-  });
-
   // Calculer score de confiance
   let confidence = 30; // Base
-  if (type !== 'mobilier') confidence += 25;
+  if (category !== 'Mobilier') confidence += 25;
   if (color) confidence += 20;
   if (material) confidence += 20;
   if (style) confidence += 15;
@@ -378,15 +439,22 @@ function enrichProductBasic(product: any): EnrichedAttributes {
   if (dimensions) confidence += 10;
 
   return {
-    category: 'Mobilier',
-    type,
+    category,
+    subcategory,
     color,
     material,
     fabric,
     style,
     dimensions,
     room,
-    features,
+    tags,
+    seo_title,
+    seo_description,
+    ad_headline,
+    ad_description,
+    google_product_category,
+    gtin: '',
+    brand: brand,
     confidence_score: Math.min(confidence, 100)
   };
 }
