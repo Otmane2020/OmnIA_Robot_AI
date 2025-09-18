@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Filter, Plus, Eye, Edit, Trash2, Save, X,
   Brain, Palette, Hammer, Home, Ruler, Tag, DollarSign,
-  ChevronDown, ChevronUp, CheckCircle, AlertCircle
+  ChevronDown, ChevronUp, CheckCircle, AlertCircle, Download, Upload
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
@@ -68,6 +68,8 @@ export const ProductsEnrichedTable: React.FC = () => {
   const [cronStatus, setCronStatus] = useState<any>(null);
   const [cronMode, setCronMode] = useState<'auto' | 'manual'>('auto');
   const [isRunningCron, setIsRunningCron] = useState(false);
+  const [googleCategories, setGoogleCategories] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   // Mock enriched products data
@@ -447,10 +449,6 @@ export const ProductsEnrichedTable: React.FC = () => {
     if (lowerText.includes('travertin')) return 'Travertin';
     if (lowerText.includes('céramique') || lowerText.includes('ceramic')) return 'Céramique';
     if (lowerText.includes('rotin') || lowerText.includes('rattan')) return 'Rotin';
-    
-    return 'Autre';
-  }
-}
     if (lowerText.includes('osier') || lowerText.includes('wicker')) return 'Osier';
     if (lowerText.includes('bambou') || lowerText.includes('bamboo')) return 'Bambou';
     return '';
@@ -600,6 +598,119 @@ export const ProductsEnrichedTable: React.FC = () => {
     if (detectMaterial(product.title + ' ' + (product.description || ''))) score += 5;
     
     return Math.min(score, 100);
+  };
+
+  const generateSKU = (product: any) => {
+    return `SKU-${product.id || Date.now()}`;
+  };
+
+  const generateGTIN = (product: any) => {
+    return `370123456789${Math.floor(Math.random() * 10)}`;
+  };
+
+  const generateShortDescription = (product: any) => {
+    return (product.description || product.title || '').substring(0, 100);
+  };
+
+  const extractWeight = (text: string) => {
+    const weightRegex = /(\d+)\s*kg/i;
+    const match = text.match(weightRegex);
+    return match ? `${match[1]}kg` : '';
+  };
+
+  const extractCapacity = (text: string) => {
+    const capacityRegex = /(\d+)\s*(?:places?|personnes?)/i;
+    const match = text.match(capacityRegex);
+    return match ? `${match[1]} ${match[0].includes('place') ? 'places' : 'personnes'}` : '';
+  };
+
+  const generateImageAlt = (product: any) => {
+    return `${product.title || 'Produit'} - ${detectCategory(product.title || '')}`;
+  };
+
+  const extractGalleryUrls = (product: any) => {
+    return product.gallery_urls || [];
+  };
+
+  const generateGoogleCategory = (product: any) => {
+    const category = detectCategory(product.title || '');
+    const categoryMap: { [key: string]: string } = {
+      'Canapé': 'Furniture > Living Room Furniture > Sofas',
+      'Table': 'Furniture > Dining Room Furniture > Tables',
+      'Chaise': 'Furniture > Dining Room Furniture > Chairs',
+      'Lit': 'Furniture > Bedroom Furniture > Beds',
+      'Armoire': 'Furniture > Bedroom Furniture > Wardrobes',
+      'Commode': 'Furniture > Bedroom Furniture > Dressers',
+      'Étagère': 'Furniture > Shelving',
+      'Fauteuil': 'Furniture > Living Room Furniture > Chairs',
+      'Bureau': 'Furniture > Office Furniture > Desks',
+      'Miroir': 'Home & Garden > Decor > Mirrors',
+      'Éclairage': 'Home & Garden > Lighting',
+      'Tapis': 'Home & Garden > Decor > Rugs',
+      'Coussin': 'Home & Garden > Decor > Pillows',
+      'Rideau': 'Home & Garden > Window Treatments > Curtains'
+    };
+    return categoryMap[category] || 'Furniture';
+  };
+
+  const calculatePMaxScore = (product: any) => {
+    let score = 50;
+    
+    if (product.title) score += 10;
+    if (product.description) score += 10;
+    if (product.price) score += 10;
+    if (product.image_url) score += 10;
+    if (detectCategory(product.title || '')) score += 5;
+    if (detectMaterial(product.title + ' ' + (product.description || ''))) score += 5;
+    
+    return Math.min(score, 100);
+  };
+
+  const generateIntentTags = (product: any) => {
+    return {
+      category: detectCategory(product.title || '').toLowerCase(),
+      material: detectMaterial(product.title + ' ' + (product.description || '')).toLowerCase(),
+      color: detectColor(product.title + ' ' + (product.description || '')).toLowerCase(),
+      style: detectStyle(product.title + ' ' + (product.description || '')).toLowerCase(),
+      room: detectRoom(product.title + ' ' + (product.description || '')).toLowerCase()
+    };
+  };
+
+  const calculateMatchingScore = (product: any) => {
+    return calculateConfidenceScore(product);
+  };
+
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csv = e.target?.result as string;
+          const lines = csv.split('\n');
+          const headers = lines[0].split(',');
+          const newProducts = [];
+          
+          for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim()) {
+              const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
+              const product: any = {};
+              headers.forEach((header, index) => {
+                product[header.trim()] = values[index] || '';
+              });
+              newProducts.push(product);
+            }
+          }
+          
+          setProducts(prev => [...prev, ...newProducts]);
+          localStorage.setItem('enriched_products', JSON.stringify([...products, ...newProducts]));
+          showSuccess('Import réussi', `${newProducts.length} produits importés !`);
+        } catch (error) {
+          showError('Erreur import', 'Format CSV invalide.');
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleRunEnrichmentCron = async () => {
@@ -932,231 +1043,83 @@ export const ProductsEnrichedTable: React.FC = () => {
               <button
                 onClick={() => setSelectedProducts([])}
                 className="text-gray-400 hover:text-white"
-        {/* Export/Import Actions */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => {
-              const csvContent = [
-                'id,sku,gtin,handle,title,description,short_description,vendor,brand,category,subcategory,material,color,style,room,dimensions,weight,capacity,price,compare_at_price,currency,stock_quantity,availability,seo_title,seo_description,google_category,pmax_score,image_url,image_alt,gallery_urls,intent_tags,matching_score,chat_history_ref',
-                ...enrichedProducts.map(product => [
-                  product.id,
-                  product.sku || '',
-                  product.gtin || '',
-                  product.handle || '',
-                  product.title || '',
-                  product.description || '',
-                  product.short_description || '',
-                  product.vendor || '',
-                  product.brand || '',
-                  product.category || '',
-                  product.subcategory || '',
-                  product.material || '',
-                  product.color || '',
-                  product.style || '',
-                  product.room || '',
-                  product.dimensions || '',
-                  product.weight || '',
-                  product.capacity || '',
-                  product.price || '',
-                  product.compare_at_price || '',
-                  product.currency || 'EUR',
-                  product.stock_qty || '',
-                  product.availability || '',
-                  product.seo_title || '',
-                  product.seo_description || '',
-                  product.google_category || '',
-                  product.pmax_score || '',
-                  product.image_url || '',
-                  product.image_alt || '',
-                  product.gallery_urls || '',
-                  JSON.stringify(product.intent_tags || {}),
-                  product.matching_score || '',
-                  product.chat_history_ref || ''
-                ].join(','))
-              ].join('\n');
-              
-              const blob = new Blob([csvContent], { type: 'text/csv' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'catalogue-enrichi.csv';
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Exporter CSV
-          </button>
-          
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleImportCSV}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Importer CSV
-          </button>
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-                <button
-                  onClick={() => {
-                    const csvContent = [
-                 >
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-             </div>
-           )}
-         </div>
-       )}
-
-       {/* Export/Import Actions */}
-       <div className="flex gap-4 mb-6">
-         <button
-           onClick={() => {
-             const csvContent = [
-               'handle,title,description,category,subcategory,color,material,fabric,style,dimensions,room,price,stock_qty,image_url,product_url,tags,seo_title,seo_description,ad_headline,ad_description,google_product_category,gtin,brand,confidence_score,enriched_at,enrichment_source',
-               ...enrichedProducts.map(product => [
-                 product.handle,
-                 product.title,
-                 product.description,
-                 product.category,
-                 product.subcategory,
-                 product.color,
-                 product.material,
-                 product.fabric,
-                 product.style,
-                 product.dimensions,
-                 product.room,
-                 product.price,
-                 product.stock_qty,
-                 product.image_url,
-                 product.product_url,
-                 Array.isArray(product.tags) ? product.tags.join(';') : product.tags,
-                 product.seo_title,
-                 product.seo_description,
-                 product.ad_headline,
-                 product.ad_description,
-                 product.google_product_category,
-                 product.gtin,
-                 product.brand,
-                 product.confidence_score,
-                 product.enriched_at,
-                 product.enrichment_source
-               ].join(','))
-             ].join('\n');
-             
-             const blob = new Blob([csvContent], { type: 'text/csv' });
-             const url = URL.createObjectURL(blob);
-             const a = document.createElement('a');
-             a.href = url;
-             a.download = 'catalogue-enrichi-omnia.csv';
-             a.click();
-             URL.revokeObjectURL(url);
-           }}
-           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-         >
-           <Download className="w-4 h-4" />
-           Exporter CSV
-         </button>
-         
-         <input
-           ref={fileInputRef}
-           type="file"
-           accept=".csv"
-           onChange={handleImportCSV}
-           className="hidden"
-         />
-         
-         <button
-           onClick={() => fileInputRef.current?.click()}
-           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-         >
-           <Upload className="w-4 h-4" />
-           Importer CSV
-         </button>
-       </div>
-                      ...googleCategories.map(cat => 
-                        `"${cat.category}","${cat.subcategory}","${cat.google_code}","${cat.google_category}"`
-                      )
-                    ].join('\n');
-                    
-                    const blob = new Blob([csvContent], { type: 'text/csv' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'google-categories-mapping.csv';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Exporter CSV
-                </button>
-                
-        </div>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      // Importer CSV de catégories
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        try {
-                          const csv = event.target?.result as string;
-                          const lines = csv.split('\n');
-                          const headers = lines[0].split(',');
-                          const newCategories = [];
-                          
-                          for (let i = 1; i < lines.length; i++) {
-                            if (lines[i].trim()) {
-                              const values = lines[i].split(',').map(v => v.replace(/"/g, ''));
-                              newCategories.push({
-                                category: values[0],
-                                subcategory: values[1],
-                                google_code: values[2],
-                                google_category: values[3]
-                              });
-                            }
-                          }
-                          
-                          setGoogleCategories(newCategories);
-                          localStorage.setItem('google_categories', JSON.stringify(newCategories));
-                          showSuccess('Import réussi', `${newCategories.length} catégories importées !`);
-                        } catch (error) {
-                          showError('Erreur import', 'Format CSV invalide.');
-                        }
-                      };
-                      reader.readAsText(file);
-                    }
-                  }}
-                  className="hidden"
-                  id="csv-import"
-                />
-                <label
-                  htmlFor="csv-import"
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  Importer CSV
-                </label>
-              </div>
-              
       )}
 
+      {/* Export/Import Actions */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => {
+            const csvContent = [
+              'handle,title,description,category,subcategory,color,material,fabric,style,dimensions,room,price,stock_qty,image_url,product_url,tags,seo_title,seo_description,ad_headline,ad_description,google_product_category,gtin,brand,confidence_score,enriched_at,enrichment_source',
+              ...filteredProducts.map(product => [
+                product.handle,
+                product.title,
+                product.description,
+                product.category,
+                product.subcategory,
+                product.color,
+                product.material,
+                product.fabric,
+                product.style,
+                product.dimensions,
+                product.room,
+                product.price,
+                product.stock_qty,
+                product.image_url,
+                product.product_url,
+                Array.isArray(product.tags) ? product.tags.join(';') : product.tags,
+                product.seo_title,
+                product.seo_description,
+                product.ad_headline,
+                product.ad_description,
+                product.google_product_category,
+                product.gtin,
+                product.brand,
+                product.confidence_score,
+                product.enriched_at,
+                product.enrichment_source
+              ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'catalogue-enrichi-omnia.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+        >
+          <Download className="w-4 h-4" />
+          Exporter CSV
+        </button>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleImportCSV}
+          className="hidden"
+        />
+        
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+        >
+          <Upload className="w-4 h-4" />
+          Importer CSV
+        </button>
+      </div>
+
       {/* Tableau des produits enrichis */}
-                  Correspondance automatique entre vos catégories et les codes Google Shopping officiels.
-                  Cette base sert pour tous les revendeurs et optimise Google Ads/Merchant Center.
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-black/20">
