@@ -14,9 +14,9 @@ export const RegistrationSuccess: React.FC = () => {
       {/* Header */}
       <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              href="/admin"
+          <div className="flex items-center justify-between h-16">
             <Logo size="md" />
-            <a href="/" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors">
+            <a href="/admin" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Interface Admin
             </a>
