@@ -32,117 +32,81 @@ Deno.serve(async (req: Request) => {
       }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // Étape 1 : filtrage DB (products_enriched)
-    const relevantProducts = await getRelevantProductsForQuery(message, retailer_id);
+    // Étape 1 : récupérer produits depuis products_enriched
+    const relevantProducts = await getProductsFromDatabase(message);
 
-    // Étape 2 : réponse IA
-    const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, deepseekApiKey);
-
-    // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
-    if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
-      aiResponse.selectedProducts = relevantProducts.slice(0, 2);
-      aiResponse.should_show_products = true;
-    }
+    // Étape 2 : générer réponse DeepSeek
+    const aiResponse = await generateDeepSeekResponse(message, relevantProducts, deepseekApiKey);
 
     return new Response(JSON.stringify({
-      message: aiResponse.message,
-      products: aiResponse.selectedProducts,
-      should_show_products: aiResponse.should_show_products,
-      filtered_count: relevantProducts.length
+      message: aiResponse,
+      products: relevantProducts.slice(0, 3)
     }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error) {
     console.error('❌ Erreur unified-chat:', error);
     return new Response(JSON.stringify({
       message: "Petit souci technique 😅 pouvez-vous reformuler ?",
-      products: [],
-      fallback: true
+      products: []
     }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   }
 });
 
-async function getRelevantProductsForQuery(query: string, retailerId: string) {
+async function getProductsFromDatabase(query: string) {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('🔍 Recherche dans products_enriched pour:', query);
+    console.log('🔍 Recherche produits pour:', query);
 
-    const productIntent = analyzeProductIntent(query);
-    const extractedAttributes = extractAttributesFromQuery(query);
-
-    let qb = supabase
+    // Recherche simple dans products_enriched
+    const { data: products, error } = await supabase
       .from('products_enriched')
-      .select('id, title, description, category, type, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
-      .eq('retailer_id', retailerId)
-      .gt('stock_qty', 0);
-
-    if (productIntent.category) {
-      qb = qb.ilike('type', `%${productIntent.category}%`);
-    }
-    if (extractedAttributes.colors.length > 0) {
-      qb = qb.in('color', extractedAttributes.colors);
-    }
-    if (extractedAttributes.materials.length > 0) {
-      qb = qb.in('material', extractedAttributes.materials);
-    }
-    if (extractedAttributes.dimensions.length > 0) {
-      qb = qb.or(extractedAttributes.dimensions.map(dim => `dimensions.ilike.%${dim}%`).join(','));
-    }
-
-    qb = qb.limit(5);
-    const { data, error } = await qb;
+      .select('id, handle, title, description, category, type, color, material, style, price, stock_quantity, image_url, product_url')
+      .gt('stock_quantity', 0)
+      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%,type.ilike.%${query}%`)
+      .limit(5);
 
     if (error) {
-      console.error('❌ Erreur DB products_enriched:', error);
-      return [];
+      console.error('❌ Erreur DB:', error);
+      return getDecoraProducts();
     }
 
-    console.log('✅ Produits trouvés:', data?.length || 0);
-    return data || [];
+    console.log('✅ Produits trouvés:', products?.length || 0);
+    return products?.map(p => ({
+      id: p.id,
+      handle: p.handle,
+      title: p.title,
+      productType: p.type || p.category,
+      vendor: 'Decora Home',
+      tags: [],
+      price: p.price || 0,
+      availableForSale: true,
+      quantityAvailable: p.stock_quantity || 0,
+      image_url: p.image_url,
+      product_url: p.product_url,
+      description: p.description,
+      variants: [{
+        id: `${p.id}-default`,
+        title: 'Default',
+        price: p.price || 0,
+        availableForSale: true,
+        quantityAvailable: p.stock_quantity || 0,
+        selectedOptions: []
+      }]
+    })) || getDecoraProducts();
   } catch (error) {
-    console.error('❌ Erreur filtrage products_enriched:', error);
-    return [];
+    console.error('❌ Erreur DB:', error);
+    return getDecoraProducts();
   }
 }
 
-function analyzeProductIntent(query: string) {
-  const lower = query.toLowerCase();
-  const map: Record<string, { keywords: string[], category: string }> = {
-    'canapé': { keywords: ['canapé', 'sofa'], category: 'canapé' },
-    'table': { keywords: ['table', 'manger', 'basse'], category: 'table' },
-    'chaise': { keywords: ['chaise', 'fauteuil'], category: 'chaise' },
-    'lit': { keywords: ['lit', 'matelas'], category: 'lit' },
-    'rangement': { keywords: ['armoire', 'commode'], category: 'rangement' },
-    'meuble tv': { keywords: ['meuble tv', 'télé'], category: 'meuble tv' },
-  };
-
-  for (const [k, v] of Object.entries(map)) {
-    if (v.keywords.some(word => lower.includes(word))) {
-      return { category: v.category, keywords: v.keywords };
-    }
-  }
-  return { category: null, keywords: [] };
-}
-
-function extractAttributesFromQuery(query: string) {
-  const lower = query.toLowerCase();
-  const colors = ['blanc','noir','gris','beige','bleu','vert','rouge','taupe']
-    .filter(c => lower.includes(c));
-  const materials = ['bois','marbre','travertin','métal','acier','verre','tissu','cuir','velours']
-    .filter(m => lower.includes(m));
-  const dims: string[] = [];
-  const matches = lower.match(/\d+\s*cm|\d+\s*x\s*\d+/g);
-  if (matches) dims.push(...matches);
-  return { colors, materials, dimensions: dims };
-}
-
-async function generateExpertResponse(query: string, products: any[], context: any[], deepseekApiKey: string) {
+async function generateDeepSeekResponse(query: string, products: any[], deepseekApiKey: string) {
   const productsContext = products.length > 0
     ? products.map(p => `• ${p.title} - ${p.price}€`).join('\n')
-    : 'Aucun produit trouvé.';
+    : 'Aucun produit en stock.';
 
   const systemPrompt = `Tu es OmnIA, robot commercial expert mobilier chez Decora Home.
 
@@ -158,29 +122,96 @@ STYLE DE RÉPONSE:
 Produits dispo :
 ${productsContext}`;
 
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...context.slice(-2),
-    { role: 'user', content: query }
-  ];
-
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${deepseekApiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
       model: 'deepseek-chat', 
-      messages, 
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query }
+      ],
       max_tokens: 150, 
       temperature: 0.9,
       presence_penalty: 0.2
     })
   });
 
-  const data = await resp.json();
-  const msg = data.choices?.[0]?.message?.content || "Pouvez-vous préciser ?";
-  return {
-    message: msg,
-    selectedProducts: products.slice(0, 2),
-    should_show_products: products.length > 0
-  };
+  if (!response.ok) {
+    throw new Error('Erreur DeepSeek API');
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "Pouvez-vous préciser votre demande ?";
+}
+
+function getDecoraProducts() {
+  return [
+    {
+      id: 'decora-canape-alyana',
+      handle: 'canape-alyana',
+      title: 'Canapé ALYANA convertible - Beige',
+      productType: 'Canapé',
+      vendor: 'Decora Home',
+      tags: ['convertible', 'velours', 'beige'],
+      price: 799,
+      availableForSale: true,
+      quantityAvailable: 100,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png',
+      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+      description: 'Canapé d\'angle convertible 4 places en velours côtelé',
+      variants: [{
+        id: 'variant-beige',
+        title: 'Beige',
+        price: 799,
+        availableForSale: true,
+        quantityAvailable: 100,
+        selectedOptions: []
+      }]
+    },
+    {
+      id: 'decora-table-aurea',
+      handle: 'table-aurea',
+      title: 'Table AUREA Ø100cm - Travertin',
+      productType: 'Table',
+      vendor: 'Decora Home',
+      tags: ['travertin', 'ronde'],
+      price: 499,
+      availableForSale: true,
+      quantityAvailable: 50,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png',
+      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
+      description: 'Table ronde en travertin naturel',
+      variants: [{
+        id: 'variant-100cm',
+        title: 'Ø100cm',
+        price: 499,
+        availableForSale: true,
+        quantityAvailable: 50,
+        selectedOptions: []
+      }]
+    },
+    {
+      id: 'decora-chaise-inaya',
+      handle: 'chaise-inaya',
+      title: 'Chaise INAYA - Gris chenille',
+      productType: 'Chaise',
+      vendor: 'Decora Home',
+      tags: ['chenille', 'gris'],
+      price: 99,
+      availableForSale: true,
+      quantityAvailable: 96,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png',
+      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+      description: 'Chaise en tissu chenille avec pieds métal noir',
+      variants: [{
+        id: 'variant-gris',
+        title: 'Gris clair',
+        price: 99,
+        availableForSale: true,
+        quantityAvailable: 96,
+        selectedOptions: []
+      }]
+    }
+  ];
 }
