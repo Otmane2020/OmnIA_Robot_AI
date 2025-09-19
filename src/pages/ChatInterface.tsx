@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Send, Image, Loader2, QrCode, Camera, Music, Settings, ArrowLeft } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Send, Image, Loader2, QrCode, Camera, Music, Settings, ArrowLeft, X } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ProductCard } from '../components/ProductCard';
 import { CartButton } from '../components/CartButton';
@@ -49,31 +49,127 @@ export const ChatInterface: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Produits Decora Home
+  const getDecoraProducts = () => [
+    {
+      id: 'decora-canape-alyana-beige',
+      handle: 'canape-alyana-beige',
+      title: 'Canapé ALYANA convertible - Beige',
+      productType: 'Canapé',
+      vendor: 'Decora Home',
+      tags: ['convertible', 'velours', 'beige'],
+      price: 799,
+      compareAtPrice: 1399,
+      availableForSale: true,
+      quantityAvailable: 100,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
+      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
+      variants: [{
+        id: 'variant-beige',
+        title: 'Beige',
+        price: 799,
+        compareAtPrice: 1399,
+        availableForSale: true,
+        quantityAvailable: 100,
+        selectedOptions: [{ name: 'Couleur', value: 'Beige' }]
+      }]
+    },
+    {
+      id: 'decora-table-aurea-100',
+      handle: 'table-aurea-100',
+      title: 'Table AUREA Ø100cm - Travertin',
+      productType: 'Table',
+      vendor: 'Decora Home',
+      tags: ['travertin', 'ronde', 'naturel'],
+      price: 499,
+      compareAtPrice: 859,
+      availableForSale: true,
+      quantityAvailable: 50,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
+      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
+      description: 'Table ronde en travertin naturel avec pieds métal noir',
+      variants: [{
+        id: 'variant-100cm',
+        title: 'Ø100cm',
+        price: 499,
+        compareAtPrice: 859,
+        availableForSale: true,
+        quantityAvailable: 50,
+        selectedOptions: [{ name: 'Taille', value: '100cm' }]
+      }]
+    },
+    {
+      id: 'decora-chaise-inaya-gris',
+      handle: 'chaise-inaya-gris',
+      title: 'Chaise INAYA - Gris chenille',
+      productType: 'Chaise',
+      vendor: 'Decora Home',
+      tags: ['chenille', 'métal', 'gris'],
+      price: 99,
+      compareAtPrice: 149,
+      availableForSale: true,
+      quantityAvailable: 96,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
+      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+      description: 'Chaise en tissu chenille avec pieds métal noir',
+      variants: [{
+        id: 'variant-gris',
+        title: 'Gris clair',
+        price: 99,
+        compareAtPrice: 149,
+        availableForSale: true,
+        quantityAvailable: 96,
+        selectedOptions: [{ name: 'Couleur', value: 'Gris clair' }]
+      }]
+    }
+  ];
+
   // --- Appel API IA ---
   const sendToAI = async (message: string): Promise<string> => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          message: message,
-          retailer_id: 'demo-retailer-id'
+          message: message
         }),
       });
 
       if (!res.ok) throw new Error("Erreur API");
-      const data = await res.json();
       
-      // Mettre à jour les produits si trouvés
-      if (data.products && data.products.length > 0) {
-        setProducts(data.products);
+      // Lecture en streaming pour réponse rapide
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let result = '';
+      
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value);
+        }
+      }
+      
+      // Rechercher des produits si mention spécifique
+      if (message.toLowerCase().includes('canapé')) {
+        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Canapé');
+        setProducts(decoraProducts);
+        setShowProducts(true);
+      } else if (message.toLowerCase().includes('table')) {
+        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Table');
+        setProducts(decoraProducts);
+        setShowProducts(true);
+      } else if (message.toLowerCase().includes('chaise')) {
+        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Chaise');
+        setProducts(decoraProducts);
         setShowProducts(true);
       }
       
-      return data.message || "Comment puis-je vous aider ?";
+      return result || "Comment puis-je vous aider ?";
     } catch (err) {
       console.error("❌ Erreur sendToAI:", err);
       return "Erreur de communication avec l'assistant IA.";
@@ -180,10 +276,10 @@ export const ChatInterface: React.FC = () => {
 
   // --- Envoi auto quand Whisper transcrit ---
   useEffect(() => {
-    if (transcript && transcript.trim() !== '') {
+    if (transcript && transcript.trim() !== '' && !isTyping) {
       handleSendMessage(transcript);
     }
-  }, [transcript]);
+  }, [transcript, isTyping]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
@@ -198,7 +294,7 @@ export const ChatInterface: React.FC = () => {
     <div className="flex h-screen bg-white">
       
       {/* 👈 Sidebar Robot - Design exact de la photo */}
-      <div className="w-80 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen">
+      <div className="w-2/5 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen">
         {/* Background effects */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
@@ -206,7 +302,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Header avec retour Admin */}
-        <div className="relative z-10 p-4 border-b border-white/10">
+        <div className="relative z-10 p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-xl">
           <button
             onClick={() => window.location.href = '/admin'}
             className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition-colors mb-4"
@@ -241,20 +337,29 @@ export const ChatInterface: React.FC = () => {
         <div className="relative z-10 flex-1 flex flex-col p-6 space-y-6">
           {/* Robot Avatar en haut */}
           <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-400/50">
+            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-slate-200 to-white rounded-3xl shadow-2xl relative overflow-hidden border-4 border-slate-300">
               {/* Grands yeux ronds comme sur l'image */}
-              <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4">
-                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
-                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex gap-3">
+                <div className="w-10 h-10 bg-white rounded-full border-2 border-slate-400 flex items-center justify-center shadow-lg">
+                  <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse"></div>
                 </div>
-                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
-                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
+                <div className="w-10 h-10 bg-white rounded-full border-2 border-slate-400 flex items-center justify-center shadow-lg">
+                  <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                 </div>
               </div>
               
               {/* Sourire */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-                <div className="w-6 h-3 border-b-4 border-white rounded-full"></div>
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
+                <div className="w-8 h-4 bg-cyan-500 rounded-full"></div>
+              </div>
+              
+              {/* Corps du robot */}
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-16 h-8 bg-gradient-to-br from-slate-300 to-slate-400 rounded-xl border border-slate-400">
+                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 flex gap-1">
+                  <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                </div>
               </div>
               
               {/* Particules d'énergie */}
@@ -294,9 +399,9 @@ export const ChatInterface: React.FC = () => {
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/40 ${
                 isRecording
-                  ? 'bg-purple-500 shadow-purple-500/40 animate-pulse'
+                  ? 'bg-purple-500 animate-pulse'
                   : 'bg-purple-500 hover:bg-purple-400'
               }`}
             >
@@ -305,10 +410,10 @@ export const ChatInterface: React.FC = () => {
 
             <button
               onClick={handleVolumeClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/40 ${
                 isSpeaking
-                  ? 'bg-green-500 shadow-green-500/40 animate-pulse'
-                  : 'bg-green-500 hover:bg-green-400 shadow-lg'
+                  ? 'bg-green-500 animate-pulse'
+                  : 'bg-green-500 hover:bg-green-400'
               }`}
             >
               <Volume2 className="w-6 h-6 text-white" />
@@ -316,7 +421,7 @@ export const ChatInterface: React.FC = () => {
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="Reconnaissance et détection humain"
             >
               <div className="relative">
@@ -328,20 +433,22 @@ export const ChatInterface: React.FC = () => {
 
           {/* Deuxième rangée de boutons */}
           <div className="grid grid-cols-3 gap-3 mb-3">
-            <button className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105">
+            <button 
+              onClick={() => setShowQR(!showQR)}
+              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+            >
               <QrCode className="w-6 h-6 text-white" />
             </button>
 
             <button
-              onClick={() => window.open('/upload', '_blank')}
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="QR Code pour upload photo mobile"
+              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="Paramètres robot"
             >
               <Settings className="w-6 h-6 text-white" />
             </button>
 
-            <button 
-              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+            <button
+              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
             >
               <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
@@ -351,18 +458,18 @@ export const ChatInterface: React.FC = () => {
 
           {/* Troisième rangée de boutons */}
           <div className="grid grid-cols-3 gap-3 mb-3">
-            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg shadow-blue-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
               <div className="text-white text-xs font-bold mb-1">+</div>
               <span className="text-white text-xs">Bouger</span>
             </button>
             <button
-              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg shadow-purple-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
             >
               <Music className="w-5 h-5 text-white mb-1" />
               <span className="text-white text-xs">Danser</span>
             </button>
 
-            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg shadow-gray-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
               <div className="w-5 h-5 border-2 border-white rounded flex items-center justify-center mb-1">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
@@ -374,9 +481,9 @@ export const ChatInterface: React.FC = () => {
       </div>
 
       {/* 👉 Zone de chat principale avec background rose */}
-      <div className="flex-1 flex flex-col bg-pink-500/20">
+      <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
         {/* Header de conversation */}
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-violet-600 border-b border-purple-500/50 p-6 sticky top-0 z-10">
+        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-violet-600 border-b border-purple-500/50 p-6 sticky top-0 z-10 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
@@ -386,7 +493,11 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50">
+              <button 
+                onClick={() => setShowQR(!showQR)}
+                className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50"
+                title="QR Code pour mobile"
+              >
                 <QrCode className="w-5 h-5 text-purple-300" />
               </button>
               <CartButton 
@@ -457,7 +568,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 bg-slate-800 border-t border-slate-700 sticky bottom-0 z-10" style={{ backgroundColor: '#f8f8f8' }}>
+        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10" style={{ backgroundColor: '#f8f8f8' }}>
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <input
@@ -480,16 +591,22 @@ export const ChatInterface: React.FC = () => {
             
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-14 h-14 bg-pink-500 hover:bg-pink-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg shadow-pink-500/40"
-              title="Envoyer une photo"
+              disabled={isAnalyzingPhoto}
+              className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 hover:shadow-pink-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50"
+              title="Analyser une photo"
             >
-              <Camera className="w-6 h-6 text-white" />
+              {isAnalyzingPhoto ? (
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              ) : (
+                <Camera className="w-6 h-6 text-white" />
+              )}
             </button>
 
             <button
               onClick={() => handleSendMessage(inputMessage)}
               disabled={!inputMessage.trim()}
-              className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg"
+              className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100"
+              title="Envoyer le message"
             >
               <Send className="w-6 h-6 text-white" />
             </button>
@@ -516,10 +633,10 @@ export const ChatInterface: React.FC = () => {
                       className="w-44 h-44 rounded-xl"
                     />
                   </div>
-                  <p className="text-gray-600 mb-4">Scannez avec votre mobile pour envoyer une photo</p>
+                  <p className="text-gray-600 mb-4">Scannez pour envoyer une photo depuis votre mobile</p>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
                     <p className="text-blue-700 text-sm">
-                      📸 La photo sera automatiquement analysée par OmnIA !
+                      📸 Envoyez des photos de votre espace pour des conseils personnalisés !
                     </p>
                   </div>
                 </div>
