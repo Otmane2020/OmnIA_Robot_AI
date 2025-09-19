@@ -1749,3 +1749,131 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         value={retailerData.plan}
                         onChange={(e) => setRetailerData(prev => ({ ...prev, plan: e.target.value }))}
                         className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      >
+                        <option value="Basic">Basic</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Enterprise">Enterprise</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Sous-domaine</label>
+                      <input
+                        type="text"
+                        value={retailerData.subdomain}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, subdomain: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact */}
+                <div className="bg-black/20 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-green-400" />
+                    Contact
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Nom du contact</label>
+                      <input
+                        type="text"
+                        value={retailerData.contact_name}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, contact_name: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={retailerData.email}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Téléphone</label>
+                      <input
+                        type="tel"
+                        value={retailerData.phone}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Position</label>
+                      <input
+                        type="text"
+                        value={retailerData.position}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, position: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Adresse */}
+                <div className="bg-black/20 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-purple-400" />
+                    Adresse
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm text-gray-300 mb-2">Adresse</label>
+                      <input
+                        type="text"
+                        value={retailerData.address}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, address: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Ville</label>
+                      <input
+                        type="text"
+                        value={retailerData.city}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, city: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Code postal</label>
+                      <input
+                        type="text"
+                        value={retailerData.postal_code}
+                        onChange={(e) => setRetailerData(prev => ({ ...prev, postal_code: e.target.value }))}
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      showSuccess('Paramètres sauvegardés', 'Vos informations ont été mises à jour avec succès !');
+                      setShowSettings(false);
+                    }}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Sauvegarder
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
