@@ -124,45 +124,6 @@ ${productsList}
     if (!openaiResponse.ok) {
       throw new Error("API error");
     }
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
-        max_tokens: 80,
-        temperature: 0.9,
-        stream: true, // ⚡️ Active le streaming
-      }),
-    }).catch(() => 
-      // Fallback vers OpenAI si DeepSeek échoue
-      fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message },
-          ],
-          max_tokens: 80,
-          temperature: 0.9,
-          stream: true,
-        }),
-      })
-    );
-
-    if (!openaiResponse.ok) {
-      throw new Error("OpenAI API error");
-    }
 
     // Renvoi en streaming vers le client
     const stream = new ReadableStream({
