@@ -3,7 +3,7 @@ import {
   Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
   Package, Tag, DollarSign, Image, BarChart3, Settings,
   ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
-  Brain, Zap, Globe, TrendingUp
+  Brain, Zap, Globe, TrendingUp, Target
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
