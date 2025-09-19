@@ -1748,4 +1748,4 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <select
                         value={retailerData.plan}
                         onChange={(e) => setRetailerData(prev => ({ ...prev, plan: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"

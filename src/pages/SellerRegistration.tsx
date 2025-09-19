@@ -483,14 +483,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     </div>
   );
 
-  const formatSiret = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 14) {
-      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4').trim();
-    }
-    return numbers.substring(0, 14).replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
       {/* Background Effects */}
