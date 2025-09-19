@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Building, User, Mail, Phone, MapPin, FileText, 
   Upload, ArrowLeft, CheckCircle, AlertCircle, 
-  Eye, EyeOff, CreditCard, Globe, Loader2, Flag
+  Eye, EyeOff, CreditCard, Globe, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -30,12 +30,6 @@ interface FormData {
   acceptTerms: boolean;
 }
 
-interface StepStatus {
-  completed: boolean;
-  current: boolean;
-  hasErrors: boolean;
-}
-
 export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit, onBack }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
@@ -60,21 +54,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [stepStatuses, setStepStatuses] = useState<{[key: number]: StepStatus}>({
-    1: { completed: false, current: true, hasErrors: false },
-    2: { completed: false, current: false, hasErrors: false },
-    3: { completed: false, current: false, hasErrors: false },
-    4: { completed: false, current: false, hasErrors: false }
-  });
-
-  const countries = [
-    { code: 'FR', name: 'France', flag: '🇫🇷' },
-    { code: 'BE', name: 'Belgique', flag: '🇧🇪' },
-    { code: 'CH', name: 'Suisse', flag: '🇨🇭' },
-    { code: 'LU', name: 'Luxembourg', flag: '🇱🇺' },
-    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-    { code: 'MC', name: 'Monaco', flag: '🇲🇨' }
-  ];
 
   const plans = [
     {
@@ -103,23 +82,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-    
-    // Mettre à jour le statut de l'étape
-    updateStepStatus(currentStep);
   };
 
-  const updateStepStatus = (step: number) => {
-    const hasErrors = validateStep(step, false);
-    setStepStatuses(prev => ({
-      ...prev,
-      [step]: {
-        ...prev[step],
-        hasErrors: !hasErrors
-      }
-    }));
-  };
-
-  const validateStep = (step: number, showErrors: boolean = true): boolean => {
+  const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
 
     if (step === 1) {
@@ -148,34 +113,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       if (!formData.acceptTerms) newErrors.acceptTerms = 'Acceptation des conditions requise';
     }
 
-    if (showErrors) {
-      setErrors(newErrors);
-    }
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      // Marquer l'étape actuelle comme complétée
-      setStepStatuses(prev => ({
-        ...prev,
-        [currentStep]: { completed: true, current: false, hasErrors: false },
-        [currentStep + 1]: { completed: false, current: true, hasErrors: false }
-      }));
       setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setStepStatuses(prev => ({
-        ...prev,
-        [currentStep]: { completed: false, current: false, hasErrors: false },
-        [currentStep - 1]: { completed: false, current: true, hasErrors: false }
-      }));
-      setCurrentStep(prev => prev - 1);
-    } else {
-      onBack();
     }
   };
 
@@ -249,22 +193,20 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Pays *
           </label>
-          <div className="relative">
-            <select
+          <select
             value={formData.country}
             onChange={(e) => handleInputChange('country', e.target.value)}
             className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
               errors.country ? 'border-red-500' : 'border-cyan-500/50'
             }`}
-            >
+          >
             <option value="">Sélectionner un pays</option>
-              {countries.map((country) => (
-                <option key={country.code} value={country.name}>
-                  {country.flag} {country.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <option value="France">France</option>
+            <option value="Belgique">Belgique</option>
+            <option value="Suisse">Suisse</option>
+            <option value="Luxembourg">Luxembourg</option>
+            <option value="Canada">Canada</option>
+          </select>
           {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
         </div>
 
@@ -503,6 +445,42 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           </div>
         ))}
       </div>
+      
+      {/* Nouvelles fonctionnalités AR/VR */}
+      <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          🚀 Nouveautés 2025 - Vision Augmentée
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-cyan-300 mb-3">📱 AR Mobile :</h4>
+            <ul className="text-cyan-200 text-sm space-y-1">
+              <li>• Scanner une pièce → placer un canapé Decora Home en réalité augmentée</li>
+              <li>• Voir les dimensions réelles dans votre espace</li>
+              <li>• Tester toutes les couleurs en temps réel</li>
+              <li>• Partager vos créations sur les réseaux</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-purple-300 mb-3">🕶️ VR Showroom :</h4>
+            <ul className="text-purple-200 text-sm space-y-1">
+              <li>• Visite immersive de votre magasin (IKEA VR powered by OmnIA)</li>
+              <li>• OmnIA robot virtuel comme guide personnel</li>
+              <li>• Ambiances 3D : salon, chambre, bureau</li>
+              <li>• Achat direct depuis l'expérience VR</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-4 bg-pink-500/20 border border-pink-400/50 rounded-xl">
+          <h4 className="font-semibold text-pink-200 mb-2">💡 IA Photo Integration :</h4>
+          <p className="text-pink-300 text-sm">
+            <strong>Révolutionnaire :</strong> Le client envoie une photo de sa pièce → 
+            OmnIA place automatiquement vos produits dans cette photo avec l'IA ! 
+            Rendu photoréaliste en quelques secondes.
+          </p>
+        </div>
+      </div>
     </div>
   );
 
@@ -662,7 +640,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t border-white/20">
             <button
-              onClick={handlePrevious}
+              onClick={() => currentStep > 1 ? setCurrentStep(prev => prev - 1) : onBack()}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
             >
               {currentStep > 1 ? 'Précédent' : 'Annuler'}
@@ -671,7 +649,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             {currentStep < 4 ? (
               <button
                 onClick={handleNext}
-                disabled={stepStatuses[currentStep]?.hasErrors}
                 className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
                 Suivant
@@ -683,26 +660,16 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSubmitting ? (
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold border-2 transition-all ${
-              stepStatuses[step]?.completed
-                ? 'bg-green-500 border-green-400 text-white shadow-lg shadow-green-500/30'
-                : stepStatuses[step]?.current
-                  ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-500/30 animate-pulse'
-                  : stepStatuses[step]?.hasErrors
-                    ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/30'
-                    : 'bg-gray-600 border-gray-500 text-gray-300'
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Envoi en cours...
+                  </>
                 ) : (
-              {stepStatuses[step]?.completed ? (
-                <CheckCircle className="w-6 h-6" />
-              ) : stepStatuses[step]?.hasErrors ? (
-                <AlertCircle className="w-6 h-6" />
-              ) : (
-                step
-              )}
+                  <>
                     <CheckCircle className="w-5 h-5" />
                     Finaliser l'inscription
-              <div className={`w-16 h-2 rounded-full transition-all ${
-                stepStatuses[step]?.completed ? 'bg-green-500' : 'bg-gray-600'
+                  </>
+                )}
               </button>
             )}
           </div>

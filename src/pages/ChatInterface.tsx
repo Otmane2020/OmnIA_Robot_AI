@@ -27,6 +27,7 @@ export const ChatInterface: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,6 +66,13 @@ export const ChatInterface: React.FC = () => {
 
       if (!res.ok) throw new Error("Erreur API");
       const data = await res.json();
+      
+      // Mettre à jour les produits si trouvés
+      if (data.products && data.products.length > 0) {
+        setProducts(data.products);
+        setShowProducts(true);
+      }
+      
       return data.message || "Comment puis-je vous aider ?";
     } catch (err) {
       console.error("❌ Erreur sendToAI:", err);
@@ -85,20 +93,14 @@ export const ChatInterface: React.FC = () => {
       // 🔥 Envoi au moteur IA
       const aiResponse = await sendToAI(messageText);
 
-      // TODO: Parser aiResponse pour sortir des produits si besoin
-      const foundProducts: Product[] = [];
-
       // Ajout réponse IA
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         content: aiResponse,
         isUser: false,
         timestamp: new Date(),
-        products: foundProducts
+        products: products
       }]);
-
-      setProducts(foundProducts);
-      setShowProducts(foundProducts.length > 0);
 
       speak(aiResponse);
     } catch (error) {

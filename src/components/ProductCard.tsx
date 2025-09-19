@@ -106,14 +106,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             <div className="flex gap-1 md:gap-2 flex-wrap">
               <button
                 onClick={() => setShowSpecs(!showSpecs)}
-                className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-sm"
+                className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-lg hover:shadow-purple-200/50"
                 title="Voir spécifications"
               >
                 <Info className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowQR(!showQR)}
-                className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-sm"
+                className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-lg hover:shadow-gray-200/50"
                 title="Voir QR Code"
               >
                 <QrCode className="w-4 h-4" />
@@ -122,7 +122,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                 href={safeProduct.product_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-sm"
+                className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-lg hover:shadow-blue-200/50"
                 title="Voir la fiche"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -130,7 +130,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
               {safeProduct.availableForSale && onAddToCart && (
                 <button
                   onClick={handleAddToCart}
-                  className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-all hover:scale-110 border border-green-300 font-bold shadow-lg hover:shadow-green-200/50"
+                  className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-all hover:scale-110 border border-green-300 font-bold shadow-xl hover:shadow-green-500/40 animate-pulse"
                   title="Ajouter au panier"
                 >
                   <ShoppingCart className="w-4 h-4" />
