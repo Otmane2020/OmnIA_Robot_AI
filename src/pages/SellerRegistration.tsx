@@ -445,6 +445,42 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           </div>
         ))}
       </div>
+      
+      {/* Nouvelles fonctionnalités AR/VR */}
+      <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          🚀 Nouveautés 2025 - Vision Augmentée
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-cyan-300 mb-3">📱 AR Mobile :</h4>
+            <ul className="text-cyan-200 text-sm space-y-1">
+              <li>• Scanner une pièce → placer un canapé Decora Home en réalité augmentée</li>
+              <li>• Voir les dimensions réelles dans votre espace</li>
+              <li>• Tester toutes les couleurs en temps réel</li>
+              <li>• Partager vos créations sur les réseaux</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-purple-300 mb-3">🕶️ VR Showroom :</h4>
+            <ul className="text-purple-200 text-sm space-y-1">
+              <li>• Visite immersive de votre magasin (IKEA VR powered by OmnIA)</li>
+              <li>• OmnIA robot virtuel comme guide personnel</li>
+              <li>• Ambiances 3D : salon, chambre, bureau</li>
+              <li>• Achat direct depuis l'expérience VR</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-4 bg-pink-500/20 border border-pink-400/50 rounded-xl">
+          <h4 className="font-semibold text-pink-200 mb-2">💡 IA Photo Integration :</h4>
+          <p className="text-pink-300 text-sm">
+            <strong>Révolutionnaire :</strong> Le client envoie une photo de sa pièce → 
+            OmnIA place automatiquement vos produits dans cette photo avec l'IA ! 
+            Rendu photoréaliste en quelques secondes.
+          </p>
+        </div>
+      </div>
     </div>
   );
 
