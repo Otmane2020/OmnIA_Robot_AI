@@ -315,25 +315,46 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     setSubmitError('');
     
     try {
-      // Créer les données de soumission avec tous les champs requis
+      // Vérifier que tous les champs requis sont remplis
+      if (!formData.email || !formData.password) {
+        setSubmitError('Email et mot de passe requis');
+        return;
+      }
+
+      // Créer les données de soumission complètes
       const submissionData = {
-        id: `app-${Date.now()}`,
-        ...formData,
+        id: `app-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        companyName: formData.companyName,
+        siret: formData.siret,
+        address: formData.address,
+        postalCode: formData.postalCode,
+        city: formData.city,
+        country: formData.country,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        position: formData.position,
+        password: formData.password,
+        selectedPlan: formData.selectedPlan,
+        kbisFile: formData.kbisFile,
+        acceptTerms: formData.acceptTerms,
+        acceptNewsletter: formData.acceptNewsletter,
         submittedAt: new Date().toISOString(),
         submittedDate: new Date().toLocaleDateString('fr-FR'),
         submittedTime: new Date().toLocaleTimeString('fr-FR'),
         status: 'pending',
-        proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
-        // Ajouter un mot de passe temporaire si pas défini
-        password: formData.password || 'temp123'
+        proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
       };
       
       console.log('📝 Soumission demande:', submissionData);
+      
+      // Appeler la fonction onSubmit du parent
       onSubmit(submissionData);
       
     } catch (error) {
       console.error('Erreur soumission:', error);
-      setSubmitError(error.message || 'Erreur lors de la soumission');
+      setSubmitError('Erreur lors de la soumission. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
     }
