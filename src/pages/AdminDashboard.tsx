@@ -55,6 +55,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: ShoppingCart,
       color: 'from-green-500 to-emerald-600',
       stats: { value: '247', label: 'Produits' },
+      features: ['Gestion catalogue', 'Stocks & variantes', 'Commandes', 'Flux produits'],
       subMenus: [
         { id: 'products-catalog', title: 'Produits & catalogue enrichi', icon: Package, description: 'Gestion complète du catalogue' },
         { id: 'stocks-variants', title: 'Stocks & variantes', icon: Database, description: 'Gestion des stocks et variantes' },
@@ -68,6 +69,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: Target,
       color: 'from-blue-500 to-cyan-600',
       stats: { value: '4.2x', label: 'ROAS' },
+      features: ['Google Ads', 'SEO automatique', 'Réseaux sociaux', 'Analyse ROAS'],
       subMenus: [
         { id: 'google-ads', title: 'Google Ads (PMax, Shopping)', icon: Target, description: 'Campagnes Google automatiques' },
         { id: 'seo-blog', title: 'SEO & Blog automatique', icon: FileText, description: 'Contenu SEO généré par IA' },
@@ -81,6 +83,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: Bot,
       color: 'from-purple-500 to-pink-600',
       stats: { value: '1,234', label: 'Conversations' },
+      features: ['Chat temps réel', 'Suggestions IA', 'Ajout panier', 'Suivi satisfaction'],
       subMenus: [
         { id: 'live-chat', title: 'Chat en temps réel avec clients', icon: MessageSquare, description: 'Interface de chat live' },
         { id: 'product-suggestions', title: 'Suggestions produits automatiques', icon: Zap, description: 'IA de recommandation' },
@@ -94,6 +97,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: BarChart3,
       color: 'from-orange-500 to-red-600',
       stats: { value: '42%', label: 'Conversion' },
+      features: ['Analytics ventes', 'Performance ads', 'Flux produits', 'Heatmaps'],
       subMenus: [
         { id: 'sales-analytics', title: 'Ventes (CA, marge, panier moyen)', icon: TrendingUp, description: 'Analytics de vente' },
         { id: 'ads-performance', title: 'Ads performance (Google, Meta, TikTok)', icon: Target, description: 'ROI publicitaire' },
@@ -107,6 +111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: Brain,
       color: 'from-cyan-500 to-blue-600',
       stats: { value: '95%', label: 'Score IA' },
+      features: ['SEO automatique', 'Recommandations', 'Enrichissement', 'Automatisation'],
       subMenus: [
         { id: 'seo-generation', title: 'Génération SEO auto', icon: FileText, description: 'Titres, descriptions, balises' },
         { id: 'product-recommendations', title: 'Recommandations produits', icon: Zap, description: 'Cross-sell, upsell' },
@@ -120,6 +125,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: Building,
       color: 'from-pink-500 to-purple-600',
       stats: { value: '89', label: 'Visiteurs' },
+      features: ['Robot accueil', 'Détection visiteurs', 'Présentation produits', 'Stocks temps réel'],
       subMenus: [
         { id: 'robot-management', title: 'Gestion robot d\'accueil', icon: Bot, description: 'Déplacements, dialogues' },
         { id: 'visitor-detection', title: 'Détection visiteurs (caméra + IA)', icon: Eye, description: 'Vision artificielle' },
@@ -133,6 +139,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       icon: Settings,
       color: 'from-gray-500 to-slate-600',
       stats: { value: '100%', label: 'Uptime' },
+      features: ['Gestion utilisateurs', 'Connexions API', 'Sécurité', 'Sauvegardes'],
       subMenus: [
         { id: 'user-management', title: 'Gestion utilisateurs', icon: Users, description: 'Vendeurs, admin' },
         { id: 'api-connections', title: 'Connexions API', icon: Wifi, description: 'Shopify, Google, DeepSeek' },
