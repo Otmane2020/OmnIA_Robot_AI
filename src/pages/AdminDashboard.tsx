@@ -1276,7 +1276,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'google-ads':
         return renderGoogleAds();
       case 'ads-integration':
-        return <div className="space-y-6"><h2 className="text-2xl font-bold text-white">Int\u00E9gration Google Ads</h2><div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20"><h3 className=\"text-xl font-bold text-white mb-4">Autorisation Google Ads API</h3><div className=\"space-y-4"><div><label className=\"block text-sm text-gray-300 mb-2">Client ID</label><input type=\"text" className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white\" placeholder="Votre Client ID Google" /></div><div><label className="block text-sm text-gray-300 mb-2">Client Secret</label><input type="password" className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white" placeholder="Votre Client Secret" /></div><button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl">Connecter Google Ads</button></div></div></div>;
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white">Intégration Google Ads</h2>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+              <h3 className="text-xl font-bold text-white mb-4">Autorisation Google Ads API</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Client ID</label>
+                  <input 
+                    type="text" 
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white" 
+                    placeholder="Votre Client ID Google" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Client Secret</label>
+                  <input 
+                    type="password" 
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white" 
+                    placeholder="Votre Client Secret Google" 
+                  />
+                </div>
+                <button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                  Connecter Google Ads
+                </button>
+              </div>
+            </div>
+          </div>
+        );
       case 'google-merchant':
         return <GoogleMerchantTab />;
       
