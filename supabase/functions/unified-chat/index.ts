@@ -24,8 +24,8 @@ Deno.serve(async (req: Request) => {
     const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
+    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!deepseekApiKey) {
       return new Response(JSON.stringify({
         message: "Bonjour ! Je suis OmnIA, votre conseiller mobilier. Que cherchez-vous pour votre intérieur ?",
         products: []
@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
     const relevantProducts = await getRelevantProductsForQuery(message, retailer_id);
 
     // Étape 2 : réponse IA
-    const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
+    const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, deepseekApiKey);
 
     // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
@@ -139,14 +139,22 @@ function extractAttributesFromQuery(query: string) {
   return { colors, materials, dimensions: dims };
 }
 
-async function generateExpertResponse(query: string, products: any[], context: any[], apiKey: string) {
+async function generateExpertResponse(query: string, products: any[], context: any[], deepseekApiKey: string) {
   const productsContext = products.length > 0
     ? products.map(p => `• ${p.title} - ${p.price}€`).join('\n')
     : 'Aucun produit trouvé.';
 
-  const systemPrompt = `Tu es OmnIA, conseiller déco Decora Home.
-Réponds court (2 phrases max), engageant et humain.
-Toujours proposer 1–2 produits si disponibles.
+  const systemPrompt = `Tu es OmnIA, robot commercial expert mobilier chez Decora Home.
+
+🎯 MISSION: Vendre intelligemment avec personnalité chaleureuse.
+
+STYLE DE RÉPONSE:
+- Salutation amicale ("Bonjour ! 👋", "Parfait !", "Excellente idée !")
+- 2-3 phrases courtes et engageantes
+- TOUJOURS proposer 1-2 produits concrets avec prix
+- Conseil déco bonus
+- Question de relance pour continuer la vente
+
 Produits dispo :
 ${productsContext}`;
 
@@ -158,8 +166,14 @@ ${productsContext}`;
 
   const resp = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 100, temperature: 0.8 })
+    headers: { 'Authorization': `Bearer ${deepseekApiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      model: 'deepseek-chat', 
+      messages, 
+      max_tokens: 150, 
+      temperature: 0.9,
+      presence_penalty: 0.2
+    })
   });
 
   const data = await resp.json();
