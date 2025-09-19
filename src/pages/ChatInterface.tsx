@@ -339,19 +339,19 @@ export const ChatInterface: React.FC = () => {
           <div className="relative mb-8">
             <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-300/50">
               {/* Grands yeux ronds comme sur l'image */}
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex gap-3">
-                <div className="w-12 h-12 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
-                  <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse"></div>
+              <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4">
+                <div className="w-16 h-16 bg-white rounded-full border-3 border-cyan-400 flex items-center justify-center shadow-xl">
+                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full animate-pulse"></div>
                 </div>
-                <div className="w-12 h-12 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
-                  <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                <div className="w-16 h-16 bg-white rounded-full border-3 border-cyan-400 flex items-center justify-center shadow-xl">
+                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                 </div>
               </div>
               
               {/* Sourire */}
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
-                <div className="w-12 h-6 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center">
-                  <div className="w-8 h-3 bg-cyan-500 rounded-full"></div>
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                <div className="w-16 h-8 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
+                  <div className="w-12 h-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full"></div>
                 </div>
               </div>
               
@@ -540,7 +540,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Suggestions rapides - Style exact de la photo */}
-        <div className="px-6 py-4">
+        <div className="px-6 py-4" style={{ backgroundColor: '#f8f8f8' }}>
           <div className="flex gap-3 overflow-x-auto pb-2">
             <button
               onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
@@ -570,7 +570,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10 bg-slate-900/80">
+        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10 bg-slate-900/80 backdrop-blur-xl">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <input

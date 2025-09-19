@@ -72,11 +72,12 @@ ${productsList}
     // 🚀 Streaming depuis OpenAI
     const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     
-    let openaiResponse;
+    let aiResponse;
     
     if (deepseekApiKey) {
       // Essayer DeepSeek d'abord
-      openaiResponse = await fetch("https://api.deepseek.com/chat/completions", {
+      console.log('🤖 Utilisation DeepSeek Chat...');
+      aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${deepseekApiKey}`,
@@ -88,21 +89,42 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 80,
-          temperature: 0.9,
-          stream: true,
+          max_tokens: 150,
+          temperature: 0.8,
+          stream: false,
         }),
       });
+      
+      if (aiResponse.ok) {
+        const data = await aiResponse.json();
+        const responseText = data.choices[0]?.message?.content || "Comment puis-je vous aider ?";
+        
+        return new Response(
+          JSON.stringify({ message: responseText }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...corsHeaders,
+            },
+          }
+        );
+      }
     }
     
     // Fallback vers OpenAI si DeepSeek échoue
-    if (!openaiResponse || !openaiResponse.ok) {
+    console.log('🔄 Fallback vers OpenAI...');
+    if (!aiResponse || !aiResponse.ok) {
       const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
       if (!openaiApiKey) {
-        throw new Error("Aucune API configurée");
+        return new Response(
+          JSON.stringify({ message: "Bonjour ! Je suis OmnIA. Comment puis-je vous aider ?" }),
+          {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
       }
       
-      openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${openaiApiKey}`,
@@ -114,54 +136,29 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 80,
-          temperature: 0.9,
-          stream: true,
+          max_tokens: 150,
+          temperature: 0.8,
+          stream: false,
         }),
       });
     }
 
-    if (!openaiResponse.ok) {
+    if (!aiResponse.ok) {
       throw new Error("API error");
     }
 
-    // Renvoi en streaming vers le client
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = openaiResponse.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+    const data = await aiResponse.json();
+    const responseText = data.choices[0]?.message?.content || "Comment puis-je vous aider ?";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
-
-          for (const part of parts) {
-            if (part.startsWith("data:")) {
-              const json = part.replace("data: ", "").trim();
-              if (json === "[DONE]") {
-                controller.close();
-                return;
-              }
-              try {
-                const parsed = JSON.parse(json);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  controller.enqueue(
-                    new TextEncoder().encode(content)
-                  );
-                }
-              } catch (_) {}
-            }
-          }
-        }
-      },
-    });
-
-    return new Response(stream, {
+    return new Response(
+      JSON.stringify({ message: responseText }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
+    );
       headers: {
         "Content-Type": "text/event-stream",
         ...corsHeaders,
