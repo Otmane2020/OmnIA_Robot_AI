@@ -125,22 +125,19 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
-    // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
       submittedDate: new Date().toLocaleDateString('fr-FR'),
       submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending',
-      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+      status: 'pending'
     };
     
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
-    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+    
+    // Rediriger vers la page de succès
+    window.location.href = '/registration-success';
   };
 
   return (

@@ -64,6 +64,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [stepStatuses, setStepStatuses] = useState<{[key: number]: StepStatus}>({
     1: { completed: false, current: true, hasErrors: false },
     2: { completed: false, current: false, hasErrors: false },
@@ -311,19 +312,12 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (!validateStep(4)) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     
     try {
-      // Créer le compte utilisateur avec Supabase Auth
-      const result = await signUp(formData.email, formData.password, formData);
-      
-      console.log('✅ Compte créé:', result.user.email);
-      showSuccess('Compte créé !', 'Votre compte a été créé avec succès. Validation en cours...');
-      
       const submissionData = {
         ...formData,
-        id: result.user.id,
-        user_id: result.user.id,
-        retailer_id: result.retailer.id,
+        id: Date.now().toString(),
         submittedAt: new Date().toISOString(),
         status: 'pending',
         proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
@@ -331,14 +325,11 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       
       onSubmit(submissionData);
       
-      // Rediriger vers la page de confirmation
-      setTimeout(() => {
-        window.location.href = '/registration-success';
-      }, 2000);
+      console.log('✅ Demande soumise:', submissionData.companyName);
       
     } catch (error) {
       console.error('Erreur soumission:', error);
-      showError('Erreur inscription', error.message || 'Erreur lors de la création du compte');
+      setSubmitError(error.message || 'Erreur lors de la soumission');
     } finally {
       setIsSubmitting(false);
     }
@@ -907,6 +898,15 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             </label>
           </div>
           {errors.acceptTerms && <p className="text-red-400 text-sm flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.acceptTerms}</p>}
+
+          {submitError && (
+            <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span className="text-red-300">{submitError}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-start gap-3">
             <input

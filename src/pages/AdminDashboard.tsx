@@ -3,7 +3,7 @@ import {
   ShoppingCart, Target, Bot, BarChart3, Brain, Building, Settings,
   LogOut, Package, MessageSquare, Globe, Zap, TrendingUp, Users,
   Store, FileText, Database, Eye, Plus, Calendar, Clock, DollarSign,
-  Activity, Wifi, Battery, ChevronRight, ChevronDown, Home
+  Activity, Wifi, Battery, ChevronRight, Home, ArrowLeft
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { CatalogManagement } from '../components/CatalogManagement';
@@ -159,13 +159,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const loadDashboardData = async () => {
     try {
-      // Charger les données depuis localStorage si disponibles
       const savedProducts = localStorage.getItem('catalog_products');
       if (savedProducts) {
         const products = JSON.parse(savedProducts);
         setStats(prev => ({ ...prev, totalProducts: products.length }));
       }
-      
       console.log('✅ Données dashboard chargées');
     } catch (error) {
       console.error('❌ Erreur chargement dashboard:', error);
@@ -173,209 +171,252 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleUniverseClick = (universeId: string) => {
-    if (activeUniverse === universeId) {
-      setActiveUniverse(null);
-      setActiveSubMenu(null);
-    } else {
-      setActiveUniverse(universeId);
-      setActiveSubMenu(null);
-    }
+    setActiveUniverse(universeId);
+    setActiveSubMenu('dashboard'); // Toujours commencer par le dashboard
   };
 
   const handleSubMenuClick = (subMenuId: string) => {
     setActiveSubMenu(subMenuId);
   };
 
+  const renderUniverseDashboard = (universe: Universe) => {
+    const Icon = universe.icon;
+    
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <div className={`w-20 h-20 bg-gradient-to-br ${universe.color} rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl`}>
+            <Icon className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-4">{universe.title}</h1>
+          <p className="text-xl text-gray-300">{universe.description}</p>
+        </div>
+
+        {/* Stats spécifiques à l'univers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {universe.id === 'ecommerce' && (
+            <>
+              <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-200 text-sm mb-1">Produits</p>
+                    <p className="text-3xl font-bold text-white">{stats.totalProducts}</p>
+                    <p className="text-green-300 text-sm">Catalogue</p>
+                  </div>
+                  <Package className="w-10 h-10 text-green-400" />
+                </div>
+              </div>
+              <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-200 text-sm mb-1">Commandes</p>
+                    <p className="text-3xl font-bold text-white">156</p>
+                    <p className="text-blue-300 text-sm">Ce mois</p>
+                  </div>
+                  <ShoppingCart className="w-10 h-10 text-blue-400" />
+                </div>
+              </div>
+              <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-200 text-sm mb-1">CA</p>
+                    <p className="text-3xl font-bold text-white">€{stats.revenue.toLocaleString()}</p>
+                    <p className="text-purple-300 text-sm">Revenus</p>
+                  </div>
+                  <DollarSign className="w-10 h-10 text-purple-400" />
+                </div>
+              </div>
+              <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-200 text-sm mb-1">Conversion</p>
+                    <p className="text-3xl font-bold text-white">{stats.conversionRate}%</p>
+                    <p className="text-orange-300 text-sm">Taux</p>
+                  </div>
+                  <TrendingUp className="w-10 h-10 text-orange-400" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {universe.id === 'marketing' && (
+            <>
+              <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-200 text-sm mb-1">Dépenses Ads</p>
+                    <p className="text-3xl font-bold text-white">€2,450</p>
+                    <p className="text-blue-300 text-sm">Ce mois</p>
+                  </div>
+                  <Target className="w-10 h-10 text-blue-400" />
+                </div>
+              </div>
+              <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-200 text-sm mb-1">ROAS</p>
+                    <p className="text-3xl font-bold text-white">4.2x</p>
+                    <p className="text-green-300 text-sm">Retour</p>
+                  </div>
+                  <TrendingUp className="w-10 h-10 text-green-400" />
+                </div>
+              </div>
+              <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-200 text-sm mb-1">Clics</p>
+                    <p className="text-3xl font-bold text-white">1,240</p>
+                    <p className="text-purple-300 text-sm">Total</p>
+                  </div>
+                  <Eye className="w-10 h-10 text-purple-400" />
+                </div>
+              </div>
+              <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-200 text-sm mb-1">CTR</p>
+                    <p className="text-3xl font-bold text-white">2.7%</p>
+                    <p className="text-orange-300 text-sm">Moyen</p>
+                  </div>
+                  <Activity className="w-10 h-10 text-orange-400" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {universe.id === 'sales-assistant' && (
+            <>
+              <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-200 text-sm mb-1">Conversations</p>
+                    <p className="text-3xl font-bold text-white">{stats.totalConversations.toLocaleString()}</p>
+                    <p className="text-purple-300 text-sm">Total</p>
+                  </div>
+                  <MessageSquare className="w-10 h-10 text-purple-400" />
+                </div>
+              </div>
+              <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-200 text-sm mb-1">Satisfaction</p>
+                    <p className="text-3xl font-bold text-white">98%</p>
+                    <p className="text-green-300 text-sm">Client</p>
+                  </div>
+                  <Users className="w-10 h-10 text-green-400" />
+                </div>
+              </div>
+              <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-200 text-sm mb-1">Durée moy.</p>
+                    <p className="text-3xl font-bold text-white">{stats.avgSessionDuration}</p>
+                    <p className="text-blue-300 text-sm">Session</p>
+                  </div>
+                  <Clock className="w-10 h-10 text-blue-400" />
+                </div>
+              </div>
+              <div className="bg-cyan-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-cyan-200 text-sm mb-1">Conversion</p>
+                    <p className="text-3xl font-bold text-white">{stats.conversionRate}%</p>
+                    <p className="text-cyan-300 text-sm">Taux</p>
+                  </div>
+                  <TrendingUp className="w-10 h-10 text-cyan-400" />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Actions rapides pour l'univers */}
+        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/30">
+          <h3 className="text-lg font-bold text-white mb-4">Actions rapides</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {universe.subMenus.map((subMenu) => {
+              const SubIcon = subMenu.icon;
+              return (
+                <button
+                  key={subMenu.id}
+                  onClick={() => handleSubMenuClick(subMenu.id)}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 hover:border-cyan-400/50 text-white p-4 rounded-xl transition-all hover:scale-105 text-left"
+                >
+                  <SubIcon className="w-6 h-6 text-cyan-400 mb-2" />
+                  <div className="font-semibold text-sm">{subMenu.title}</div>
+                  <div className="text-xs text-gray-300 mt-1">{subMenu.description}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderLandingPage = () => (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-          Interface Admin
-          <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-            OmnIA.sale
-          </span>
-        </h1>
-        <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-          Gérez votre assistant IA, catalogue et campagnes marketing depuis une interface unifiée
-        </p>
+      {/* Header simple */}
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-white mb-4">Interface Admin OmnIA</h1>
+        <p className="text-xl text-gray-300">Choisissez un univers pour commencer</p>
       </div>
 
-      {/* Stats globales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
-        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white">{stats.totalConversations.toLocaleString()}</p>
-              <p className="text-blue-300 text-sm">Ce mois</p>
-            </div>
-            <MessageSquare className="w-10 h-10 text-blue-400" />
-          </div>
+      {/* Stats globales simples */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-blue-600/20 backdrop-blur-xl rounded-xl p-4 border border-blue-500/30 text-center">
+          <div className="text-2xl font-bold text-white">{stats.totalProducts}</div>
+          <div className="text-blue-300 text-sm">Produits</div>
         </div>
-        
-        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-200 text-sm mb-1">Produits</p>
-              <p className="text-3xl font-bold text-white">{stats.totalProducts}</p>
-              <p className="text-green-300 text-sm">Catalogue</p>
-            </div>
-            <Package className="w-10 h-10 text-green-400" />
-          </div>
+        <div className="bg-green-600/20 backdrop-blur-xl rounded-xl p-4 border border-green-500/30 text-center">
+          <div className="text-2xl font-bold text-white">{stats.totalConversations}</div>
+          <div className="text-green-300 text-sm">Conversations</div>
         </div>
-        
-        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-200 text-sm mb-1">Conversions</p>
-              <p className="text-3xl font-bold text-white">{stats.conversionRate}%</p>
-              <p className="text-purple-300 text-sm">Taux</p>
-            </div>
-            <TrendingUp className="w-10 h-10 text-purple-400" />
-          </div>
+        <div className="bg-purple-600/20 backdrop-blur-xl rounded-xl p-4 border border-purple-500/30 text-center">
+          <div className="text-2xl font-bold text-white">{stats.conversionRate}%</div>
+          <div className="text-purple-300 text-sm">Conversion</div>
         </div>
-        
-        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-200 text-sm mb-1">Revenus</p>
-              <p className="text-3xl font-bold text-white">€{stats.revenue.toLocaleString()}</p>
-              <p className="text-orange-300 text-sm">Ce mois</p>
-            </div>
-            <DollarSign className="w-10 h-10 text-orange-400" />
-          </div>
-        </div>
-        
-        <div className="bg-cyan-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-cyan-200 text-sm mb-1">Utilisateurs</p>
-              <p className="text-3xl font-bold text-white">{stats.activeUsers}</p>
-              <p className="text-cyan-300 text-sm">Actifs</p>
-            </div>
-            <Users className="w-10 h-10 text-cyan-400" />
-          </div>
-        </div>
-        
-        <div className="bg-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-pink-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-pink-200 text-sm mb-1">Session</p>
-              <p className="text-3xl font-bold text-white">{stats.avgSessionDuration}</p>
-              <p className="text-pink-300 text-sm">Durée moy.</p>
-            </div>
-            <Clock className="w-10 h-10 text-pink-400" />
-          </div>
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-xl p-4 border border-orange-500/30 text-center">
+          <div className="text-2xl font-bold text-white">€{stats.revenue}</div>
+          <div className="text-orange-300 text-sm">Revenus</div>
         </div>
       </div>
 
       {/* Univers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {universes.map((universe) => {
           const Icon = universe.icon;
           return (
             <div
               key={universe.id}
               onClick={() => handleUniverseClick(universe.id)}
-              className="group cursor-pointer bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 hover:shadow-2xl"
+              className="group cursor-pointer bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105"
             >
-              <div className={`w-20 h-20 bg-gradient-to-br ${universe.color} rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-2xl`}>
-                <Icon className="w-10 h-10 text-white" />
+              <div className={`w-16 h-16 bg-gradient-to-br ${universe.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-xl`}>
+                <Icon className="w-8 h-8 text-white" />
               </div>
               
-              <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors">
+              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
                 {universe.title}
               </h3>
               
-              <p className="text-gray-300 mb-6 group-hover:text-gray-200 transition-colors">
+              <p className="text-gray-300 mb-4 group-hover:text-gray-200 transition-colors text-sm">
                 {universe.description}
               </p>
               
-              <div className="space-y-2">
-                {universe.subMenus.slice(0, 3).map((subMenu) => (
-                  <div key={subMenu.id} className="flex items-center gap-2 text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                    <span>{subMenu.title}</span>
-                  </div>
-                ))}
-                {universe.subMenus.length > 3 && (
-                  <div className="text-sm text-cyan-400">+{universe.subMenus.length - 3} autres...</div>
-                )}
-              </div>
-              
-              <div className="mt-6 flex items-center justify-between">
-                <span className="text-cyan-400 font-semibold">Accéder →</span>
+              <div className="flex items-center justify-between">
+                <span className="text-cyan-400 font-semibold text-sm">Accéder</span>
                 <ChevronRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Actions rapides */}
-      <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-8 border border-cyan-400/30">
-        <h3 className="text-xl font-bold text-white mb-6">Actions rapides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            onClick={() => {
-              setActiveUniverse('ecommerce');
-              setActiveSubMenu('products-catalog');
-            }}
-            className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
-          >
-            <Package className="w-6 h-6" />
-            <div className="text-left">
-              <div className="font-semibold">Gérer le catalogue</div>
-              <div className="text-sm opacity-80">Ajouter/modifier produits</div>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => {
-              setActiveUniverse('sales-assistant');
-              setActiveSubMenu('live-chat');
-            }}
-            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
-          >
-            <Bot className="w-6 h-6" />
-            <div className="text-left">
-              <div className="font-semibold">Configurer OmnIA</div>
-              <div className="text-sm opacity-80">Personnalité et voix</div>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => {
-              setActiveUniverse('ai-automation');
-              setActiveSubMenu('catalog-enrichment');
-            }}
-            className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
-          >
-            <Brain className="w-6 h-6" />
-            <div className="text-left">
-              <div className="font-semibold">Entraîner l'IA</div>
-              <div className="text-sm opacity-80">DeepSeek enrichissement</div>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => window.open('/robot', '_blank')}
-            className="bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/50 text-cyan-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
-          >
-            <Eye className="w-6 h-6" />
-            <div className="text-left">
-              <div className="font-semibold">Tester OmnIA</div>
-              <div className="text-sm opacity-80">Interface client</div>
-            </div>
-          </button>
-        </div>
-      </div>
     </div>
   );
 
-  const renderUniverseContent = () => {
-    if (!activeUniverse || !activeSubMenu) return null;
+  const renderSubMenuContent = () => {
+    if (!activeSubMenu || activeSubMenu === 'dashboard') return null;
 
     switch (activeSubMenu) {
       // E-Commerce
@@ -480,7 +521,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 }}
                 className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors mb-4"
               >
-                <Home className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" />
                 Retour aux univers
               </button>
               
@@ -502,6 +543,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
             {/* Navigation sous-menus */}
             <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+              {/* Dashboard toujours en premier */}
+              <button
+                onClick={() => handleSubMenuClick('dashboard')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                  activeSubMenu === 'dashboard' || !activeSubMenu
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-lg'
+                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-5 h-5" />
+                <div>
+                  <div className="font-medium">Dashboard</div>
+                  <div className="text-xs opacity-70">Vue d'ensemble</div>
+                </div>
+              </button>
+
+              {/* Sous-menus de l'univers */}
               {universes.find(u => u.id === activeUniverse)?.subMenus.map((subMenu) => {
                 const SubIcon = subMenu.icon;
                 return (
@@ -540,7 +598,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-8">
-            {activeUniverse && activeSubMenu ? renderUniverseContent() : renderLandingPage()}
+            {!activeUniverse ? (
+              renderLandingPage()
+            ) : activeSubMenu === 'dashboard' || !activeSubMenu ? (
+              renderUniverseDashboard(universes.find(u => u.id === activeUniverse)!)
+            ) : (
+              renderSubMenuContent()
+            )}
           </div>
         </div>
       </div>
