@@ -3,7 +3,7 @@ import {
   Building, User, Mail, Phone, MapPin, FileText, 
   Upload, ArrowLeft, CheckCircle, AlertCircle, 
   Eye, EyeOff, CreditCard, Globe, Loader2, Flag,
-  Lock, Shield, Calendar, Clock
+  Lock, Shield, Calendar, Clock, Sparkles
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -80,7 +80,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     { code: 'DE', name: 'Allemagne', flag: '🇩🇪' },
     { code: 'IT', name: 'Italie', flag: '🇮🇹' },
     { code: 'ES', name: 'Espagne', flag: '🇪🇸' },
-    { code: 'PT', name: 'Portugal', flag: '🇵🇹' }
+    { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
+    { code: 'NL', name: 'Pays-Bas', flag: '🇳🇱' },
+    { code: 'AT', name: 'Autriche', flag: '🇦🇹' }
   ];
 
   const steps = [
@@ -125,7 +127,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         '500 produits max',
         'Support email',
         'Widget personnalisable',
-        'Analytics de base'
+        'Analytics de base',
+        'Google Merchant basique'
       ],
       color: 'from-gray-600 to-gray-700'
     },
@@ -142,7 +145,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         'Analytics avancées',
         'API complète',
         'Vision AR/VR (NOUVEAU)',
-        'Google Ads automatique'
+        'Google Ads automatique',
+        'SEO Blog IA',
+        'Catalogue enrichi IA'
       ],
       popular: true,
       color: 'from-cyan-500 to-blue-600'
@@ -160,7 +165,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         'API personnalisée',
         'Formation équipe',
         'Showroom robot physique',
-        'IA prédictive avancée'
+        'IA prédictive avancée',
+        'Marketplace intégration',
+        'Insights business IA'
       ],
       color: 'from-purple-500 to-pink-600'
     }
@@ -405,7 +412,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <select
               value={formData.country}
               onChange={(e) => handleInputChange('country', e.target.value)}
-              className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
+              className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all appearance-none ${
                 errors.country ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
               }`}
             >
@@ -425,15 +432,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Adresse complète *
           </label>
-          <input
-            type="text"
-            value={formData.address}
-            onChange={(e) => handleInputChange('address', e.target.value)}
-            className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
-              errors.address ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
-            }`}
-            placeholder="123 Avenue des Champs-Élysées"
-          />
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-cyan-400" />
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              className={`w-full bg-black/40 border rounded-xl pl-12 pr-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
+                errors.address ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
+              }`}
+              placeholder="123 Avenue des Champs-Élysées"
+            />
+          </div>
           {errors.address && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.address}</p>}
         </div>
 
@@ -506,15 +516,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Prénom *
           </label>
-          <input
-            type="text"
-            value={formData.firstName}
-            onChange={(e) => handleInputChange('firstName', e.target.value)}
-            className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
-              errors.firstName ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
-            }`}
-            placeholder="Jean"
-          />
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-cyan-400" />
+            <input
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => handleInputChange('firstName', e.target.value)}
+              className={`w-full bg-black/40 border rounded-xl pl-12 pr-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
+                errors.firstName ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
+              }`}
+              placeholder="Jean"
+            />
+          </div>
           {errors.firstName && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.firstName}</p>}
         </div>
 
@@ -522,15 +535,18 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Nom *
           </label>
-          <input
-            type="text"
-            value={formData.lastName}
-            onChange={(e) => handleInputChange('lastName', e.target.value)}
-            className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
-              errors.lastName ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
-            }`}
-            placeholder="Dupont"
-          />
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-cyan-400" />
+            <input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => handleInputChange('lastName', e.target.value)}
+              className={`w-full bg-black/40 border rounded-xl pl-12 pr-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all ${
+                errors.lastName ? 'border-red-500 ring-red-500/30' : 'border-cyan-500/50'
+              }`}
+              placeholder="Dupont"
+            />
+          </div>
           {errors.lastName && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.lastName}</p>}
         </div>
 
@@ -619,16 +635,16 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           </div>
           {errors.password && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.password}</p>}
           <div className="mt-2 space-y-1">
-            <div className={`text-xs flex items-center gap-2 ${formData.password.length >= 8 ? 'text-green-400' : 'text-gray-400'}`}>
-              <div className={`w-2 h-2 rounded-full ${formData.password.length >= 8 ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+            <div className={`text-xs flex items-center gap-2 transition-colors ${formData.password.length >= 8 ? 'text-green-400' : 'text-gray-400'}`}>
+              <div className={`w-2 h-2 rounded-full transition-colors ${formData.password.length >= 8 ? 'bg-green-400' : 'bg-gray-400'}`}></div>
               Au moins 8 caractères
             </div>
-            <div className={`text-xs flex items-center gap-2 ${/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password) ? 'text-green-400' : 'text-gray-400'}`}>
-              <div className={`w-2 h-2 rounded-full ${/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password) ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+            <div className={`text-xs flex items-center gap-2 transition-colors ${/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password) ? 'text-green-400' : 'text-gray-400'}`}>
+              <div className={`w-2 h-2 rounded-full transition-colors ${/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password) ? 'bg-green-400' : 'bg-gray-400'}`}></div>
               Majuscules et minuscules
             </div>
-            <div className={`text-xs flex items-center gap-2 ${/(?=.*\d)/.test(formData.password) ? 'text-green-400' : 'text-gray-400'}`}>
-              <div className={`w-2 h-2 rounded-full ${/(?=.*\d)/.test(formData.password) ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+            <div className={`text-xs flex items-center gap-2 transition-colors ${/(?=.*\d)/.test(formData.password) ? 'text-green-400' : 'text-gray-400'}`}>
+              <div className={`w-2 h-2 rounded-full transition-colors ${/(?=.*\d)/.test(formData.password) ? 'bg-green-400' : 'bg-gray-400'}`}></div>
               Au moins un chiffre
             </div>
           </div>
@@ -658,6 +674,12 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             </button>
           </div>
           {errors.confirmPassword && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.confirmPassword}</p>}
+          {formData.confirmPassword && formData.password === formData.confirmPassword && (
+            <p className="text-green-400 text-sm mt-1 flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Mots de passe identiques
+            </p>
+          )}
         </div>
       </div>
     </div>
