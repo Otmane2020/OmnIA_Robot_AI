@@ -89,7 +89,7 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 60,
+          max_tokens: 80,
           temperature: 0.7,
           stream: false,
         }),
@@ -97,7 +97,7 @@ ${productsList}
       
       if (aiResponse.ok) {
         const data = await aiResponse.json();
-        const responseText = data.choices[0]?.message?.content?.trim() || "Comment puis-je vous aider ?";
+        const responseText = data.choices[0]?.message?.content?.trim().substring(0, 200) || "Comment puis-je vous aider ?";
         
         return new Response(
           responseText,
@@ -136,7 +136,7 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 60,
+          max_tokens: 80,
           temperature: 0.7,
           stream: false,
         }),
@@ -148,7 +148,7 @@ ${productsList}
     }
 
     const data = await aiResponse.json();
-    const responseText = data.choices[0]?.message?.content?.trim() || "Comment puis-je vous aider ?";
+    const responseText = data.choices[0]?.message?.content?.trim().substring(0, 200) || "Comment puis-je vous aider ?";
 
     return new Response(
       responseText,

@@ -8,7 +8,7 @@ import {
   Smartphone, Monitor, Headphones, Mic, Volume2, Play, Pause,
   ArrowRight, ChevronDown, ChevronUp, X, Save, Copy, Send,
   Database, Cloud, Wifi, Battery, Signal, Power, Home, Store,
-  Mail, Phone, MapPin, Building, User, CreditCard, Shield
+  Mail, Phone, MapPin, Building, User, CreditCard, Shield, Minus
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { CatalogManagement } from '../components/CatalogManagement';
@@ -50,6 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeSubTab, setActiveSubTab] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [retailerData, setRetailerData] = useState<RetailerData>({
     id: 'demo-retailer-id',
     email: 'demo@decorahome.fr',
@@ -81,47 +82,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   ];
 
   const ecommerceSubTabs = [
-    { id: 'catalogue', label: 'Catalogue', icon: Package },
-    { id: 'enriched', label: 'Catalogue Enrichi', icon: Zap },
-    { id: 'cron', label: 'Cron de Données', icon: Clock },
-    { id: 'training', label: 'Entraînement IA', icon: Brain },
-    { id: 'integrations', label: 'Intégrations', icon: Link },
-    { id: 'stock', label: 'Stock', icon: Database },
-    { id: 'orders', label: 'Commandes', icon: ShoppingCart }
+    { id: 'ecommerce-catalog', label: 'Catalogue', icon: Package },
+    { id: 'ecommerce-shop', label: 'Shop', icon: ShoppingCart },
+    { id: 'ecommerce-enriched', label: 'Catalogue Enrichi', icon: Brain },
+    { id: 'ecommerce-cron', label: 'Cron de Données', icon: Clock },
+    { id: 'ecommerce-training', label: 'Entraînement IA', icon: Brain },
+    { id: 'ecommerce-integrations', label: 'Intégrations', icon: Link },
+    { id: 'ecommerce-stock', label: 'Stock', icon: Database },
+    { id: 'ecommerce-orders', label: 'Commandes', icon: ShoppingCart }
   ];
 
   const marketingSubTabs = [
-    { id: 'google-ads', label: 'Google Ads', icon: Target },
+    { id: 'ads-google', label: 'Google Ads', icon: Target },
     { id: 'ads-integration', label: 'Intégration Ads', icon: Settings },
-    { id: 'google-merchant', label: 'Google Merchant', icon: Store },
-    { id: 'campaigns', label: 'Campagnes', icon: Zap }
+    { id: 'ads-merchant', label: 'Google Merchant', icon: Store },
+    { id: 'ads-campaigns', label: 'Campagnes', icon: Zap }
   ];
 
   const seoSubTabs = [
-    { id: 'blog', label: 'Blog & Articles', icon: FileText },
-    { id: 'auto-blogging', label: 'Auto Blogging', icon: Brain },
-    { id: 'backlinks', label: 'Backlinks', icon: Link },
-    { id: 'integration-seo', label: 'Intégration', icon: Globe },
-    { id: 'optimization', label: 'Optimisation SEO', icon: Target }
+    { id: 'seo-blog', label: 'Blog & Articles', icon: FileText },
+    { id: 'seo-auto-blogging', label: 'Auto Blogging', icon: Brain },
+    { id: 'seo-backlinks', label: 'Backlinks', icon: Link },
+    { id: 'seo-integration', label: 'Intégration', icon: Globe },
+    { id: 'seo-optimization', label: 'Optimisation SEO', icon: Target }
   ];
 
   const visionSubTabs = [
-    { id: 'ar-mobile', label: 'AR Mobile', icon: Smartphone },
-    { id: 'vr-showroom', label: 'VR Showroom', icon: Monitor },
-    { id: 'photo-analysis', label: 'Analyse Photo IA', icon: Camera },
-    { id: 'ambiance-generator', label: 'Générateur d\'Ambiances', icon: Palette }
+    { id: 'vision-ar-mobile', label: 'AR Mobile', icon: Smartphone },
+    { id: 'vision-vr-showroom', label: 'VR Showroom', icon: Monitor },
+    { id: 'vision-photo-analysis', label: 'Analyse Photo IA', icon: Camera },
+    { id: 'vision-ambiance-generator', label: 'Générateur d\'Ambiances', icon: Palette }
   ];
 
   useEffect(() => {
     // Set default sub-tabs
     if (activeTab === 'ecommerce' && !activeSubTab) {
-      setActiveSubTab('catalogue');
+      setActiveSubTab('ecommerce-catalog');
     } else if (activeTab === 'marketing' && !activeSubTab) {
-      setActiveSubTab('google-ads');
+      setActiveSubTab('ads-google');
     } else if (activeTab === 'seo' && !activeSubTab) {
-      setActiveSubTab('blog');
+      setActiveSubTab('seo-blog');
     } else if (activeTab === 'vision' && !activeSubTab) {
-      setActiveSubTab('ar-mobile');
+      setActiveSubTab('vision-ar-mobile');
     }
   }, [activeTab]);
 
@@ -232,132 +234,320 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderECommerceContent = () => {
-    switch (activeSubTab) {
-      case 'catalogue':
-        return <CatalogManagement />;
-      case 'enriched':
-        return <ProductsEnrichedTable />;
-      case 'cron':
-        return <MLTrainingDashboard />;
-      case 'training':
-        return <AITrainingInterface />;
-      case 'integrations':
-        return <EcommerceIntegration onConnected={() => {}} />;
-      case 'stock':
-        return renderStockManagement();
-      case 'orders':
-        return renderOrdersManagement();
-      default:
-        return <CatalogManagement />;
-    }
-  };
-
-  const renderMarketingContent = () => {
-    switch (activeSubTab) {
-      case 'google-ads':
-        return <GoogleAdsTab />;
-      case 'ads-integration':
-        return renderAdsIntegration();
-      case 'google-merchant':
-        return <GoogleMerchantTab />;
-      case 'campaigns':
-        return renderCampaigns();
-      default:
-        return <GoogleAdsTab />;
-    }
-  };
-
-  const renderSEOContent = () => {
-    switch (activeSubTab) {
-      case 'blog':
-        return <SEOBlogTab />;
-      case 'auto-blogging':
-        return renderAutoBlogging();
-      case 'backlinks':
-        return renderBacklinks();
-      case 'integration-seo':
-        return renderSEOIntegration();
-      case 'optimization':
-        return renderSEOOptimization();
-      default:
-        return <SEOBlogTab />;
-    }
-  };
-
-  const renderVisionContent = () => {
-    switch (activeSubTab) {
-      case 'ar-mobile':
-        return renderARMobile();
-      case 'vr-showroom':
-        return renderVRShowroom();
-      case 'photo-analysis':
-        return renderPhotoAnalysis();
-      case 'ambiance-generator':
-        return renderAmbianceGenerator();
-      default:
-        return renderARMobile();
-    }
-  };
-
-  const renderStockManagement = () => (
-    <div className="space-y-6">
+  const renderECommerceCatalog = () => (
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion du Stock</h2>
-        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Ajuster stock
-        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Catalogue Produits</h2>
+          <p className="text-gray-300">Gestion de votre catalogue produits</p>
+        </div>
       </div>
 
+      <CatalogManagement />
+    </div>
+  );
+
+  const renderECommerceShop = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Boutique E-Commerce</h2>
+          <p className="text-gray-300">Interface client avec panier et checkout Stripe</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.open('/shop', '_blank')}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Voir la boutique
+          </button>
+        </div>
+      </div>
+
+      {/* Aperçu boutique */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Aperçu de votre boutique</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              title: 'Canapé ALYANA - Beige',
+              price: 799,
+              compareAtPrice: 1399,
+              image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png',
+              stock: 45
+            },
+            {
+              title: 'Table AUREA Ø100cm - Travertin',
+              price: 499,
+              compareAtPrice: 859,
+              image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png',
+              stock: 30
+            },
+            {
+              title: 'Chaise INAYA - Gris chenille',
+              price: 99,
+              compareAtPrice: 149,
+              image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png',
+              stock: 96
+            }
+          ].map((product, index) => (
+            <div key={index} className="bg-black/20 rounded-xl p-4 border border-white/10">
+              <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                <img 
+                  src={product.image} 
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h4 className="font-semibold text-white mb-2">{product.title}</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                {product.compareAtPrice && (
+                  <>
+                    <span className="text-gray-400 line-through text-sm">{product.compareAtPrice}€</span>
+                    <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                      -{Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}%
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-gray-300 text-sm">Stock: {product.stock}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Configuration Stripe */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Configuration Stripe</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-cyan-300 mb-2">Clé publique Stripe</label>
+            <input
+              type="text"
+              placeholder="pk_test_..."
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-cyan-300 mb-2">Clé secrète Stripe</label>
+            <input
+              type="password"
+              placeholder="sk_test_..."
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
+            />
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <button
+            onClick={() => showSuccess('Stripe configuré', 'Paiements activés pour votre boutique !')}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          >
+            Configurer Stripe
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderECommerceEnriched = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+          <p className="text-gray-300">5 produits enrichis • Score moyen: 91%</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              showSuccess('Enrichissement IA', 'Analyse DeepSeek démarrée pour tous les produits !');
+              // Simuler enrichissement
+              setTimeout(() => {
+                showSuccess('Enrichissement terminé', '5 produits enrichis avec attributs complets !');
+              }, 3000);
+            }}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <Brain className="w-4 h-4" />
+            Enrichir avec DeepSeek
+          </button>
+        </div>
+      </div>
+
+      {/* Table enrichie avec vraies données */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-black/20">
               <tr>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Image</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Titre</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Disponible</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Quantité</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Dimensions</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">SEO</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Google Shopping</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Score IA</th>
                 <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { id: 1, image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png', title: 'Canapé ALYANA - Beige', available: true, quantity: 45 },
-                { id: 2, image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png', title: 'Table AUREA Ø100cm', available: true, quantity: 30 },
-                { id: 3, image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png', title: 'Chaise INAYA - Gris', available: true, quantity: 96 }
-              ].map((item) => (
-                <tr key={item.id} className="border-b border-white/10 hover:bg-white/5">
+                {
+                  id: 'alyana-beige',
+                  title: 'Canapé ALYANA convertible - Beige',
+                  category: 'Canapé',
+                  subcategory: 'Canapé d\'angle',
+                  color: 'Beige',
+                  material: 'Velours côtelé, bois, métal',
+                  style: 'Moderne',
+                  dimensions: '240x160x75cm',
+                  price: 799,
+                  stock: 45,
+                  image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png',
+                  seo_title: 'Canapé Convertible ALYANA Beige - Design Moderne',
+                  seo_description: 'Découvrez le canapé convertible ALYANA en velours côtelé beige...',
+                  gtin: '3701234567890',
+                  google_category: 'Furniture > Living Room Furniture > Sofas',
+                  confidence: 95
+                },
+                {
+                  id: 'aurea-travertin-100',
+                  title: 'Table AUREA Ø100cm - Travertin',
+                  category: 'Table',
+                  subcategory: 'Table à manger',
+                  color: 'Naturel, Travertin',
+                  material: 'Travertin naturel, métal noir',
+                  style: 'Contemporain',
+                  dimensions: 'Ø100x75cm',
+                  price: 499,
+                  stock: 30,
+                  image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png',
+                  seo_title: 'Table Ronde AUREA Travertin Ø100cm - Élégance Naturelle',
+                  seo_description: 'Table à manger ronde AUREA en travertin naturel...',
+                  gtin: '3701234567891',
+                  google_category: 'Furniture > Tables > Dining Tables',
+                  confidence: 92
+                },
+                {
+                  id: 'inaya-gris-chenille',
+                  title: 'Chaise INAYA - Gris chenille',
+                  category: 'Chaise',
+                  subcategory: 'Chaise de salle à manger',
+                  color: 'Gris clair',
+                  material: 'Chenille, métal noir',
+                  style: 'Contemporain',
+                  dimensions: '45x55x85cm',
+                  price: 99,
+                  stock: 96,
+                  image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png',
+                  seo_title: 'Chaise INAYA Gris Chenille - Design Contemporain',
+                  seo_description: 'Chaise INAYA en tissu chenille gris avec pieds métal noir...',
+                  gtin: '3701234567892',
+                  google_category: 'Furniture > Chairs > Dining Chairs',
+                  confidence: 88
+                }
+              ].map((product) => (
+                <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
                   <td className="p-4">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-600">
-                      <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
+                        <img 
+                          src={product.image} 
+                          alt={product.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white text-sm">{product.title}</div>
+                        <div className="text-gray-400 text-xs">{product.category} • {product.subcategory}</div>
+                        <div className="text-green-400 font-bold">{product.price}€</div>
+                        <div className="text-gray-500 text-xs">Stock: {product.stock}</div>
+                      </div>
                     </div>
                   </td>
+                  
                   <td className="p-4">
-                    <span className="text-white font-semibold">{item.title}</span>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap gap-1">
+                        {product.color.split(',').slice(0, 2).map((color, index) => (
+                          <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                            {color.trim()}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {product.material.split(',').slice(0, 2).map((material, index) => (
+                          <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                            {material.trim()}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
+                          {product.style}
+                        </span>
+                      </div>
+                    </div>
                   </td>
+                  
                   <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      item.available ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
-                    }`}>
-                      {item.available ? 'Oui' : 'Non'}
-                    </span>
+                    <div className="text-white text-sm">{product.dimensions}</div>
                   </td>
+                  
                   <td className="p-4">
-                    <input
-                      type="number"
-                      defaultValue={item.quantity}
-                      className="w-20 bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white text-center"
-                    />
+                    <div className="space-y-1 text-xs">
+                      <div className="text-white font-medium">{product.seo_title.substring(0, 30)}...</div>
+                      <div className="text-gray-400">{product.seo_description.substring(0, 40)}...</div>
+                    </div>
                   </td>
+                  
+                  <td className="p-4">
+                    <div className="space-y-1 text-xs">
+                      <div className="text-cyan-400">GTIN: {product.gtin}</div>
+                      <div className="text-orange-400">{product.google_category.split(' > ').pop()}</div>
+                    </div>
+                  </td>
+                  
+                  <td className="p-4">
+                    <div className="text-center">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        product.confidence >= 90 ? 'bg-green-500/20 text-green-300' :
+                        product.confidence >= 70 ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-red-500/20 text-red-300'
+                      }`}>
+                        {product.confidence}%
+                      </span>
+                    </div>
+                  </td>
+                  
                   <td className="p-4">
                     <div className="flex gap-2">
-                      <button className="text-blue-400 hover:text-blue-300 p-1">
-                        <Edit className="w-4 h-4" />
+                      <button
+                        onClick={() => showInfo('Enrichissement', `Enrichissement DeepSeek pour ${product.title}`)}
+                        className="text-purple-400 hover:text-purple-300 p-1"
+                        title="Enrichir avec IA"
+                      >
+                        <Brain className="w-4 h-4" />
                       </button>
-                      <button className="text-green-400 hover:text-green-300 p-1">
-                        <Save className="w-4 h-4" />
+                      <button
+                        className="text-blue-400 hover:text-blue-300 p-1"
+                        title="Voir détails"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Supprimer ${product.title} ?`)) {
+                            showSuccess('Produit supprimé', `${product.title} supprimé du catalogue enrichi.`);
+                          }
+                        }}
+                        className="text-red-400 hover:text-red-300 p-1"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -370,105 +560,372 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderOrdersManagement = () => (
-    <div className="space-y-6">
+  const renderECommerceCron = () => (
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion des Commandes</h2>
-        <button 
-          onClick={() => showInfo('Commande créée', 'Nouvelle commande manuelle créée avec succès !')}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Créer commande manuelle
-        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Cron de Données</h2>
+          <p className="text-gray-300">Synchronisation automatique des données</p>
+        </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <h3 className="text-lg font-bold text-white mb-4">Commandes générées via OmnIA Robot</h3>
-        
-        <div className="space-y-4">
-          {[
-            { id: 'CMD-001', client: 'Marie Dubois', produits: 'Canapé ALYANA + Table AUREA', total: '1298€', statut: 'Confirmée', date: '15/01/2025' },
-            { id: 'CMD-002', client: 'Jean Martin', produits: 'Chaises INAYA x4', total: '396€', statut: 'En cours', date: '14/01/2025' },
-            { id: 'CMD-003', client: 'Sophie Laurent', produits: 'Table AUREA Ø120cm', total: '549€', statut: 'Livrée', date: '13/01/2025' }
-          ].map((order) => (
-            <div key={order.id} className="bg-black/20 rounded-xl p-4 border border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="font-bold text-white">{order.id}</span>
-                    <span className="text-cyan-400">{order.client}</span>
-                    <span className="text-gray-300 text-sm">{order.date}</span>
-                  </div>
-                  <p className="text-gray-300 text-sm">{order.produits}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-green-400 font-bold text-lg">{order.total}</div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    order.statut === 'Confirmée' ? 'bg-green-500/20 text-green-300' :
-                    order.statut === 'En cours' ? 'bg-yellow-500/20 text-yellow-300' :
-                    'bg-blue-500/20 text-blue-300'
-                  }`}>
-                    {order.statut}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+      <MLTrainingDashboard />
+    </div>
+  );
+
+  const renderECommerceTraining = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Entraînement IA</h2>
+          <p className="text-gray-300">Formation de l'intelligence artificielle</p>
+        </div>
+      </div>
+
+      <AITrainingInterface />
+    </div>
+  );
+
+  const renderECommerceIntegrations = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Intégrations E-Commerce</h2>
+          <p className="text-gray-300">Connectez vos plateformes</p>
+        </div>
+      </div>
+
+      <EcommerceIntegration onConnected={() => {}} />
+    </div>
+  );
+
+  const renderECommerceStock = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Gestion des Stocks</h2>
+          <p className="text-gray-300">5 produits • 171 unités total</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => showInfo('Synchronisation', 'Mise à jour des stocks depuis Shopify...')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Synchroniser
+          </button>
+        </div>
+      </div>
+
+      {/* Table des stocks */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Image</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Titre</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Quantité Stock</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { id: 1, title: 'Canapé ALYANA - Beige', image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png', available: true, stock: 45 },
+                { id: 2, title: 'Table AUREA Ø100cm', image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png', available: true, stock: 30 },
+                { id: 3, title: 'Chaise INAYA - Gris', image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png', available: true, stock: 96 },
+                { id: 4, title: 'Table AUREA Ø120cm', image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/2_89637aec-60b5-403f-9f0f-57c9a2fa42e4.png', available: false, stock: 0 },
+                { id: 5, title: 'Chaise INAYA - Moka', image: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_aae7ccd2-f2cb-4418-8c84-210ace00d753.png', available: true, stock: 100 }
+              ].map((item) => (
+                <tr key={item.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-600">
+                      <img 
+                        src={item.image} 
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-white">{item.title}</div>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => {
+                        const newStatus = !item.available;
+                        showSuccess('Statut modifié', `Produit ${newStatus ? 'activé' : 'désactivé'}`);
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        item.available 
+                          ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30' 
+                          : 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                      } transition-all cursor-pointer`}
+                    >
+                      {item.available ? 'Oui' : 'Non'}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    <input
+                      type="number"
+                      defaultValue={item.stock}
+                      onChange={(e) => {
+                        const newStock = parseInt(e.target.value) || 0;
+                        showInfo('Stock modifié', `Stock mis à jour: ${newStock} unités`);
+                      }}
+                      className="w-20 bg-black/40 border border-cyan-500/50 rounded-lg px-3 py-2 text-white text-center"
+                    />
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => showInfo('Stock ajusté', `+10 unités ajoutées au stock`)}
+                        className="text-green-400 hover:text-green-300 p-1"
+                        title="Ajouter stock"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => showInfo('Stock réduit', `-5 unités retirées du stock`)}
+                        className="text-yellow-400 hover:text-yellow-300 p-1"
+                        title="Réduire stock"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 
+  const renderECommerceOrders = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Gestion des Commandes</h2>
+          <p className="text-gray-300">12 commandes • €3,247 CA total</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowCreateOrderModal(true)}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Créer commande manuelle
+          </button>
+        </div>
+      </div>
+
+      {/* Table des commandes */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Commande</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Client</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Produits</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Total</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Source</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  id: 'CMD-001',
+                  client: 'Marie Dubois',
+                  email: 'marie@email.com',
+                  products: 'Canapé ALYANA + Table AUREA',
+                  total: 1298,
+                  status: 'payée',
+                  source: 'OmnIA Robot',
+                  date: '15/01/2025'
+                },
+                {
+                  id: 'CMD-002',
+                  client: 'Jean Martin',
+                  email: 'jean@email.com',
+                  products: '2x Chaise INAYA',
+                  total: 198,
+                  status: 'en_cours',
+                  source: 'Boutique',
+                  date: '14/01/2025'
+                },
+                {
+                  id: 'CMD-003',
+                  client: 'Sophie Laurent',
+                  email: 'sophie@email.com',
+                  products: 'Table AUREA Ø120cm',
+                  total: 549,
+                  status: 'expédiée',
+                  source: 'OmnIA Robot',
+                  date: '13/01/2025'
+                }
+              ].map((order) => (
+                <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div className="font-semibold text-white">{order.id}</div>
+                    <div className="text-gray-400 text-xs">{order.date}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-white">{order.client}</div>
+                    <div className="text-gray-400 text-xs">{order.email}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-white text-sm">{order.products}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-green-400 font-bold">{order.total}€</div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'payée' ? 'bg-green-500/20 text-green-300' :
+                      order.status === 'en_cours' ? 'bg-yellow-500/20 text-yellow-300' :
+                      order.status === 'expédiée' ? 'bg-blue-500/20 text-blue-300' :
+                      'bg-gray-500/20 text-gray-300'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      order.source === 'OmnIA Robot' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
+                    }`}>
+                      {order.source}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => showInfo('Commande', `Détails de la commande ${order.id}`)}
+                        className="text-blue-400 hover:text-blue-300 p-1"
+                        title="Voir détails"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => showInfo('Email', `Email de suivi envoyé à ${order.client}`)}
+                        className="text-green-400 hover:text-green-300 p-1"
+                        title="Envoyer email"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderECommerceContent = () => {
+    switch (activeSubTab) {
+      case 'ecommerce-catalog': return renderECommerceCatalog();
+      case 'ecommerce-shop': return renderECommerceShop();
+      case 'ecommerce-enriched': return renderECommerceEnriched();
+      case 'ecommerce-cron': return renderECommerceCron();
+      case 'ecommerce-training': return renderECommerceTraining();
+      case 'ecommerce-integrations': return renderECommerceIntegrations();
+      case 'ecommerce-stock': return renderECommerceStock();
+      case 'ecommerce-orders': return renderECommerceOrders();
+      default: return renderECommerceCatalog();
+    }
+  };
+
+  const renderAdsGoogleAds = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Google Ads</h2>
+          <p className="text-gray-300">Veuillez d'abord vous connecter à votre compte Google Ads</p>
+        </div>
+      </div>
+
+      {/* Connexion Google Ads requise */}
+      <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-2xl p-8 text-center">
+        <Target className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-white mb-4">Connexion Google Ads requise</h3>
+        <p className="text-yellow-300 mb-6">
+          Connectez votre compte Google Ads pour créer et gérer vos campagnes automatiquement
+        </p>
+        <button
+          onClick={() => {
+            setActiveSubTab('ads-integration');
+            showInfo('Redirection', 'Accédez à l\'onglet Intégration pour connecter Google Ads');
+          }}
+          className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-400 hover:to-orange-500 text-white px-8 py-4 rounded-xl font-bold transition-all"
+        >
+          Connecter Google Ads
+        </button>
+      </div>
+    </div>
+  );
+
   const renderAdsIntegration = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Intégration Google Ads</h2>
-      
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Intégration Google Ads</h2>
+        <p className="text-gray-300">Configuration API Google Ads</p>
+      </div>
+
+      {/* Formulaire de connexion Google Ads */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Configuration API Google Ads</h3>
+        <h3 className="text-xl font-bold text-white mb-6">Configuration Google Ads API</h3>
         
         <div className="space-y-6">
-          <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4">
-            <h4 className="font-semibold text-yellow-200 mb-2">⚠️ Connexion requise</h4>
-            <p className="text-yellow-300 text-sm">Veuillez d'abord vous connecter à votre compte Google Ads</p>
-          </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Client ID</label>
+              <label className="block text-sm text-cyan-300 mb-2">Client ID Google</label>
               <input
                 type="text"
                 placeholder="123456789-abc.apps.googleusercontent.com"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Client Secret</label>
+              <label className="block text-sm text-cyan-300 mb-2">Client Secret</label>
               <input
                 type="password"
                 placeholder="Votre client secret"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Developer Token</label>
+              <label className="block text-sm text-cyan-300 mb-2">Developer Token</label>
               <input
                 type="password"
-                placeholder="Votre token développeur"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                placeholder="Votre developer token"
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Customer ID</label>
+              <label className="block text-sm text-cyan-300 mb-2">Customer ID</label>
               <input
                 type="text"
                 placeholder="123-456-7890"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400"
               />
             </div>
           </div>
           
-          <button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold">
+          <button
+            onClick={() => {
+              showSuccess('Google Ads connecté !', 'API configurée avec succès. Campagnes automatiques disponibles !');
+              setTimeout(() => setActiveSubTab('ads-google'), 1000);
+            }}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          >
             Connecter Google Ads
           </button>
         </div>
@@ -476,7 +933,77 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderCampaigns = () => (
+  const renderAdsMerchant = () => (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Google Merchant Center</h2>
+        <p className="text-gray-300">Flux automatique: https://decorahome.omnia.sale/feed/xml/google-shopping.xml</p>
+      </div>
+
+      {/* Configuration flux Google Merchant */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Flux Google Shopping</h3>
+        
+        <div className="space-y-6">
+          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6">
+            <h4 className="font-semibold text-green-200 mb-3">✅ Flux automatique configuré</h4>
+            <div>
+              <label className="block text-sm text-green-300 mb-2">URL du flux XML :</label>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value="https://decorahome.omnia.sale/feed/xml/google-shopping.xml"
+                  readOnly
+                  className="flex-1 bg-black/40 border border-green-500/50 rounded-xl px-4 py-3 text-white font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText('https://decorahome.omnia.sale/feed/xml/google-shopping.xml');
+                    showSuccess('URL copiée', 'URL du flux copiée dans le presse-papiers !');
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copier
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Guide d'importation */}
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
+            <h4 className="font-semibold text-blue-200 mb-4">📋 Guide d'importation dans Google Merchant Center</h4>
+            <ol className="text-blue-300 space-y-2 text-sm">
+              <li>1. <strong>Connectez-vous</strong> à merchants.google.com</li>
+              <li>2. <strong>Produits</strong> → Flux → Ajouter un flux</li>
+              <li>3. <strong>Collez l'URL</strong> : https://decorahome.omnia.sale/feed/xml/google-shopping.xml</li>
+              <li>4. <strong>Fréquence</strong> : Quotidienne (mise à jour automatique)</li>
+              <li>5. <strong>Validation</strong> : Google vérifie le flux (24-48h)</li>
+            </ol>
+          </div>
+          
+          <div className="flex gap-4">
+            <button
+              onClick={() => window.open('https://merchants.google.com', '_blank')}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Google Merchant Center
+            </button>
+            <button
+              onClick={() => showInfo('Flux généré', 'Flux XML généré avec 5 produits enrichis !')}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Régénérer flux
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAdsCampaigns = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Gestion des Campagnes</h2>
       
@@ -490,7 +1017,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderAutoBlogging = () => (
+  const renderMarketingContent = () => {
+    switch (activeSubTab) {
+      case 'ads-google':
+        return renderAdsGoogleAds();
+      case 'ads-integration':
+        return renderAdsIntegration();
+      case 'ads-merchant':
+        return renderAdsMerchant();
+      case 'ads-campaigns':
+        return renderAdsCampaigns();
+      default:
+        return renderAdsGoogleAds();
+    }
+  };
+
+  const renderSEOBlog = () => (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Blog & Articles SEO</h2>
+        <p className="text-gray-300">Création et gestion de contenu SEO</p>
+      </div>
+
+      <SEOBlogTab />
+    </div>
+  );
+
+  const renderSEOAutoBlogging = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Auto Blogging</h2>
       
@@ -543,7 +1096,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderBacklinks = () => (
+  const renderSEOBacklinks = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Gestion des Backlinks</h2>
       
@@ -680,7 +1233,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderARMobile = () => (
+  const renderSEOContent = () => {
+    switch (activeSubTab) {
+      case 'seo-blog':
+        return renderSEOBlog();
+      case 'seo-auto-blogging':
+        return renderSEOAutoBlogging();
+      case 'seo-backlinks':
+        return renderSEOBacklinks();
+      case 'seo-integration':
+        return renderSEOIntegration();
+      case 'seo-optimization':
+        return renderSEOOptimization();
+      default:
+        return renderSEOBlog();
+    }
+  };
+
+  const renderVisionARMobile = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">AR Mobile - Réalité Augmentée</h2>
       
@@ -738,7 +1308,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderVRShowroom = () => (
+  const renderVisionVRShowroom = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">VR Showroom - Visite Immersive</h2>
       
@@ -787,7 +1357,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderPhotoAnalysis = () => (
+  const renderVisionPhotoAnalysis = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Analyse Photo IA</h2>
       
@@ -840,7 +1410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderAmbianceGenerator = () => (
+  const renderVisionAmbianceGenerator = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Générateur d'Ambiances</h2>
       
@@ -886,6 +1456,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
     </div>
   );
+
+  const renderVisionContent = () => {
+    switch (activeSubTab) {
+      case 'vision-ar-mobile':
+        return renderVisionARMobile();
+      case 'vision-vr-showroom':
+        return renderVisionVRShowroom();
+      case 'vision-photo-analysis':
+        return renderVisionPhotoAnalysis();
+      case 'vision-ambiance-generator':
+        return renderVisionAmbianceGenerator();
+      default:
+        return renderVisionARMobile();
+    }
+  };
 
   const renderAnalytics = () => (
     <div className="space-y-6">
@@ -1163,133 +1748,4 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <select
                         value={retailerData.plan}
                         onChange={(e) => setRetailerData(prev => ({ ...prev, plan: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      >
-                        <option value="starter">Starter</option>
-                        <option value="professional">Professional</option>
-                        <option value="enterprise">Enterprise</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Sous-domaine</label>
-                      <div className="flex items-center">
-                        <input
-                          type="text"
-                          value={retailerData.subdomain}
-                          onChange={(e) => setRetailerData(prev => ({ ...prev, subdomain: e.target.value }))}
-                          className="flex-1 bg-black/40 border border-gray-600 rounded-l-xl px-4 py-3 text-white"
-                        />
-                        <span className="bg-gray-600 text-gray-300 px-3 py-3 rounded-r-xl text-sm">.omnia.sale</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact */}
-                <div className="bg-black/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <User className="w-5 h-5 text-green-400" />
-                    Contact
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Nom complet</label>
-                      <input
-                        type="text"
-                        value={retailerData.contact_name}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, contact_name: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Email</label>
-                      <input
-                        type="email"
-                        value={retailerData.email}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Téléphone 🇫🇷</label>
-                      <input
-                        type="tel"
-                        value={retailerData.phone}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Fonction</label>
-                      <input
-                        type="text"
-                        value={retailerData.position}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, position: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Adresse */}
-                <div className="bg-black/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-purple-400" />
-                    Adresse 🇫🇷
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-sm text-gray-300 mb-2">Adresse</label>
-                      <input
-                        type="text"
-                        value={retailerData.address}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, address: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Code postal</label>
-                      <input
-                        type="text"
-                        value={retailerData.postal_code}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, postal_code: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-2">Ville</label>
-                      <input
-                        type="text"
-                        value={retailerData.city}
-                        onChange={(e) => setRetailerData(prev => ({ ...prev, city: e.target.value }))}
-                        className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between">
-                  <button
-                    onClick={() => setShowSettings(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={() => {
-                      showSuccess('Paramètres sauvegardés', 'Vos informations ont été mises à jour avec succès !');
-                      setShowSettings(false);
-                    }}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    Sauvegarder
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+                        className="w-full bg-black/40 border border-gray-600 rounded-xl px

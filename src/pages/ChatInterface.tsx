@@ -392,381 +392,84 @@ export const ChatInterface: React.FC = () => {
           </div>
 
           {/* Boutons de contrôle - Grid 3x2 comme sur la photo */}
-          <div className="grid grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/40 ${
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-xl shadow-purple-500/40 ${
                 isRecording
-                  ? 'bg-purple-500 animate-pulse'
-                  : 'bg-purple-500 hover:bg-purple-400'
+                  ? 'bg-gradient-to-br from-purple-500 to-purple-600 animate-pulse'
+                  : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500'
               }`}
+              title="Reconnaissance vocale"
             >
-              <Mic className="w-8 h-8 text-white" />
+              {isRecording ? (
+                <MicOff className="w-8 h-8 text-white" />
+              ) : (
+                <Mic className="w-8 h-8 text-white" />
+              )}
             </button>
 
             <button
               onClick={handleVolumeClick}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/40 ${
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-xl shadow-green-500/40 ${
                 isSpeaking
-                  ? 'bg-green-500 animate-pulse'
-                  : 'bg-green-500 hover:bg-green-400'
+                  ? 'bg-gradient-to-br from-green-500 to-green-600 animate-pulse'
+                  : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500'
               }`}
+              title="Synthèse vocale"
             >
-              <Volume2 className="w-8 h-8 text-white" />
+              {isSpeaking ? (
+                <VolumeX className="w-8 h-8 text-white" />
+              ) : (
+                <Volume2 className="w-8 h-8 text-white" />
+              )}
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="Reconnaissance et détection humain"
+              className="w-20 h-20 bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="Analyser une photo"
             >
-              <div className="relative">
-                <Camera className="w-8 h-8 text-white" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              </div>
+              <Camera className="w-8 h-8 text-white" />
             </button>
           </div>
 
           {/* Deuxième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <button 
               onClick={() => setShowQR(!showQR)}
-              className="w-20 h-20 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-xl shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="QR Code"
             >
               <QrCode className="w-8 h-8 text-white" />
             </button>
 
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="w-20 h-20 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-20 h-20 bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 shadow-xl shadow-gray-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="Paramètres robot"
             >
               <Settings className="w-8 h-8 text-white" />
             </button>
 
             <button
-              onClick={() => setRobotAwake(!robotAwake)}
-              className={`w-20 h-20 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 ${
-                robotAwake 
-                  ? 'bg-green-500 hover:bg-green-400 shadow-green-500/40' 
-                  : 'bg-red-500 hover:bg-red-400 shadow-red-500/40'
-              }`}
-              title={robotAwake ? 'Mettre en veille' : 'Réveiller le robot'}
-            >
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <div className={`w-6 h-6 rounded-full ${robotAwake ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              </div>
-            </button>
-          </div>
-
-          {/* Troisième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-6 mb-6">
-            <button 
-              onClick={() => setRobotMoving(!robotMoving)}
-              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
-                robotMoving 
-                  ? 'bg-blue-600 animate-pulse shadow-blue-500/40' 
-                  : 'bg-blue-500 hover:bg-blue-400 shadow-blue-500/40'
-              }`}
-            >
-              <div className="text-white text-sm font-bold mb-1">🚶</div>
-              <span className="text-white text-xs font-['Inter']">{robotMoving ? 'Bouge...' : 'Bouger'}</span>
-            </button>
-            <button
-              onClick={() => setRobotDancing(!robotDancing)}
-              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
-                robotDancing 
-                  ? 'bg-purple-600 animate-pulse shadow-purple-500/40' 
-                  : 'bg-purple-500 hover:bg-purple-400 shadow-purple-500/40'
-              }`}
-            >
-              <Music className="w-6 h-6 text-white mb-1" />
-              <span className="text-white text-xs font-['Inter']">{robotDancing ? 'Danse...' : 'Danser'}</span>
-            </button>
-
-            <button 
-              onClick={() => setHumanDetection(!humanDetection)}
-              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
+              onClick={() => {
+                setHumanDetection(!humanDetection);
+                if (!humanDetection) {
+                  alert('🎥 Caméra activée ! Détection humaine en cours...');
+                } else {
+                  alert('📷 Caméra désactivée.');
+                }
+              }}
+              className={`w-20 h-20 shadow-xl rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 ${
                 humanDetection 
-                  ? 'bg-cyan-600 animate-pulse shadow-cyan-500/40' 
-                  : 'bg-gray-600 hover:bg-gray-500 shadow-gray-500/40'
+                  ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 animate-pulse shadow-cyan-500/40' 
+                  : 'bg-gradient-to-br from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 shadow-gray-500/40'
               }`}
+              title="Détection humaine"
             >
-              <div className="w-6 h-6 border-2 border-white rounded flex items-center justify-center mb-1">
-                <div className={`w-3 h-3 rounded-full ${humanDetection ? 'bg-cyan-400' : 'bg-white'}`}></div>
-              </div>
-              <span className="text-white text-xs font-['Inter']">{humanDetection ? 'Détecte' : 'Humain'}</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 👉 Zone de chat principale avec background rose */}
-      <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
-        {/* Header de conversation */}
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-violet-600 border-b border-purple-500/50 p-6 sticky top-0 z-10 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
-                <p className="text-gray-300">Robot IA à votre écoute</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowQR(!showQR)}
-                className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50"
-                title="QR Code pour mobile"
-              >
-                <QrCode className="w-5 h-5 text-purple-300" />
-              </button>
-              <CartButton 
-                items={cartItems}
-                onUpdateQuantity={() => {}}
-                onRemoveItem={() => {}}
-                onCheckout={() => {}}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Zone des messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{ backgroundColor: '#f8f8f8' }}>
-          {messages.map(msg => (
-            <ChatMessage key={msg.id} message={msg} onAddToCart={handleAddToCart} />
-          ))}
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
-                  <div className="w-5 h-5 bg-white/20 rounded-full animate-pulse"></div>
-                </div>
-                <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                    <span className="text-gray-600 text-sm">OmnIA réfléchit...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Suggestions rapides - Style exact de la photo */}
-        <div className="px-6 py-4" style={{ backgroundColor: '#f8f8f8' }}>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            <button
-              onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
-              className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-2"
-            >
-              🛋️ Canapé beige
-            </button>
-            <button
-              onClick={() => handleSuggestionClick("🪑 Table ronde")}
-              className="flex-shrink-0 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-2"
-            >
-              🪑 Table ronde
-            </button>
-            <button
-              onClick={() => handleSuggestionClick("💺 Chaise bureau")}
-              className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-2"
-            >
-              💺 Chaise bureau
-            </button>
-            <button
-              onClick={() => handleSuggestionClick("✨ Tendances 2025")}
-              className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center gap-2"
-            >
-              ✨ Tendances 2025
-            </button>
-          </div>
-        </div>
-
-        {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10 bg-slate-900/80 backdrop-blur-xl">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
-                placeholder="Écrivez votre message..."
-                className="w-full bg-white border border-gray-300 rounded-2xl px-6 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-              />
-            </div>
-            
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-xl shadow-purple-500/40"
-              title="QR Code pour upload photo mobile"
-            >
-              <QrCode className="w-6 h-6 text-white" />
-            </button>
-            
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isAnalyzingPhoto}
-              className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 hover:shadow-pink-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:opacity-50"
-              title="Analyser une photo"
-            >
-              {isAnalyzingPhoto ? (
-                <Loader2 className="w-6 h-6 text-white animate-spin" />
-              ) : (
-                <Camera className="w-6 h-6 text-white" />
-              )}
-            </button>
-
-            <button
-              onClick={() => handleSendMessage(inputMessage)}
-              disabled={!inputMessage.trim()}
-              className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100"
-              title="Envoyer le message"
-            >
-              <Send className="w-6 h-6 text-white" />
-            </button>
-          </div>
-          
-          {/* Modal QR Code */}
-          {showQR && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-800">📱 Scanner pour envoyer photo</h3>
-                  <button
-                    onClick={() => setShowQR(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-                <div className="text-center">
-                  <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-gray-200">
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/upload')}`}
-                      alt="QR Code"
-                      className="w-44 h-44 rounded-xl"
-                    />
-                  </div>
-                  <p className="text-gray-600 mb-4">Scannez pour envoyer une photo depuis votre mobile</p>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                    <p className="text-blue-700 text-sm">
-                      📸 Scannez → Allez sur /upload → Envoyez photo → Retour auto au chat !
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-
-      {/* Modal Paramètres Robot */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">⚙️ Paramètres Robot</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm text-cyan-300 mb-2">Nom du robot</label>
-                <input
-                  type="text"
-                  defaultValue="OmnIA"
-                  className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-cyan-300 mb-2">Personnalité</label>
-                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
-                  <option value="commercial">Commercial & Amical</option>
-                  <option value="expert">Expert Technique</option>
-                  <option value="conseil">Conseiller Déco</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-cyan-300 mb-2">Vitesse de parole</label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2"
-                  step="0.1"
-                  defaultValue="1.2"
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-cyan-300 mb-2">Fournisseur de voix</label>
-                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
-                  <option value="elevenlabs">ElevenLabs (Premium)</option>
-                  <option value="browser">Navigateur (Gratuit)</option>
-                  <option value="deepseek">DeepSeek TTS (Premium)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-cyan-300 mb-2">Genre de voix</label>
-                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
-                  <option value="onyx">Homme - Onyx (Recommandé)</option>
-                  <option value="alloy">Homme - Alloy</option>
-                  <option value="echo">Homme - Echo</option>
-                  <option value="nova">Femme - Nova</option>
-                  <option value="shimmer">Femme - Shimmer</option>
-                </select>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all font-['Inter']"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => {
-                    setShowSettings(false);
-                    // Sauvegarder les paramètres
-                  }}
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all font-['Inter']"
-                >
-                  Sauvegarder
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-        {/* Input photo caché */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handlePhotoUpload(file);
-          }}
-          className="hidden"
-        />
-      </div>
-    </div>
-  );
-};
+              <div className="relative">
+                <Camera className="w-8 h-8 text-white" />
+                {humanDetection && (
+                  <div className="absolute -top-1 -right-1 w-

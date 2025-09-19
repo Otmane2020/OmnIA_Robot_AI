@@ -16,6 +16,7 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
+import { Shop } from './pages/Shop';
 import { RegistrationSuccess } from './pages/RegistrationSuccess';
 
 interface Retailer {
@@ -201,6 +202,7 @@ function App() {
       <Route path="/robot" element={<RobotInterface />} />
       <Route path="/registration-success" element={<RegistrationSuccess />} />
       <Route path="/upload" element={<UploadPage />} />
+      <Route path="/shop" element={<Shop />} />
     </Routes>
   );
 }
