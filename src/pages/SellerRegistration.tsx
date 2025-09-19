@@ -6,6 +6,7 @@ import {
   Lock, Shield, Calendar, Clock, Sparkles, Heart
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { signUp } from '../lib/auth';
 
 interface SellerRegistrationProps {
   onSubmit: (data: any) => void;
@@ -312,19 +313,32 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     setIsSubmitting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Créer le compte utilisateur avec Supabase Auth
+      const result = await signUp(formData.email, formData.password, formData);
+      
+      console.log('✅ Compte créé:', result.user.email);
+      showSuccess('Compte créé !', 'Votre compte a été créé avec succès. Validation en cours...');
       
       const submissionData = {
         ...formData,
-        id: Date.now().toString(),
+        id: result.user.id,
+        user_id: result.user.id,
+        retailer_id: result.retailer.id,
         submittedAt: new Date().toISOString(),
         status: 'pending',
         proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
       };
       
       onSubmit(submissionData);
+      
+      // Rediriger vers la page de confirmation
+      setTimeout(() => {
+        window.location.href = '/registration-success';
+      }, 2000);
+      
     } catch (error) {
       console.error('Erreur soumission:', error);
+      showError('Erreur inscription', error.message || 'Erreur lors de la création du compte');
     } finally {
       setIsSubmitting(false);
     }
