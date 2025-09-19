@@ -3,7 +3,7 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  Clock, Star, X, ShoppingBag
+  Clock, Star, X, ShoppingBag, Target, Search
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -18,7 +18,10 @@ import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 import { supabase } from '../lib/supabase';
-import { QrCode } from 'lucide-react';
+import { QrCode, Megaphone } from 'lucide-react';
+import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
+import { GoogleAdsTab } from '../components/GoogleAdsTab';
+import { SEOBlogTab } from '../components/SEOBlogTab';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -65,6 +68,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: 'catalogue', label: 'Catalogue', icon: Database },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
+    { id: 'google-merchant', label: 'Google Merchant', icon: ShoppingBag },
+    { id: 'google-ads', label: 'Google Ads', icon: Target },
+    { id: 'seo-blog', label: 'SEO & Blog', icon: Search },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
     { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
@@ -332,6 +338,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderGoogleMerchant = () => (
+    <div className="space-y-8">
+      <GoogleMerchantTab />
+    </div>
+  );
+
+  const renderGoogleAds = () => (
+    <div className="space-y-8">
+      <GoogleAdsTab />
+    </div>
+  );
+
+  const renderSEOBlog = () => (
+    <div className="space-y-8">
+      <SEOBlogTab />
+    </div>
+  );
   const renderHistorique = () => (
     <ConversationHistory />
   );
@@ -482,6 +505,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'catalogue': return renderCatalogue();
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
+      case 'google-merchant': return renderGoogleMerchant();
+      case 'google-ads': return renderGoogleAds();
+      case 'seo-blog': return renderSEOBlog();
       case 'robot': return renderRobot();
       case 'historique': return renderHistorique();
       case 'abonnement': return renderAbonnement();

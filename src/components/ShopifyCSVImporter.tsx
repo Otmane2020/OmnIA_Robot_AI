@@ -50,7 +50,6 @@ const SHOPIFY_FIELDS: CSVField[] = [
   { csvColumn: '', shopifyField: 'Variant Grams', required: false, example: '45000' },
   { csvColumn: '', shopifyField: 'Variant Inventory Tracker', required: false, example: 'shopify' },
   { csvColumn: '', shopifyField: 'Variant Inventory Qty', required: false, example: '10' },
-  { csvColumn: '', shopifyField: 'Stock Quantity', required: false, example: '10' },
   { csvColumn: '', shopifyField: 'Variant Inventory Policy', required: false, example: 'deny' },
   { csvColumn: '', shopifyField: 'Variant Fulfillment Service', required: false, example: 'manual' },
   { csvColumn: '', shopifyField: 'Variant Price', required: true, example: '799.00' },
@@ -259,7 +258,6 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
           if (field.shopifyField === 'Vendor' && (headerLower.includes('vendor') || headerLower.includes('marque') || headerLower.includes('brand'))) return true;
           if (field.shopifyField === 'Type' && (headerLower.includes('type') || headerLower.includes('categorie') || headerLower.includes('category'))) return true;
           if (field.shopifyField === 'Variant Inventory Qty' && (headerLower.includes('stock') || headerLower.includes('quantity') || headerLower.includes('qty') || headerLower.includes('inventaire'))) return true;
-          if (field.shopifyField === 'Stock Quantity' && (headerLower.includes('stock') || headerLower.includes('quantity') || headerLower.includes('qty') || headerLower.includes('inventaire'))) return true;
           if (field.shopifyField === 'Handle' && (headerLower.includes('handle') || headerLower.includes('slug') || headerLower.includes('url'))) return true;
           if (field.shopifyField === 'Tags' && (headerLower.includes('tags') || headerLower.includes('mots-clés') || headerLower.includes('keywords'))) return true;
           
@@ -468,7 +466,6 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         image_url: product['Image Src'] || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
         product_url: product['Product URL'] || '#',
         stock: parseInt(product['Variant Inventory Qty']) || 0,
-        stock_quantity: parseInt(product['Stock Quantity']) || parseInt(product['Variant Inventory Qty']) || 0,
         status: product.Status || 'active', // Respecter le statut du CSV
         source_platform: 'csv',
         sku: product['Variant SKU'] || '',
