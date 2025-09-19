@@ -73,20 +73,39 @@ ${productsList}
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+        "Authorization": `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message },
         ],
-        max_tokens: 60, // Réponses plus courtes
-        temperature: 0.8,
+        max_tokens: 80,
+        temperature: 0.9,
         stream: true, // ⚡️ Active le streaming
       }),
-    });
+    }).catch(() => 
+      // Fallback vers OpenAI si DeepSeek échoue
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message },
+          ],
+          max_tokens: 80,
+          temperature: 0.9,
+          stream: true,
+        }),
+      })
+    );
 
     if (!openaiResponse.ok) {
       throw new Error("OpenAI API error");
