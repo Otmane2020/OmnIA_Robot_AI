@@ -125,19 +125,25 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
+    console.log('📝 Réception demande inscription:', applicationData);
+    
     const newApplication = {
       ...applicationData,
-      submittedDate: new Date().toLocaleDateString('fr-FR'),
-      submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending'
+      id: applicationData.id || `app-${Date.now()}`,
+      status: 'pending',
+      submittedDate: applicationData.submittedDate || new Date().toLocaleDateString('fr-FR'),
+      submittedTime: applicationData.submittedTime || new Date().toLocaleTimeString('fr-FR')
     };
     
+    console.log('💾 Ajout à la liste:', newApplication);
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
     
     // Rediriger vers la page de succès
-    window.location.href = '/registration-success';
+    setTimeout(() => {
+      window.location.href = '/registration-success';
+    }, 100);
   };
 
   return (

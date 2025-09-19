@@ -315,17 +315,21 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     setSubmitError('');
     
     try {
+      // Créer les données de soumission avec tous les champs requis
       const submissionData = {
+        id: `app-${Date.now()}`,
         ...formData,
-        id: Date.now().toString(),
         submittedAt: new Date().toISOString(),
+        submittedDate: new Date().toLocaleDateString('fr-FR'),
+        submittedTime: new Date().toLocaleTimeString('fr-FR'),
         status: 'pending',
-        proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+        proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
+        // Ajouter un mot de passe temporaire si pas défini
+        password: formData.password || 'temp123'
       };
       
+      console.log('📝 Soumission demande:', submissionData);
       onSubmit(submissionData);
-      
-      console.log('✅ Demande soumise:', submissionData.companyName);
       
     } catch (error) {
       console.error('Erreur soumission:', error);
