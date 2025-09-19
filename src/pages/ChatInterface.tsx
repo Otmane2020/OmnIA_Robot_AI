@@ -28,6 +28,11 @@ export const ChatInterface: React.FC = () => {
   const [showProducts, setShowProducts] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [robotAwake, setRobotAwake] = useState(true);
+  const [robotMoving, setRobotMoving] = useState(false);
+  const [robotDancing, setRobotDancing] = useState(false);
+  const [humanDetection, setHumanDetection] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -141,18 +146,8 @@ export const ChatInterface: React.FC = () => {
 
       if (!res.ok) throw new Error("Erreur API");
       
-      // Lecture en streaming pour réponse rapide
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let result = '';
-      
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          result += decoder.decode(value);
-        }
-      }
+      // Lecture directe de la réponse
+      const result = await res.text();
       
       // Rechercher des produits si mention spécifique
       if (message.toLowerCase().includes('canapé')) {
@@ -169,7 +164,7 @@ export const ChatInterface: React.FC = () => {
         setShowProducts(true);
       }
       
-      return result || "Comment puis-je vous aider ?";
+      return result.trim() || "Comment puis-je vous aider ?";
     } catch (err) {
       console.error("❌ Erreur sendToAI:", err);
       return "Erreur de communication avec l'assistant IA.";
@@ -334,10 +329,10 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Contenu principal - Style exact de la photo */}
-        <div className="relative z-10 flex-1 flex flex-col p-6 space-y-6">
+        <div className="relative z-10 flex-1 flex flex-col p-6 space-y-8">
           {/* Robot Avatar en haut */}
           <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-300/50">
+            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-300/50 font-['Inter']">
               {/* Grands yeux ronds comme sur l'image */}
               <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4">
                 <div className="w-16 h-16 bg-white rounded-full border-3 border-cyan-400 flex items-center justify-center shadow-xl">
@@ -350,8 +345,8 @@ export const ChatInterface: React.FC = () => {
               
               {/* Sourire */}
               <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-                <div className="w-16 h-8 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
-                  <div className="w-12 h-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full"></div>
+                <div className="w-16 h-8 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
+                  <div className="w-12 h-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full" style={{ borderRadius: '50% 50% 80% 80%' }}></div>
                 </div>
               </div>
               
@@ -397,85 +392,111 @@ export const ChatInterface: React.FC = () => {
           </div>
 
           {/* Boutons de contrôle - Grid 3x2 comme sur la photo */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/40 ${
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/40 ${
                 isRecording
                   ? 'bg-purple-500 animate-pulse'
                   : 'bg-purple-500 hover:bg-purple-400'
               }`}
             >
-              <Mic className="w-6 h-6 text-white" />
+              <Mic className="w-8 h-8 text-white" />
             </button>
 
             <button
               onClick={handleVolumeClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/40 ${
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/40 ${
                 isSpeaking
                   ? 'bg-green-500 animate-pulse'
                   : 'bg-green-500 hover:bg-green-400'
               }`}
             >
-              <Volume2 className="w-6 h-6 text-white" />
+              <Volume2 className="w-8 h-8 text-white" />
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-20 h-20 bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="Reconnaissance et détection humain"
             >
               <div className="relative">
-                <Camera className="w-6 h-6 text-white" />
+                <Camera className="w-8 h-8 text-white" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
               </div>
             </button>
           </div>
 
           {/* Deuxième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-3 gap-6 mb-6">
             <button 
               onClick={() => setShowQR(!showQR)}
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-20 h-20 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
             >
-              <QrCode className="w-6 h-6 text-white" />
+              <QrCode className="w-8 h-8 text-white" />
             </button>
 
             <button
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-20 h-20 bg-orange-500 hover:bg-orange-400 shadow-lg shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="Paramètres robot"
             >
-              <Settings className="w-6 h-6 text-white" />
+              <Settings className="w-8 h-8 text-white" />
             </button>
 
             <button
-              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              onClick={() => setRobotAwake(!robotAwake)}
+              className={`w-20 h-20 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 ${
+                robotAwake 
+                  ? 'bg-green-500 hover:bg-green-400 shadow-green-500/40' 
+                  : 'bg-red-500 hover:bg-red-400 shadow-red-500/40'
+              }`}
+              title={robotAwake ? 'Mettre en veille' : 'Réveiller le robot'}
             >
-              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                <div className={`w-6 h-6 rounded-full ${robotAwake ? 'bg-green-500' : 'bg-red-500'}`}></div>
               </div>
             </button>
           </div>
 
           {/* Troisième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg shadow-blue-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
-              <div className="text-white text-xs font-bold mb-1">+</div>
-              <span className="text-white text-xs">Bouger</span>
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            <button 
+              onClick={() => setRobotMoving(!robotMoving)}
+              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
+                robotMoving 
+                  ? 'bg-blue-600 animate-pulse shadow-blue-500/40' 
+                  : 'bg-blue-500 hover:bg-blue-400 shadow-blue-500/40'
+              }`}
+            >
+              <div className="text-white text-sm font-bold mb-1">🚶</div>
+              <span className="text-white text-xs font-['Inter']">{robotMoving ? 'Bouge...' : 'Bouger'}</span>
             </button>
             <button
-              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg shadow-purple-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
+              onClick={() => setRobotDancing(!robotDancing)}
+              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
+                robotDancing 
+                  ? 'bg-purple-600 animate-pulse shadow-purple-500/40' 
+                  : 'bg-purple-500 hover:bg-purple-400 shadow-purple-500/40'
+              }`}
             >
-              <Music className="w-5 h-5 text-white mb-1" />
-              <span className="text-white text-xs">Danser</span>
+              <Music className="w-6 h-6 text-white mb-1" />
+              <span className="text-white text-xs font-['Inter']">{robotDancing ? 'Danse...' : 'Danser'}</span>
             </button>
 
-            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg shadow-gray-500/40 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
-              <div className="w-5 h-5 border-2 border-white rounded flex items-center justify-center mb-1">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
+            <button 
+              onClick={() => setHumanDetection(!humanDetection)}
+              className={`w-20 h-20 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
+                humanDetection 
+                  ? 'bg-cyan-600 animate-pulse shadow-cyan-500/40' 
+                  : 'bg-gray-600 hover:bg-gray-500 shadow-gray-500/40'
+              }`}
+            >
+              <div className="w-6 h-6 border-2 border-white rounded flex items-center justify-center mb-1">
+                <div className={`w-3 h-3 rounded-full ${humanDetection ? 'bg-cyan-400' : 'bg-white'}`}></div>
               </div>
-              <span className="text-white text-xs">Veille</span>
+              <span className="text-white text-xs font-['Inter']">{humanDetection ? 'Détecte' : 'Humain'}</span>
             </button>
           </div>
 
@@ -579,7 +600,7 @@ export const ChatInterface: React.FC = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                 placeholder="Écrivez votre message..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                className="w-full bg-white border border-gray-300 rounded-2xl px-6 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
               />
             </div>
             
@@ -647,6 +668,93 @@ export const ChatInterface: React.FC = () => {
           )}
         </div>
 
+
+      {/* Modal Paramètres Robot */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">⚙️ Paramètres Robot</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm text-cyan-300 mb-2">Nom du robot</label>
+                <input
+                  type="text"
+                  defaultValue="OmnIA"
+                  className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-cyan-300 mb-2">Personnalité</label>
+                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
+                  <option value="commercial">Commercial & Amical</option>
+                  <option value="expert">Expert Technique</option>
+                  <option value="conseil">Conseiller Déco</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-cyan-300 mb-2">Vitesse de parole</label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  defaultValue="1.2"
+                  className="w-full accent-cyan-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-cyan-300 mb-2">Fournisseur de voix</label>
+                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
+                  <option value="elevenlabs">ElevenLabs (Premium)</option>
+                  <option value="browser">Navigateur (Gratuit)</option>
+                  <option value="deepseek">DeepSeek TTS (Premium)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-cyan-300 mb-2">Genre de voix</label>
+                <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white font-['Inter']">
+                  <option value="onyx">Homme - Onyx (Recommandé)</option>
+                  <option value="alloy">Homme - Alloy</option>
+                  <option value="echo">Homme - Echo</option>
+                  <option value="nova">Femme - Nova</option>
+                  <option value="shimmer">Femme - Shimmer</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all font-['Inter']"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    // Sauvegarder les paramètres
+                  }}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all font-['Inter']"
+                >
+                  Sauvegarder
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
         {/* Input photo caché */}
         <input
           ref={fileInputRef}

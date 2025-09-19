@@ -89,21 +89,21 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 80,
-          temperature: 0.8,
+          max_tokens: 60,
+          temperature: 0.7,
           stream: false,
         }),
       });
       
       if (aiResponse.ok) {
         const data = await aiResponse.json();
-        const responseText = data.choices[0]?.message?.content || "Comment puis-je vous aider ?";
+        const responseText = data.choices[0]?.message?.content?.trim() || "Comment puis-je vous aider ?";
         
         return new Response(
-          JSON.stringify({ message: responseText }),
+          responseText,
           {
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": "text/plain",
               ...corsHeaders,
             },
           }
@@ -136,8 +136,8 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 80,
-          temperature: 0.8,
+          max_tokens: 60,
+          temperature: 0.7,
           stream: false,
         }),
       });
@@ -148,13 +148,13 @@ ${productsList}
     }
 
     const data = await aiResponse.json();
-    const responseText = data.choices[0]?.message?.content || "Comment puis-je vous aider ?";
+    const responseText = data.choices[0]?.message?.content?.trim() || "Comment puis-je vous aider ?";
 
     return new Response(
-      JSON.stringify({ message: responseText }),
+      responseText,
       {
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "text/plain",
           ...corsHeaders,
         },
       }
@@ -163,12 +163,10 @@ ${productsList}
     console.error("Error in chat function:", error);
 
     return new Response(
-      JSON.stringify({
-        message: "Je rencontre un souci technique, peux-tu reformuler ?",
-      }),
+      "Je rencontre un souci technique, peux-tu reformuler ?",
       {
         status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { "Content-Type": "text/plain", ...corsHeaders },
       }
     );
   }
