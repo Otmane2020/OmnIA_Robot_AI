@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  BarChart3, TrendingUp, Trash2, User, MessageSquare,
+  BarChart3, TrendingUp, User,
   Bot, Globe, FileText, Settings, Store, LogOut, Brain,
   Clock, Star, X, ShoppingBag, Target, Search, ArrowLeft, Package,
   Zap, Image, Video, Play, Monitor, Smartphone, Headphones, Camera,
