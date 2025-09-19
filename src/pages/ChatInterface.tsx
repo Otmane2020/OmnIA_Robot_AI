@@ -198,7 +198,7 @@ export const ChatInterface: React.FC = () => {
     <div className="flex h-screen bg-white">
       
       {/* 👈 Sidebar Robot - Design exact de la photo */}
-      <div className="w-80 bg-slate-900/95 flex flex-col relative overflow-hidden">
+      <div className="w-80 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen">
         {/* Background effects */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
@@ -250,6 +250,11 @@ export const ChatInterface: React.FC = () => {
                 <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
                   <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
                 </div>
+              </div>
+              
+              {/* Sourire */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                <div className="w-6 h-3 border-b-4 border-white rounded-full"></div>
               </div>
               
               {/* Particules d'énergie */}
@@ -369,9 +374,9 @@ export const ChatInterface: React.FC = () => {
       </div>
 
       {/* 👉 Zone de chat principale avec background rose */}
-      <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
+      <div className="flex-1 flex flex-col bg-pink-500/20">
         {/* Header de conversation */}
-        <div className="bg-slate-800 border-b border-slate-700 p-6">
+        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-violet-600 border-b border-purple-500/50 p-6 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
@@ -395,7 +400,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone des messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{ backgroundColor: '#f8f8f8' }}>
           {messages.map(msg => (
             <ChatMessage key={msg.id} message={msg} onAddToCart={handleAddToCart} />
           ))}
@@ -452,7 +457,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 bg-slate-800 border-t border-slate-700">
+        <div className="p-6 bg-slate-800 border-t border-slate-700 sticky bottom-0 z-10" style={{ backgroundColor: '#f8f8f8' }}>
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <input
@@ -466,11 +471,19 @@ export const ChatInterface: React.FC = () => {
             </div>
             
             <button
-              onClick={() => window.open('/upload', '_blank')}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg"
+              onClick={() => setShowQR(!showQR)}
+              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg shadow-purple-500/40"
               title="QR Code pour upload photo mobile"
             >
               <QrCode className="w-6 h-6 text-white" />
+            </button>
+            
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-14 h-14 bg-pink-500 hover:bg-pink-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg shadow-pink-500/40"
+              title="Envoyer une photo"
+            >
+              <Camera className="w-6 h-6 text-white" />
             </button>
 
             <button
@@ -481,6 +494,38 @@ export const ChatInterface: React.FC = () => {
               <Send className="w-6 h-6 text-white" />
             </button>
           </div>
+          
+          {/* Modal QR Code */}
+          {showQR && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">📱 Scanner pour envoyer photo</h3>
+                  <button
+                    onClick={() => setShowQR(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="text-center">
+                  <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-gray-200">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/upload')}`}
+                      alt="QR Code"
+                      className="w-44 h-44 rounded-xl"
+                    />
+                  </div>
+                  <p className="text-gray-600 mb-4">Scannez avec votre mobile pour envoyer une photo</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                    <p className="text-blue-700 text-sm">
+                      📸 La photo sera automatiquement analysée par OmnIA !
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Input photo caché */}
