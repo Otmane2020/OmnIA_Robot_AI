@@ -3,7 +3,7 @@ import {
   ShoppingCart, Target, Bot, BarChart3, Brain, Building, Settings,
   LogOut, Package, MessageSquare, Globe, Zap, TrendingUp, Users,
   Store, FileText, Database, Eye, Plus, Calendar, Clock, DollarSign,
-  Activity, Wifi, Battery, ChevronRight, Home, ArrowLeft, Cog
+  Activity, Wifi, Battery, ChevronRight, Home, ArrowLeft, Cog, X
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { CatalogManagement } from '../components/CatalogManagement';
@@ -436,6 +436,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
       </div>
     );
+  };
 
   const renderSubMenuContent = () => {
     if (!activeSubMenu || activeSubMenu === 'dashboard') return null;
@@ -515,195 +516,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         return null;
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
-      {/* Background Effects */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
-
-      {/* Notifications */}
-      <NotificationSystem 
-        notifications={notifications} 
-        onRemove={removeNotification} 
-      />
-
-      {/* Header fixe */}
-      <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            {/* Titre à gauche */}
-            <div className="flex items-center gap-4">
-              {currentView !== 'home' && (
-                <button
-                  onClick={handleBackToHome}
-                  className="text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  <Home className="w-5 h-5" />
-                </button>
-              )}
-              <div>
-                <h1 className="text-xl font-bold text-white">
-                  {currentView === 'home' ? 'OmnIA Admin' : 
-                   activeSolution ? solutions.find(s => s.id === activeSolution)?.title : 'Admin'}
-                </h1>
-                <p className="text-cyan-300 text-sm">Decora Home</p>
-              </div>
-            </div>
-
-            {/* Actions à droite */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.open('/robot', '_blank')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2"
-              >
-                <Bot className="w-4 h-4" />
-                Tester OmnIA
-              </button>
-              
-              {/* Engrenage paramètres */}
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-xl transition-all"
-              >
-                <Cog className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={onLogout}
-                className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-xl transition-all"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="relative z-10 flex h-screen pt-16">
-        {/* Sidebar - Affiché seulement si solution sélectionnée */}
-        {currentView !== 'home' && activeSolution && (
-          <div className="w-80 bg-black/20 backdrop-blur-2xl border-r border-white/10 flex flex-col">
-            {/* Header solution */}
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 bg-gradient-to-br ${solutions.find(s => s.id === activeSolution)?.color} rounded-xl flex items-center justify-center`}>
-                  {React.createElement(solutions.find(s => s.id === activeSolution)?.icon || Settings, { className: "w-6 h-6 text-white" })}
-                </div>
-                <div>
-                  <h3 className="text-white font-bold">{solutions.find(s => s.id === activeSolution)?.title}</h3>
-                  <p className="text-cyan-300 text-sm">Decora Home</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation sous-menus */}
-            <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-              {/* Dashboard toujours en premier */}
-              <button
-                onClick={() => {
-                  setActiveSubMenu('dashboard');
-                  setCurrentView('solution');
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                  activeSubMenu === 'dashboard' || currentView === 'solution'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-lg'
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <BarChart3 className="w-5 h-5" />
-                <div>
-                  <div className="font-medium">Dashboard</div>
-                  <div className="text-xs opacity-70">Vue d'ensemble</div>
-                </div>
-              </button>
-
-              {/* Sous-menus de la solution */}
-              {solutions.find(s => s.id === activeSolution)?.subMenus.map((subMenu) => {
-                const SubIcon = subMenu.icon;
-                return (
-                  <button
-                    key={subMenu.id}
-                    onClick={() => handleSubMenuClick(subMenu.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                      activeSubMenu === subMenu.id
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-lg'
-                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <SubIcon className="w-5 h-5" />
-                    <div>
-                      <div className="font-medium">{subMenu.title}</div>
-                      <div className="text-xs opacity-70">{subMenu.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {currentView === 'home' ? (
-              renderHomePage()
-            ) : currentView === 'solution' ? (
-              renderSolutionDashboard()
-            ) : (
-              renderSubMenuContent()
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Modal paramètres */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-8 max-w-md w-full border border-slate-600/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Paramètres</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Nom du magasin</label>
-                <input
-                  type="text"
-                  defaultValue="Decora Home"
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Plan actuel</label>
-                <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">
-                  <option value="professional">Professional</option>
-                  <option value="enterprise">Enterprise</option>
-                </select>
-              </div>
-              
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-xl font-semibold transition-all"
-              >
-                Sauvegarder
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
