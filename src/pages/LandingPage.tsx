@@ -610,7 +610,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
                 </ul>
 
                 <button
-                  onClick={onGetStarted}
+                  onClick={() => window.location.href = '/register'}
                   className={`w-full py-3 rounded-xl font-semibold transition-all text-sm sm:text-base ${
                     plan.popular
                       ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg hover:shadow-cyan-500/30'
@@ -669,7 +669,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
             Rejoignez les 500+ revendeurs qui ont choisi OmnIA
           </p>
           <button
-            onClick={onGetStarted}
+            onClick={() => window.location.href = '/register'}
             className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 sm:px-12 py-3 sm:py-4 rounded-2xl font-bold text-lg sm:text-xl transition-all shadow-2xl hover:shadow-cyan-500/40 hover:scale-105 flex items-center justify-center gap-2 sm:gap-3 mx-auto"
           >
             <Bot className="w-6 h-6 sm:w-8 sm:h-8" />

@@ -70,7 +70,60 @@ ${productsList}
 `;
 
     // 🚀 Streaming depuis OpenAI
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    
+    let openaiResponse;
+    
+    if (deepseekApiKey) {
+      // Essayer DeepSeek d'abord
+      openaiResponse = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${deepseekApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message },
+          ],
+          max_tokens: 80,
+          temperature: 0.9,
+          stream: true,
+        }),
+      });
+    }
+    
+    // Fallback vers OpenAI si DeepSeek échoue
+    if (!openaiResponse || !openaiResponse.ok) {
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) {
+        throw new Error("Aucune API configurée");
+      }
+      
+      openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message },
+          ],
+          max_tokens: 80,
+          temperature: 0.9,
+          stream: true,
+        }),
+      });
+    }
+
+    if (!openaiResponse.ok) {
+      throw new Error("API error");
+    }
       method: "POST",
       headers: {
         "Authorization": `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`,

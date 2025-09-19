@@ -294,7 +294,7 @@ export const ChatInterface: React.FC = () => {
     <div className="flex h-screen bg-white">
       
       {/* 👈 Sidebar Robot - Design exact de la photo */}
-      <div className="w-2/5 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen">
+      <div className="w-2/5 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen" style={{ width: '40%' }}>
         {/* Background effects */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
@@ -337,20 +337,22 @@ export const ChatInterface: React.FC = () => {
         <div className="relative z-10 flex-1 flex flex-col p-6 space-y-6">
           {/* Robot Avatar en haut */}
           <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-slate-200 to-white rounded-3xl shadow-2xl relative overflow-hidden border-4 border-slate-300">
+            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-300/50">
               {/* Grands yeux ronds comme sur l'image */}
               <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex gap-3">
-                <div className="w-10 h-10 bg-white rounded-full border-2 border-slate-400 flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
                   <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse"></div>
                 </div>
-                <div className="w-10 h-10 bg-white rounded-full border-2 border-slate-400 flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg">
                   <div className="w-6 h-6 bg-cyan-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                 </div>
               </div>
               
               {/* Sourire */}
               <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
-                <div className="w-8 h-4 bg-cyan-500 rounded-full"></div>
+                <div className="w-12 h-6 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center">
+                  <div className="w-8 h-3 bg-cyan-500 rounded-full"></div>
+                </div>
               </div>
               
               {/* Corps du robot */}
@@ -568,7 +570,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10" style={{ backgroundColor: '#f8f8f8' }}>
+        <div className="p-6 border-t border-slate-700 sticky bottom-0 z-10 bg-slate-900/80">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <input
@@ -583,7 +585,7 @@ export const ChatInterface: React.FC = () => {
             
             <button
               onClick={() => setShowQR(!showQR)}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg shadow-purple-500/40"
+              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-xl shadow-purple-500/40"
               title="QR Code pour upload photo mobile"
             >
               <QrCode className="w-6 h-6 text-white" />
@@ -636,7 +638,7 @@ export const ChatInterface: React.FC = () => {
                   <p className="text-gray-600 mb-4">Scannez pour envoyer une photo depuis votre mobile</p>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
                     <p className="text-blue-700 text-sm">
-                      📸 Envoyez des photos de votre espace pour des conseils personnalisés !
+                      📸 Scannez → Allez sur /upload → Envoyez photo → Retour auto au chat !
                     </p>
                   </div>
                 </div>
