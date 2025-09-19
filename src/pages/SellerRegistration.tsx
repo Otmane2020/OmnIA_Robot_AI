@@ -439,10 +439,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       } else if (formData.kbisFile.size > 10 * 1024 * 1024) {
         newErrors.kbisFile = 'Fichier trop volumineux (max 10MB)';
       }
-      
-      if (!formData.acceptTerms) {
-        newErrors.acceptTerms = 'Acceptation des conditions requise';
-      }
+    if (!formData.siret.trim()) newErrors.siret = 'SIRET requis';
     }
 
     setErrors(newErrors);
