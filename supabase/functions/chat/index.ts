@@ -89,7 +89,7 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 150,
+          max_tokens: 80,
           temperature: 0.8,
           stream: false,
         }),
@@ -136,7 +136,7 @@ ${productsList}
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
           ],
-          max_tokens: 150,
+          max_tokens: 80,
           temperature: 0.8,
           stream: false,
         }),
@@ -159,11 +159,6 @@ ${productsList}
         },
       }
     );
-      headers: {
-        "Content-Type": "text/event-stream",
-        ...corsHeaders,
-      },
-    });
   } catch (error) {
     console.error("Error in chat function:", error);
 

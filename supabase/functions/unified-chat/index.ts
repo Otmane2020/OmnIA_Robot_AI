@@ -131,7 +131,7 @@ ${productsContext}`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: query }
       ],
-      max_tokens: 150, 
+      max_tokens: 60, 
       temperature: 0.9,
       presence_penalty: 0.2
     })

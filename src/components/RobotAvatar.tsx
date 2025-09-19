@@ -162,7 +162,7 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
                 }`}
                 style={{
                   transform: isSpeaking ? `scaleY(${1.2 + mouthAnimation * 0.2})` : 'scaleY(1)',
-                  borderRadius: mood === 'happy' || mood === 'dancing' ? '50%' : '25%'
+                  borderRadius: mood === 'happy' || mood === 'dancing' ? '50% 50% 80% 80%' : '50% 50% 80% 80%'
                 }}
               />
             </div>
