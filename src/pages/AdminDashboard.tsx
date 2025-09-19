@@ -3,7 +3,10 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  Clock, Star, X, ShoppingBag, Target, Search, ArrowLeft
+  Clock, Star, X, ShoppingBag, Target, Search, ArrowLeft, Package,
+  Zap, Image, Video, Play, Monitor, Smartphone, Headphones, Camera,
+  PieChart, DollarSign, MousePointer, Users as UsersIcon, Mail,
+  Truck, Calendar, Tag, Link, ExternalLink, Plus, Edit, Trash2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -16,11 +19,13 @@ import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
+import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
+import { GoogleAdsTab } from '../components/GoogleAdsTab';
+import { SEOBlogTab } from '../components/SEOBlogTab';
+import { GoogleAdsConnector } from '../components/GoogleAdsConnector';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 import { supabase } from '../lib/supabase';
-import { QrCode, Megaphone } from 'lucide-react';
 
-// Nouveaux univers
 interface Universe {
   id: string;
   name: string;
@@ -36,6 +41,8 @@ interface UniverseModule {
   icon: any;
   description: string;
   component: React.ComponentType;
+  badge?: string;
+  isNew?: boolean;
 }
 
 interface AdminDashboardProps {
@@ -52,7 +59,8 @@ interface DashboardStats {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
     conversions: 42,
@@ -61,62 +69,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   });
   const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
-  const [selectedModule, setSelectedModule] = useState<string | null>(null);
-
-  // Définition des univers
-  const universes: Universe[] = [
-    {
-      id: 'ecommerce',
-      name: 'E-commerce',
-      icon: Store,
-      description: 'Gestion catalogue, commandes, clients',
-      color: 'from-blue-500 to-cyan-600',
-      modules: [
-        { id: 'catalogue', name: 'Catalogue', icon: Database, description: 'Gestion produits', component: CatalogManagement },
-        { id: 'enriched', name: 'Catalogue Enrichi', icon: Brain, description: 'Produits enrichis IA', component: ProductsEnrichedTable },
-        { id: 'integration', name: 'Intégration', icon: Globe, description: 'Shopify, CSV, XML', component: EcommerceIntegration },
-        { id: 'historique', name: 'Conversations', icon: MessageSquare, description: 'Historique chat', component: ConversationHistory }
-      ]
-    },
-    {
-      id: 'marketing',
-      name: 'Marketing IA',
-      icon: Target,
-      description: 'Google Ads, SEO, campagnes automatiques',
-      color: 'from-green-500 to-emerald-600',
-      modules: [
-        { id: 'google-merchant', name: 'Google Merchant', icon: ShoppingBag, description: 'Flux produits', component: () => <div>Google Merchant</div> },
-        { id: 'google-ads', name: 'Google Ads', icon: Target, description: 'Campagnes auto', component: () => <div>Google Ads</div> },
-        { id: 'seo-blog', name: 'SEO & Blog', icon: Search, description: 'Articles automatiques', component: () => <div>SEO Blog</div> }
-      ]
-    },
-    {
-      id: 'ai-robot',
-      name: 'Robot IA',
-      icon: Bot,
-      description: 'Configuration OmnIA, entraînement, vision',
-      color: 'from-purple-500 to-pink-600',
-      modules: [
-        { id: 'robot-config', name: 'Configuration', icon: Settings, description: 'Paramètres robot', component: OmniaRobotTab },
-        { id: 'ml-training', name: 'Entraînement IA', icon: Brain, description: 'Machine Learning', component: MLTrainingDashboard },
-        { id: 'vision-ar', name: 'Vision AR/VR', icon: Eye, description: 'Réalité augmentée', component: () => <VisionARModule /> }
-      ]
-    },
-    {
-      id: 'analytics',
-      name: 'Analytics',
-      icon: BarChart3,
-      description: 'KPIs, performances, insights',
-      color: 'from-orange-500 to-red-600',
-      modules: [
-        { id: 'dashboard', name: 'Dashboard', icon: BarChart3, description: 'Vue d\'ensemble', component: () => renderDashboard() },
-        { id: 'kpis', name: 'KPIs', icon: TrendingUp, description: 'Indicateurs clés', component: () => <KPIsDashboard /> },
-        { id: 'insights', name: 'Insights IA', icon: Brain, description: 'Analyses prédictives', component: () => <AIInsightsDashboard /> }
-      ]
-    }
-  ];
 
   // Fonction pour compter les produits actifs
   function getActiveProductsCount(): number {
@@ -130,19 +82,110 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     } catch (error) {
       console.error('Erreur comptage produits:', error);
     }
-    return 3; // Valeur par défaut Decora Home (3 produits de base)
+    return 247; // Valeur par défaut Decora Home
   }
 
-  const tabs = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
-    { id: 'universes', label: 'Univers', icon: Globe },
-    { id: 'catalogue', label: 'Catalogue', icon: Database },
-    { id: 'integration', label: 'Intégration', icon: Globe },
-    { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
-    { id: 'robot', label: 'Robot OmnIA', icon: Bot },
-    { id: 'historique', label: 'Historique', icon: MessageSquare },
-    { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
-    { id: 'settings', label: 'Paramètres', icon: Settings }
+  // Définition des univers avec hiérarchie complète
+  const universes: Universe[] = [
+    {
+      id: 'ecommerce',
+      name: 'E-commerce',
+      icon: Store,
+      description: 'Gestion complète de votre boutique en ligne',
+      color: 'from-blue-500 to-cyan-600',
+      modules: [
+        // Shopify
+        { id: 'shopify-integration', name: 'Shopify', icon: Store, description: 'Connexion et synchronisation', component: EcommerceIntegration },
+        { id: 'shopify-catalog', name: '├─ Catalogue', icon: Database, description: 'Produits Shopify', component: CatalogManagement },
+        { id: 'shopify-enriched', name: '├─ Catalogue Enrichi', icon: Brain, description: 'Attributs IA extraits', component: ProductsEnrichedTable },
+        { id: 'shopify-orders', name: '├─ Commandes', icon: ShoppingCart, description: 'Gestion des ventes', component: () => <OrdersModule /> },
+        { id: 'shopify-customers', name: '└─ Clients', icon: UsersIcon, description: 'Base clients', component: () => <CustomersModule /> },
+        
+        // CSV/XML
+        { id: 'csv-import', name: 'Import CSV/XML', icon: Upload, description: 'Import manuel', component: EcommerceIntegration },
+        { id: 'csv-mapping', name: '├─ Mappage Champs', icon: Link, description: 'Configuration import', component: () => <CSVMappingModule /> },
+        { id: 'csv-validation', name: '└─ Validation', icon: CheckCircle, description: 'Contrôle qualité', component: () => <ValidationModule /> },
+        
+        // Général
+        { id: 'inventory', name: 'Inventaire', icon: Package, description: 'Gestion stock global', component: () => <InventoryModule /> },
+        { id: 'analytics-sales', name: 'Analytics Ventes', icon: BarChart3, description: 'Performance e-commerce', component: () => <SalesAnalyticsModule /> }
+      ]
+    },
+    {
+      id: 'marketing',
+      name: 'Marketing IA',
+      icon: Target,
+      description: 'Automatisation marketing avec intelligence artificielle',
+      color: 'from-green-500 to-emerald-600',
+      modules: [
+        // Google Merchant
+        { id: 'google-merchant', name: 'Google Merchant', icon: ShoppingBag, description: 'Flux produits automatique', component: GoogleMerchantTab },
+        { id: 'merchant-feed', name: '├─ Flux XML/CSV', icon: FileText, description: 'Génération automatique', component: GoogleMerchantTab },
+        { id: 'merchant-optimization', name: '├─ Optimisation', icon: Zap, description: 'Amélioration IA', component: GoogleMerchantTab },
+        { id: 'merchant-performance', name: '└─ Performance', icon: TrendingUp, description: 'Suivi Google Shopping', component: GoogleMerchantTab },
+        
+        // Google Ads
+        { id: 'google-ads', name: 'Google Ads', icon: Target, description: 'Campagnes automatiques', component: GoogleAdsTab },
+        { id: 'ads-connection', name: '├─ Connexion API', icon: Link, description: 'Configuration Google Ads', component: GoogleAdsConnector },
+        { id: 'ads-campaigns', name: '├─ Campagnes', icon: Play, description: 'Performance Max auto', component: GoogleAdsTab },
+        { id: 'ads-optimization', name: '├─ Optimisation IA', icon: Brain, description: 'Enchères intelligentes', component: GoogleAdsTab },
+        { id: 'ads-reporting', name: '└─ Rapports', icon: BarChart3, description: 'ROI et performance', component: GoogleAdsTab },
+        
+        // SEO & Content
+        { id: 'seo-blog', name: 'SEO & Blog', icon: Search, description: 'Contenu automatique', component: SEOBlogTab },
+        { id: 'seo-articles', name: '├─ Articles IA', icon: FileText, description: 'Génération automatique', component: SEOBlogTab },
+        { id: 'seo-keywords', name: '├─ Mots-clés', icon: Tag, description: 'Opportunités SEO', component: SEOBlogTab },
+        { id: 'seo-performance', name: '└─ Performance', icon: TrendingUp, description: 'Trafic organique', component: SEOBlogTab }
+      ]
+    },
+    {
+      id: 'ai-robot',
+      name: 'Robot IA',
+      icon: Bot,
+      description: 'Assistant conversationnel et technologies immersives',
+      color: 'from-purple-500 to-pink-600',
+      modules: [
+        // Configuration Robot
+        { id: 'robot-config', name: 'Configuration OmnIA', icon: Settings, description: 'Paramètres robot', component: OmniaRobotTab },
+        { id: 'robot-personality', name: '├─ Personnalité', icon: Bot, description: 'Ton et comportement', component: OmniaRobotTab },
+        { id: 'robot-voice', name: '├─ Voix & Audio', icon: Headphones, description: 'Synthèse vocale', component: OmniaRobotTab },
+        { id: 'robot-training', name: '└─ Entraînement', icon: Brain, description: 'Apprentissage continu', component: MLTrainingDashboard },
+        
+        // Vision AR/VR (NOUVEAU)
+        { id: 'vision-ar', name: 'Vision AR/VR', icon: Eye, description: 'Réalité augmentée', component: () => <VisionARModule />, isNew: true },
+        { id: 'ar-mobile', name: '├─ AR Mobile', icon: Smartphone, description: 'Placement produits 3D', component: () => <ARMobileModule />, isNew: true },
+        { id: 'vr-showroom', name: '├─ VR Showroom', icon: Monitor, description: 'Visite immersive', component: () => <VRShowroomModule />, isNew: true },
+        { id: 'photo-integration', name: '└─ IA Photo', icon: Camera, description: 'Placement automatique', component: () => <PhotoIntegrationModule />, isNew: true },
+        
+        // Conversations
+        { id: 'conversations', name: 'Conversations', icon: MessageSquare, description: 'Historique et analytics', component: ConversationHistory },
+        { id: 'chat-analytics', name: '├─ Analytics Chat', icon: BarChart3, description: 'Performance OmnIA', component: ConversationHistory },
+        { id: 'chat-optimization', name: '└─ Optimisation', icon: Zap, description: 'Amélioration IA', component: ConversationHistory }
+      ]
+    },
+    {
+      id: 'analytics',
+      name: 'Analytics & KPIs',
+      icon: BarChart3,
+      description: 'Tableaux de bord et analyses prédictives',
+      color: 'from-orange-500 to-red-600',
+      modules: [
+        // Dashboard principal
+        { id: 'dashboard-overview', name: 'Vue d\'ensemble', icon: BarChart3, description: 'KPIs globaux', component: () => renderMainDashboard() },
+        { id: 'dashboard-realtime', name: '├─ Temps réel', icon: Clock, description: 'Métriques live', component: () => <RealtimeDashboard /> },
+        { id: 'dashboard-trends', name: '└─ Tendances', icon: TrendingUp, description: 'Évolution historique', component: () => <TrendsDashboard /> },
+        
+        // Performance
+        { id: 'performance-sales', name: 'Performance Ventes', icon: DollarSign, description: 'CA et conversions', component: () => <SalesPerformanceModule /> },
+        { id: 'performance-marketing', name: 'Performance Marketing', icon: Target, description: 'ROI campagnes', component: () => <MarketingPerformanceModule /> },
+        { id: 'performance-products', name: 'Performance Produits', icon: Package, description: 'Bestsellers et stocks', component: () => <ProductPerformanceModule /> },
+        
+        // Insights IA
+        { id: 'ai-insights', name: 'Insights IA', icon: Brain, description: 'Analyses prédictives', component: () => <AIInsightsDashboard /> },
+        { id: 'ai-recommendations', name: '├─ Recommandations', icon: Zap, description: 'Suggestions OmnIA', component: () => <AIRecommendationsModule /> },
+        { id: 'ai-predictions', name: '└─ Prédictions', icon: TrendingUp, description: 'Tendances futures', component: () => <AIPredictionsModule /> }
+      ]
+    }
   ];
 
   const handlePlatformConnected = (platformData: any) => {
@@ -182,7 +225,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       [
         {
           label: 'Voir le catalogue',
-          action: () => setActiveTab('catalogue'),
+          action: () => {
+            setSelectedUniverse('ecommerce');
+            setSelectedModule('shopify-catalog');
+          },
           variant: 'primary'
         }
       ]
@@ -193,31 +239,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     console.log('Entraînement IA terminé:', trainingStats);
   };
 
-  const renderDashboard = () => (
+  // Rendu du dashboard principal
+  const renderMainDashboard = () => (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header avec info magasin */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Interface Revendeur</h1>
-          <p className="text-gray-300">Gestion de votre assistant IA OmnIA</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Dashboard Decora Home</h1>
+          <p className="text-gray-300">Gestion complète de votre assistant IA OmnIA</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-            <Store className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold">Decora Home</div>
-            <div className="text-gray-400 text-sm">Plan Professional</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-cyan-300 text-sm">{stats.products} produits actifs</span>
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="p-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl text-purple-300 hover:text-white transition-all"
-              title="QR Code boutique"
-            >
-              <QrCode className="w-4 h-4" />
-            </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <Store className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="text-white font-bold">Decora Home</div>
+              <div className="text-gray-400 text-sm">Plan Professional • {stats.products} produits</div>
+            </div>
           </div>
         </div>
       </div>
@@ -274,7 +313,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <h2 className="text-2xl font-bold text-white mb-6">Actions Rapides</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <button
-            onClick={() => setActiveTab('integration')}
+            onClick={() => {
+              setSelectedUniverse('ecommerce');
+              setSelectedModule('shopify-integration');
+            }}
             className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Upload className="w-8 h-8 text-cyan-400 mb-3" />
@@ -283,7 +325,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </button>
           
           <button
-            onClick={() => setActiveTab('robot')}
+            onClick={() => {
+              setSelectedUniverse('ai-robot');
+              setSelectedModule('robot-config');
+            }}
             className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Bot className="w-8 h-8 text-purple-400 mb-3" />
@@ -329,235 +374,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  // Modal QR Code
-  const renderQRModal = () => (
-    showQR && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-white">QR Code Boutique</h3>
-            <button
-              onClick={() => setShowQR(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              ×
-            </button>
-          </div>
-          <div className="text-center">
-            <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://omnia.sale/chat')}`}
-                alt="QR Code"
-                className="w-44 h-44 rounded-xl"
-              />
-            </div>
-            <p className="text-gray-300">Scannez pour accéder au chat OmnIA</p>
-          </div>
-        </div>
-      </div>
-    )
-  );
-
-  const renderCatalogue = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion du Catalogue</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-green-300 text-sm">{stats.products} produits actifs</span>
-        </div>
-      </div>
-
-      <CatalogManagement />
-    </div>
-  );
-
-  const renderIntegration = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Intégration E-commerce</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-          <span className="text-blue-300 text-sm">{connectedPlatforms.length} plateforme(s) connectée(s)</span>
-        </div>
-      </div>
-
-      <EcommerceIntegration onConnected={handlePlatformConnected} />
-    </div>
-  );
-
-  const renderMLTraining = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Entraînement IA</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-          <span className="text-purple-300 text-sm">Modèle IA actif</span>
-        </div>
-      </div>
-
-      <MLTrainingDashboard />
-    </div>
-  );
-
-  const renderRobot = () => (
-    <div className="space-y-8">
-      <OmniaRobotTab />
-    </div>
-  );
-
-  const renderHistorique = () => (
-    <ConversationHistory />
-  );
-
-  const renderAbonnement = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Abonnement Professional</h2>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-bold text-white">Plan Professional</h3>
-            <p className="text-gray-300">5000 conversations/mois • Produits illimités</p>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-cyan-400">€79/mois</div>
-            <div className="text-sm text-green-400">Actif</div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-white mb-3">Fonctionnalités incluses :</h4>
-            <ul className="space-y-2 text-gray-300">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                5000 conversations/mois
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Produits illimités
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Support prioritaire
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Domaine personnalisé
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Analytics avancées
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-white mb-3">Utilisation ce mois :</h4>
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-300">Conversations</span>
-                  <span className="text-white">{stats.conversations}/5000</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-cyan-500 h-2 rounded-full" 
-                    style={{ width: `${(stats.conversations / 5000) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex gap-4 mt-6">
-          <button 
-            onClick={() => showInfo(
-              'Upgrade Enterprise', 
-              'Contactez notre équipe commerciale pour upgrader vers Enterprise : commercial@omnia.sale ou +33 1 84 88 32 45',
-              [
-                {
-                  label: 'Contacter commercial',
-                  action: () => window.open('mailto:commercial@omnia.sale?subject=Upgrade Enterprise', '_blank'),
-                  variant: 'primary'
-                }
-              ]
-            )}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-          >
-            Upgrade vers Enterprise
-          </button>
-          <button 
-            onClick={() => showInfo(
-              'Gestion abonnement', 
-              'Accédez au portail client pour gérer votre abonnement, facturation et moyens de paiement.',
-              [
-                {
-                  label: 'Portail client',
-                  action: () => window.open('https://billing.omnia.sale/portal', '_blank'),
-                  variant: 'primary'
-                },
-                {
-                  label: 'Support facturation',
-                  action: () => window.open('mailto:billing@omnia.sale', '_blank'),
-                  variant: 'secondary'
-                }
-              ]
-            )}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-          >
-            Gérer l'abonnement
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Paramètres</h2>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Configuration OmnIA</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-cyan-300 mb-2">Nom du robot</label>
-            <input
-              type="text"
-              defaultValue="OmnIA"
-              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-cyan-300 mb-2">Personnalité</label>
-            <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white">
-              <option value="commercial">Commercial & Amical</option>
-              <option value="expert">Expert Technique</option>
-              <option value="conseil">Conseiller Déco</option>
-            </select>
-          </div>
-        </div>
-        
-        <div className="mt-6">
-          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Sauvegarder les paramètres
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Nouveau rendu par univers
+  // Rendu de la vue univers
   const renderUniverseView = () => {
     if (!selectedUniverse) {
       return (
         <div className="space-y-8">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-white mb-4">Univers OmnIA</h1>
-            <p className="text-xl text-gray-300">Choisissez votre domaine d'expertise</p>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Choisissez votre domaine d'expertise pour accéder aux outils spécialisés
+            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -569,7 +395,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   onClick={() => setSelectedUniverse(universe.id)}
                   className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 cursor-pointer group"
                 >
-                  <div className={`w-20 h-20 bg-gradient-to-r ${universe.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <div className={`w-20 h-20 bg-gradient-to-r ${universe.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-2xl`}>
                     <Icon className="w-10 h-10 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-3">{universe.name}</h3>
@@ -599,7 +425,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <ArrowLeft className="w-4 h-4" />
               Retour aux univers
             </button>
-            <div className={`w-12 h-12 bg-gradient-to-r ${universe.color} rounded-xl flex items-center justify-center`}>
+            <div className={`w-12 h-12 bg-gradient-to-r ${universe.color} rounded-xl flex items-center justify-center shadow-lg`}>
               <universe.icon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -615,13 +441,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <div
                   key={module.id}
                   onClick={() => setSelectedModule(module.id)}
-                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 cursor-pointer"
+                  className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 cursor-pointer relative"
                 >
+                  {module.isNew && (
+                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+                      NOUVEAU
+                    </div>
+                  )}
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
                     <ModuleIcon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{module.name}</h3>
                   <p className="text-gray-300 text-sm">{module.description}</p>
+                  {module.badge && (
+                    <span className="inline-block mt-2 bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full text-xs">
+                      {module.badge}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -652,6 +488,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <h2 className="text-2xl font-bold text-white">{module.name}</h2>
             <p className="text-gray-300">{module.description}</p>
           </div>
+          {module.isNew && (
+            <span className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+              NOUVEAU
+            </span>
+          )}
         </div>
         
         <ModuleComponent />
@@ -659,29 +500,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     );
   };
 
-  const renderContent = () => {
-    // Si un univers est sélectionné, afficher la vue univers
-    if (selectedUniverse || activeTab === 'universes') {
-      return renderUniverseView();
-    }
-    
-    switch (activeTab) {
-      case 'dashboard': return renderDashboard();
-      case 'catalogue': return renderCatalogue();
-      case 'integration': return renderIntegration();
-      case 'ml-training': return renderMLTraining();
-      case 'robot': return renderRobot();
-      case 'historique': return renderHistorique();
-      case 'abonnement': return renderAbonnement();
-      case 'settings': return renderSettings();
-      default: return renderDashboard();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
       <NotificationSystem notifications={notifications} onRemove={removeNotification} />
-      {renderQRModal()}
       
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
@@ -698,33 +519,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">OmnIA</h1>
-              <p className="text-sm text-cyan-300">Commercial Mobilier IA</p>
+              <h1 className="text-xl font-bold text-white">OmnIA Admin</h1>
+              <p className="text-sm text-cyan-300">Interface Revendeur</p>
             </div>
           </div>
 
-          {/* Info magasin */}
-          <div className="bg-slate-700/50 rounded-xl p-4 mb-6">
-            <div className="text-white font-bold">Mon Magasin</div>
-            <div className="text-gray-400 text-sm">Plan Professional</div>
-          </div>
+          {/* Navigation par Univers */}
+          <nav className="space-y-3 mb-8">
+            <button
+              onClick={() => {
+                setSelectedUniverse(null);
+                setSelectedModule(null);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                !selectedUniverse
+                  ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                  : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="font-medium">Dashboard Principal</span>
+            </button>
 
-          {/* Navigation Menu */}
-          <nav className="space-y-2 mb-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
+            {universes.map((universe) => {
+              const Icon = universe.icon;
+              const isActive = selectedUniverse === universe.id;
               return (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  key={universe.id}
+                  onClick={() => {
+                    setSelectedUniverse(universe.id);
+                    setSelectedModule(null);
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                    activeTab === tab.id
+                    isActive
                       ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
                       : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
+                  <span className="font-medium">{universe.name}</span>
+                  <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">
+                    {universe.modules.length}
+                  </span>
                 </button>
               );
             })}
@@ -737,26 +574,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <span className="text-green-300 font-semibold">OmnIA Robot</span>
             </div>
             <p className="text-green-200 text-sm">Assistant IA actif et opérationnel</p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-green-300 text-xs">Connecté • {stats.products} produits</span>
+            </div>
           </div>
           
           <button
             onClick={onLogout}
-            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all"
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all flex items-center gap-2"
           >
+            <LogOut className="w-4 h-4" />
             Déconnexion
           </button>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-8">
-          {renderContent()}
+          {renderUniverseView()}
         </div>
       </div>
     </div>
   );
 };
 
-// Composants des nouveaux modules
+// Nouveaux composants pour les modules AR/VR
 const VisionARModule: React.FC = () => (
   <div className="space-y-8">
     <div className="text-center">
@@ -767,6 +609,7 @@ const VisionARModule: React.FC = () => (
     {/* AR Mobile */}
     <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
       <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <Smartphone className="w-6 h-6 text-green-400" />
         📱 AR Mobile - Placement Produits
       </h3>
       
@@ -806,6 +649,7 @@ const VisionARModule: React.FC = () => (
     {/* VR Showroom */}
     <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
       <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <Monitor className="w-6 h-6 text-purple-400" />
         🕶️ VR Showroom - Visite Immersive
       </h3>
       
@@ -832,11 +676,40 @@ const VisionARModule: React.FC = () => (
           </ul>
         </div>
       </div>
+      
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+          <h4 className="font-semibold text-purple-200 mb-2">🎬 Vidéos démo VR :</h4>
+          <div className="space-y-2">
+            <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-2">
+              <Play className="w-4 h-4" />
+              Visite showroom VR (2min)
+            </button>
+            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2">
+              <Video className="w-4 h-4" />
+              OmnIA guide virtuel (1min)
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+          <h4 className="font-semibold text-green-200 mb-2">🚀 Déploiement :</h4>
+          <div className="space-y-2">
+            <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
+              Configurer VR Showroom
+            </button>
+            <button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-lg">
+              Tester en WebXR
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     {/* IA Photo Integration */}
     <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
       <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <Camera className="w-6 h-6 text-pink-400" />
         📸 IA Photo Integration - Placement Automatique
       </h3>
       
@@ -877,49 +750,227 @@ const VisionARModule: React.FC = () => (
   </div>
 );
 
-const KPIsDashboard: React.FC = () => (
+const ARMobileModule: React.FC = () => (
   <div className="space-y-8">
-    <h2 className="text-2xl font-bold text-white">KPIs Performance</h2>
+    <h2 className="text-2xl font-bold text-white">AR Mobile - Placement 3D</h2>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-white mb-2">1,234</div>
-          <div className="text-blue-300">Conversations</div>
-          <div className="text-green-400 text-sm">+23% vs mois dernier</div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <h3 className="text-lg font-bold text-white mb-4">📱 Configuration AR</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm text-cyan-300 mb-2">Produits AR activés</label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked className="w-4 h-4 text-cyan-600" />
+                <span className="text-white">Canapé ALYANA (toutes couleurs)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked className="w-4 h-4 text-cyan-600" />
+                <span className="text-white">Table AUREA (Ø100cm, Ø120cm)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" className="w-4 h-4 text-cyan-600" />
+                <span className="text-white">Chaise INAYA (toutes couleurs)</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
       
-      <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-white mb-2">42%</div>
-          <div className="text-green-300">Taux conversion</div>
-          <div className="text-green-400 text-sm">+8% vs mois dernier</div>
-        </div>
-      </div>
-      
-      <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-white mb-2">€2,450</div>
-          <div className="text-purple-300">CA généré</div>
-          <div className="text-green-400 text-sm">+15% vs mois dernier</div>
-        </div>
-      </div>
-      
-      <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-white mb-2">4.2x</div>
-          <div className="text-orange-300">ROAS Ads</div>
-          <div className="text-green-400 text-sm">+12% vs mois dernier</div>
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <h3 className="text-lg font-bold text-white mb-4">📊 Analytics AR</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between">
+            <span className="text-gray-300">Sessions AR ce mois :</span>
+            <span className="text-cyan-400 font-bold">1,247</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-300">Conversions AR :</span>
+            <span className="text-green-400 font-bold">68%</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-300">Partages sociaux :</span>
+            <span className="text-purple-400 font-bold">342</span>
+          </div>
         </div>
       </div>
     </div>
   </div>
 );
 
+const VRShowroomModule: React.FC = () => (
+  <div className="space-y-8">
+    <h2 className="text-2xl font-bold text-white">VR Showroom - Visite Immersive</h2>
+    
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+      <h3 className="text-lg font-bold text-white mb-6">🎬 Vidéos de démonstration</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-black/20 rounded-xl p-4">
+          <div className="aspect-video bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-4">
+            <Play className="w-16 h-16 text-white" />
+          </div>
+          <h4 className="font-semibold text-white mb-2">Visite VR Showroom</h4>
+          <p className="text-gray-300 text-sm mb-3">Découvrez l'expérience immersive complète</p>
+          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg">
+            ▶️ Regarder (3min)
+          </button>
+        </div>
+        
+        <div className="bg-black/20 rounded-xl p-4">
+          <div className="aspect-video bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center mb-4">
+            <Bot className="w-16 h-16 text-white" />
+          </div>
+          <h4 className="font-semibold text-white mb-2">OmnIA Guide Virtuel</h4>
+          <p className="text-gray-300 text-sm mb-3">Robot IA qui accompagne en VR</p>
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg">
+            ▶️ Regarder (2min)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const PhotoIntegrationModule: React.FC = () => (
+  <div className="space-y-8">
+    <h2 className="text-2xl font-bold text-white">IA Photo Integration</h2>
+    
+    <div className="bg-gradient-to-r from-cyan-500/20 to-purple-600/20 backdrop-blur-xl rounded-2xl p-8 border border-cyan-400/30">
+      <h3 className="text-xl font-bold text-white mb-6">🤖 Placement Automatique avec IA</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h4 className="font-semibold text-cyan-300 mb-4">📸 Processus :</h4>
+          <ol className="text-cyan-200 text-sm space-y-2">
+            <li>1. <strong>Client upload photo</strong> de sa pièce</li>
+            <li>2. <strong>IA analyse l'espace</strong> (dimensions, style, éclairage)</li>
+            <li>3. <strong>Placement intelligent</strong> du canapé ALYANA</li>
+            <li>4. <strong>Rendu photoréaliste</strong> avec ombres et reflets</li>
+            <li>5. <strong>Variantes couleurs</strong> en un clic</li>
+            <li>6. <strong>Partage et achat</strong> direct depuis l'image</li>
+          </ol>
+        </div>
+        
+        <div>
+          <h4 className="font-semibold text-green-300 mb-4">🎯 Avantages :</h4>
+          <ul className="text-green-200 text-sm space-y-2">
+            <li>• <strong>Zéro installation :</strong> Fonctionne sur tous mobiles</li>
+            <li>• <strong>Rendu instantané :</strong> 3-5 secondes de traitement</li>
+            <li>• <strong>Qualité photo :</strong> Intégration invisible</li>
+            <li>• <strong>Viral naturel :</strong> Clients partagent leurs créations</li>
+            <li>• <strong>Conversion élevée :</strong> Voir = acheter</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Modules pour les autres univers
+const OrdersModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Gestion des Commandes</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Module commandes en développement...</p>
+    </div>
+  </div>
+);
+
+const CustomersModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Base Clients</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Module clients en développement...</p>
+    </div>
+  </div>
+);
+
+const CSVMappingModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Mappage des Champs CSV</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Configuration du mappage CSV...</p>
+    </div>
+  </div>
+);
+
+const ValidationModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Validation des Données</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Contrôle qualité des imports...</p>
+    </div>
+  </div>
+);
+
+const InventoryModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Gestion d'Inventaire</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Suivi des stocks global...</p>
+    </div>
+  </div>
+);
+
+const SalesAnalyticsModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Analytics Ventes</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Performance e-commerce...</p>
+    </div>
+  </div>
+);
+
+const RealtimeDashboard: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Dashboard Temps Réel</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Métriques en temps réel...</p>
+    </div>
+  </div>
+);
+
+const TrendsDashboard: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Analyse des Tendances</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Évolution historique...</p>
+    </div>
+  </div>
+);
+
+const SalesPerformanceModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Performance Ventes</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">CA et conversions...</p>
+    </div>
+  </div>
+);
+
+const MarketingPerformanceModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Performance Marketing</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">ROI des campagnes...</p>
+    </div>
+  </div>
+);
+
+const ProductPerformanceModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Performance Produits</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Bestsellers et analyse...</p>
+    </div>
+  </div>
+);
+
 const AIInsightsDashboard: React.FC = () => (
   <div className="space-y-8">
-    <h2 className="text-2xl font-bold text-white">Insights IA Prédictifs</h2>
+    <h2 className="text-3xl font-bold text-white">Insights IA Prédictifs</h2>
     
     <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
       <h3 className="text-lg font-bold text-white mb-4">🧠 Analyses OmnIA Brain</h3>
@@ -948,6 +999,24 @@ const AIInsightsDashboard: React.FC = () => (
           </p>
         </div>
       </div>
+    </div>
+  </div>
+);
+
+const AIRecommendationsModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Recommandations IA</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Suggestions OmnIA...</p>
+    </div>
+  </div>
+);
+
+const AIPredictionsModule: React.FC = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white">Prédictions IA</h2>
+    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+      <p className="text-gray-300">Tendances futures...</p>
     </div>
   </div>
 );
