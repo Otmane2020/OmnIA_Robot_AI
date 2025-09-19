@@ -472,4 +472,361 @@ export const ChatInterface: React.FC = () => {
               <div className="relative">
                 <Camera className="w-8 h-8 text-white" />
                 {humanDetection && (
-                  <div className="absolute -top-1 -right-1 w-
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse">
+                    <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                  </div>
+                )}
+              </div>
+            </button>
+          </div>
+
+          {/* Statut final simplifié */}
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className={`w-3 h-3 rounded-full ${robotAwake ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className={`font-bold font-['Inter'] ${robotAwake ? 'text-green-300' : 'text-red-300'}`}>
+                {robotAwake ? 'Prêt à vous conseiller' : 'En veille'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col relative z-10 lg:ml-0 mt-20 lg:mt-0">
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50">
+          <div className="max-w-6xl mx-auto space-y-6">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onAddToCart={handleAddToCart}
+                onSpeak={speak}
+                isPlaying={currentSpeakingMessage === message.content}
+              />
+            ))}
+            
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-4">
+                  <RobotAvatar
+                    mood="thinking"
+                    isListening={false}
+                    isSpeaking={false}
+                    size="md"
+                  />
+                  <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-cyan-300">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <span className="text-cyan-600 text-sm font-['Inter']">OmnIA réfléchit...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Affichage des produits en grille */}
+            {products.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3 font-['Inter']">
+                  <Sparkles className="w-6 h-6 text-cyan-400" />
+                  Mes recommandations
+                  <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm">
+                    {products.length} produit{products.length > 1 ? 's' : ''}
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input Area - Sticky */}
+        <div className="sticky bottom-0 p-4 md:p-8 bg-white/90 backdrop-blur-xl border-t border-gray-200 shadow-lg">
+          <div className="max-w-6xl mx-auto">
+            {/* Suggestions */}
+            <div className="mb-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button
+                  onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
+                  className="flex-shrink-0 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 hover:text-purple-800 text-sm rounded-xl border border-purple-300 transition-all whitespace-nowrap shadow-lg hover:shadow-purple-200/50 hover:scale-105 font-['Inter']"
+                >
+                  🛋️ Canapé beige
+                </button>
+                <button
+                  onClick={() => handleSuggestionClick("🪑 Table ronde")}
+                  className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 text-sm rounded-xl border border-blue-300 transition-all whitespace-nowrap shadow-lg hover:shadow-blue-200/50 hover:scale-105 font-['Inter']"
+                >
+                  🪑 Table ronde
+                </button>
+                <button
+                  onClick={() => handleSuggestionClick("💺 Chaise bureau")}
+                  className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 text-sm rounded-xl border border-green-300 transition-all whitespace-nowrap shadow-lg hover:shadow-green-200/50 hover:scale-105 font-['Inter']"
+                >
+                  💺 Chaise bureau
+                </button>
+                <button
+                  onClick={() => handleSuggestionClick("✨ Tendances 2025")}
+                  className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 hover:text-yellow-800 text-sm rounded-xl border border-yellow-300 transition-all whitespace-nowrap shadow-lg hover:shadow-yellow-200/50 hover:scale-105 font-['Inter']"
+                >
+                  ✨ Tendances 2025
+                </button>
+              </div>
+            </div>
+
+            {/* Statut vocal */}
+            {(isRecording || isProcessing || isAnalyzingPhoto) && (
+              <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded-xl shadow-lg">
+                <div className="flex items-center gap-3">
+                  {isRecording ? (
+                    <>
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-red-600 font-semibold font-['Inter']">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
+                    </>
+                  ) : isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                      <span className="text-blue-700 font-semibold font-['Inter']">🔄 Transcription en cours...</span>
+                    </>
+                  ) : isAnalyzingPhoto ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
+                      <span className="text-purple-700 font-semibold font-['Inter']">📸 Analyse photo en cours...</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Input avec boutons - QR Code à côté du champ comme demandé */}
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
+                  placeholder="Écrivez votre message..."
+                  className="w-full bg-white border border-gray-300 rounded-2xl px-6 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 shadow-lg font-['Inter']"
+                />
+              </div>
+              
+              {/* QR Code à côté du champ de saisie comme demandé */}
+              <button
+                onClick={() => setShowQR(!showQR)}
+                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-xl shadow-purple-500/40 hover:shadow-purple-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
+                title="QR Code pour mobile"
+              >
+                <QrCode className="w-6 h-6 text-white" />
+              </button>
+
+              {/* Input photo caché */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handlePhotoUpload(file);
+                }}
+                className="hidden"
+              />
+
+              {/* Bouton Photo */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isAnalyzingPhoto}
+                className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 hover:shadow-pink-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+                title="Analyser une photo"
+              >
+                {isAnalyzingPhoto ? (
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                ) : (
+                  <Image className="w-6 h-6 text-white" />
+                )}
+              </button>
+
+              {/* Bouton Envoyer */}
+              <button
+                onClick={() => handleSendMessage(inputMessage)}
+                disabled={!inputMessage.trim()}
+                className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100 border-2 border-white/20"
+                title="Envoyer le message"
+              >
+                <Send className="w-6 h-6 text-white" />
+              </button>
+            </div>
+
+            {/* Erreur vocale */}
+            {sttError && (
+              <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-xl shadow-lg">
+                <p className="text-red-700 font-['Inter']">🎤 {sttError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal QR Code */}
+      {showQR && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800 font-['Inter']">📱 QR Code Chat OmnIA</h3>
+              <button
+                onClick={() => setShowQR(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="text-center">
+              <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-gray-200">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/upload')}`}
+                  alt="QR Code"
+                  className="w-44 h-44 rounded-xl"
+                />
+              </div>
+              <p className="text-gray-600 mb-4 font-['Inter']">Scannez pour accéder à l'upload photo sur mobile</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <p className="text-blue-700 text-sm font-['Inter']">
+                  📸 Envoyez des photos de votre espace pour des conseils personnalisés !
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panneau paramètres robot */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800 font-['Inter']">⚙️ Paramètres Robot OmnIA</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">État du robot</label>
+                <select
+                  value={robotAwake ? 'awake' : 'sleeping'}
+                  onChange={(e) => setRobotAwake(e.target.value === 'awake')}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']"
+                >
+                  <option value="awake">🟢 Éveillé et actif</option>
+                  <option value="sleeping">🔴 En veille</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Détection humaine</label>
+                <select
+                  value={humanDetection ? 'enabled' : 'disabled'}
+                  onChange={(e) => setHumanDetection(e.target.value === 'enabled')}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']"
+                >
+                  <option value="enabled">📹 Activée</option>
+                  <option value="disabled">📷 Désactivée</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Personnalité robot</label>
+                <select className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']">
+                  <option value="energetic">⚡ Énergique et commercial</option>
+                  <option value="professional">💼 Professionnel et expert</option>
+                  <option value="friendly">😊 Amical et décontracté</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Vitesse de déplacement</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  defaultValue="5"
+                  className="w-full accent-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Fréquence de danse</label>
+                <select className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']">
+                  <option value="rare">🎵 Rare (ventes uniquement)</option>
+                  <option value="normal">🎶 Normal (interactions importantes)</option>
+                  <option value="frequent">🎼 Fréquent (toutes les interactions)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Volume voix</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  defaultValue="80"
+                  className="w-full accent-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Vitesse de parole</label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  defaultValue="1.2"
+                  className="w-full accent-blue-500"
+                />
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-700 mb-2 font-['Inter']">🤖 Capacités robot :</h4>
+                <ul className="text-blue-600 text-sm space-y-1 font-['Inter']">
+                  <li>• Déplacement autonome dans le showroom</li>
+                  <li>• Danse de célébration lors des ventes</li>
+                  <li>• Reconnaissance vocale et synthèse</li>
+                  <li>• Analyse photo et recommandations</li>
+                  <li>• Gestion du panier et commandes</li>
+                </ul>
+              </div>
+              
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-cyan-500/40 font-['Inter']"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
