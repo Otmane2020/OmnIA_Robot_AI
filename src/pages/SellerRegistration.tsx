@@ -3,7 +3,7 @@ import {
   Building, User, Mail, Phone, MapPin, FileText, 
   Upload, ArrowLeft, CheckCircle, AlertCircle, 
   Eye, EyeOff, CreditCard, Globe, Loader2, Flag,
-  Lock, Shield, Calendar, Clock, Sparkles
+  Lock, Shield, Calendar, Clock, Sparkles, Heart
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -567,6 +567,12 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             />
           </div>
           {errors.email && <p className="text-red-400 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.email}</p>}
+          {formData.email && !errors.email && (
+            <p className="text-green-400 text-sm mt-1 flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Email valide
+            </p>
+          )}
         </div>
 
         <div>
