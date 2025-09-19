@@ -6,7 +6,7 @@ import {
   Clock, Star, X, ShoppingBag, Target, Search, ArrowLeft, Package,
   Zap, Image, Video, Play, Monitor, Smartphone, Headphones, Camera,
   PieChart, DollarSign, MousePointer, Users as UsersIcon, Mail,
-  Truck, Calendar, Tag, Link, ExternalLink, Plus, Edit, Trash2,
+  Truck, Calendar, Tag, Link, ExternalLink, Plus, Edit, Trash2, MessageSquare,
   Home, Palette, Megaphone, UserCheck, Cog, Bell, Activity,
   TrendingDown, AlertTriangle, Wifi, Battery, Signal
 } from 'lucide-react';
