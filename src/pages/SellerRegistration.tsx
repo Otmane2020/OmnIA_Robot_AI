@@ -82,6 +82,22 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [isAccountCreated, setIsAccountCreated] = useState(false);
   const [createdAccountInfo, setCreatedAccountInfo] = useState<any>(null);
 
+  // Move useEffect outside conditional to maintain hooks order
+  useEffect(() => {
+    if (showAccountCreation) {
+      const timer = setTimeout(() => {
+        if (accountCreationStep < creationSteps.length - 1) {
+          setAccountCreationStep(prev => prev + 1);
+        } else {
+          // Terminer après toutes les étapes
+          setTimeout(handleAccountCreationComplete, 800);
+        }
+      }, creationSteps[accountCreationStep]?.duration || 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [accountCreationStep, showAccountCreation]);
+
   const generateUniqueSubdomain = (companyName: string): string => {
     const baseSubdomain = companyName
       .toLowerCase()
@@ -273,21 +289,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       { icon: Globe, label: 'Création sous-domaine unique', duration: 800 },
       { icon: Mail, label: 'Envoi emails confirmation', duration: 600 }
     ];
-
-    useEffect(() => {
-      if (showAccountCreation) {
-        const timer = setTimeout(() => {
-          if (accountCreationStep < creationSteps.length - 1) {
-            setAccountCreationStep(prev => prev + 1);
-          } else {
-            // Terminer après toutes les étapes
-            setTimeout(handleAccountCreationComplete, 800);
-          }
-        }, creationSteps[accountCreationStep]?.duration || 1000);
-
-        return () => clearTimeout(timer);
-      }
-    }, [accountCreationStep, showAccountCreation]);
 
     const CurrentIcon = creationSteps[accountCreationStep]?.icon || CheckCircle;
 
