@@ -7,7 +7,6 @@ import {
   AlertCircle, Clock, Star, Award, Zap, Bot, User
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { supabase } from '../lib/supabase';
 
 interface Application {
   id: string;
@@ -649,7 +648,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         plan: 'starter',
         status: 'active',
         revenue: 3400,
-        conversations: 456,
+        conversations: 567,
         products: 123,
         joinDate: '2024-04-05',
         lastActive: '2025-01-13T14:20:00Z',
