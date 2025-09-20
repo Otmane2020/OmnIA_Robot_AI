@@ -54,8 +54,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAccountCreation, setShowAccountCreation] = useState(false);
-  const [accountCreationStep, setAccountCreationStep] = useState(0);
 
   const plans = [
     {
@@ -83,28 +81,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [accountCreationStep, setAccountCreationStep] = useState(0);
   const [isAccountCreated, setIsAccountCreated] = useState(false);
   const [createdAccountInfo, setCreatedAccountInfo] = useState<any>(null);
-
-  const plans = [
-    {
-      id: 'starter',
-      name: 'Starter',
-      price: '29€/mois',
-      features: ['1000 conversations/mois', '500 produits max', 'Support email', 'Widget personnalisable']
-    },
-    {
-      id: 'professional',
-      name: 'Professional',
-      price: '79€/mois',
-      features: ['5000 conversations/mois', 'Produits illimités', 'Support prioritaire', 'Domaine personnalisé'],
-      popular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: '199€/mois',
-      features: ['Conversations illimitées', 'Multi-magasins', 'Support dédié', 'White-label']
-    }
-  ];
 
   const generateUniqueSubdomain = (companyName: string): string => {
     const baseSubdomain = companyName
