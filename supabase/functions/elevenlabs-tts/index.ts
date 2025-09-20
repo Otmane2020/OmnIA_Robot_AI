@@ -71,12 +71,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // Configuration voix robot masculine française optimisée
-    const robotVoiceId = voice_id || Deno.env.get('ELEVENLABS_VOICE_ID') || 'EIe4oLyymVX7lKVYli9m'; // Voix française masculine
+    const robotVoiceId = voice_id || Deno.env.get('ELEVENLABS_VOICE_ID') || 'pNInz6obpgDQGcFmaJgB'; // Voix française naturelle Adam
     const robotModelId = model_id || 'eleven_multilingual_v2';
     const robotSettings = {
-      stability: 0.7, // Stabilité optimisée
+      stability: 0.8, // Stabilité très élevée
       similarity_boost: 0.95, // Similarité maximale
-      style: 0.1, // Style naturel
+      style: 0.3, // Style plus expressif et conversationnel
       use_speaker_boost: true,
       ...voice_settings
     };

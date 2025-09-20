@@ -70,103 +70,80 @@ ${productsList}
 `;
 
     // 🚀 Streaming depuis OpenAI
-    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-    
-    let aiResponse;
-    
-    if (deepseekApiKey) {
-      // Essayer DeepSeek d'abord
-      console.log('🤖 Utilisation DeepSeek Chat...');
-      aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${deepseekApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message },
-          ],
-          max_tokens: 80,
-          temperature: 0.7,
-          stream: false,
-        }),
-      });
-      
-      if (aiResponse.ok) {
-        const data = await aiResponse.json();
-        const responseText = data.choices[0]?.message?.content?.trim().substring(0, 200) || "Comment puis-je vous aider ?";
-        
-        return new Response(
-          responseText,
-          {
-            headers: {
-              "Content-Type": "text/plain",
-              ...corsHeaders,
-            },
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        max_tokens: 60, // Réponses plus courtes
+        temperature: 0.8,
+        stream: true, // ⚡️ Active le streaming
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      throw new Error("OpenAI API error");
+    }
+
+    // Renvoi en streaming vers le client
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = openaiResponse.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+
+          for (const part of parts) {
+            if (part.startsWith("data:")) {
+              const json = part.replace("data: ", "").trim();
+              if (json === "[DONE]") {
+                controller.close();
+                return;
+              }
+              try {
+                const parsed = JSON.parse(json);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(
+                    new TextEncoder().encode(content)
+                  );
+                }
+              } catch (_) {}
+            }
           }
-        );
-      }
-    }
-    
-    // Fallback vers OpenAI si DeepSeek échoue
-    console.log('🔄 Fallback vers OpenAI...');
-    if (!aiResponse || !aiResponse.ok) {
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openaiApiKey) {
-        return new Response(
-          JSON.stringify({ message: "Bonjour ! Je suis OmnIA. Comment puis-je vous aider ?" }),
-          {
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          }
-        );
-      }
-      
-      aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message },
-          ],
-          max_tokens: 80,
-          temperature: 0.7,
-          stream: false,
-        }),
-      });
-    }
+        }
+      },
+    });
 
-    if (!aiResponse.ok) {
-      throw new Error("API error");
-    }
-
-    const data = await aiResponse.json();
-    const responseText = data.choices[0]?.message?.content?.trim().substring(0, 200) || "Comment puis-je vous aider ?";
-
-    return new Response(
-      responseText,
-      {
-        headers: {
-          "Content-Type": "text/plain",
-          ...corsHeaders,
-        },
-      }
-    );
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        ...corsHeaders,
+      },
+    });
   } catch (error) {
     console.error("Error in chat function:", error);
 
     return new Response(
-      "Je rencontre un souci technique, peux-tu reformuler ?",
+      JSON.stringify({
+        message: "Je rencontre un souci technique, peux-tu reformuler ?",
+      }),
       {
         status: 200,
-        headers: { "Content-Type": "text/plain", ...corsHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }

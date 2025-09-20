@@ -124,7 +124,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onShowRegistrat
           <div className="mt-8 text-center">
             <div className="mb-4">
               <button
-                onClick={() => window.location.href = '/register'}
+                onClick={() => window.location.href = 'https://seller.omnia.sale/register'}
                 className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
               >
                 Nouveau revendeur ? Créer un compte

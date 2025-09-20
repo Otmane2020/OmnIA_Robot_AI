@@ -154,16 +154,15 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
             {/* Bouche souriante animée */}
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
               <div 
-                className={`w-4 h-2 transition-all duration-1000 ${
+                className={`w-3 h-1.5 rounded-full transition-all duration-200 ${
                   mood === 'happy' || mood === 'dancing' ? 'bg-cyan-400' :
                   mood === 'speaking' ? 'bg-green-400 animate-pulse' :
                   mood === 'thinking' ? 'bg-yellow-400' :
                   'bg-cyan-400'
-                } animate-bounce`}
+                }`}
                 style={{
                   transform: isSpeaking ? `scaleY(${1.2 + mouthAnimation * 0.2})` : 'scaleY(1)',
-                  borderRadius: '50% 50% 80% 80%',
-                  animationDuration: '2s'
+                  borderRadius: mood === 'happy' || mood === 'dancing' ? '50%' : '25%'
                 }}
               />
             </div>

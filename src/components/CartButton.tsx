@@ -45,23 +45,23 @@ export const CartButton: React.FC<CartButtonProps> = ({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 sm:p-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white rounded-xl transition-all border border-emerald-400 shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 hover:scale-110"
+        className="relative p-2 sm:p-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white rounded-xl transition-all border border-emerald-400 shadow-lg hover:shadow-emerald-500/50 hover:scale-105"
         title={`${totalItems} article${totalItems > 1 ? 's' : ''} - ${totalPrice.toFixed(2)}€`}
       >
         <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-gradient-to-r from-pink-500 to-red-500 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center animate-bounce border-2 border-white shadow-lg shadow-pink-500/50">
+        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center animate-bounce border-2 border-white">
           {totalItems}
         </span>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-gradient-to-br from-emerald-50 to-green-50 backdrop-blur-xl rounded-2xl border border-emerald-200 shadow-2xl shadow-emerald-500/20 z-50">
+        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-gradient-to-br from-white to-gray-50 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-2xl z-50">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-emerald-800">🛒 Panier ({totalItems})</h3>
+              <h3 className="text-lg font-bold text-gray-800">🛒 Panier ({totalItems})</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-emerald-400 hover:text-emerald-600"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -88,14 +88,14 @@ export const CartButton: React.FC<CartButtonProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => onUpdateQuantity(item.id, Math.max(0, item.quantity - 1))}
-                          className="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all hover:scale-110 border border-red-400 shadow-lg shadow-red-500/40"
+                          className="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all hover:scale-110 border border-red-400"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-emerald-800 font-bold w-8 text-center">{item.quantity}</span>
+                        <span className="text-gray-800 font-bold w-8 text-center">{item.quantity}</span>
                         <button
                           onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                          className="w-6 h-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center transition-all hover:scale-110 border border-emerald-400 shadow-lg shadow-emerald-500/40"
+                          className="w-6 h-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center transition-all hover:scale-110 border border-emerald-400"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -124,12 +124,12 @@ export const CartButton: React.FC<CartButtonProps> = ({
 
             <div className="border-t border-gray-200 pt-4 mt-4">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-lg font-bold text-emerald-800">Total</span>
+                <span className="text-lg font-bold text-gray-800">Total</span>
                 <span className="text-2xl font-bold text-emerald-600">{totalPrice.toFixed(2)}€</span>
               </div>
               <button
                 onClick={onCheckout}
-                className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white py-4 rounded-xl font-bold transition-all shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 flex items-center justify-center gap-2 hover:scale-105"
+                className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white py-4 rounded-xl font-bold transition-all shadow-lg hover:shadow-emerald-500/50 flex items-center justify-center gap-2 hover:scale-105"
               >
                 <ShoppingCart className="w-4 h-4" />
                 🚀 Commander maintenant

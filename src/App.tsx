@@ -16,8 +16,6 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
-import { Shop } from './pages/Shop';
-import { RegistrationSuccess } from './pages/RegistrationSuccess';
 
 interface Retailer {
   id: string;
@@ -126,25 +124,22 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
-    console.log('📝 Réception demande inscription:', applicationData);
-    
+    // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
-      id: applicationData.id || `app-${Date.now()}`,
+      id: Date.now().toString(),
+      submittedAt: new Date().toISOString(),
+      submittedDate: new Date().toLocaleDateString('fr-FR'),
+      submittedTime: new Date().toLocaleTimeString('fr-FR'),
       status: 'pending',
-      submittedDate: applicationData.submittedDate || new Date().toLocaleDateString('fr-FR'),
-      submittedTime: applicationData.submittedTime || new Date().toLocaleTimeString('fr-FR')
+      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
     };
     
-    console.log('💾 Ajout à la liste:', newApplication);
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    
-    // Rediriger vers la page de succès
-    setTimeout(() => {
-      window.location.href = '/registration-success';
-    }, 100);
+    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
+    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
   };
 
   return (
@@ -185,13 +180,6 @@ function App() {
         />
       } />
       
-      <Route path="/signup" element={
-        <SellerRegistration 
-          onSubmit={handleRegistrationSubmit}
-          onBack={() => window.location.href = '/'}
-        />
-      } />
-      
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/support" element={<Support />} />
@@ -200,9 +188,6 @@ function App() {
       <Route path="/press" element={<Press />} />
       <Route path="/partnerships" element={<Partnerships />} />
       <Route path="/robot" element={<RobotInterface />} />
-      <Route path="/registration-success" element={<RegistrationSuccess />} />
-      <Route path="/upload" element={<UploadPage />} />
-      <Route path="/shop" element={<Shop />} />
     </Routes>
   );
 }

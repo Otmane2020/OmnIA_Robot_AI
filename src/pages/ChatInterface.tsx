@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Send, Image, Loader2, QrCode, Camera, Music, Settings, ArrowLeft, X } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Send, Image, Loader2, QrCode, Camera, Music, Settings, ArrowLeft } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ProductCard } from '../components/ProductCard';
 import { CartButton } from '../components/CartButton';
@@ -27,12 +27,6 @@ export const ChatInterface: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [robotAwake, setRobotAwake] = useState(true);
-  const [robotMoving, setRobotMoving] = useState(false);
-  const [robotDancing, setRobotDancing] = useState(false);
-  const [humanDetection, setHumanDetection] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -54,117 +48,24 @@ export const ChatInterface: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Produits Decora Home
-  const getDecoraProducts = () => [
-    {
-      id: 'decora-canape-alyana-beige',
-      handle: 'canape-alyana-beige',
-      title: 'Canapé ALYANA convertible - Beige',
-      productType: 'Canapé',
-      vendor: 'Decora Home',
-      tags: ['convertible', 'velours', 'beige'],
-      price: 799,
-      compareAtPrice: 1399,
-      availableForSale: true,
-      quantityAvailable: 100,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-      variants: [{
-        id: 'variant-beige',
-        title: 'Beige',
-        price: 799,
-        compareAtPrice: 1399,
-        availableForSale: true,
-        quantityAvailable: 100,
-        selectedOptions: [{ name: 'Couleur', value: 'Beige' }]
-      }]
-    },
-    {
-      id: 'decora-table-aurea-100',
-      handle: 'table-aurea-100',
-      title: 'Table AUREA Ø100cm - Travertin',
-      productType: 'Table',
-      vendor: 'Decora Home',
-      tags: ['travertin', 'ronde', 'naturel'],
-      price: 499,
-      compareAtPrice: 859,
-      availableForSale: true,
-      quantityAvailable: 50,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-      description: 'Table ronde en travertin naturel avec pieds métal noir',
-      variants: [{
-        id: 'variant-100cm',
-        title: 'Ø100cm',
-        price: 499,
-        compareAtPrice: 859,
-        availableForSale: true,
-        quantityAvailable: 50,
-        selectedOptions: [{ name: 'Taille', value: '100cm' }]
-      }]
-    },
-    {
-      id: 'decora-chaise-inaya-gris',
-      handle: 'chaise-inaya-gris',
-      title: 'Chaise INAYA - Gris chenille',
-      productType: 'Chaise',
-      vendor: 'Decora Home',
-      tags: ['chenille', 'métal', 'gris'],
-      price: 99,
-      compareAtPrice: 149,
-      availableForSale: true,
-      quantityAvailable: 96,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-      description: 'Chaise en tissu chenille avec pieds métal noir',
-      variants: [{
-        id: 'variant-gris',
-        title: 'Gris clair',
-        price: 99,
-        compareAtPrice: 149,
-        availableForSale: true,
-        quantityAvailable: 96,
-        selectedOptions: [{ name: 'Couleur', value: 'Gris clair' }]
-      }]
-    }
-  ];
-
   // --- Appel API IA ---
   const sendToAI = async (message: string): Promise<string> => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          message: message
+          message: message,
+          retailer_id: 'demo-retailer-id'
         }),
       });
 
       if (!res.ok) throw new Error("Erreur API");
-      
-      // Lecture directe de la réponse
-      const result = await res.text();
-      
-      // Rechercher des produits si mention spécifique
-      if (message.toLowerCase().includes('canapé')) {
-        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Canapé');
-        setProducts(decoraProducts);
-        setShowProducts(true);
-      } else if (message.toLowerCase().includes('table')) {
-        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Table');
-        setProducts(decoraProducts);
-        setShowProducts(true);
-      } else if (message.toLowerCase().includes('chaise')) {
-        const decoraProducts = getDecoraProducts().filter(p => p.productType === 'Chaise');
-        setProducts(decoraProducts);
-        setShowProducts(true);
-      }
-      
-      return result.trim() || "Comment puis-je vous aider ?";
+      const data = await res.json();
+      return data.message || "Comment puis-je vous aider ?";
     } catch (err) {
       console.error("❌ Erreur sendToAI:", err);
       return "Erreur de communication avec l'assistant IA.";
@@ -184,14 +85,20 @@ export const ChatInterface: React.FC = () => {
       // 🔥 Envoi au moteur IA
       const aiResponse = await sendToAI(messageText);
 
+      // TODO: Parser aiResponse pour sortir des produits si besoin
+      const foundProducts: Product[] = [];
+
       // Ajout réponse IA
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         content: aiResponse,
         isUser: false,
         timestamp: new Date(),
-        products: products
+        products: foundProducts
       }]);
+
+      setProducts(foundProducts);
+      setShowProducts(foundProducts.length > 0);
 
       speak(aiResponse);
     } catch (error) {
@@ -271,10 +178,10 @@ export const ChatInterface: React.FC = () => {
 
   // --- Envoi auto quand Whisper transcrit ---
   useEffect(() => {
-    if (transcript && transcript.trim() !== '' && !isTyping) {
+    if (transcript && transcript.trim() !== '') {
       handleSendMessage(transcript);
     }
-  }, [transcript, isTyping]);
+  }, [transcript]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
@@ -289,7 +196,7 @@ export const ChatInterface: React.FC = () => {
     <div className="flex h-screen bg-white">
       
       {/* 👈 Sidebar Robot - Design exact de la photo */}
-      <div className="w-2/5 bg-slate-900/95 flex flex-col relative overflow-hidden sticky top-0 h-screen" style={{ width: '40%' }}>
+      <div className="w-80 bg-slate-900/95 flex flex-col relative overflow-hidden">
         {/* Background effects */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
@@ -297,7 +204,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Header avec retour Admin */}
-        <div className="relative z-10 p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-xl">
+        <div className="relative z-10 p-4 border-b border-white/10">
           <button
             onClick={() => window.location.href = '/admin'}
             className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition-colors mb-4"
@@ -329,33 +236,17 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Contenu principal - Style exact de la photo */}
-        <div className="relative z-10 flex-1 flex flex-col p-6 space-y-8">
+        <div className="relative z-10 flex-1 flex flex-col p-6 space-y-6">
           {/* Robot Avatar en haut */}
           <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-300/50 font-['Inter']">
+            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-400/50">
               {/* Grands yeux ronds comme sur l'image */}
               <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4">
-                <div className="w-16 h-16 bg-white rounded-full border-3 border-cyan-400 flex items-center justify-center shadow-xl">
-                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full animate-pulse"></div>
+                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
+                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
                 </div>
-                <div className="w-16 h-16 bg-white rounded-full border-3 border-cyan-400 flex items-center justify-center shadow-xl">
-                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                </div>
-              </div>
-              
-              {/* Sourire */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-                <div className="w-16 h-8 bg-white rounded-full border-2 border-cyan-400 flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
-                  <div className="w-12 h-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full" style={{ borderRadius: '50% 50% 80% 80%' }}></div>
-                </div>
-              </div>
-              
-              {/* Corps du robot */}
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-16 h-8 bg-gradient-to-br from-slate-300 to-slate-400 rounded-xl border border-slate-400">
-                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 flex gap-1">
-                  <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
+                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
                 </div>
               </div>
               
@@ -392,441 +283,216 @@ export const ChatInterface: React.FC = () => {
           </div>
 
           {/* Boutons de contrôle - Grid 3x2 comme sur la photo */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-xl shadow-purple-500/40 ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isRecording
-                  ? 'bg-gradient-to-br from-purple-500 to-purple-600 animate-pulse'
-                  : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500'
+                  ? 'bg-purple-500 shadow-purple-500/40 animate-pulse'
+                  : 'bg-purple-500 hover:bg-purple-400'
               }`}
-              title="Reconnaissance vocale"
             >
-              {isRecording ? (
-                <MicOff className="w-8 h-8 text-white" />
-              ) : (
-                <Mic className="w-8 h-8 text-white" />
-              )}
+              <Mic className="w-6 h-6 text-white" />
             </button>
 
             <button
               onClick={handleVolumeClick}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-xl shadow-green-500/40 ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isSpeaking
-                  ? 'bg-gradient-to-br from-green-500 to-green-600 animate-pulse'
-                  : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500'
+                  ? 'bg-green-500 shadow-green-500/40 animate-pulse'
+                  : 'bg-green-500 hover:bg-green-400 shadow-lg'
               }`}
-              title="Synthèse vocale"
             >
-              {isSpeaking ? (
-                <VolumeX className="w-8 h-8 text-white" />
-              ) : (
-                <Volume2 className="w-8 h-8 text-white" />
-              )}
+              <Volume2 className="w-6 h-6 text-white" />
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="Analyser une photo"
+              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="Reconnaissance et détection humain"
             >
-              <Camera className="w-8 h-8 text-white" />
+              <div className="relative">
+                <Camera className="w-6 h-6 text-white" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
             </button>
           </div>
 
           {/* Deuxième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <button className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105">
+              <QrCode className="w-6 h-6 text-white" />
+            </button>
+
+            <button
+              onClick={() => window.open('/upload', '_blank')}
+              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="QR Code pour upload photo mobile"
+            >
+              <Settings className="w-6 h-6 text-white" />
+            </button>
+
             <button 
-              onClick={() => setShowQR(!showQR)}
-              className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-xl shadow-orange-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="QR Code"
+              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
             >
-              <QrCode className="w-8 h-8 text-white" />
-            </button>
-
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="w-20 h-20 bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 shadow-xl shadow-gray-500/40 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="Paramètres robot"
-            >
-              <Settings className="w-8 h-8 text-white" />
-            </button>
-
-            <button
-              onClick={() => {
-                setHumanDetection(!humanDetection);
-                if (!humanDetection) {
-                  alert('🎥 Caméra activée ! Détection humaine en cours...');
-                } else {
-                  alert('📷 Caméra désactivée.');
-                }
-              }}
-              className={`w-20 h-20 shadow-xl rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 ${
-                humanDetection 
-                  ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 animate-pulse shadow-cyan-500/40' 
-                  : 'bg-gradient-to-br from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 shadow-gray-500/40'
-              }`}
-              title="Détection humaine"
-            >
-              <div className="relative">
-                <Camera className="w-8 h-8 text-white" />
-                {humanDetection && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse">
-                    <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
-                  </div>
-                )}
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
               </div>
             </button>
           </div>
 
-          {/* Statut final simplifié */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className={`w-3 h-3 rounded-full ${robotAwake ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
-              <span className={`font-bold font-['Inter'] ${robotAwake ? 'text-green-300' : 'text-red-300'}`}>
-                {robotAwake ? 'Prêt à vous conseiller' : 'En veille'}
-              </span>
-            </div>
+          {/* Troisième rangée de boutons */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+              <div className="text-white text-xs font-bold mb-1">+</div>
+              <span className="text-white text-xs">Bouger</span>
+            </button>
+            <button
+              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
+            >
+              <Music className="w-5 h-5 text-white mb-1" />
+              <span className="text-white text-xs">Danser</span>
+            </button>
+
+            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+              <div className="w-5 h-5 border-2 border-white rounded flex items-center justify-center mb-1">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
+              <span className="text-white text-xs">Veille</span>
+            </button>
           </div>
+
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10 lg:ml-0 mt-20 lg:mt-0">
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50">
-          <div className="max-w-6xl mx-auto space-y-6">
-            {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                onAddToCart={handleAddToCart}
-                onSpeak={speak}
-                isPlaying={currentSpeakingMessage === message.content}
+      {/* 👉 Zone de chat principale avec background rose */}
+      <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
+        {/* Header de conversation */}
+        <div className="bg-slate-800 border-b border-slate-700 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
+                <p className="text-gray-300">Robot IA à votre écoute</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50">
+                <QrCode className="w-5 h-5 text-purple-300" />
+              </button>
+              <CartButton 
+                items={cartItems}
+                onUpdateQuantity={() => {}}
+                onRemoveItem={() => {}}
+                onCheckout={() => {}}
               />
-            ))}
-            
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-4">
-                  <RobotAvatar
-                    mood="thinking"
-                    isListening={false}
-                    isSpeaking={false}
-                    size="md"
-                  />
-                  <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-cyan-300">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                      <span className="text-cyan-600 text-sm font-['Inter']">OmnIA réfléchit...</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Zone des messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map(msg => (
+            <ChatMessage key={msg.id} message={msg} onAddToCart={handleAddToCart} />
+          ))}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 bg-white/20 rounded-full animate-pulse"></div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
+                    <span className="text-gray-600 text-sm">OmnIA réfléchit...</span>
                   </div>
                 </div>
               </div>
-            )}
-            
-            {/* Affichage des produits en grille */}
-            {products.length > 0 && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-white flex items-center gap-3 font-['Inter']">
-                  <Sparkles className="w-6 h-6 text-cyan-400" />
-                  Mes recommandations
-                  <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm">
-                    {products.length} produit{products.length > 1 ? 's' : ''}
-                  </span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Suggestions rapides - Style exact de la photo */}
+        <div className="px-6 py-4">
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            <button
+              onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
+              className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-2"
+            >
+              🛋️ Canapé beige
+            </button>
+            <button
+              onClick={() => handleSuggestionClick("🪑 Table ronde")}
+              className="flex-shrink-0 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-2"
+            >
+              🪑 Table ronde
+            </button>
+            <button
+              onClick={() => handleSuggestionClick("💺 Chaise bureau")}
+              className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-2"
+            >
+              💺 Chaise bureau
+            </button>
+            <button
+              onClick={() => handleSuggestionClick("✨ Tendances 2025")}
+              className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center gap-2"
+            >
+              ✨ Tendances 2025
+            </button>
           </div>
         </div>
 
-        {/* Input Area - Sticky */}
-        <div className="sticky bottom-0 p-4 md:p-8 bg-white/90 backdrop-blur-xl border-t border-gray-200 shadow-lg">
-          <div className="max-w-6xl mx-auto">
-            {/* Suggestions */}
-            <div className="mb-4">
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <button
-                  onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
-                  className="flex-shrink-0 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 hover:text-purple-800 text-sm rounded-xl border border-purple-300 transition-all whitespace-nowrap shadow-lg hover:shadow-purple-200/50 hover:scale-105 font-['Inter']"
-                >
-                  🛋️ Canapé beige
-                </button>
-                <button
-                  onClick={() => handleSuggestionClick("🪑 Table ronde")}
-                  className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 hover:text-blue-800 text-sm rounded-xl border border-blue-300 transition-all whitespace-nowrap shadow-lg hover:shadow-blue-200/50 hover:scale-105 font-['Inter']"
-                >
-                  🪑 Table ronde
-                </button>
-                <button
-                  onClick={() => handleSuggestionClick("💺 Chaise bureau")}
-                  className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-800 text-sm rounded-xl border border-green-300 transition-all whitespace-nowrap shadow-lg hover:shadow-green-200/50 hover:scale-105 font-['Inter']"
-                >
-                  💺 Chaise bureau
-                </button>
-                <button
-                  onClick={() => handleSuggestionClick("✨ Tendances 2025")}
-                  className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 hover:text-yellow-800 text-sm rounded-xl border border-yellow-300 transition-all whitespace-nowrap shadow-lg hover:shadow-yellow-200/50 hover:scale-105 font-['Inter']"
-                >
-                  ✨ Tendances 2025
-                </button>
-              </div>
-            </div>
-
-            {/* Statut vocal */}
-            {(isRecording || isProcessing || isAnalyzingPhoto) && (
-              <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded-xl shadow-lg">
-                <div className="flex items-center gap-3">
-                  {isRecording ? (
-                    <>
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-red-600 font-semibold font-['Inter']">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
-                    </>
-                  ) : isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                      <span className="text-blue-700 font-semibold font-['Inter']">🔄 Transcription en cours...</span>
-                    </>
-                  ) : isAnalyzingPhoto ? (
-                    <>
-                      <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
-                      <span className="text-purple-700 font-semibold font-['Inter']">📸 Analyse photo en cours...</span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
-            {/* Input avec boutons - QR Code à côté du champ comme demandé */}
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
-                  placeholder="Écrivez votre message..."
-                  className="w-full bg-white border border-gray-300 rounded-2xl px-6 py-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 shadow-lg font-['Inter']"
-                />
-              </div>
-              
-              {/* QR Code à côté du champ de saisie comme demandé */}
-              <button
-                onClick={() => setShowQR(!showQR)}
-                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-xl shadow-purple-500/40 hover:shadow-purple-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
-                title="QR Code pour mobile"
-              >
-                <QrCode className="w-6 h-6 text-white" />
-              </button>
-
-              {/* Input photo caché */}
+        {/* Zone de saisie - Style exact de la photo */}
+        <div className="p-6 bg-slate-800 border-t border-slate-700">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
               <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handlePhotoUpload(file);
-                }}
-                className="hidden"
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
+                placeholder="Écrivez votre message..."
+                className="w-full bg-slate-700 border border-slate-600 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
               />
-
-              {/* Bouton Photo */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isAnalyzingPhoto}
-                className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-xl shadow-pink-500/40 hover:shadow-pink-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-                title="Analyser une photo"
-              >
-                {isAnalyzingPhoto ? (
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-                ) : (
-                  <Image className="w-6 h-6 text-white" />
-                )}
-              </button>
-
-              {/* Bouton Envoyer */}
-              <button
-                onClick={() => handleSendMessage(inputMessage)}
-                disabled={!inputMessage.trim()}
-                className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100 border-2 border-white/20"
-                title="Envoyer le message"
-              >
-                <Send className="w-6 h-6 text-white" />
-              </button>
-            </div>
-
-            {/* Erreur vocale */}
-            {sttError && (
-              <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-xl shadow-lg">
-                <p className="text-red-700 font-['Inter']">🎤 {sttError}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Modal QR Code */}
-      {showQR && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800 font-['Inter']">📱 QR Code Chat OmnIA</h3>
-              <button
-                onClick={() => setShowQR(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="text-center">
-              <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-gray-200">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/upload')}`}
-                  alt="QR Code"
-                  className="w-44 h-44 rounded-xl"
-                />
-              </div>
-              <p className="text-gray-600 mb-4 font-['Inter']">Scannez pour accéder à l'upload photo sur mobile</p>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                <p className="text-blue-700 text-sm font-['Inter']">
-                  📸 Envoyez des photos de votre espace pour des conseils personnalisés !
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Panneau paramètres robot */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-800 font-['Inter']">⚙️ Paramètres Robot OmnIA</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
             </div>
             
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">État du robot</label>
-                <select
-                  value={robotAwake ? 'awake' : 'sleeping'}
-                  onChange={(e) => setRobotAwake(e.target.value === 'awake')}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']"
-                >
-                  <option value="awake">🟢 Éveillé et actif</option>
-                  <option value="sleeping">🔴 En veille</option>
-                </select>
-              </div>
+            <button
+              onClick={() => window.open('/upload', '_blank')}
+              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg"
+              title="QR Code pour upload photo mobile"
+            >
+              <QrCode className="w-6 h-6 text-white" />
+            </button>
 
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Détection humaine</label>
-                <select
-                  value={humanDetection ? 'enabled' : 'disabled'}
-                  onChange={(e) => setHumanDetection(e.target.value === 'enabled')}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']"
-                >
-                  <option value="enabled">📹 Activée</option>
-                  <option value="disabled">📷 Désactivée</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Personnalité robot</label>
-                <select className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']">
-                  <option value="energetic">⚡ Énergique et commercial</option>
-                  <option value="professional">💼 Professionnel et expert</option>
-                  <option value="friendly">😊 Amical et décontracté</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Vitesse de déplacement</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  defaultValue="5"
-                  className="w-full accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Fréquence de danse</label>
-                <select className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 text-gray-800 shadow-lg font-['Inter']">
-                  <option value="rare">🎵 Rare (ventes uniquement)</option>
-                  <option value="normal">🎶 Normal (interactions importantes)</option>
-                  <option value="frequent">🎼 Fréquent (toutes les interactions)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Volume voix</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  defaultValue="80"
-                  className="w-full accent-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-['Inter']">Vitesse de parole</label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2"
-                  step="0.1"
-                  defaultValue="1.2"
-                  className="w-full accent-blue-500"
-                />
-              </div>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <h4 className="font-semibold text-blue-700 mb-2 font-['Inter']">🤖 Capacités robot :</h4>
-                <ul className="text-blue-600 text-sm space-y-1 font-['Inter']">
-                  <li>• Déplacement autonome dans le showroom</li>
-                  <li>• Danse de célébration lors des ventes</li>
-                  <li>• Reconnaissance vocale et synthèse</li>
-                  <li>• Analyse photo et recommandations</li>
-                  <li>• Gestion du panier et commandes</li>
-                </ul>
-              </div>
-              
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-cyan-500/40 font-['Inter']"
-              >
-                Fermer
-              </button>
-            </div>
+            <button
+              onClick={() => handleSendMessage(inputMessage)}
+              disabled={!inputMessage.trim()}
+              className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg"
+            >
+              <Send className="w-6 h-6 text-white" />
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Input photo caché */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handlePhotoUpload(file);
+          }}
+          className="hidden"
+        />
+      </div>
     </div>
   );
 };
