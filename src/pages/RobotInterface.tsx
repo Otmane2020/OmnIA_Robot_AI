@@ -635,38 +635,52 @@ export const RobotInterface: React.FC = () => {
               onClick={handleMicClick}
               disabled={!sttSupported}
               className={`relative group ${
-                isRecording
-                  ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/40'
+                !isMicOn
+                  ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
+                  : isRecording
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50'
               } ${!sttSupported ? 'opacity-50 cursor-not-allowed' : ''} 
               w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
+              title={!isMicOn ? 'Micro désactivé' : isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
             >
-              {isRecording ? (
+              {!isMicOn ? (
+                <MicOff className="w-10 h-10 text-white" />
+              ) : isRecording ? (
                 <MicOff className="w-10 h-10 text-white" />
               ) : (
                 <Mic className="w-10 h-10 text-white" />
               )}
               
-              {isRecording && (
+              {isRecording && isMicOn && (
                 <div className="absolute inset-0 rounded-2xl border-2 border-red-400/50 animate-ping"></div>
               )}
+              
+              {/* Indicateur ON/OFF */}
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={handleVolumeClick}
               className={`relative group ${
-                isSpeaking
+                !isVolumeOn
+                  ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
+                  : isSpeaking
                   ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
               } w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={isSpeaking ? 'Arrêter la lecture' : 'Volume'}
+              title={!isVolumeOn ? 'Volume désactivé' : isSpeaking ? 'Arrêter la lecture' : 'Volume activé'}
             >
-              {isSpeaking ? (
+              {!isVolumeOn ? (
+                <VolumeX className="w-10 h-10 text-white" />
+              ) : isSpeaking ? (
                 <VolumeX className="w-10 h-10 text-white" />
               ) : (
                 <Volume2 className="w-10 h-10 text-white" />
               )}
+              
+              {/* Indicateur ON/OFF */}
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             {/* Deuxième rangée - Caméra et Paramètres */}
