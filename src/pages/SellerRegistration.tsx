@@ -660,6 +660,24 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
                 : 'border-white/20 bg-white/10 hover:border-cyan-500/50'
             }`}
           >
+            {plan.popular && (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  Populaire
+                </span>
+              </div>
+            )}
+            
+            {formData.selectedPlan === plan.id && (
+              <div className="absolute top-4 right-4">
+                <CheckCircle className="w-6 h-6 text-cyan-400" />
+              </div>
+            )}
+            
+            {formData.companyName && (
+              <div className="mb-4 p-3 bg-cyan-500/20 rounded-lg border border-cyan-400/50">
+                <p className="text-cyan-300 text-sm font-medium">Votre boutique :</p>
+                <span className="text-cyan-200 text-sm">
                   {formData.companyName ? `${generateUniqueSubdomain(formData.companyName)}.omnia.sale` : 'votre-boutique.omnia.sale'}
                 </span>
               </div>
@@ -695,6 +713,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         <div>
           <label className="block text-sm font-medium text-cyan-200 mb-2">
             Document Kbis (moins de 3 mois) *
+          </label>
           
           <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4">
             <h4 className="font-semibold text-yellow-200 mb-2">⚡ Workflow automatique :</h4>
@@ -705,7 +724,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               <div>• Base de données vierge initialisée</div>
             </div>
           </div>
-          </label>
+          
           <div className="border-2 border-dashed border-cyan-500/50 rounded-xl p-6 text-center hover:border-cyan-400/70 transition-colors">
             <input
               type="file"
