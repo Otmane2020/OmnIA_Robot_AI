@@ -54,8 +54,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAccountCreation, setShowAccountCreation] = useState(false);
-  const [accountCreated, setAccountCreated] = useState(false);
 
   const plans = [
     {
@@ -142,15 +140,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
       };
       
-      // Afficher l'écran de création de compte
-      setShowAccountCreation(true);
-      
-      // Simuler la création du compte après 3 secondes
-      setTimeout(() => {
-        setAccountCreated(true);
-        onSubmit(submissionData);
-      }, 3000);
-      
+      onSubmit(submissionData);
     } catch (error) {
       console.error('Erreur soumission:', error);
     } finally {
@@ -558,81 +548,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       </div>
     </div>
   );
-
-  // Écran de création de compte
-  if (showAccountCreation) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-        {/* Background Effects */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        </div>
-
-        <div className="relative z-10 max-w-md w-full">
-          <div className="bg-white/10 backdrop-blur-2xl rounded-3xl p-8 border border-white/20 shadow-2xl text-center">
-            {!accountCreated ? (
-              <>
-                <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Loader2 className="w-10 h-10 text-white animate-spin" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-4">Création de votre compte</h2>
-                <p className="text-gray-300 mb-6">
-                  Validation de votre dossier et création de votre espace OmnIA...
-                </p>
-                <div className="space-y-3 text-sm text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span>Validation des informations entreprise</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                    <span>Vérification du document Kbis</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                    <span>Configuration de votre sous-domaine</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                    <span>Création de votre compte admin</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle className="w-10 h-10 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-4">Compte créé avec succès !</h2>
-                <p className="text-gray-300 mb-6">
-                  Votre demande a été soumise et votre compte sera activé sous 24h.
-                </p>
-                <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4 mb-6">
-                  <h3 className="font-semibold text-green-200 mb-2">📧 Email de confirmation envoyé</h3>
-                  <p className="text-green-300 text-sm">
-                    Vérifiez votre boîte mail : <strong>{formData.email}</strong>
-                  </p>
-                </div>
-                <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-6">
-                  <h3 className="font-semibold text-blue-200 mb-2">🌐 Votre futur domaine</h3>
-                  <p className="text-blue-300 text-sm">
-                    <strong>{formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}.omnia.sale</strong>
-                  </p>
-                </div>
-                <button
-                  onClick={() => window.location.href = '/'}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-2xl hover:shadow-cyan-500/40"
-                >
-                  Retour à l'accueil
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">

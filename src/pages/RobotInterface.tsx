@@ -3,7 +3,7 @@ import {
   Mic, MicOff, Volume2, VolumeX, Camera, Settings, Power, 
   Send, ArrowLeft, User, Loader2, Upload, QrCode, ShoppingCart,
   Sparkles, Zap, Eye, EyeOff, MessageSquare, Bot, Play, Pause,
-  RotateCcw, Move, Music, Wifi, Battery, Signal, Image
+  RotateCcw, Move, Music, Wifi, Battery, Signal, Image, X
 } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ProductCard } from '../components/ProductCard';
@@ -42,7 +42,6 @@ export const RobotInterface: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [currentSpeakingMessage, setCurrentSpeakingMessage] = useState<string | null>(null);
-  const [questioningMode, setQuestioningMode] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -119,7 +118,6 @@ export const RobotInterface: React.FC = () => {
     
     setMessages([greetingMessage]);
     speak(greeting);
-    handleRobotDance();
   };
 
   const handleSendMessage = async (messageText: string) => {
@@ -138,6 +136,7 @@ export const RobotInterface: React.FC = () => {
     setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Analyse de votre demande...' }));
 
     try {
+      // Appel à unified-chat qui utilise DeepSeek + products_enriched
       const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
         method: 'POST',
         headers: {
@@ -146,8 +145,7 @@ export const RobotInterface: React.FC = () => {
         },
         body: JSON.stringify({ 
           message: messageText,
-          retailer_id: 'demo-retailer-id',
-          questioning_mode: questioningMode
+          retailer_id: 'demo-retailer-id'
         }),
       });
 
@@ -159,16 +157,11 @@ export const RobotInterface: React.FC = () => {
         aiResponse = searchData.message;
         foundProducts = searchData.products || [];
         
-        if (foundProducts.length === 0 && messageText.toLowerCase().includes('canapé')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Canapé').slice(0, 2);
-          aiResponse += " Voici nos canapés disponibles :";
-        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('table')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Table').slice(0, 2);
-          aiResponse += " Découvrez nos tables :";
-        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('chaise')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Chaise').slice(0, 2);
-          aiResponse += " Voici nos chaises :";
-        }
+        console.log('🤖 Réponse unified-chat:', {
+          message: aiResponse.substring(0, 50),
+          products_count: foundProducts.length,
+          enriched_search: searchData.enriched_search
+        });
       } else {
         aiResponse = "Je rencontre des difficultés techniques. Pouvez-vous reformuler ?";
       }
@@ -261,12 +254,11 @@ export const RobotInterface: React.FC = () => {
         content: analysis,
         isUser: false,
         timestamp: new Date(),
-        products: getDecoraFallbackProducts().slice(0, 2),
+        products: [],
         photoUrl: imageUrl
       };
 
       setMessages(prev => [...prev, photoMessage]);
-      setProducts(getDecoraFallbackProducts().slice(0, 2));
       
       speak(analysis);
       handleRobotDance(); // Danse après analyse photo
@@ -282,7 +274,11 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleMicClick = () => {
-    setIsMicOn(!isMicOn);
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
+    
     if (isRecording) {
       stopRecording();
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
@@ -290,16 +286,33 @@ export const RobotInterface: React.FC = () => {
       if (isMicOn) {
         startRecording();
         setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+      } else {
+        setIsMicOn(true);
+        setTimeout(() => {
+          startRecording();
+          setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+        }, 500);
       }
     }
   };
 
   const handleVolumeClick = () => {
-    setIsVolumeOn(!isVolumeOn);
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
+    
     if (isSpeaking) {
       stopSpeaking();
       setCurrentSpeakingMessage(null);
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
+    } else {
+      setIsVolumeOn(!isVolumeOn);
+      if (isVolumeOn) {
+        alert('🔊 Volume activé !');
+      } else {
+        alert('🔇 Volume désactivé !');
+      }
     }
   };
 
@@ -307,35 +320,49 @@ export const RobotInterface: React.FC = () => {
     setIsRobotOn(!isRobotOn);
     if (!isRobotOn) {
       // Allumer le robot
+      setIsMicOn(true);
+      setIsVolumeOn(true);
+      setIsDetectingHuman(false);
       setRobotState(prev => ({ 
         ...prev, 
         mood: 'happy', 
-        currentTask: 'Redémarrage...',
+        currentTask: 'Démarrage...',
         battery: 95
       }));
+      alert('⚡ Robot OmnIA allumé !');
       setTimeout(() => {
         setRobotState(prev => ({ ...prev, currentTask: 'Prêt à vous aider' }));
       }, 2000);
     } else {
       // Éteindre le robot
+      setIsMicOn(false);
+      setIsVolumeOn(false);
+      setIsDetectingHuman(false);
       setRobotState(prev => ({ 
         ...prev, 
         mood: 'sleeping', 
         currentTask: 'Mode veille...',
         battery: 95
       }));
+      alert('💤 Robot OmnIA éteint !');
       stopSpeaking();
       if (isRecording) stopRecording();
     }
   };
 
   const handleHumanDetectionToggle = () => {
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
+    
     setIsDetectingHuman(!isDetectingHuman);
     if (!isDetectingHuman) {
       setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine activée' }));
+      alert('👁️ Détection humaine activée !');
       // Simuler détection après 3 secondes
       setTimeout(() => {
-        if (isDetectingHuman) {
+        if (isDetectingHuman && isRobotOn) {
           const greetingMessage: ChatMessageType = {
             id: Date.now().toString(),
             content: "👋 Bonjour ! Je vous ai détecté. Bienvenue dans notre showroom ! Comment puis-je vous aider ?",
@@ -349,10 +376,13 @@ export const RobotInterface: React.FC = () => {
       }, 3000);
     } else {
       setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine désactivée' }));
+      alert('👁️ Détection humaine désactivée !');
     }
   };
 
   const handleRobotMove = () => {
+    if (!isRobotOn) return;
+    
     setRobotState(prev => ({ 
       ...prev, 
       isMoving: true, 
@@ -371,6 +401,8 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleRobotDance = () => {
+    if (!isRobotOn) return;
+    
     setRobotState(prev => ({ 
       ...prev, 
       isDancing: true, 
@@ -461,121 +493,18 @@ export const RobotInterface: React.FC = () => {
     handleSendMessage(suggestion);
   };
 
-  const getDecoraFallbackProducts = () => [
-    {
-      id: 'decora-canape-alyana-beige',
-      handle: 'canape-alyana-beige',
-      title: 'Canapé ALYANA convertible - Beige',
-      productType: 'Canapé',
-      vendor: 'Decora Home',
-      tags: ['convertible', 'velours', 'beige'],
-      price: 799,
-      compareAtPrice: 1399,
-      availableForSale: true,
-      quantityAvailable: 100,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-      variants: [{
-        id: 'variant-beige',
-        title: 'Beige',
-        price: 799,
-        availableForSale: true,
-        quantityAvailable: 100,
-        selectedOptions: [{ name: 'Couleur', value: 'Beige' }]
-      }]
-    },
-    {
-      id: 'decora-table-aurea-100',
-      handle: 'table-aurea-100',
-      title: 'Table AUREA Ø100cm - Travertin',
-      productType: 'Table',
-      vendor: 'Decora Home',
-      tags: ['travertin', 'ronde', 'naturel'],
-      price: 499,
-      compareAtPrice: 859,
-      availableForSale: true,
-      quantityAvailable: 50,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-      description: 'Table ronde en travertin naturel avec pieds métal noir',
-      variants: [{
-        id: 'variant-100cm',
-        title: 'Ø100cm',
-        price: 499,
-        availableForSale: true,
-        quantityAvailable: 50,
-        selectedOptions: [{ name: 'Taille', value: '100cm' }]
-      }]
-    },
-    {
-      id: 'decora-chaise-inaya-gris',
-      handle: 'chaise-inaya-gris',
-      title: 'Chaise INAYA - Gris chenille',
-      productType: 'Chaise',
-      vendor: 'Decora Home',
-      tags: ['chenille', 'métal', 'gris'],
-      price: 99,
-      compareAtPrice: 149,
-      availableForSale: true,
-      quantityAvailable: 96,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-      description: 'Chaise en tissu chenille avec pieds métal noir',
-      variants: [{
-        id: 'variant-gris',
-        title: 'Gris clair',
-        price: 99,
-        availableForSale: true,
-        quantityAvailable: 96,
-        selectedOptions: [{ name: 'Couleur', value: 'Gris clair' }]
-      }]
-    }
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex">
+    <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => window.location.href = '/admin'}
-            className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Admin</span>
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center relative">
-              <Bot className="w-5 h-5 text-white" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-bounce"></div>
-            </div>
-            <div>
-              <h1 className="text-white font-bold">OmnIA</h1>
-              <p className="text-cyan-300 text-xs">Robot IA</p>
-            </div>
-          </div>
-
-          <CartButton 
-            items={cartItems}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onRemoveItem={handleRemoveCartItem}
-            onCheckout={handleCheckout}
-          />
-        </div>
-      </div>
-
-      {/* Sidebar - Robot Control Panel */}
-      <div className="hidden lg:flex w-96 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex-col relative z-10 h-screen overflow-hidden">
+      {/* Sidebar - Robot Control Panel - FIXE */}
+      <div className="w-96 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex flex-col relative z-10 h-screen overflow-hidden">
         {/* Header */}
-        <div className="p-6">
+        <div className="p-6 flex-shrink-0">
           <button
             onClick={() => window.location.href = '/admin'}
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors mb-6"
@@ -584,7 +513,7 @@ export const RobotInterface: React.FC = () => {
             Admin
           </button>
           
-          {/* Logo OmnIA - Style exact de l'image */}
+          {/* Logo OmnIA */}
           <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-700/50">
             <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center relative shadow-2xl">
               <Bot className="w-8 h-8 text-white" />
@@ -597,9 +526,9 @@ export const RobotInterface: React.FC = () => {
           </div>
         </div>
 
-        {/* Contenu principal */}
-        <div className="flex flex-col items-center p-6 space-y-6 flex-1 justify-center">
-          {/* Robot Avatar - Style exact de l'image */}
+        {/* Contenu principal - CENTRÉ */}
+        <div className="flex flex-col items-center justify-center p-6 space-y-6 flex-1">
+          {/* Robot Avatar */}
           <div className="relative">
             <RobotAvatar
               mood={robotState.mood}
@@ -613,13 +542,13 @@ export const RobotInterface: React.FC = () => {
             />
           </div>
 
-          {/* Status du robot - Style exact de l'image */}
+          {/* Status du robot */}
           <div className="text-center">
-            <div className="text-white font-bold text-lg mb-3">Prêt à vous aider</div>
+            <div className="text-white font-bold text-lg mb-3">{robotState.currentTask}</div>
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-green-300 font-semibold">95%</span>
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-300 font-semibold">{robotState.battery}%</span>
               </div>
               <div className="flex items-center gap-1">
                 <Signal className="w-4 h-4 text-cyan-400" />
@@ -628,115 +557,180 @@ export const RobotInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* Boutons de contrôle - Grid 2x3 réorganisé */}
-          <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
-            {/* Première rangée - Micro et Volume */}
+          {/* Boutons de contrôle - Grid 3x3 */}
+          <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
+            {/* Première rangée */}
             <button
               onClick={handleMicClick}
               disabled={!sttSupported}
               className={`relative group ${
-                !isMicOn
+                !isRobotOn
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-700 shadow-lg shadow-gray-500/40 opacity-50'
+                  : !isMicOn
                   ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
                   : isRecording
                   ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50'
-              } ${!sttSupported ? 'opacity-50 cursor-not-allowed' : ''} 
-              w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={!isMicOn ? 'Micro désactivé' : isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
+              } ${!sttSupported || !isRobotOn ? 'opacity-50 cursor-not-allowed' : ''} 
+              w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
+              title={!isRobotOn ? 'Robot éteint' : !isMicOn ? 'Micro désactivé' : isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
             >
-              {!isMicOn ? (
-                <MicOff className="w-10 h-10 text-white" />
+              {!isRobotOn || !isMicOn ? (
+                <MicOff className="w-6 h-6 text-white" />
               ) : isRecording ? (
-                <MicOff className="w-10 h-10 text-white" />
+                <MicOff className="w-6 h-6 text-white" />
               ) : (
-                <Mic className="w-10 h-10 text-white" />
+                <Mic className="w-6 h-6 text-white" />
               )}
               
               {isRecording && isMicOn && (
                 <div className="absolute inset-0 rounded-2xl border-2 border-red-400/50 animate-ping"></div>
               )}
               
-              {/* Indicateur ON/OFF */}
-              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={handleVolumeClick}
               className={`relative group ${
-                !isVolumeOn
+                !isRobotOn
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-700 shadow-lg shadow-gray-500/40 opacity-50'
+                  : !isVolumeOn
                   ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
                   : isSpeaking
                   ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
-              } w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={!isVolumeOn ? 'Volume désactivé' : isSpeaking ? 'Arrêter la lecture' : 'Volume activé'}
+              } w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
+              title={!isRobotOn ? 'Robot éteint' : !isVolumeOn ? 'Volume désactivé' : isSpeaking ? 'Arrêter la lecture' : 'Volume activé'}
             >
-              {!isVolumeOn ? (
-                <VolumeX className="w-10 h-10 text-white" />
+              {!isRobotOn || !isVolumeOn ? (
+                <VolumeX className="w-6 h-6 text-white" />
               ) : isSpeaking ? (
-                <VolumeX className="w-10 h-10 text-white" />
+                <VolumeX className="w-6 h-6 text-white" />
               ) : (
-                <Volume2 className="w-10 h-10 text-white" />
+                <Volume2 className="w-6 h-6 text-white" />
               )}
               
-              {/* Indicateur ON/OFF */}
-              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
-            {/* Deuxième rangée - Caméra et Paramètres */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
+              disabled={!isRobotOn}
+              className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
               title="Analyser une photo"
             >
-              <Camera className="w-10 h-10 text-white" />
+              <Camera className="w-6 h-6 text-white" />
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+            </button>
+
+            {/* Deuxième rangée */}
+            <button
+              onClick={() => setShowQR(!showQR)}
+              disabled={!isRobotOn}
+              className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+              title="QR Code upload photo"
+            >
+              <QrCode className="w-6 h-6 text-white" />
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
+              disabled={!isRobotOn}
+              className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
               title="Paramètres"
             >
-              <Settings className="w-10 h-10 text-white" />
+              <Settings className="w-6 h-6 text-white" />
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
-            {/* Troisième rangée - Danse et Mouvement */}
             <button
-              onClick={handleRobotDance}
-              disabled={robotState.isDancing}
-              className="relative group bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-              title="Faire danser le robot"
+              onClick={handleHumanDetectionToggle}
+              disabled={!isRobotOn}
+              className={`relative group ${
+                !isRobotOn
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-700 opacity-50'
+                  : isDetectingHuman
+                  ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40'
+                  : 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/40'
+              } w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:cursor-not-allowed disabled:opacity-50`}
+              title={!isRobotOn ? 'Robot éteint' : isDetectingHuman ? 'Détection active' : 'Activer détection'}
             >
-              <Music className="w-10 h-10 text-white" />
+              {isDetectingHuman ? (
+                <Eye className="w-6 h-6 text-white" />
+              ) : (
+                <EyeOff className="w-6 h-6 text-white" />
+              )}
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isDetectingHuman ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
+            {/* Troisième rangée */}
             <button
               onClick={handleRobotMove}
-              disabled={robotState.isMoving}
-              className="relative group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-              title="Faire bouger le robot"
+              disabled={!isRobotOn || robotState.isMoving}
+              className="relative group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 w-16 h-16 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+              title={!isRobotOn ? 'Robot éteint' : robotState.isMoving ? 'Déplacement en cours...' : 'Faire bouger le robot'}
             >
-              <Move className="w-10 h-10 text-white" />
+              <div className="text-white text-xs font-bold mb-1">+</div>
+              <span className="text-white text-xs">Bouger</span>
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && !robotState.isMoving ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
-          </div>
 
-          {/* Statut final simplifié */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 font-bold">Prêt à vous conseiller</span>
-            </div>
+            <button
+              onClick={handleRobotDance}
+              disabled={!isRobotOn || robotState.isDancing}
+              className="relative group bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-16 h-16 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+              title={!isRobotOn ? 'Robot éteint' : robotState.isDancing ? 'Danse en cours...' : 'Faire danser le robot'}
+            >
+              <Music className="w-5 h-5 text-white mb-1" />
+              <span className="text-white text-xs">Danser</span>
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && !robotState.isDancing ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+            </button>
+
+            <button
+              onClick={handlePowerToggle}
+              className={`relative group ${
+                isRobotOn
+                  ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40'
+                  : 'bg-gradient-to-br from-gray-600 to-gray-700 shadow-lg shadow-gray-500/40'
+              } w-16 h-16 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
+              title={isRobotOn ? 'Éteindre le robot' : 'Allumer le robot'}
+            >
+              <div className="w-5 h-5 border-2 border-white rounded flex items-center justify-center mb-1">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
+              <span className="text-white text-xs">Veille</span>
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10 lg:ml-0 mt-20 lg:mt-0">
-        {/* Chat Header - Supprimé comme demandé */}
+      <div className="flex-1 flex flex-col relative z-10 h-screen">
+        {/* Chat Header - FIXE */}
+        <div className="bg-slate-800/90 backdrop-blur-xl border-b border-slate-700/50 p-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
+                <p className="text-gray-300">Robot IA à votre écoute</p>
+              </div>
+            </div>
+            <CartButton 
+              items={cartItems}
+              onUpdateQuantity={handleUpdateCartQuantity}
+              onRemoveItem={handleRemoveCartItem}
+              onCheckout={handleCheckout}
+            />
+          </div>
+        </div>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-700/20 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto space-y-6">
+        {/* Messages Area - SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-700/20 backdrop-blur-sm">
+          <div className="space-y-6 max-w-4xl mx-auto">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -770,7 +764,7 @@ export const RobotInterface: React.FC = () => {
               </div>
             )}
             
-            {/* Affichage des produits en grille */}
+            {/* Affichage des produits */}
             {products.length > 0 && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -780,7 +774,7 @@ export const RobotInterface: React.FC = () => {
                     {products.length} produit{products.length > 1 ? 's' : ''}
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {products.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -796,9 +790,9 @@ export const RobotInterface: React.FC = () => {
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="p-8 bg-slate-800/80 backdrop-blur-xl border-t border-slate-700/50">
-          <div className="max-w-6xl mx-auto">
+        {/* Input Area - FIXE EN BAS */}
+        <div className="bg-slate-800/90 backdrop-blur-xl border-t border-slate-700/50 p-6 flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
             {/* Suggestions */}
             <div className="mb-4">
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -853,7 +847,7 @@ export const RobotInterface: React.FC = () => {
               </div>
             )}
 
-            {/* Input avec boutons - QR Code à côté du champ comme demandé */}
+            {/* Input avec boutons */}
             <div className="flex gap-4">
               <div className="flex-1 relative">
                 <input
@@ -867,15 +861,6 @@ export const RobotInterface: React.FC = () => {
                 />
               </div>
               
-              {/* QR Code à côté du champ de saisie comme demandé */}
-              <button
-                onClick={() => setShowQR(!showQR)}
-                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
-                title="QR Code pour mobile"
-              >
-                <QrCode className="w-6 h-6 text-white" />
-              </button>
-
               {/* Input photo caché */}
               <input
                 ref={fileInputRef}
@@ -933,18 +918,19 @@ export const RobotInterface: React.FC = () => {
                 onClick={() => setShowQR(false)}
                 className="text-gray-400 hover:text-white"
               >
-                ×
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="text-center">
               <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/upload')}`}
                   alt="QR Code"
                   className="w-44 h-44 rounded-xl"
                 />
               </div>
-              <p className="text-gray-300">Scannez pour accéder au chat OmnIA sur mobile</p>
+              <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
+              <p className="text-cyan-400 text-sm mt-2 font-mono">→ {window.location.origin}/upload</p>
             </div>
           </div>
         </div>
@@ -960,23 +946,11 @@ export const RobotInterface: React.FC = () => {
                 onClick={() => setShowSettings(false)}
                 className="text-gray-400 hover:text-white"
               >
-                ×
+                <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Mode questionnement</label>
-                <select
-                  value={questioningMode ? 'active' : 'passive'}
-                  onChange={(e) => setQuestioningMode(e.target.value === 'active')}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                >
-                  <option value="active">Actif - Pose des questions pour préciser</option>
-                  <option value="passive">Passif - Répond directement</option>
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm text-gray-300 mb-2">Personnalité robot</label>
                 <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">

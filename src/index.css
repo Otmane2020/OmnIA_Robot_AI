@@ -274,8 +274,8 @@ input.w-full.bg-slate-700.border.border-slate-600.rounded-2xl.px-6.py-4.text-whi
 /* Bouche souriante du robot */
 .robot-mouth-smile {
   background-color: #216de8;
-  width: 71px;
-  height: 26px;
+  width: 28px;
+  height: 14px;
   border-bottom: 4px solid #216de8;
   border-radius: 0 0 50% 50%;
   transition: all 0.3s ease;
@@ -283,6 +283,32 @@ input.w-full.bg-slate-700.border.border-slate-600.rounded-2xl.px-6.py-4.text-whi
 
 .robot-mouth-talking {
   animation: mouth-talk 0.3s infinite;
+}
+
+/* Animation bouche souriante - Plus visible */
+@keyframes smile-pulse {
+  0%, 100% { 
+    transform: scaleX(1) scaleY(1);
+    background-color: #216de8;
+  }
+  50% { 
+    transform: scaleX(1.2) scaleY(1.3);
+    background-color: #0ea5e9;
+  }
+}
+
+.robot-mouth-happy {
+  animation: smile-pulse 1.5s ease-in-out infinite;
+}
+
+/* Bouche plus visible */
+.robot-mouth-smile {
+  background-color: #216de8 !important;
+  width: 32px !important;
+  height: 16px !important;
+  border-bottom: 3px solid #1e40af !important;
+  border-radius: 0 0 60% 60% !important;
+  box-shadow: 0 2px 8px rgba(33, 109, 232, 0.5) !important;
 }
 
 @keyframes grid-move {
