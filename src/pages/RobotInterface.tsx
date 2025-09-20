@@ -282,43 +282,62 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleMicClick = () => {
-    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
     
     if (isRecording) {
       stopRecording();
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
     } else {
-      setIsMicOn(!isMicOn);
-      if (!isMicOn) { // Si on vient d'activer le micro
+      if (isMicOn) {
         startRecording();
         setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+      } else {
+        setIsMicOn(true);
+        setTimeout(() => {
+          startRecording();
+          setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+        }, 500);
       }
     }
   };
 
   const handleVolumeClick = () => {
-    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
     
-    setIsVolumeOn(!isVolumeOn);
     if (isSpeaking) {
       stopSpeaking();
       setCurrentSpeakingMessage(null);
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
+    } else {
+      setIsVolumeOn(!isVolumeOn);
+      if (isVolumeOn) {
+        alert('🔊 Volume activé !');
+      } else {
+        alert('🔇 Volume désactivé !');
+      }
     }
   };
 
   const handlePowerToggle = () => {
     setIsRobotOn(!isRobotOn);
-    if (!isRobotOn) {
+    if (isRobotOn) {
       // Allumer le robot
       setIsMicOn(true);
       setIsVolumeOn(true);
+      setIsDetectingHuman(false);
       setRobotState(prev => ({ 
         ...prev, 
         mood: 'happy', 
-        currentTask: 'Redémarrage...',
+        currentTask: 'Démarrage...',
         battery: 95
       }));
+      alert('⚡ Robot OmnIA allumé !');
       setTimeout(() => {
         setRobotState(prev => ({ ...prev, currentTask: 'Prêt à vous aider' }));
       }, 2000);
@@ -333,17 +352,22 @@ export const RobotInterface: React.FC = () => {
         currentTask: 'Mode veille...',
         battery: 95
       }));
+      alert('💤 Robot OmnIA éteint !');
       stopSpeaking();
       if (isRecording) stopRecording();
     }
   };
 
   const handleHumanDetectionToggle = () => {
-    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    if (!isRobotOn) {
+      alert('⚡ Robot éteint ! Allumez-le d\'abord avec le bouton Power.');
+      return;
+    }
     
     setIsDetectingHuman(!isDetectingHuman);
     if (!isDetectingHuman) {
       setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine activée' }));
+      alert('👁️ Détection humaine activée !');
       // Simuler détection après 3 secondes
       setTimeout(() => {
         if (isDetectingHuman && isRobotOn) {
@@ -360,6 +384,7 @@ export const RobotInterface: React.FC = () => {
       }, 3000);
     } else {
       setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine désactivée' }));
+      alert('👁️ Détection humaine désactivée !');
     }
   };
 
@@ -650,16 +675,18 @@ export const RobotInterface: React.FC = () => {
               onClick={handleMicClick}
               disabled={!sttSupported}
               className={`relative group ${
-                !isMicOn
+                !isRobotOn
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-700 shadow-lg shadow-gray-500/40 opacity-50'
+                  : !isMicOn
                   ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
                   : isRecording
                   ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50'
-              } ${!sttSupported ? 'opacity-50 cursor-not-allowed' : ''} 
+              } ${!sttSupported || !isRobotOn ? 'opacity-50 cursor-not-allowed' : ''} 
               w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={!isMicOn ? 'Micro désactivé' : isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
+              title={!isRobotOn ? 'Robot éteint' : !isMicOn ? 'Micro désactivé' : isRecording ? 'Arrêter l\'enregistrement' : 'Commencer l\'enregistrement vocal'}
             >
-              {!isMicOn ? (
+              {!isRobotOn || !isMicOn ? (
                 <MicOff className="w-10 h-10 text-white" />
               ) : isRecording ? (
                 <MicOff className="w-10 h-10 text-white" />
@@ -672,21 +699,23 @@ export const RobotInterface: React.FC = () => {
               )}
               
               {/* Indicateur ON/OFF */}
-              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn && isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={handleVolumeClick}
               className={`relative group ${
-                !isVolumeOn
+                !isRobotOn
+                  ? 'bg-gradient-to-br from-gray-600 to-gray-700 shadow-lg shadow-gray-500/40 opacity-50'
+                  : !isVolumeOn
                   ? 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-lg shadow-gray-500/40'
                   : isSpeaking
                   ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40 animate-pulse'
                   : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
               } w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20`}
-              title={!isVolumeOn ? 'Volume désactivé' : isSpeaking ? 'Arrêter la lecture' : 'Volume activé'}
+              title={!isRobotOn ? 'Robot éteint' : !isVolumeOn ? 'Volume désactivé' : isSpeaking ? 'Arrêter la lecture' : 'Volume activé'}
             >
-              {!isVolumeOn ? (
+              {!isRobotOn || !isVolumeOn ? (
                 <VolumeX className="w-10 h-10 text-white" />
               ) : isSpeaking ? (
                 <VolumeX className="w-10 h-10 text-white" />
@@ -695,51 +724,88 @@ export const RobotInterface: React.FC = () => {
               )}
               
               {/* Indicateur ON/OFF */}
-              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn && isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             {/* Deuxième rangée - Caméra et Paramètres */}
             <button
               onClick={() => fileInputRef.current?.click()}
+              disabled={!isRobotOn}
               className="relative group bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
               title="Analyser une photo"
             >
               <Camera className="w-10 h-10 text-white" />
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={() => setShowSettings(!showSettings)}
+              disabled={!isRobotOn}
               className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
               title="Paramètres"
             >
               <Settings className="w-10 h-10 text-white" />
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             {/* Troisième rangée - Danse et Mouvement */}
             <button
               onClick={handleRobotDance}
-              disabled={robotState.isDancing}
+              disabled={!isRobotOn || robotState.isDancing}
               className="relative group bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-              title="Faire danser le robot"
+              title={!isRobotOn ? 'Robot éteint' : robotState.isDancing ? 'Danse en cours...' : 'Faire danser le robot'}
             >
               <Music className="w-10 h-10 text-white" />
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn && !robotState.isDancing ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
             <button
               onClick={handleRobotMove}
-              disabled={robotState.isMoving}
+              disabled={!isRobotOn || robotState.isMoving}
               className="relative group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-              title="Faire bouger le robot"
+              title={!isRobotOn ? 'Robot éteint' : robotState.isMoving ? 'Déplacement en cours...' : 'Faire bouger le robot'}
             >
               <Move className="w-10 h-10 text-white" />
+              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isRobotOn && !robotState.isMoving ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
           </div>
+
+          {/* Bouton Power - Ajouté */}
+          <button
+            onClick={handlePowerToggle}
+            className={`relative group ${
+              isRobotOn
+                ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40'
+                : 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/40'
+            } w-32 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 border-2 border-white/20`}
+            title={isRobotOn ? 'Éteindre le robot' : 'Allumer le robot'}
+          >
+            <Power className="w-6 h-6 text-white mr-2" />
+            <span className="text-white font-bold">{isRobotOn ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* Bouton Détection Humaine - Ajouté */}
+          <button
+            onClick={handleHumanDetectionToggle}
+            disabled={!isRobotOn}
+            className={`relative group ${
+              !isRobotOn
+                ? 'bg-gradient-to-br from-gray-600 to-gray-700 opacity-50'
+                : isDetectingHuman
+                ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/40'
+                : 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/40'
+            } w-32 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 border-2 border-white/20 disabled:cursor-not-allowed`}
+            title={!isRobotOn ? 'Robot éteint' : isDetectingHuman ? 'Détection active' : 'Activer détection'}
+          >
+            <Eye className="w-6 h-6 text-white mr-2" />
+            <span className="text-white font-bold text-sm">{isDetectingHuman ? 'ON' : 'OFF'}</span>
+          </button>
 
           {/* Statut final simplifié */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Zap className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 font-bold">Prêt à vous conseiller</span>
+              <span className="text-green-300 font-bold">{robotState.currentTask}</span>
             </div>
           </div>
         </div>
@@ -886,7 +952,7 @@ export const RobotInterface: React.FC = () => {
               <button
                 onClick={() => setShowQR(!showQR)}
                 className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
-                title="QR Code pour mobile"
+                title="QR Code upload photo mobile"
               >
                 <QrCode className="w-6 h-6 text-white" />
               </button>
@@ -954,12 +1020,12 @@ export const RobotInterface: React.FC = () => {
             <div className="text-center">
               <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://omnia.sale/upload')}`}
                   alt="QR Code"
                   className="w-44 h-44 rounded-xl"
                 />
               </div>
-              <p className="text-gray-300">Scannez pour accéder au chat OmnIA sur mobile</p>
+              <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
             </div>
           </div>
         </div>
