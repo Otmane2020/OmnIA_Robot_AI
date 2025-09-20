@@ -108,15 +108,50 @@ function App() {
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
+    const application = pendingApplications.find(app => app.id === applicationId);
+    if (!application) return;
+    
     // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
       prev.filter(app => app.id !== applicationId)
     );
     
     if (approved) {
-      console.log('📧 Email d\'approbation envoyé');
-      console.log('🌐 Sous-domaine créé');
-      console.log('🔑 Identifiants de connexion communiqués');
+      // Créer le sous-domaine unique
+      const uniqueSubdomain = `${application.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}${Date.now().toString().slice(-4)}`;
+      
+      // Simuler création du compte revendeur
+      const newRetailerAccount = {
+        id: `retailer-${Date.now()}`,
+        company_name: application.companyName,
+        email: application.email,
+        subdomain: uniqueSubdomain,
+        password: application.password,
+        plan: application.selectedPlan,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        validated_at: new Date().toISOString()
+      };
+      
+      // Sauvegarder le nouveau revendeur
+      const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      existingRetailers.push(newRetailerAccount);
+      localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
+      
+      console.log('✅ Revendeur créé:', {
+        company: newRetailerAccount.company_name,
+        subdomain: `${uniqueSubdomain}.omnia.sale`,
+        email: newRetailerAccount.email
+      });
+      
+      // Simuler envoi email d'approbation
+      console.log('📧 Email d\'approbation envoyé à:', application.email);
+      console.log('🌐 Sous-domaine créé:', `${uniqueSubdomain}.omnia.sale`);
+      console.log('🔑 Identifiants:', {
+        email: application.email,
+        password: application.password,
+        subdomain: uniqueSubdomain
+      });
     } else {
       console.log('📧 Email de rejet envoyé');
       console.log('📋 Demande d\'informations complémentaires');
@@ -127,19 +162,16 @@ function App() {
     // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
       submittedDate: new Date().toLocaleDateString('fr-FR'),
       submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending',
-      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+      status: 'pending_validation'
     };
     
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
-    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+    console.log('📧 Emails automatiques envoyés');
+    console.log('🌐 Sous-domaine réservé:', newApplication.subdomain);
   };
 
   return (
