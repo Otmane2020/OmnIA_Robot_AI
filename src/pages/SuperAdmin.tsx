@@ -1,394 +1,415 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Users, Building, CheckCircle, X, Eye, Edit, Trash2, Plus,
-  Mail, Phone, MapPin, Calendar, FileText, AlertCircle,
-  Search, Filter, Download, Upload, Settings, LogOut,
-  User, CreditCard, Globe, BarChart3, Clock, Star
+import { 
+  Users, Building, Mail, Phone, MapPin, FileText, 
+  CheckCircle, X, Eye, Calendar, CreditCard, Globe,
+  BarChart3, TrendingUp, DollarSign, Package, MessageSquare,
+  Settings, LogOut, Search, Filter, Download, Upload,
+  AlertCircle, Clock, Star, Award, Zap, Bot, User
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 interface Application {
   id: string;
   companyName: string;
-  siret: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
-  position: string;
-  password: string;
-  selectedPlan: 'starter' | 'professional' | 'enterprise';
-  kbisFile: File | null;
-  submittedAt: string;
-  submittedDate: string;
-  submittedTime: string;
-  status: 'pending' | 'approved' | 'rejected';
-  proposedSubdomain: string;
-}
-
-interface Retailer {
-  id: string;
-  companyName: string;
-  email: string;
-  password: string;
-  plan: 'starter' | 'professional' | 'enterprise';
-  status: 'active' | 'inactive' | 'suspended';
-  revenue: number;
-  conversations: number;
-  products: number;
-  joinDate: string;
-  lastActive: string;
-  subdomain: string;
-  contactName: string;
   phone: string;
   address: string;
   city: string;
+  postalCode: string;
+  country: string;
   siret: string;
+  position: string;
+  selectedPlan: string;
+  subdomain: string;
+  kbisFile?: File;
+  submittedDate: string;
+  submittedTime: string;
+  status: string;
+  password?: string;
+  acceptTerms?: boolean;
 }
 
 interface SuperAdminProps {
   onLogout: () => void;
   pendingApplications: Application[];
-  onValidateApplication: (applicationId: string, approved: boolean) => void;
+  onValidateApplication: (applicationId: string, approved: boolean, rejectionReason?: string) => void;
 }
 
 export const SuperAdmin: React.FC<SuperAdminProps> = ({ 
   onLogout, 
-  pendingApplications, 
+  pendingApplications = [], 
   onValidateApplication 
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [planFilter, setPlanFilter] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
-  const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [showRetailerModal, setShowRetailerModal] = useState(false);
-  const [showCreateRetailerModal, setShowCreateRetailerModal] = useState(false);
-  const [selectedKbis, setSelectedKbis] = useState<{ application: Application; kbisFile: File } | null>(null);
-  const [showKbisModal, setShowKbisModal] = useState(false);
+  const [showApplicationDetail, setShowApplicationDetail] = useState(false);
+  const [showKbisViewer, setShowKbisViewer] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [applicationToReject, setApplicationToReject] = useState<string | null>(null);
+  const [showApplications, setShowApplications] = useState(true);
 
-  // Charger les revendeurs depuis localStorage
-  useEffect(() => {
-    try {
-      const savedRetailers = localStorage.getItem('approved_retailers');
-      if (savedRetailers) {
-        setRetailers(JSON.parse(savedRetailers));
-      } else {
-        // Revendeurs de démonstration
-        const demoRetailers: Retailer[] = [
-          {
-            id: 'retailer-1',
-            companyName: 'Decora Home',
-            email: 'demo@decorahome.fr',
-            password: 'demo123',
-            plan: 'professional',
-            status: 'active',
-            revenue: 15420,
-            conversations: 1234,
-            products: 247,
-            joinDate: '2024-03-15',
-            lastActive: '2025-01-15',
-            subdomain: 'decorahome',
-            contactName: 'Marie Dubois',
-            phone: '+33 1 23 45 67 89',
-            address: '123 Rue de la Paix',
-            city: 'Paris',
-            siret: '12345678901234'
-          },
-          {
-            id: 'retailer-2',
-            companyName: 'Mobilier Design',
-            email: 'contact@mobilierdesign.fr',
-            password: 'design123',
-            plan: 'enterprise',
-            status: 'active',
-            revenue: 28750,
-            conversations: 2156,
-            products: 456,
-            joinDate: '2024-01-20',
-            lastActive: '2025-01-14',
-            subdomain: 'mobilierdesign',
-            contactName: 'Jean Martin',
-            phone: '+33 1 34 56 78 90',
-            address: '456 Avenue Montaigne',
-            city: 'Lyon',
-            siret: '23456789012345'
-          }
-        ];
-        setRetailers(demoRetailers);
-        localStorage.setItem('approved_retailers', JSON.stringify(demoRetailers));
-      }
-    } catch (error) {
-      console.error('Erreur chargement revendeurs:', error);
+  // Mock data for dashboard
+  const [dashboardStats, setDashboardStats] = useState({
+    totalRetailers: 156,
+    activeRetailers: 142,
+    pendingApplications: pendingApplications.length,
+    totalRevenue: 45600,
+    monthlyGrowth: 23,
+    conversationsToday: 1247,
+    newSignupsToday: 8,
+    totalConversations: 89234,
+    avgConversionRate: 42,
+    topPerformingRetailer: 'Decora Home',
+    systemUptime: 99.9
+  });
+
+  const [recentActivity, setRecentActivity] = useState([
+    {
+      id: '1',
+      type: 'new_application',
+      message: 'Nouvelle demande: Mobilier Design Paris',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      status: 'pending',
+      details: 'Plan Professional - SIRET validé'
+    },
+    {
+      id: '2',
+      type: 'retailer_approved',
+      message: 'Revendeur approuvé: Déco Contemporain',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      status: 'success',
+      details: 'Sous-domaine créé: decocontemporain2024.omnia.sale'
+    },
+    {
+      id: '3',
+      type: 'payment_received',
+      message: 'Paiement reçu: Meubles Lyon (79€)',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+      status: 'success',
+      details: 'Plan Professional - Paiement automatique'
+    },
+    {
+      id: '4',
+      type: 'ai_training',
+      message: 'Entraînement IA terminé: 247 produits analysés',
+      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+      status: 'success',
+      details: 'Modèle v2.1 déployé avec succès'
+    },
+    {
+      id: '5',
+      type: 'system_update',
+      message: 'Mise à jour système: OmnIA v2.5.0',
+      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+      status: 'success',
+      details: 'Nouvelles fonctionnalités vocales déployées'
     }
-  }, []);
+  ]);
 
-  // Sauvegarder les revendeurs dans localStorage
+  // Mettre à jour les stats avec le nombre réel de demandes
   useEffect(() => {
-    localStorage.setItem('approved_retailers', JSON.stringify(retailers));
-  }, [retailers]);
+    setDashboardStats(prev => ({
+      ...prev,
+      pendingApplications: pendingApplications.length
+    }));
+  }, [pendingApplications]);
 
-  const handleApproveApplication = (application: Application) => {
-    console.log('✅ APPROBATION:', application.companyName);
+  // Filtrer les applications avec protection contre undefined
+  const filteredApplications = pendingApplications.filter(app => {
+    if (!app) return false;
     
-    // Créer le nouveau revendeur
-    const newRetailer: Retailer = {
-      id: `retailer-${Date.now()}`,
-      companyName: application.companyName,
-      email: application.email,
-      password: application.password,
-      plan: application.selectedPlan,
-      status: 'active',
-      revenue: 0,
-      conversations: 0,
-      products: 0,
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0],
-      subdomain: application.proposedSubdomain,
-      contactName: `${application.firstName} ${application.lastName}`,
-      phone: application.phone,
-      address: application.address,
-      city: application.city,
-      siret: application.siret
-    };
+    const matchesSearch = !searchTerm || 
+      (typeof app.companyName === 'string' && app.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof app.email === 'string' && app.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof app.firstName === 'string' && app.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof app.lastName === 'string' && app.lastName.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = filterStatus === 'all' || 
+      (typeof app.status === 'string' && app.status === filterStatus) ||
+      (!app.status && filterStatus === 'pending');
+    
+    return matchesSearch && matchesStatus;
+  });
 
-    // Ajouter aux revendeurs
-    setRetailers(prev => [...prev, newRetailer]);
-    
-    // Supprimer de la liste des demandes
-    onValidateApplication(application.id, true);
-    
-    // Simuler l'envoi d'email
-    console.log('📧 EMAIL APPROBATION envoyé à:', application.email);
-    console.log('🔑 Identifiants:', {
-      email: application.email,
-      password: application.password,
-      subdomain: `${application.proposedSubdomain}.omnia.sale`
-    });
-    
-    alert(`✅ Revendeur approuvé !\n\nIdentifiants envoyés à ${application.email} :\n• Email: ${application.email}\n• Mot de passe: ${application.password}\n• Domaine: ${application.proposedSubdomain}.omnia.sale`);
+  const handleApproveApplication = (applicationId: string) => {
+    const application = pendingApplications.find(app => app.id === applicationId);
+    if (!application) return;
+
+    if (confirm(`Approuver la demande de ${application.companyName || 'cette entreprise'} ?`)) {
+      onValidateApplication(applicationId, true);
+      
+      // Ajouter à l'activité récente
+      const newActivity = {
+        id: Date.now().toString(),
+        type: 'retailer_approved',
+        message: `Revendeur approuvé: ${application.companyName || 'Entreprise'}`,
+        timestamp: new Date().toISOString(),
+        status: 'success',
+        details: `Sous-domaine créé: ${application.subdomain || 'domaine'}.omnia.sale`
+      };
+      setRecentActivity(prev => [newActivity, ...prev.slice(0, 9)]);
+    }
   };
 
-  const handleRejectApplication = (application: Application) => {
-    const reason = prompt('Raison du rejet (sera envoyée par email) :');
-    if (reason) {
-      console.log('❌ REJET:', application.companyName, 'Raison:', reason);
-      console.log('📧 EMAIL REJET envoyé à:', application.email);
+  const handleRejectApplication = (applicationId: string) => {
+    setApplicationToReject(applicationId);
+    setShowRejectionModal(true);
+  };
+
+  const confirmRejection = () => {
+    if (applicationToReject) {
+      const application = pendingApplications.find(app => app.id === applicationToReject);
       
-      onValidateApplication(application.id, false);
-      alert(`❌ Demande rejetée.\n\nEmail envoyé à ${application.email} avec la raison :\n"${reason}"`);
+      onValidateApplication(applicationToReject, false, rejectionReason);
+      
+      // Ajouter à l'activité récente
+      const newActivity = {
+        id: Date.now().toString(),
+        type: 'application_rejected',
+        message: `Demande rejetée: ${application?.companyName || 'Entreprise'}`,
+        timestamp: new Date().toISOString(),
+        status: 'warning',
+        details: rejectionReason || 'Informations complémentaires requises'
+      };
+      setRecentActivity(prev => [newActivity, ...prev.slice(0, 9)]);
+      
+      setShowRejectionModal(false);
+      setApplicationToReject(null);
+      setRejectionReason('');
     }
   };
 
   const handleViewApplication = (application: Application) => {
     setSelectedApplication(application);
-    setShowApplicationModal(true);
-  };
-
-  const handleEditApplication = (application: Application) => {
-    setSelectedApplication(application);
-    setShowApplicationModal(true);
-  };
-
-  const handleDeleteApplication = (applicationId: string) => {
-    if (confirm('Supprimer définitivement cette demande ?')) {
-      onValidateApplication(applicationId, false);
-      console.log('🗑️ Demande supprimée:', applicationId);
-    }
+    setShowApplicationDetail(true);
   };
 
   const handleViewKbis = (application: Application) => {
-    if (application.kbisFile) {
-      setSelectedKbis({ application, kbisFile: application.kbisFile });
-      setShowKbisModal(true);
-    } else {
-      alert('Aucun document Kbis disponible pour cette demande.');
+    setSelectedApplication(application);
+    setShowKbisViewer(true);
+  };
+
+  const getStatusColor = (status?: string) => {
+    if (!status || typeof status !== 'string') {
+      return 'bg-yellow-500/20 text-yellow-300 border-yellow-400/50';
+    }
+    
+    switch (status.toLowerCase()) {
+      case 'pending':
+      case 'pending_validation':
+        return 'bg-yellow-500/20 text-yellow-300 border-yellow-400/50';
+      case 'approved':
+        return 'bg-green-500/20 text-green-300 border-green-400/50';
+      case 'rejected':
+        return 'bg-red-500/20 text-red-300 border-red-400/50';
+      default:
+        return 'bg-gray-500/20 text-gray-300 border-gray-400/50';
     }
   };
 
-  const handleCreateRetailer = (retailerData: any) => {
-    const newRetailer: Retailer = {
-      id: `retailer-${Date.now()}`,
-      companyName: retailerData.companyName,
-      email: retailerData.email,
-      password: retailerData.password,
-      plan: retailerData.plan,
-      status: 'active',
-      revenue: 0,
-      conversations: 0,
-      products: 0,
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0],
-      subdomain: retailerData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
-      contactName: `${retailerData.firstName} ${retailerData.lastName}`,
-      phone: retailerData.phone,
-      address: retailerData.address,
-      city: retailerData.city,
-      siret: retailerData.siret
-    };
-
-    setRetailers(prev => [...prev, newRetailer]);
-    setShowCreateRetailerModal(false);
+  const getStatusLabel = (status?: string) => {
+    if (!status || typeof status !== 'string') {
+      return 'En attente';
+    }
     
-    console.log('✅ Revendeur créé manuellement:', newRetailer.companyName);
-    alert(`✅ Revendeur créé !\n\nIdentifiants :\n• Email: ${newRetailer.email}\n• Mot de passe: ${newRetailer.password}\n• Domaine: ${newRetailer.subdomain}.omnia.sale`);
-  };
-
-  const handleEditRetailer = (retailer: Retailer) => {
-    setSelectedRetailer(retailer);
-    setShowRetailerModal(true);
-  };
-
-  const handleUpdateRetailer = (updatedData: any) => {
-    if (selectedRetailer) {
-      setRetailers(prev => prev.map(r => 
-        r.id === selectedRetailer.id 
-          ? { ...r, ...updatedData, lastActive: new Date().toISOString().split('T')[0] }
-          : r
-      ));
-      setShowRetailerModal(false);
-      setSelectedRetailer(null);
-      console.log('✅ Revendeur modifié:', updatedData.companyName);
+    switch (status.toLowerCase()) {
+      case 'pending':
+      case 'pending_validation':
+        return 'En attente';
+      case 'approved':
+        return 'Approuvé';
+      case 'rejected':
+        return 'Rejeté';
+      default:
+        return 'Inconnu';
     }
   };
 
-  const handleDeleteRetailer = (retailerId: string) => {
-    if (confirm('Supprimer définitivement ce revendeur ? Cette action est irréversible.')) {
-      setRetailers(prev => prev.filter(r => r.id !== retailerId));
-      console.log('🗑️ Revendeur supprimé:', retailerId);
+  const getActivityIcon = (type?: string) => {
+    if (!type || typeof type !== 'string') {
+      return AlertCircle;
+    }
+    
+    switch (type) {
+      case 'new_application': return FileText;
+      case 'retailer_approved': return CheckCircle;
+      case 'application_rejected': return X;
+      case 'payment_received': return DollarSign;
+      case 'ai_training': return Bot;
+      case 'system_update': return Zap;
+      default: return AlertCircle;
     }
   };
 
-  const filteredApplications = pendingApplications.filter(app => {
-    const matchesSearch = searchTerm === '' || 
-      app.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${app.firstName} ${app.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
+  const getActivityColor = (status?: string) => {
+    if (!status || typeof status !== 'string') {
+      return 'bg-gray-500/20 text-gray-400';
+    }
     
-    return matchesSearch;
-  });
-
-  const filteredRetailers = retailers.filter(retailer => {
-    const matchesSearch = searchTerm === '' || 
-      retailer.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      retailer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      retailer.contactName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || retailer.status === statusFilter;
-    const matchesPlan = planFilter === 'all' || retailer.plan === planFilter;
-    
-    return matchesSearch && matchesStatus && matchesPlan;
-  });
-
-  const stats = {
-    totalRetailers: retailers.length,
-    activeRetailers: retailers.filter(r => r.status === 'active').length,
-    pendingApplications: pendingApplications.length,
-    totalRevenue: retailers.reduce((sum, r) => sum + r.revenue, 0),
-    totalConversations: retailers.reduce((sum, r) => sum + r.conversations, 0),
-    totalProducts: retailers.reduce((sum, r) => sum + r.products, 0)
+    switch (status) {
+      case 'success': return 'bg-green-500/20 text-green-400';
+      case 'warning': return 'bg-yellow-500/20 text-yellow-400';
+      case 'error': return 'bg-red-500/20 text-red-400';
+      case 'pending': return 'bg-blue-500/20 text-blue-400';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
   };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
-    { id: 'applications', label: 'Demandes en attente', icon: Clock },
-    { id: 'retailers', label: 'Revendeurs', icon: Users },
-    { id: 'settings', label: 'Paramètres', icon: Settings }
-  ];
 
   const renderDashboard = () => (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-white">Tableau de bord Super Admin</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-green-300 text-sm">Système opérationnel</span>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-200 text-sm mb-1">Revendeurs Actifs</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.activeRetailers}</p>
-              <p className="text-green-400 text-sm">sur {stats.totalRetailers} total</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.activeRetailers}</p>
+              <p className="text-blue-300 text-sm">sur {dashboardStats.totalRetailers} total</p>
             </div>
             <Users className="w-10 h-10 text-blue-400" />
-          </div>
-        </div>
-        
-        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-200 text-sm mb-1">Demandes en attente</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.pendingApplications}</p>
-              <p className="text-orange-400 text-sm">À traiter</p>
-            </div>
-            <Clock className="w-10 h-10 text-orange-400" />
           </div>
         </div>
         
         <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-200 text-sm mb-1">Revenus Total</p>
-              <p className="text-3xl font-bold text-white mb-1">€{stats.totalRevenue.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">Ce mois</p>
+              <p className="text-green-200 text-sm mb-1">Revenus Mensuels</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.totalRevenue.toLocaleString()}€</p>
+              <p className="text-green-300 text-sm">+{dashboardStats.monthlyGrowth}% ce mois</p>
             </div>
-            <CreditCard className="w-10 h-10 text-green-400" />
+            <DollarSign className="w-10 h-10 text-green-400" />
           </div>
         </div>
         
         <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.totalConversations.toLocaleString()}</p>
-              <p className="text-purple-400 text-sm">Total plateforme</p>
+              <p className="text-purple-200 text-sm mb-1">Conversations Aujourd'hui</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.conversationsToday.toLocaleString()}</p>
+              <p className="text-purple-300 text-sm">Toutes plateformes</p>
             </div>
-            <BarChart3 className="w-10 h-10 text-purple-400" />
+            <MessageSquare className="w-10 h-10 text-purple-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Demandes en Attente</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.pendingApplications}</p>
+              <p className="text-orange-300 text-sm">À valider</p>
+            </div>
+            <Clock className="w-10 h-10 text-orange-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-green-400" />
+            Performance Globale
+          </h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Taux de conversion moyen</span>
+              <span className="text-green-400 font-bold text-xl">{dashboardStats.avgConversionRate}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Conversations totales</span>
+              <span className="text-cyan-400 font-bold text-xl">{dashboardStats.totalConversations.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Uptime système</span>
+              <span className="text-green-400 font-bold text-xl">{dashboardStats.systemUptime}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Revendeur top</span>
+              <span className="text-purple-400 font-bold">{dashboardStats.topPerformingRetailer}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <Clock className="w-6 h-6 text-cyan-400" />
+            Activité Récente
+          </h3>
+          <div className="space-y-4 max-h-80 overflow-y-auto">
+            {recentActivity.map((activity) => {
+              const Icon = getActivityIcon(activity.type);
+              return (
+                <div key={activity.id} className="flex items-start gap-4 p-4 bg-black/20 rounded-xl hover:bg-black/30 transition-all">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getActivityColor(activity.status)}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium">{activity.message}</p>
+                    <p className="text-gray-400 text-sm">{activity.details}</p>
+                    <p className="text-gray-500 text-xs">
+                      {new Date(activity.timestamp).toLocaleString('fr-FR')}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-2xl font-bold text-white mb-6">Actions Rapides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-8 border border-cyan-400/30">
+        <h3 className="text-xl font-bold text-white mb-6">Actions Rapides</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => setActiveTab('applications')}
-            className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/50 rounded-xl p-6 text-left transition-all"
+            className="bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-500/50 text-yellow-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
           >
-            <Clock className="w-8 h-8 text-orange-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Traiter les demandes</h4>
-            <p className="text-gray-300 text-sm">{stats.pendingApplications} en attente</p>
-          </button>
-          
-          <button
-            onClick={() => setShowCreateRetailerModal(true)}
-            className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Plus className="w-8 h-8 text-green-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Nouveau revendeur</h4>
-            <p className="text-gray-300 text-sm">Création manuelle</p>
+            <FileText className="w-6 h-6" />
+            <div className="text-left">
+              <div className="font-semibold">Valider demandes</div>
+              <div className="text-sm opacity-80">{pendingApplications.length} en attente</div>
+            </div>
           </button>
           
           <button
             onClick={() => setActiveTab('retailers')}
-            className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/50 rounded-xl p-6 text-left transition-all"
+            className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
           >
-            <Users className="w-8 h-8 text-blue-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Gérer revendeurs</h4>
-            <p className="text-gray-300 text-sm">{stats.activeRetailers} actifs</p>
+            <Users className="w-6 h-6" />
+            <div className="text-left">
+              <div className="font-semibold">Gérer revendeurs</div>
+              <div className="text-sm opacity-80">{dashboardStats.activeRetailers} actifs</div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
+          >
+            <BarChart3 className="w-6 h-6" />
+            <div className="text-left">
+              <div className="font-semibold">Voir analytics</div>
+              <div className="text-sm opacity-80">Rapports détaillés</div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => window.open('/chat', '_blank')}
+            className="bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/50 text-cyan-300 p-4 rounded-xl transition-all hover:scale-105 flex items-center gap-3"
+          >
+            <Bot className="w-6 h-6" />
+            <div className="text-left">
+              <div className="font-semibold">Tester OmnIA</div>
+              <div className="text-sm opacity-80">Interface robot</div>
+            </div>
           </button>
         </div>
       </div>
@@ -396,333 +417,562 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   );
 
   const renderApplications = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Demandes d'inscription</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
-          <span className="text-orange-300 text-sm">{pendingApplications.length} en attente</span>
+    <div className="space-y-6">
+      {/* Header avec filtres */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Demandes de Revendeurs</h2>
+          <p className="text-gray-300">{filteredApplications.length} demande(s) à traiter</p>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Rechercher par entreprise, email, contact..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-          />
-        </div>
-      </div>
-
-      {/* Applications Table */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-black/20">
-              <tr>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Entreprise</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Contact</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Soumis le</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((application) => (
-                <tr key={application.id} className="border-b border-white/10 hover:bg-white/5">
-                  <td className="p-4">
-                    <div>
-                      <div className="font-semibold text-white">{application.companyName}</div>
-                      <div className="text-gray-400 text-sm">SIRET: {application.siret}</div>
-                      <div className="text-gray-400 text-sm">{application.city}, {application.country}</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div>
-                      <div className="text-white">{application.firstName} {application.lastName}</div>
-                      <div className="text-gray-400 text-sm">{application.email}</div>
-                      <div className="text-gray-400 text-sm">{application.phone}</div>
-                      <div className="text-gray-400 text-sm">{application.position}</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      application.selectedPlan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
-                      application.selectedPlan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
-                      'bg-gray-500/20 text-gray-300'
-                    }`}>
-                      {application.selectedPlan}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-white text-sm">{application.submittedDate}</div>
-                    <div className="text-gray-400 text-xs">{application.submittedTime}</div>
-                  </td>
-                  <td className="p-4">
-                    <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-2">
-                      <div className="text-green-300 text-xs">Email: {application.email}</div>
-                      <div className="text-green-300 text-xs">Mot de passe: {application.password}</div>
-                      <div className="text-green-300 text-xs">Domaine: {application.proposedSubdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleViewApplication(application)}
-                        className="text-blue-400 hover:text-blue-300 p-1"
-                        title="Voir détails"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditApplication(application)}
-                        className="text-yellow-400 hover:text-yellow-300 p-1"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleViewKbis(application)}
-                        className="text-purple-400 hover:text-purple-300 p-1"
-                        title="Voir Kbis"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteApplication(application.id)}
-                        className="text-red-400 hover:text-red-300 p-1"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleApproveApplication(application)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
-                      >
-                        ✅ Approuver
-                      </button>
-                      <button
-                        onClick={() => handleRejectApplication(application)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-xs"
-                      >
-                        ❌ Rejeter
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredApplications.length === 0 && (
-        <div className="text-center py-20">
-          <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucune demande en attente</h3>
-          <p className="text-gray-400">Toutes les demandes ont été traitées</p>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderRetailers = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
-        <button
-          onClick={() => setShowCreateRetailerModal(true)}
-          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Nouveau revendeur
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        
+        <div className="flex gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Rechercher..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+              className="pl-10 pr-4 py-2 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
             />
           </div>
           
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-2 text-white"
           >
             <option value="all">Tous les statuts</option>
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-            <option value="suspended">Suspendu</option>
+            <option value="pending">En attente</option>
+            <option value="pending_validation">Validation</option>
+            <option value="approved">Approuvées</option>
+            <option value="rejected">Rejetées</option>
           </select>
           
-          <select
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          <button
+            onClick={() => {
+              const csvContent = generateCSVExport(pendingApplications);
+              downloadCSV(csvContent, 'demandes_revendeurs.csv');
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
           >
-            <option value="all">Tous les plans</option>
-            <option value="starter">Starter</option>
-            <option value="professional">Professional</option>
-            <option value="enterprise">Enterprise</option>
-          </select>
-          
-          <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-3 rounded-xl flex items-center gap-2">
             <Download className="w-4 h-4" />
-            Exporter
+            Export CSV
           </button>
         </div>
       </div>
 
-      {/* Retailers Table */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-black/20">
-              <tr>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Performances</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRetailers.map((retailer) => (
-                <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
-                  <td className="p-4">
-                    <div>
-                      <div className="font-semibold text-white">{retailer.companyName}</div>
-                      <div className="text-gray-400 text-sm">{retailer.contactName}</div>
-                      <div className="text-gray-400 text-sm">{retailer.email}</div>
-                      <div className="text-gray-400 text-sm">{retailer.subdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      retailer.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
-                      retailer.plan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
-                      'bg-gray-500/20 text-gray-300'
-                    }`}>
-                      {retailer.plan}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      retailer.status === 'active' ? 'bg-green-500/20 text-green-300' :
-                      retailer.status === 'inactive' ? 'bg-yellow-500/20 text-yellow-300' :
-                      'bg-red-500/20 text-red-300'
-                    }`}>
-                      {retailer.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-sm">
-                      <div className="text-green-400">€{retailer.revenue.toLocaleString()}</div>
-                      <div className="text-blue-400">{retailer.conversations} conv.</div>
-                      <div className="text-purple-400">{retailer.products} prod.</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-2">
-                      <div className="text-blue-300 text-xs">Email: {retailer.email}</div>
-                      <div className="text-blue-300 text-xs">Mot de passe: {retailer.password}</div>
-                      <div className="text-blue-300 text-xs">Domaine: {retailer.subdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditRetailer(retailer)}
-                        className="text-yellow-400 hover:text-yellow-300 p-1"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRetailer(retailer.id)}
-                        className="text-red-400 hover:text-red-300 p-1"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredRetailers.length === 0 && (
+      {/* Liste des applications */}
+      {filteredApplications.length === 0 ? (
         <div className="text-center py-20">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucun revendeur trouvé</h3>
-          <p className="text-gray-400">Aucun revendeur ne correspond à vos critères</p>
+          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucune demande</h3>
+          <p className="text-gray-400">
+            {searchTerm || filterStatus !== 'all' 
+              ? 'Aucune demande ne correspond à vos critères.'
+              : 'Aucune demande de revendeur en attente.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredApplications.map((app) => {
+            // Protection contre les valeurs undefined
+            const safeApp = {
+              ...app,
+              companyName: app.companyName || '',
+              email: app.email || '',
+              firstName: app.firstName || '',
+              lastName: app.lastName || '',
+              phone: app.phone || '',
+              city: app.city || '',
+              status: app.status || 'pending',
+              selectedPlan: app.selectedPlan || 'professional',
+              submittedDate: app.submittedDate || '',
+              submittedTime: app.submittedTime || ''
+            };
+            
+            return (
+            <div key={safeApp.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all group">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <Building className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">{safeApp.companyName || 'Nom non renseigné'}</h3>
+                    <p className="text-cyan-400 text-sm">{safeApp.email || 'Email non renseigné'}</p>
+                  </div>
+                </div>
+                
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(safeApp.status)}`}>
+                  {getStatusLabel(safeApp.status)}
+                </span>
+              </div>
+
+              <div className="space-y-2 mb-6 text-sm">
+                <div className="flex items-center gap-2 text-gray-300">
+                  <User className="w-4 h-4" />
+                  <span>{(safeApp.firstName || '') + ' ' + (safeApp.lastName || '')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Phone className="w-4 h-4" />
+                  <span>{safeApp.phone || 'Non renseigné'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <MapPin className="w-4 h-4" />
+                  <span>{(safeApp.city || 'Ville non renseignée') + (app.country ? `, ${app.country}` : '')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Globe className="w-4 h-4" />
+                  <span className="text-cyan-400 font-mono text-xs">
+                    {(typeof app.subdomain === 'string' && app.subdomain) 
+                      ? `${app.subdomain}.omnia.sale` 
+                      : `${(app.companyName || 'boutique').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}.omnia.sale`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="capitalize">{safeApp.selectedPlan || 'Plan non sélectionné'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <Calendar className="w-4 h-4" />
+                  <span>{(safeApp.submittedDate || 'Date inconnue') + ' à ' + (safeApp.submittedTime || 'Heure inconnue')}</span>
+                </div>
+                
+                {/* Document Kbis */}
+                {app.kbisFile && (
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-green-400">Kbis fourni ({(app.kbisFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleViewApplication(app)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105"
+                >
+                  <Eye className="w-4 h-4" />
+                  Voir détails complets
+                </button>
+                
+                {/* Boutons de validation - CONDITION CORRIGÉE */}
+                {(!app.status || 
+                  app.status === 'pending' || 
+                  app.status === 'pending_validation') && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleApproveApplication(app.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg hover:shadow-green-500/50"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Approuver
+                    </button>
+                    <button
+                      onClick={() => handleRejectApplication(app.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg hover:shadow-red-500/50"
+                    >
+                      <X className="w-4 h-4" />
+                      Rejeter
+                    </button>
+                  </div>
+                )}
+                
+                {/* Bouton Kbis si disponible */}
+                {app.kbisFile && (
+                  <button
+                    onClick={() => handleViewKbis(app)}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Visualiser Kbis
+                  </button>
+                )}
+              </div>
+            </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 
-  const renderSettings = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Paramètres Système</h2>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Configuration Globale</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const renderRetailers = () => {
+    // Mock data pour les revendeurs actifs
+    const mockRetailers = [
+      {
+        id: 'retailer-1',
+        companyName: 'Decora Home',
+        email: 'demo@decorahome.fr',
+        plan: 'professional',
+        status: 'active',
+        revenue: 12500,
+        conversations: 1234,
+        products: 247,
+        joinDate: '2024-01-15',
+        lastActive: '2025-01-15T10:30:00Z',
+        subdomain: 'decorahome'
+      },
+      {
+        id: 'retailer-2',
+        companyName: 'Mobilier Design Paris',
+        email: 'contact@mobilierdesign.fr',
+        plan: 'enterprise',
+        status: 'active',
+        revenue: 25600,
+        conversations: 2156,
+        products: 456,
+        joinDate: '2024-02-20',
+        lastActive: '2025-01-15T09:15:00Z',
+        subdomain: 'mobilierdesign'
+      },
+      {
+        id: 'retailer-3',
+        companyName: 'Déco Contemporain',
+        email: 'info@decocontemporain.com',
+        plan: 'professional',
+        status: 'active',
+        revenue: 8900,
+        conversations: 892,
+        products: 189,
+        joinDate: '2024-03-10',
+        lastActive: '2025-01-14T16:45:00Z',
+        subdomain: 'decocontemporain'
+      },
+      {
+        id: 'retailer-4',
+        companyName: 'Meubles Lyon',
+        email: 'contact@meubleslyon.fr',
+        plan: 'starter',
+        status: 'active',
+        revenue: 3400,
+        conversations: 567,
+        products: 123,
+        joinDate: '2024-04-05',
+        lastActive: '2025-01-13T14:20:00Z',
+        subdomain: 'meubleslyon'
+      }
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Validation automatique</label>
-            <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">
-              <option value="manual">Validation manuelle</option>
-              <option value="auto">Validation automatique</option>
-            </select>
+            <h2 className="text-2xl font-bold text-white">Revendeurs Actifs</h2>
+            <p className="text-gray-300">{mockRetailers.length} revendeur(s) actif(s)</p>
           </div>
-          
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Délai de validation (heures)</label>
-            <input
-              type="number"
-              defaultValue="24"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            />
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                const csvContent = generateRetailersCSVExport(mockRetailers);
+                downloadCSV(csvContent, 'revendeurs_actifs.csv');
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Exporter CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Revenus</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Conversations</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Produits</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Dernière activité</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mockRetailers.map((retailer) => (
+                  <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                          <Building className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-white">{retailer.companyName}</div>
+                          <div className="text-gray-400 text-sm">{retailer.email}</div>
+                          <div className="text-cyan-400 text-xs font-mono">{retailer.subdomain}.omnia.sale</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        retailer.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
+                        retailer.plan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
+                        'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {retailer.plan}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-green-400 font-bold">{retailer.revenue.toLocaleString()}€</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-cyan-400 font-semibold">{retailer.conversations.toLocaleString()}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-purple-400 font-semibold">{retailer.products}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-gray-300 text-sm">
+                        {new Date(retailer.lastActive).toLocaleDateString('fr-FR')}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => window.open(`https://${retailer.subdomain}.omnia.sale`, '_blank')}
+                          className="text-blue-400 hover:text-blue-300 p-1"
+                          title="Voir le site"
+                        >
+                          <Globe className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="text-purple-400 hover:text-purple-300 p-1"
+                          title="Voir analytics"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="text-gray-400 hover:text-gray-300 p-1"
+                          title="Paramètres"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAnalytics = () => (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-white">Analytics Globales</h2>
+      
+      {/* Métriques principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-200 text-sm mb-1">Conversations Totales</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.totalConversations.toLocaleString()}</p>
+              <p className="text-blue-300 text-sm">+12% cette semaine</p>
+            </div>
+            <MessageSquare className="w-10 h-10 text-blue-400" />
           </div>
         </div>
         
-        <div className="mt-6">
-          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Sauvegarder les paramètres
-          </button>
+        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-200 text-sm mb-1">Taux Conversion</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.avgConversionRate}%</p>
+              <p className="text-green-300 text-sm">+5% vs mois dernier</p>
+            </div>
+            <TrendingUp className="w-10 h-10 text-green-400" />
+          </div>
+        </div>
+        
+        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-200 text-sm mb-1">Revenus ARR</p>
+              <p className="text-3xl font-bold text-white">{(dashboardStats.totalRevenue * 12).toLocaleString()}€</p>
+              <p className="text-purple-300 text-sm">Annuel récurrent</p>
+            </div>
+            <DollarSign className="w-10 h-10 text-purple-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Uptime Système</p>
+              <p className="text-3xl font-bold text-white">{dashboardStats.systemUptime}%</p>
+              <p className="text-orange-300 text-sm">30 derniers jours</p>
+            </div>
+            <Zap className="w-10 h-10 text-orange-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Graphiques et détails */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <h3 className="text-xl font-bold text-white mb-6">Revenus par Plan</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Starter (29€/mois)</span>
+              <div className="text-right">
+                <span className="text-green-400 font-bold">12,180€</span>
+                <div className="text-gray-400 text-sm">42 revendeurs</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Professional (79€/mois)</span>
+              <div className="text-right">
+                <span className="text-green-400 font-bold">28,420€</span>
+                <div className="text-gray-400 text-sm">89 revendeurs</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Enterprise (199€/mois)</span>
+              <div className="text-right">
+                <span className="text-green-400 font-bold">5,970€</span>
+                <div className="text-gray-400 text-sm">25 revendeurs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <h3 className="text-xl font-bold text-white mb-6">Performance par Région</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">🇫🇷 France</span>
+              <div className="text-right">
+                <span className="text-cyan-400 font-bold">89 revendeurs</span>
+                <div className="text-gray-400 text-sm">67% du total</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">🇧🇪 Belgique</span>
+              <div className="text-right">
+                <span className="text-cyan-400 font-bold">23 revendeurs</span>
+                <div className="text-gray-400 text-sm">17% du total</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">🇨🇭 Suisse</span>
+              <div className="text-right">
+                <span className="text-cyan-400 font-bold">12 revendeurs</span>
+                <div className="text-gray-400 text-sm">9% du total</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">🇨🇦 Canada</span>
+              <div className="text-right">
+                <span className="text-cyan-400 font-bold">8 revendeurs</span>
+                <div className="text-gray-400 text-sm">6% du total</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Performers */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <Award className="w-6 h-6 text-yellow-400" />
+          Top Performers du Mois
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Award className="w-8 h-8 text-white" />
+            </div>
+            <h4 className="font-bold text-white mb-2">🥇 Decora Home</h4>
+            <p className="text-yellow-300 text-sm mb-2">2,156 conversations</p>
+            <p className="text-yellow-400 font-bold">47% conversion</p>
+          </div>
+          
+          <div className="bg-gray-500/20 border border-gray-400/50 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Award className="w-8 h-8 text-white" />
+            </div>
+            <h4 className="font-bold text-white mb-2">🥈 Mobilier Design</h4>
+            <p className="text-gray-300 text-sm mb-2">1,892 conversations</p>
+            <p className="text-gray-400 font-bold">44% conversion</p>
+          </div>
+          
+          <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Award className="w-8 h-8 text-white" />
+            </div>
+            <h4 className="font-bold text-white mb-2">🥉 Déco Contemporain</h4>
+            <p className="text-orange-300 text-sm mb-2">1,234 conversations</p>
+            <p className="text-orange-400 font-bold">41% conversion</p>
+          </div>
         </div>
       </div>
     </div>
   );
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return renderDashboard();
-      case 'applications': return renderApplications();
-      case 'retailers': return renderRetailers();
-      case 'settings': return renderSettings();
-      default: return renderDashboard();
-    }
+  // Fonctions utilitaires
+  const generateCSVExport = (applications: Application[]) => {
+    const headers = [
+      'ID', 'Entreprise', 'Email', 'Contact', 'Téléphone', 'Ville', 'Pays',
+      'SIRET', 'Plan', 'Statut', 'Date soumission', 'Sous-domaine'
+    ];
+    
+    const rows = applications.map(app => [
+      app.id || '',
+      app.companyName || '',
+      app.email || '',
+      `${app.firstName || ''} ${app.lastName || ''}`.trim(),
+      app.phone || '',
+      app.city || '',
+      app.country || '',
+      app.siret || '',
+      app.selectedPlan || '',
+      app.status || 'pending',
+      app.submittedDate || '',
+      (typeof app.subdomain === 'string' && app.subdomain) ? `${app.subdomain}.omnia.sale` : ''
+    ]);
+    
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  };
+
+  const generateRetailersCSVExport = (retailers: any[]) => {
+    const headers = [
+      'ID', 'Entreprise', 'Email', 'Plan', 'Statut', 'Revenus', 
+      'Conversations', 'Produits', 'Date inscription', 'Dernière activité', 'Sous-domaine'
+    ];
+    
+    const rows = retailers.map(retailer => [
+      retailer.id || '',
+      retailer.companyName || '',
+      retailer.email || '',
+      retailer.plan || '',
+      retailer.status || '',
+      retailer.revenue || '0',
+      retailer.conversations || '0',
+      retailer.products || '0',
+      retailer.joinDate || '',
+      retailer.lastActive || '',
+      retailer.subdomain ? `${retailer.subdomain}.omnia.sale` : ''
+    ]);
+    
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -733,556 +983,425 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
-              <Settings className="w-6 h-6 text-white" />
+      {/* Header */}
+      <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center gap-4">
+              <Logo size="md" />
+              <div>
+                <h1 className="text-xl font-bold text-white">Super Admin</h1>
+                <p className="text-cyan-300">Gestion Plateforme OmnIA</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Super Admin</h1>
-              <p className="text-sm text-red-300">OmnIA.sale</p>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-300 text-sm">Système opérationnel</span>
+              </div>
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                Déconnexion
+              </button>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Navigation */}
-          <nav className="space-y-2 mb-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                    activeTab === tab.id
-                      ? 'bg-red-500/30 text-white border border-red-500/50'
-                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
-                  {tab.id === 'applications' && pendingApplications.length > 0 && (
-                    <span className="ml-auto bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-                      {pendingApplications.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          <button
-            onClick={onLogout}
-            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all flex items-center gap-2"
-          >
-            <LogOut className="w-5 h-5" />
-            Déconnexion
-          </button>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Navigation Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-2 border border-white/20">
+            <div className="flex space-x-2">
+              {[
+                { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+                { id: 'applications', label: 'Demandes', icon: FileText },
+                { id: 'retailers', label: 'Revendeurs', icon: Users },
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all font-medium ${
+                      activeTab === tab.id
+                        ? 'bg-cyan-500 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="font-medium">{tab.label}</span>
+                    {tab.id === 'applications' && pendingApplications.length > 0 && (
+                      <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {pendingApplications.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          {renderContent()}
-        </div>
+        {/* Content */}
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'applications' && showApplications && renderApplications()}
+        {activeTab === 'retailers' && renderRetailers()}
+        {activeTab === 'analytics' && renderAnalytics()}
       </div>
 
-      {/* Application Detail Modal */}
-      {showApplicationModal && selectedApplication && (
+      {/* Modal détail application */}
+      {showApplicationDetail && selectedApplication && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
             <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Détails de la demande</h3>
+              <h2 className="text-2xl font-bold text-white">Détails de la demande</h2>
               <button
-                onClick={() => setShowApplicationModal(false)}
-                className="text-gray-400 hover:text-white"
+                onClick={() => setShowApplicationDetail(false)}
+                className="text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">🏢 Informations entreprise</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Entreprise:</span> <span className="text-white">{selectedApplication.companyName}</span></div>
-                    <div><span className="text-gray-400">SIRET:</span> <span className="text-white">{selectedApplication.siret}</span></div>
-                    <div><span className="text-gray-400">Adresse:</span> <span className="text-white">{selectedApplication.address}</span></div>
-                    <div><span className="text-gray-400">Ville:</span> <span className="text-white">{selectedApplication.postalCode} {selectedApplication.city}</span></div>
-                    <div><span className="text-gray-400">Pays:</span> <span className="text-white">{selectedApplication.country}</span></div>
+
+            <div className="p-6 space-y-8">
+              {/* Informations entreprise */}
+              <div className="bg-black/20 rounded-xl p-6">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <Building className="w-5 h-5 text-cyan-400" />
+                  Informations Entreprise
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-400 text-sm">Nom de l'entreprise</label>
+                    <p className="text-white font-semibold">{selectedApplication.companyName || 'Non renseigné'}</p>
                   </div>
-                </div>
-                
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">👤 Contact responsable</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedApplication.firstName} {selectedApplication.lastName}</span></div>
-                    <div><span className="text-gray-400">Email:</span> <span className="text-white">{selectedApplication.email}</span></div>
-                    <div><span className="text-gray-400">Téléphone:</span> <span className="text-white">{selectedApplication.phone}</span></div>
-                    <div><span className="text-gray-400">Fonction:</span> <span className="text-white">{selectedApplication.position}</span></div>
+                  <div>
+                    <label className="text-gray-400 text-sm">SIRET</label>
+                    <p className="text-white font-mono">{selectedApplication.siret || 'Non renseigné'}</p>
                   </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">💳 Plan et domaine</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Plan choisi:</span> <span className="text-white">{selectedApplication.selectedPlan}</span></div>
-                    <div><span className="text-gray-400">Sous-domaine:</span> <span className="text-cyan-400">{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
-                  </div>
-                </div>
-                
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">📅 Informations soumission</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Date:</span> <span className="text-white">{selectedApplication.submittedDate}</span></div>
-                    <div><span className="text-gray-400">Heure:</span> <span className="text-white">{selectedApplication.submittedTime}</span></div>
-                    <div><span className="text-gray-400">Référence:</span> <span className="text-white">#{selectedApplication.id}</span></div>
+                  <div className="md:col-span-2">
+                    <label className="text-gray-400 text-sm">Adresse complète</label>
+                    <p className="text-white">
+                      {selectedApplication.address || 'Non renseignée'}<br />
+                      {selectedApplication.postalCode || ''} {selectedApplication.city || ''}<br />
+                      {selectedApplication.country || ''}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-green-500/20 border border-green-400/30 rounded-xl p-4">
-                <h4 className="font-semibold text-green-200 mb-3">🔑 Identifiants de connexion</h4>
-                <div className="space-y-2 text-sm">
-                  <div><span className="text-green-300">Email:</span> <span className="text-white font-mono">{selectedApplication.email}</span></div>
-                  <div><span className="text-green-300">Mot de passe:</span> <span className="text-white font-mono">{selectedApplication.password}</span></div>
-                  <div><span className="text-green-300">URL admin:</span> <span className="text-cyan-400">https://omnia.sale/admin</span></div>
-                  <div><span className="text-green-300">Domaine boutique:</span> <span className="text-cyan-400">https://{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
+              {/* Contact responsable */}
+              <div className="bg-black/20 rounded-xl p-6">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-green-400" />
+                  Contact Responsable
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-400 text-sm">Nom complet</label>
+                    <p className="text-white font-semibold">
+                      {(selectedApplication.firstName || '') + ' ' + (selectedApplication.lastName || '')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Fonction</label>
+                    <p className="text-white">{selectedApplication.position || 'Non renseignée'}</p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Email professionnel</label>
+                    <p className="text-cyan-400">{selectedApplication.email || 'Non renseigné'}</p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Téléphone</label>
+                    <p className="text-white">{selectedApplication.phone || 'Non renseigné'}</p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex justify-between">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleApproveApplication(selectedApplication)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ✅ Approuver
-                  </button>
-                  <button
-                    onClick={() => handleRejectApplication(selectedApplication)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ❌ Rejeter
-                  </button>
-                  {selectedApplication.kbisFile && (
+
+              {/* Configuration compte */}
+              <div className="bg-black/20 rounded-xl p-6">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-purple-400" />
+                  Configuration du Compte
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-gray-400 text-sm">Plan choisi</label>
+                    <p className="text-white font-semibold capitalize">{selectedApplication.selectedPlan || 'Non sélectionné'}</p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Sous-domaine proposé</label>
+                    <p className="text-cyan-400 font-mono">
+                      {(typeof selectedApplication.subdomain === 'string' && selectedApplication.subdomain)
+                        ? `${selectedApplication.subdomain}.omnia.sale`
+                        : `${(selectedApplication.companyName || 'boutique').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}.omnia.sale`}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Date de soumission</label>
+                    <p className="text-white">
+                      {selectedApplication.submittedDate || 'Date inconnue'} à {selectedApplication.submittedTime || 'Heure inconnue'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm">Statut actuel</label>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedApplication.status)}`}>
+                      {getStatusLabel(selectedApplication.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Document Kbis */}
+              {selectedApplication.kbisFile && (
+                <div className="bg-black/20 rounded-xl p-6">
+                  <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-orange-400" />
+                    Document Kbis
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-green-500/20 border border-green-400/50 rounded-xl">
+                    <div>
+                      <p className="text-green-200 font-semibold">{selectedApplication.kbisFile.name}</p>
+                      <p className="text-green-300 text-sm">
+                        Taille: {(selectedApplication.kbisFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                      <p className="text-green-400 text-xs">
+                        Type: {selectedApplication.kbisFile.type}
+                      </p>
+                    </div>
                     <button
                       onClick={() => handleViewKbis(selectedApplication)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
                     >
-                      📄 Voir Kbis
+                      <Eye className="w-4 h-4" />
+                      Visualiser
                     </button>
-                  )}
+                  </div>
                 </div>
+              )}
+
+              {/* Actions de validation */}
+              <div className="flex justify-between pt-6 border-t border-slate-600/50">
                 <button
-                  onClick={() => setShowApplicationModal(false)}
+                  onClick={() => setShowApplicationDetail(false)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
                 >
                   Fermer
                 </button>
+                
+                {(!selectedApplication.status || 
+                  selectedApplication.status === 'pending' || 
+                  selectedApplication.status === 'pending_validation') && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        handleRejectApplication(selectedApplication.id);
+                        setShowApplicationDetail(false);
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-red-500/50"
+                    >
+                      <X className="w-4 h-4" />
+                      Rejeter
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleApproveApplication(selectedApplication.id);
+                        setShowApplicationDetail(false);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-green-500/50"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Approuver
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Kbis Viewer Modal */}
-      {showKbisModal && selectedKbis && (
+      {/* Modal visualisation Kbis */}
+      {showKbisViewer && selectedApplication?.kbisFile && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
             <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Document Kbis - {selectedKbis.application.companyName}</h3>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FileText className="w-6 h-6 text-orange-400" />
+                Document Kbis - {selectedApplication.companyName}
+              </h2>
               <button
-                onClick={() => setShowKbisModal(false)}
-                className="text-gray-400 hover:text-white"
+                onClick={() => setShowKbisViewer(false)}
+                className="text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="p-6">
-              <div className="bg-black/20 rounded-xl p-4 mb-6">
-                <h4 className="font-semibold text-white mb-2">📄 Informations document</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedKbis.kbisFile.name}</span></div>
-                  <div><span className="text-gray-400">Taille:</span> <span className="text-white">{(selectedKbis.kbisFile.size / 1024 / 1024).toFixed(2)} MB</span></div>
-                  <div><span className="text-gray-400">Type:</span> <span className="text-white">{selectedKbis.kbisFile.type}</span></div>
-                  <div><span className="text-gray-400">Modifié:</span> <span className="text-white">{new Date(selectedKbis.kbisFile.lastModified).toLocaleDateString('fr-FR')}</span></div>
+              <div className="bg-black/20 rounded-xl p-6 mb-6">
+                <h3 className="font-semibold text-white mb-4">Informations du fichier</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-400">Nom du fichier :</span>
+                    <p className="text-white font-semibold">{selectedApplication.kbisFile.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Taille :</span>
+                    <p className="text-white font-semibold">{(selectedApplication.kbisFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Type :</span>
+                    <p className="text-white font-semibold">{selectedApplication.kbisFile.type}</p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="text-center">
-                {selectedKbis.kbisFile.type.startsWith('image/') ? (
-                  <img
-                    src={URL.createObjectURL(selectedKbis.kbisFile)}
+
+              {/* Aperçu du document */}
+              <div className="bg-white rounded-xl p-6 min-h-96 flex items-center justify-center">
+                {selectedApplication.kbisFile.type.startsWith('image/') ? (
+                  <img 
+                    src={URL.createObjectURL(selectedApplication.kbisFile)}
                     alt="Document Kbis"
-                    className="max-w-full h-auto rounded-xl border border-gray-600"
+                    className="max-w-full max-h-96 object-contain rounded-lg shadow-lg"
                   />
-                ) : selectedKbis.kbisFile.type === 'application/pdf' ? (
-                  <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-8">
-                    <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-white mb-2">Document PDF</h4>
-                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
+                ) : selectedApplication.kbisFile.type === 'application/pdf' ? (
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Document PDF</h4>
+                    <p className="text-gray-600 mb-4">{selectedApplication.kbisFile.name}</p>
                     <button
                       onClick={() => {
-                        const url = URL.createObjectURL(selectedKbis.kbisFile);
+                        const url = URL.createObjectURL(selectedApplication.kbisFile!);
                         window.open(url, '_blank');
                       }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto"
                     >
+                      <Eye className="w-4 h-4" />
                       Ouvrir le PDF
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-gray-500/20 border border-gray-400/50 rounded-xl p-8">
+                  <div className="text-center">
                     <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-white mb-2">Document non prévisualisable</h4>
-                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Document non prévisualisable</h4>
+                    <p className="text-gray-600 mb-4">Type: {selectedApplication.kbisFile.type}</p>
                     <button
                       onClick={() => {
-                        const url = URL.createObjectURL(selectedKbis.kbisFile);
+                        const url = URL.createObjectURL(selectedApplication.kbisFile!);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = selectedKbis.kbisFile.name;
+                        a.download = selectedApplication.kbisFile!.name;
                         a.click();
                       }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto"
                     >
+                      <Download className="w-4 h-4" />
                       Télécharger
                     </button>
                   </div>
                 )}
               </div>
-              
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={() => setShowKbisModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Fermer
-                </button>
-              </div>
+
+              {/* Actions de validation depuis le viewer Kbis */}
+              {(!selectedApplication.status || 
+                selectedApplication.status === 'pending' || 
+                selectedApplication.status === 'pending_validation') && (
+                <div className="flex justify-center gap-4 pt-6 border-t border-slate-600/50">
+                  <button
+                    onClick={() => {
+                      handleRejectApplication(selectedApplication.id);
+                      setShowKbisViewer(false);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-red-500/50"
+                  >
+                    <X className="w-5 h-5" />
+                    Rejeter la demande
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleApproveApplication(selectedApplication.id);
+                      setShowKbisViewer(false);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-green-500/50"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Approuver la demande
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Retailer Modal */}
-      {showCreateRetailerModal && (
+      {/* Modal de rejet avec raison */}
+      {showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-md w-full border border-slate-600/50">
             <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Créer un nouveau revendeur</h3>
+              <h2 className="text-xl font-bold text-white">Rejeter la demande</h2>
               <button
-                onClick={() => setShowCreateRetailerModal(false)}
-                className="text-gray-400 hover:text-white"
+                onClick={() => {
+                  setShowRejectionModal(false);
+                  setApplicationToReject(null);
+                  setRejectionReason('');
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const retailerData = {
-                companyName: formData.get('companyName'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                firstName: formData.get('firstName'),
-                lastName: formData.get('lastName'),
-                phone: formData.get('phone'),
-                address: formData.get('address'),
-                city: formData.get('city'),
-                siret: formData.get('siret'),
-                plan: formData.get('plan')
-              };
-              handleCreateRetailer(retailerData);
-            }} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
-                  <input
-                    name="companyName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Mon Magasin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
-                  <input
-                    name="siret"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="12345678901234"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Prénom *</label>
-                  <input
-                    name="firstName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Jean"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom *</label>
-                  <input
-                    name="lastName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Dupont"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="contact@monmagasin.fr"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
-                  <input
-                    name="password"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="motdepasse123"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="+33 1 23 45 67 89"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
-                  <select
-                    name="plan"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
-                  <input
-                    name="address"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="123 Rue de la Paix"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
-                  <input
-                    name="city"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Paris"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateRetailerModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                >
-                  Créer le revendeur
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Edit Retailer Modal */}
-      {showRetailerModal && selectedRetailer && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Modifier le revendeur</h3>
-              <button
-                onClick={() => setShowRetailerModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const updatedData = {
-                companyName: formData.get('companyName'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                contactName: formData.get('contactName'),
-                phone: formData.get('phone'),
-                address: formData.get('address'),
-                city: formData.get('city'),
-                siret: formData.get('siret'),
-                plan: formData.get('plan'),
-                status: formData.get('status')
-              };
-              handleUpdateRetailer(updatedData);
-            }} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
-                  <input
-                    name="companyName"
-                    type="text"
-                    defaultValue={selectedRetailer.companyName}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Contact *</label>
-                  <input
-                    name="contactName"
-                    type="text"
-                    defaultValue={selectedRetailer.contactName}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
-                  <input
-                    name="email"
-                    type="email"
-                    defaultValue={selectedRetailer.email}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
-                  <input
-                    name="password"
-                    type="text"
-                    defaultValue={selectedRetailer.password}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    defaultValue={selectedRetailer.phone}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
-                  <select
-                    name="plan"
-                    defaultValue={selectedRetailer.plan}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Statut *</label>
-                  <select
-                    name="status"
-                    defaultValue={selectedRetailer.status}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                    <option value="suspended">Suspendu</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
-                  <input
-                    name="siret"
-                    type="text"
-                    defaultValue={selectedRetailer.siret}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
-                  <input
-                    name="address"
-                    type="text"
-                    defaultValue={selectedRetailer.address}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
-                  <input
-                    name="city"
-                    type="text"
-                    defaultValue={selectedRetailer.city}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Raison du rejet (optionnel)
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  rows={4}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/30 resize-none"
+                  placeholder="Ex: Document Kbis illisible, informations manquantes, SIRET invalide..."
+                />
               </div>
-              
+
+              <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
+                <h4 className="font-semibold text-red-200 mb-2">⚠️ Conséquences du rejet :</h4>
+                <ul className="text-red-300 text-sm space-y-1">
+                  <li>• Email automatique envoyé au demandeur</li>
+                  <li>• Possibilité de re-soumission avec corrections</li>
+                  <li>• Sous-domaine libéré pour réutilisation</li>
+                </ul>
+              </div>
+
               <div className="flex justify-between">
                 <button
-                  type="button"
-                  onClick={() => setShowRetailerModal(false)}
+                  onClick={() => {
+                    setShowRejectionModal(false);
+                    setApplicationToReject(null);
+                    setRejectionReason('');
+                  }}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
                 >
                   Annuler
                 </button>
                 <button
-                  type="submit"
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  onClick={confirmRejection}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
                 >
-                  Sauvegarder
+                  <X className="w-4 h-4" />
+                  Confirmer le rejet
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
