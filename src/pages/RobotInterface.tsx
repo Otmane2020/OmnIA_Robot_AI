@@ -282,12 +282,14 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleMicClick = () => {
-    setIsMicOn(!isMicOn);
+    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    
     if (isRecording) {
       stopRecording();
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
     } else {
-      if (isMicOn) {
+      setIsMicOn(!isMicOn);
+      if (!isMicOn) { // Si on vient d'activer le micro
         startRecording();
         setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
       }
@@ -295,6 +297,8 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleVolumeClick = () => {
+    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    
     setIsVolumeOn(!isVolumeOn);
     if (isSpeaking) {
       stopSpeaking();
@@ -307,6 +311,8 @@ export const RobotInterface: React.FC = () => {
     setIsRobotOn(!isRobotOn);
     if (!isRobotOn) {
       // Allumer le robot
+      setIsMicOn(true);
+      setIsVolumeOn(true);
       setRobotState(prev => ({ 
         ...prev, 
         mood: 'happy', 
@@ -318,6 +324,9 @@ export const RobotInterface: React.FC = () => {
       }, 2000);
     } else {
       // Éteindre le robot
+      setIsMicOn(false);
+      setIsVolumeOn(false);
+      setIsDetectingHuman(false);
       setRobotState(prev => ({ 
         ...prev, 
         mood: 'sleeping', 
@@ -330,12 +339,14 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleHumanDetectionToggle = () => {
+    if (!isRobotOn) return; // Ne pas fonctionner si robot éteint
+    
     setIsDetectingHuman(!isDetectingHuman);
     if (!isDetectingHuman) {
       setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine activée' }));
       // Simuler détection après 3 secondes
       setTimeout(() => {
-        if (isDetectingHuman) {
+        if (isDetectingHuman && isRobotOn) {
           const greetingMessage: ChatMessageType = {
             id: Date.now().toString(),
             content: "👋 Bonjour ! Je vous ai détecté. Bienvenue dans notre showroom ! Comment puis-je vous aider ?",
@@ -353,6 +364,8 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleRobotMove = () => {
+    if (!isRobotOn) return;
+    
     setRobotState(prev => ({ 
       ...prev, 
       isMoving: true, 
@@ -371,6 +384,8 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleRobotDance = () => {
+    if (!isRobotOn) return;
+    
     setRobotState(prev => ({ 
       ...prev, 
       isDancing: true, 
