@@ -73,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-800 text-xl mb-3 line-clamp-2 group-hover:text-cyan-700 transition-colors leading-tight">{safeProduct.title}</h3>
+          <h3 className="font-bold text-gray-800 text-lg mb-3 line-clamp-2 group-hover:text-cyan-700 transition-colors leading-tight">{safeProduct.title}</h3>
           <p className="text-cyan-600 mb-4 font-semibold">{safeProduct.vendor || 'Vendeur'}</p>
           
           {tagsToDisplay.length > 0 && (
@@ -93,10 +93,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <div className="flex flex-col gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-3xl font-bold text-green-600">{selectedVariant.price}€</p>
+                <p className="text-2xl font-bold text-green-600">{selectedVariant.price}€</p>
                 {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
                   <>
-                    <p className="text-xl text-gray-500 line-through">{selectedVariant.compareAtPrice}€</p>
+                    <p className="text-lg text-gray-500 line-through">{selectedVariant.compareAtPrice}€</p>
                   </>
                 )}
               </div>
@@ -110,14 +110,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             <div className="flex gap-3 flex-wrap">
               <button
                 onClick={() => setShowSpecs(!showSpecs)}
-                className="p-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-lg"
+                className="p-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-lg hover:shadow-purple-500/50"
                 title="Voir spécifications"
               >
                 <Info className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowQR(!showQR)}
-                className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-lg"
+                className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-lg hover:shadow-gray-500/50"
                 title="Voir QR Code"
               >
                 <QrCode className="w-5 h-5" />
@@ -126,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                 href={safeProduct.product_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-lg"
+                className="p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-lg hover:shadow-blue-500/50"
                 title="Voir la fiche"
               >
                 <ExternalLink className="w-5 h-5" />

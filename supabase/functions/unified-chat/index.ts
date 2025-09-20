@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
 
     // RÈGLE IMPORTANTE: Ne pas proposer de produits pour les salutations simples
     const lowerMessage = message.toLowerCase().trim();
-    const isSimpleGreeting = ['bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey'].some(greeting => 
+    const isSimpleGreeting = ['bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey', 'hi'].some(greeting => 
       lowerMessage === greeting || lowerMessage === greeting + ' !'
     );
 
@@ -48,6 +48,27 @@ Deno.serve(async (req: Request) => {
       }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
+    // RÈGLE: Questions générales sans recherche produit spécifique
+    const isGeneralQuestion = lowerMessage.includes('comment') || lowerMessage.includes('pourquoi') || 
+                             lowerMessage.includes('conseil') || lowerMessage.includes('aide') ||
+                             lowerMessage.includes('que faire') || lowerMessage.includes('suggestions');
+
+    if (isGeneralQuestion && !hasSpecificProductMention(lowerMessage)) {
+      const adviceResponses = [
+        "Avec plaisir ! Pour vous conseiller au mieux, dites-moi : quelle pièce souhaitez-vous aménager ? 🏠",
+        "Bien sûr ! Quel est votre projet ? Salon, chambre, bureau ? Je suis là pour vous guider ! ✨",
+        "Volontiers ! Parlez-moi de votre espace : style, couleurs, budget ? 🎨",
+        "Parfait ! Quelle ambiance voulez-vous créer ? Moderne, cosy, élégante ? 💡"
+      ];
+      
+      return new Response(JSON.stringify({
+        message: adviceResponses[Math.floor(Math.random() * adviceResponses.length)],
+        products: [],
+        should_show_products: false,
+        intent: 'general_advice',
+        enriched_search: false
+      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
     // ÉTAPE 1: Analyser l'intention avec DeepSeek
     const analysisResult = await analyzeUserIntentWithDeepSeek(message);
     console.log('🧠 Analyse DeepSeek:', analysisResult);
@@ -162,6 +183,16 @@ RÉPONSE JSON:`;
   return analyzeIntentBasic(message);
 }
 
+function hasSpecificProductMention(message: string): boolean {
+  const productKeywords = [
+    'canapé', 'sofa', 'table', 'chaise', 'fauteuil', 'lit', 'matelas',
+    'armoire', 'commode', 'étagère', 'bibliothèque', 'meuble tv',
+    'console', 'buffet', 'vitrine', 'bureau', 'tabouret'
+  ];
+  
+  return productKeywords.some(keyword => message.includes(keyword));
+}
+
 function analyzeIntentBasic(message: string) {
   const lowerMessage = message.toLowerCase();
   
@@ -196,7 +227,8 @@ function analyzeIntentBasic(message: string) {
   const priceMatch = lowerMessage.match(/(?:sous|moins de|max|maximum)\s*(\d+)/);
   if (priceMatch) {
     const maxPrice = parseInt(priceMatch[1]);
-    if (maxPrice <= 500) attributes.price_range = '0-500';
+    if (maxPrice <= 100) attributes.price_range = '0-100';
+    else if (maxPrice <= 500) attributes.price_range = '0-500';
     else if (maxPrice <= 1000) attributes.price_range = '500-1000';
     else if (maxPrice <= 2000) attributes.price_range = '1000-2000';
     else attributes.price_range = '2000+';
@@ -242,11 +274,16 @@ async function searchEnrichedProducts(attributes: any) {
 
     // Filtrage par prix
     if (attributes.price_range) {
-      const [min, max] = attributes.price_range.split('-').map(p => parseInt(p.replace('+', '')));
-      if (max) {
-        query = query.gte('price', min).lte('price', max);
-      } else {
-        query = query.gte('price', min);
+      if (attributes.price_range === '0-100') {
+        query = query.lte('price', 100);
+      } else if (attributes.price_range === '0-500') {
+        query = query.lte('price', 500);
+      } else if (attributes.price_range === '500-1000') {
+        query = query.gte('price', 500).lte('price', 1000);
+      } else if (attributes.price_range === '1000-2000') {
+        query = query.gte('price', 1000).lte('price', 2000);
+      } else if (attributes.price_range === '2000+') {
+        query = query.gte('price', 2000);
       }
     }
 
@@ -259,7 +296,7 @@ async function searchEnrichedProducts(attributes: any) {
       return getDecoraFallbackProducts(attributes);
     }
 
-    console.log('✅ Produits enrichis trouvés:', products?.length || 0);
+    console.log('✅ Produits enrichis trouvés:', products?.length || 0, 'avec filtres:', attributes);
 
     // Transformer au format attendu
     return (products || []).map(product => ({
