@@ -82,6 +82,14 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [isAccountCreated, setIsAccountCreated] = useState(false);
   const [createdAccountInfo, setCreatedAccountInfo] = useState<any>(null);
 
+  // Define creationSteps at component level to avoid undefined reference
+  const creationSteps = [
+    { icon: CheckCircle, label: 'Validation demande', duration: 1200 },
+    { icon: FileText, label: 'Vérification Kbis', duration: 1000 },
+    { icon: Globe, label: 'Création sous-domaine unique', duration: 800 },
+    { icon: Mail, label: 'Envoi emails confirmation', duration: 600 }
+  ];
+
   // Move useEffect outside conditional to maintain hooks order
   useEffect(() => {
     if (showAccountCreation) {
@@ -283,13 +291,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   }
   // Écran de création de compte
   if (showAccountCreation) {
-    const creationSteps = [
-      { icon: CheckCircle, label: 'Validation demande', duration: 1200 },
-      { icon: FileText, label: 'Vérification Kbis', duration: 1000 },
-      { icon: Globe, label: 'Création sous-domaine unique', duration: 800 },
-      { icon: Mail, label: 'Envoi emails confirmation', duration: 600 }
-    ];
-
     const CurrentIcon = creationSteps[accountCreationStep]?.icon || CheckCircle;
 
     return (
