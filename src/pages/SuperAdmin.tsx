@@ -51,7 +51,24 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [applicationToReject, setApplicationToReject] = useState<string | null>(null);
-  const [showApplications, setShowApplications] = useState(true);
+  const [validatedRetailers, setValidatedRetailers] = useState<any[]>([]);
+
+  // Charger les revendeurs validés au démarrage
+  useEffect(() => {
+    const loadValidatedRetailers = () => {
+      try {
+        const saved = localStorage.getItem('validated_retailers');
+        const retailers = saved ? JSON.parse(saved) : [];
+        setValidatedRetailers(retailers);
+        console.log('📋 Revendeurs validés chargés:', retailers.length);
+      } catch (error) {
+        console.error('Erreur chargement revendeurs:', error);
+        setValidatedRetailers([]);
+      }
+    };
+    
+    loadValidatedRetailers();
+  }, []);
 
   // Mock data for dashboard
   const [dashboardStats, setDashboardStats] = useState({
@@ -136,12 +153,73 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
     return matchesSearch && matchesStatus;
   });
 
+  const generateUniqueSubdomain = (companyName: string) => {
+    const base = companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15);
+    return `${base}${Date.now().toString().slice(-4)}`;
+  };
+
+  const handleValidateApplication = (applicationId: string, approved: boolean, reason?: string) => {
+    const application = pendingApplications.find(app => app.id === applicationId);
+    if (!application) {
+      console.error('❌ Application non trouvée:', applicationId);
+      return;
+    }
+    
+    try {
+      if (approved) {
+        // Créer le revendeur validé
+        const newRetailer = {
+          id: `retailer-${Date.now()}`,
+          company_name: application.companyName,
+          email: application.email,
+          password_hash: application.password,
+          subdomain: application.subdomain || generateUniqueSubdomain(application.companyName),
+          plan: application.selectedPlan,
+          status: 'active',
+          contact_name: `${application.firstName} ${application.lastName}`,
+          phone: application.phone,
+          address: application.address,
+          city: application.city,
+          postal_code: application.postalCode,
+          siret: application.siret,
+          position: application.position,
+          created_at: application.submittedAt || new Date().toISOString(),
+          validated_at: new Date().toISOString(),
+          last_login: null
+        };
+        
+        // Sauvegarder le nouveau revendeur
+        const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+        existingRetailers.push(newRetailer);
+        localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
+        
+        // Mettre à jour l'état local
+        setValidatedRetailers(existingRetailers);
+        
+        console.log('✅ Revendeur créé:', newRetailer.company_name);
+        console.log('🔑 Identifiants:', {
+          email: newRetailer.email,
+          password: newRetailer.password_hash,
+          subdomain: `${newRetailer.subdomain}.omnia.sale`
+        });
+      } else {
+        console.log('❌ Demande rejetée:', reason);
+      }
+      
+      // Supprimer de la liste des demandes en attente
+      onValidateApplication(applicationId, approved);
+      
+    } catch (error) {
+      console.error('❌ Erreur validation:', error);
+    }
+  };
+
   const handleApproveApplication = (applicationId: string) => {
     const application = pendingApplications.find(app => app.id === applicationId);
     if (!application) return;
 
     if (confirm(`Approuver la demande de ${application.companyName || 'cette entreprise'} ?`)) {
-      onValidateApplication(applicationId, true);
+      handleValidateApplication(applicationId, true);
       
       // Ajouter à l'activité récente
       const newActivity = {
@@ -165,7 +243,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
     if (applicationToReject) {
       const application = pendingApplications.find(app => app.id === applicationToReject);
       
-      onValidateApplication(applicationToReject, false, rejectionReason);
+      handleValidateApplication(applicationToReject, false, rejectionReason);
       
       // Ajouter à l'activité récente
       const newActivity = {
@@ -488,7 +566,8 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
               status: app.status || 'pending',
               selectedPlan: app.selectedPlan || 'professional',
               submittedDate: app.submittedDate || '',
-              submittedTime: app.submittedTime || ''
+              submittedTime: app.submittedTime || '',
+              submittedAt: app.submittedAt || new Date().toISOString()
             };
             
             return (
@@ -513,6 +592,9 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 <div className="flex items-center gap-2 text-gray-300">
                   <User className="w-4 h-4" />
                   <span>{(safeApp.firstName || '') + ' ' + (safeApp.lastName || '')}</span>
+                  <span className="text-gray-400 text-sm">
+                    • Inscrit le {new Date(safeApp.submittedAt).toLocaleDateString('fr-FR')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Phone className="w-4 h-4" />
@@ -533,10 +615,6 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 <div className="flex items-center gap-2 text-gray-300">
                   <CreditCard className="w-4 h-4" />
                   <span className="capitalize">{safeApp.selectedPlan || 'Plan non sélectionné'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Calendar className="w-4 h-4" />
-                  <span>{(safeApp.submittedDate || 'Date inconnue') + ' à ' + (safeApp.submittedTime || 'Heure inconnue')}</span>
                 </div>
                 
                 {/* Document Kbis */}
@@ -661,12 +739,12 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white">Revendeurs Actifs</h2>
-            <p className="text-gray-300">{mockRetailers.length} revendeur(s) actif(s)</p>
+            <p className="text-gray-300">{[...validatedRetailers, ...mockRetailers].length} revendeur(s) actif(s)</p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => {
-                const csvContent = generateRetailersCSVExport(mockRetailers);
+                const csvContent = generateRetailersCSVExport([...validatedRetailers, ...mockRetailers]);
                 downloadCSV(csvContent, 'revendeurs_actifs.csv');
               }}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
@@ -692,7 +770,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {mockRetailers.map((retailer) => (
+                {[...validatedRetailers, ...mockRetailers].map((retailer) => (
                   <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -700,7 +778,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                           <Building className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <div className="font-semibold text-white">{retailer.companyName}</div>
+                          <div className="font-semibold text-white">{retailer.companyName || retailer.company_name}</div>
                           <div className="text-gray-400 text-sm">{retailer.email}</div>
                           <div className="text-cyan-400 text-xs font-mono">{retailer.subdomain}.omnia.sale</div>
                         </div>
@@ -716,17 +794,19 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-green-400 font-bold">{retailer.revenue.toLocaleString()}€</span>
+                      <span className="text-green-400 font-bold">{(retailer.revenue || 0).toLocaleString()}€</span>
                     </td>
                     <td className="p-4">
-                      <span className="text-cyan-400 font-semibold">{retailer.conversations.toLocaleString()}</span>
+                      <span className="text-cyan-400 font-semibold">{(retailer.conversations || 0).toLocaleString()}</span>
                     </td>
                     <td className="p-4">
-                      <span className="text-purple-400 font-semibold">{retailer.products}</span>
+                      <span className="text-purple-400 font-semibold">{retailer.products || 0}</span>
                     </td>
                     <td className="p-4">
                       <span className="text-gray-300 text-sm">
-                        {new Date(retailer.lastActive).toLocaleDateString('fr-FR')}
+                        {retailer.lastActive ? new Date(retailer.lastActive).toLocaleDateString('fr-FR') : 
+                         retailer.joinDate ? new Date(retailer.joinDate).toLocaleDateString('fr-FR') :
+                         retailer.created_at ? new Date(retailer.created_at).toLocaleDateString('fr-FR') : 'N/A'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -948,14 +1028,14 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
     
     const rows = retailers.map(retailer => [
       retailer.id || '',
-      retailer.companyName || '',
+      retailer.companyName || retailer.company_name || '',
       retailer.email || '',
       retailer.plan || '',
       retailer.status || '',
       retailer.revenue || '0',
       retailer.conversations || '0',
       retailer.products || '0',
-      retailer.joinDate || '',
+      retailer.joinDate || retailer.created_at || '',
       retailer.lastActive || '',
       retailer.subdomain ? `${retailer.subdomain}.omnia.sale` : ''
     ]);
@@ -1028,7 +1108,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all font-medium ${
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
                       activeTab === tab.id
                         ? 'bg-cyan-500 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-white/10'
@@ -1050,7 +1130,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
 
         {/* Content */}
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'applications' && showApplications && renderApplications()}
+        {activeTab === 'applications' && renderApplications()}
         {activeTab === 'retailers' && renderRetailers()}
         {activeTab === 'analytics' && renderAnalytics()}
       </div>
