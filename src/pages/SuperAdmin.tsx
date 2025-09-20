@@ -474,7 +474,23 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredApplications.map((application) => (
+          {filteredApplications.map((app) => {
+            // Protection contre les valeurs undefined
+            const safeApp = {
+              ...app,
+              companyName: app.companyName || '',
+              email: app.email || '',
+              firstName: app.firstName || '',
+              lastName: app.lastName || '',
+              phone: app.phone || '',
+              city: app.city || '',
+              status: app.status || 'pending',
+              selectedPlan: app.selectedPlan || 'professional',
+              submittedDate: app.submittedDate || '',
+              submittedTime: app.submittedTime || ''
+            };
+            
+            return (
             <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all group">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -575,7 +591,8 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
