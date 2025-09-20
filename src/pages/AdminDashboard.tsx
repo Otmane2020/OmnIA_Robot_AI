@@ -17,6 +17,7 @@ import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
+import { Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { QrCode } from 'lucide-react';
 
@@ -65,6 +66,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: 'catalogue', label: 'Catalogue', icon: Database },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
+    { id: 'enriched', label: 'Produits Enrichis', icon: Sparkles },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
     { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
@@ -326,6 +328,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderEnriched = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Produits Enrichis DeepSeek</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-300 text-sm">IA DeepSeek active</span>
+        </div>
+      </div>
+
+      <ProductsEnrichedTable />
+    </div>
+  );
   const renderRobot = () => (
     <div className="space-y-8">
       <OmniaRobotTab />
@@ -482,6 +497,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'catalogue': return renderCatalogue();
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
+      case 'enriched': return renderEnriched();
       case 'robot': return renderRobot();
       case 'historique': return renderHistorique();
       case 'abonnement': return renderAbonnement();
