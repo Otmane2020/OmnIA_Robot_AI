@@ -61,23 +61,50 @@ function App() {
     }
     
     // Vérifier les revendeurs validés
-    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-    const retailer = validatedRetailers.find((r: any) => 
-      r.email === credentials.email && r.password_hash === credentials.password
-    );
-    
-    if (retailer) {
-      console.log('✅ Connexion revendeur réussie:', retailer.company_name);
+    try {
+      // Vérifier d'abord en base de données
+      const { data: retailer, error } = await supabase
+        .from('retailers')
+        .select('*')
+        .eq('email', credentials.email)
+        .eq('status', 'active')
+        .single();
+
+      if (retailer && retailer.password_hash === credentials.password) {
+        console.log('✅ Connexion revendeur DB réussie:', retailer.company_name);
+        
+        // Mettre à jour last_login
+        await supabase
+          .from('retailers')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', retailer.id);
+        
+        setIsSuperAdmin(false);
+        setIsLoggedIn(true);
+        return;
+      }
       
-      // Mettre à jour last_login
-      const updatedRetailers = validatedRetailers.map((r: any) => 
-        r.id === retailer.id ? { ...r, last_login: new Date().toISOString() } : r
+      // Fallback localStorage
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const localRetailer = validatedRetailers.find((r: any) => 
+        r.email === credentials.email && r.password_hash === credentials.password
       );
-      localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
       
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      return;
+      if (localRetailer) {
+        console.log('✅ Connexion revendeur local réussie:', localRetailer.company_name);
+        
+        // Mettre à jour last_login
+        const updatedRetailers = validatedRetailers.map((r: any) => 
+          r.id === localRetailer.id ? { ...r, last_login: new Date().toISOString() } : r
+        );
+        localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
+        
+        setIsSuperAdmin(false);
+        setIsLoggedIn(true);
+        return;
+      }
+    } catch (error) {
+      console.error('❌ Erreur vérification revendeur:', error);
     }
     
     // Decora Home - Boutique principale

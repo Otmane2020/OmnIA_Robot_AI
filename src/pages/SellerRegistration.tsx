@@ -150,7 +150,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     
     // NOUVEAU: Sauvegarder la demande dans la base de données
     try {
-      const { data, error } = await supabase
+      const { data: applicationData, error } = await supabase
         .from('retailer_applications')
         .insert({
           company_name: formData.companyName,
@@ -167,14 +167,32 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           proposed_subdomain: uniqueSubdomain,
           kbis_document_url: formData.kbisFile ? `kbis-${Date.now()}.pdf` : null,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('❌ Erreur sauvegarde DB:', error);
+        
+        // Vérifier si c'est un doublon
+        if (error.code === '23505') { // Violation contrainte unique
+          if (error.message.includes('email')) {
+            alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+            return;
+          }
+          if (error.message.includes('siret')) {
+            alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+            return;
+          }
+        }
         throw error;
       }
 
-      console.log('✅ Demande sauvegardée en base de données:', data);
+      console.log('✅ Demande sauvegardée en base de données:', applicationData);
+      
+      // Mettre à jour l'ID avec celui de la DB
+      accountInfo.id = applicationData.id;
+      
     } catch (dbError) {
       console.error('❌ Erreur base de données:', dbError);
       // Continuer avec localStorage en fallback
