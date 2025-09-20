@@ -219,6 +219,40 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (e) e.preventDefault();
     if (!validateStep(4)) return;
 
+    // Vérifier les doublons avant soumission
+    const existingApplications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
+    const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    
+    // Vérifier email unique dans les demandes en attente
+    const emailInPending = existingApplications.some((app: any) => 
+      app.email?.toLowerCase() === formData.email.toLowerCase()
+    );
+    
+    // Vérifier email unique dans les revendeurs validés
+    const emailInValidated = existingRetailers.some((retailer: any) => 
+      retailer.email?.toLowerCase() === formData.email.toLowerCase()
+    );
+    
+    // Vérifier SIRET unique dans les demandes en attente
+    const siretInPending = existingApplications.some((app: any) => 
+      app.siret === formData.siret
+    );
+    
+    // Vérifier SIRET unique dans les revendeurs validés
+    const siretInValidated = existingRetailers.some((retailer: any) => 
+      retailer.siret === formData.siret
+    );
+    
+    if (emailInPending || emailInValidated) {
+      alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+      return;
+    }
+    
+    if (siretInPending || siretInValidated) {
+      alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {

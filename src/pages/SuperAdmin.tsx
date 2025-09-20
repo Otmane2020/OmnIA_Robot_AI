@@ -491,58 +491,58 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
             };
             
             return (
-            <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all group">
+            <div key={safeApp.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all group">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                     <Building className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white">{application.companyName || 'Nom non renseigné'}</h3>
-                    <p className="text-cyan-400 text-sm">{application.email || 'Email non renseigné'}</p>
+                    <h3 className="font-bold text-white">{safeApp.companyName || 'Nom non renseigné'}</h3>
+                    <p className="text-cyan-400 text-sm">{safeApp.email || 'Email non renseigné'}</p>
                   </div>
                 </div>
                 
-                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(application.status)}`}>
-                  {getStatusLabel(application.status)}
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(safeApp.status)}`}>
+                  {getStatusLabel(safeApp.status)}
                 </span>
               </div>
 
               <div className="space-y-2 mb-6 text-sm">
                 <div className="flex items-center gap-2 text-gray-300">
                   <User className="w-4 h-4" />
-                  <span>{(application.firstName || '') + ' ' + (application.lastName || '')}</span>
+                  <span>{(safeApp.firstName || '') + ' ' + (safeApp.lastName || '')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Phone className="w-4 h-4" />
-                  <span>{application.phone || 'Non renseigné'}</span>
+                  <span>{safeApp.phone || 'Non renseigné'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <MapPin className="w-4 h-4" />
-                  <span>{(application.city || 'Ville non renseignée') + (application.country ? `, ${application.country}` : '')}</span>
+                  <span>{(safeApp.city || 'Ville non renseignée') + (app.country ? `, ${app.country}` : '')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Globe className="w-4 h-4" />
                   <span className="text-cyan-400 font-mono text-xs">
-                    {(typeof application.subdomain === 'string' && application.subdomain) 
-                      ? `${application.subdomain}.omnia.sale` 
-                      : `${(application.companyName || 'boutique').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}.omnia.sale`}
+                    {(typeof app.subdomain === 'string' && app.subdomain) 
+                      ? `${app.subdomain}.omnia.sale` 
+                      : `${(app.companyName || 'boutique').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}.omnia.sale`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <CreditCard className="w-4 h-4" />
-                  <span className="capitalize">{application.selectedPlan || 'Plan non sélectionné'}</span>
+                  <span className="capitalize">{safeApp.selectedPlan || 'Plan non sélectionné'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Calendar className="w-4 h-4" />
-                  <span>{(application.submittedDate || 'Date inconnue') + ' à ' + (application.submittedTime || 'Heure inconnue')}</span>
+                  <span>{(safeApp.submittedDate || 'Date inconnue') + ' à ' + (safeApp.submittedTime || 'Heure inconnue')}</span>
                 </div>
                 
                 {/* Document Kbis */}
-                {application.kbisFile && (
+                {app.kbisFile && (
                   <div className="flex items-center gap-2 text-gray-300">
                     <FileText className="w-4 h-4" />
-                    <span className="text-green-400">Kbis fourni ({(application.kbisFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <span className="text-green-400">Kbis fourni ({(app.kbisFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                   </div>
                 )}
               </div>
@@ -550,7 +550,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
               {/* Actions */}
               <div className="space-y-3">
                 <button
-                  onClick={() => handleViewApplication(application)}
+                  onClick={() => handleViewApplication(app)}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105"
                 >
                   <Eye className="w-4 h-4" />
@@ -558,19 +558,19 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 </button>
                 
                 {/* Boutons de validation - CONDITION CORRIGÉE */}
-                {(!application.status || 
-                  application.status === 'pending' || 
-                  application.status === 'pending_validation') && (
+                {(!app.status || 
+                  app.status === 'pending' || 
+                  app.status === 'pending_validation') && (
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => handleApproveApplication(application.id)}
+                      onClick={() => handleApproveApplication(app.id)}
                       className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg hover:shadow-green-500/50"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Approuver
                     </button>
                     <button
-                      onClick={() => handleRejectApplication(application.id)}
+                      onClick={() => handleRejectApplication(app.id)}
                       className="bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 shadow-lg hover:shadow-red-500/50"
                     >
                       <X className="w-4 h-4" />
@@ -580,9 +580,9 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                 )}
                 
                 {/* Bouton Kbis si disponible */}
-                {application.kbisFile && (
+                {app.kbisFile && (
                   <button
-                    onClick={() => handleViewKbis(application)}
+                    onClick={() => handleViewKbis(app)}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
                   >
                     <FileText className="w-4 h-4" />

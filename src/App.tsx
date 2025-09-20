@@ -57,9 +57,31 @@ function App() {
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      return;
     }
+    
+    // Vérifier les revendeurs validés
+    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    const retailer = validatedRetailers.find((r: any) => 
+      r.email === credentials.email && r.password_hash === credentials.password
+    );
+    
+    if (retailer) {
+      console.log('✅ Connexion revendeur réussie:', retailer.company_name);
+      
+      // Mettre à jour last_login
+      const updatedRetailers = validatedRetailers.map((r: any) => 
+        r.id === retailer.id ? { ...r, last_login: new Date().toISOString() } : r
+      );
+      localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
+      
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+      return;
+    }
+    
     // Decora Home - Boutique principale
-    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
+    if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
     }
@@ -88,7 +110,7 @@ function App() {
       setIsLoggedIn(true);
     }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025\n\nOu utilisez les identifiants de revendeur validé.');
     }
   };
 
