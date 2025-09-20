@@ -1030,7 +1030,7 @@ export const RobotInterface: React.FC = () => {
                 />
               </div>
               <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
-              <p className="text-cyan-400 text-sm mt-2 font-mono">→ {window.location.origin}/upload</p>
+              <p className="text-cyan-400 text-sm mt-2">→ {window.location.origin}/upload</p>
             </div>
           </div>
         </div>
