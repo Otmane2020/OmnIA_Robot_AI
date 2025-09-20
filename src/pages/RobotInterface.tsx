@@ -53,11 +53,16 @@ export const RobotInterface: React.FC = () => {
     position: { x: 0, y: 0, rotation: 0 },
     isMoving: false,
     isDancing: false,
-    isCharging: false,
+    isCharging: true,
     battery: 95,
     mood: 'happy',
     currentTask: 'Prêt à vous aider'
   });
+  
+  const [isRobotOn, setIsRobotOn] = useState(true);
+  const [isDetectingHuman, setIsDetectingHuman] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVolumeOn, setIsVolumeOn] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -277,20 +282,73 @@ export const RobotInterface: React.FC = () => {
   };
 
   const handleMicClick = () => {
+    setIsMicOn(!isMicOn);
     if (isRecording) {
       stopRecording();
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
     } else {
-      startRecording();
-      setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+      if (isMicOn) {
+        startRecording();
+        setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Écoute en cours...' }));
+      }
     }
   };
 
   const handleVolumeClick = () => {
+    setIsVolumeOn(!isVolumeOn);
     if (isSpeaking) {
       stopSpeaking();
       setCurrentSpeakingMessage(null);
       setRobotState(prev => ({ ...prev, mood: 'happy' }));
+    }
+  };
+
+  const handlePowerToggle = () => {
+    setIsRobotOn(!isRobotOn);
+    if (!isRobotOn) {
+      // Allumer le robot
+      setRobotState(prev => ({ 
+        ...prev, 
+        mood: 'happy', 
+        currentTask: 'Redémarrage...',
+        battery: 95
+      }));
+      setTimeout(() => {
+        setRobotState(prev => ({ ...prev, currentTask: 'Prêt à vous aider' }));
+      }, 2000);
+    } else {
+      // Éteindre le robot
+      setRobotState(prev => ({ 
+        ...prev, 
+        mood: 'sleeping', 
+        currentTask: 'Mode veille...',
+        battery: 95
+      }));
+      stopSpeaking();
+      if (isRecording) stopRecording();
+    }
+  };
+
+  const handleHumanDetectionToggle = () => {
+    setIsDetectingHuman(!isDetectingHuman);
+    if (!isDetectingHuman) {
+      setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine activée' }));
+      // Simuler détection après 3 secondes
+      setTimeout(() => {
+        if (isDetectingHuman) {
+          const greetingMessage: ChatMessageType = {
+            id: Date.now().toString(),
+            content: "👋 Bonjour ! Je vous ai détecté. Bienvenue dans notre showroom ! Comment puis-je vous aider ?",
+            isUser: false,
+            timestamp: new Date(),
+            products: []
+          };
+          setMessages(prev => [...prev, greetingMessage]);
+          speak("Bonjour ! Je vous ai détecté. Bienvenue dans notre showroom !");
+        }
+      }, 3000);
+    } else {
+      setRobotState(prev => ({ ...prev, currentTask: 'Détection humaine désactivée' }));
     }
   };
 

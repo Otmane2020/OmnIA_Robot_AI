@@ -250,6 +250,41 @@ div[style*="display: none"] {
   display: none !important;
 }
 
+/* Corrections spécifiques pour RobotInterface */
+input.w-full.bg-slate-700.border.border-slate-600.rounded-2xl.px-6.py-4.text-white.placeholder-slate-400.focus\:outline-none.focus\:border-cyan-400.focus\:ring-2.focus\:ring-cyan-400\/30 {
+  color: black;
+}
+
+.bg-white\/10.backdrop-blur-xl.rounded-xl.p-3.border.border-white\/20 {
+  display: none;
+}
+
+.absolute.bottom-2.left-1\/2.transform.-translate-x-1\/2.w-16.h-8.bg-gradient-to-br.from-slate-300.to-slate-400.rounded-xl.border.border-slate-400 {
+  display: none;
+}
+
+.w-8.h-4.bg-cyan-500.rounded-full {
+  background-color: #216de8;
+  width: 71px;
+  height: 26px;
+  border-bottom: 4px solid #216de8;
+  border-radius: 0 0 50% 50%;
+}
+
+/* Bouche souriante du robot */
+.robot-mouth-smile {
+  background-color: #216de8;
+  width: 71px;
+  height: 26px;
+  border-bottom: 4px solid #216de8;
+  border-radius: 0 0 50% 50%;
+  transition: all 0.3s ease;
+}
+
+.robot-mouth-talking {
+  animation: mouth-talk 0.3s infinite;
+}
+
 @keyframes grid-move {
   0% { transform: translate(0, 0); }
   100% { transform: translate(40px, 40px); }
