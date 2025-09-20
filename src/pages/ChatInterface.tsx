@@ -38,7 +38,7 @@ export const ChatInterface: React.FC = () => {
 
   // Message de bienvenue
   useEffect(() => {
-    const greeting = "Bonjour ! Je suis OmnIA 🤖 Votre Robot Designer spécialisé en mobilier. J'ai analysé votre catalogue enrichi. Comment puis-je vous aider ?";
+    const greeting = "Bonjour ! Je suis OmnIA 🤖 Votre Robot Designer spécialisé en mobilier. J'ai analysé 668 produits de votre catalogue. Comment puis-je vous aider ?";
     setMessages([{ id: Date.now().toString(), content: greeting, isUser: false, timestamp: new Date(), products: [] }]);
     speak(greeting);
   }, []);
@@ -48,8 +48,8 @@ export const ChatInterface: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // --- Appel API IA avec catalogue enrichi ---
-  const sendToAI = async (message: string): Promise<{ message: string; products: Product[] }> => {
+  // --- Appel API IA ---
+  const sendToAI = async (message: string): Promise<string> => {
     try {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
         method: "POST",
@@ -65,17 +65,10 @@ export const ChatInterface: React.FC = () => {
 
       if (!res.ok) throw new Error("Erreur API");
       const data = await res.json();
-      
-      return {
-        message: data.message || "Comment puis-je vous aider ?",
-        products: data.products || []
-      };
+      return data.message || "Comment puis-je vous aider ?";
     } catch (err) {
       console.error("❌ Erreur sendToAI:", err);
-      return {
-        message: "Erreur de communication avec l'assistant IA.",
-        products: []
-      };
+      return "Erreur de communication avec l'assistant IA.";
     }
   };
 
@@ -89,22 +82,25 @@ export const ChatInterface: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // 🔥 Envoi au moteur IA avec catalogue enrichi
-      const aiResult = await sendToAI(messageText);
+      // 🔥 Envoi au moteur IA
+      const aiResponse = await sendToAI(messageText);
+
+      // TODO: Parser aiResponse pour sortir des produits si besoin
+      const foundProducts: Product[] = [];
 
       // Ajout réponse IA
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        content: aiResult.message,
+        content: aiResponse,
         isUser: false,
         timestamp: new Date(),
-        products: aiResult.products
+        products: foundProducts
       }]);
 
-      setProducts(aiResult.products);
-      setShowProducts(aiResult.products.length > 0);
+      setProducts(foundProducts);
+      setShowProducts(foundProducts.length > 0);
 
-      speak(aiResult.message);
+      speak(aiResponse);
     } catch (error) {
       console.error("❌ Erreur handleSendMessage:", error);
       const errorMessage = "Désolé, petit souci technique 🤖. Pouvez-vous reformuler ?";
@@ -132,16 +128,14 @@ export const ChatInterface: React.FC = () => {
         body: JSON.stringify({ image_base64: base64 }),
       });
 
-      let analysis = "📸 **Analyse de votre espace :**\n\n**Style détecté :** Moderne et épuré\n**Ambiance :** Chaleureuse avec potentiel d'amélioration\n\n**💡 Mes recommandations :**\n• **Canapé ALYANA** (799€) - Convertible velours côtelé\n• **Table AUREA** (499€) - Travertin naturel élégant\n\n**🎨 Conseil d'expert :** L'harmonie des matériaux créera une ambiance cohérente !";
+      let analysis = "📸 Analyse en cours...";
       let foundProducts: Product[] = [];
 
       if (response.ok) {
         const visionData = await response.json();
-        analysis = visionData.analysis || analysis;
-        
-        // Rechercher des produits recommandés après analyse photo
-        const aiResult = await sendToAI(`Analyse cette image: ${analysis}. Recommande des produits adaptés.`);
-        foundProducts = aiResult.products;
+        analysis = visionData.analysis;
+        // On enrichit avec l'IA
+        await sendToAI(`Analyse cette image: ${analysis}`);
       }
 
       setMessages(prev => [...prev, {
@@ -194,50 +188,8 @@ export const ChatInterface: React.FC = () => {
   };
 
   const handleAddToCart = (productId: string, variantId: string) => {
-    const product = products.find(p => p.id === productId);
-    const variant = product?.variants.find(v => v.id === variantId);
-    
-    if (product && variant) {
-      const existingItem = cartItems.find(item => item.variantId === variantId);
-      
-      if (existingItem) {
-        setCartItems(prev => prev.map(item =>
-          item.variantId === variantId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
-      } else {
-        const newItem: CartItem = {
-          id: Date.now().toString(),
-          productId,
-          variantId,
-          title: product.title,
-          price: variant.price,
-          quantity: 1,
-          image_url: product.image_url,
-          product_url: product.product_url
-        };
-        setCartItems(prev => [...prev, newItem]);
-      }
-    }
-  };
-
-  const handleUpdateCartQuantity = (itemId: string, quantity: number) => {
-    if (quantity === 0) {
-      setCartItems(prev => prev.filter(item => item.id !== itemId));
-    } else {
-      setCartItems(prev => prev.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      ));
-    }
-  };
-
-  const handleRemoveCartItem = (itemId: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== itemId));
-  };
-
-  const handleCheckout = () => {
-    alert('Redirection vers le système de paiement...');
+    // Logique d'ajout au panier
+    console.log('Ajout au panier:', productId, variantId);
   };
 
   return (
@@ -278,7 +230,7 @@ export const ChatInterface: React.FC = () => {
           {/* Info magasin */}
           <div className="bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
             <div className="text-white font-bold text-sm">Decora Home</div>
-            <div className="text-cyan-300 text-xs">Catalogue enrichi actif</div>
+            <div className="text-cyan-300 text-xs">668 produits actifs</div>
             <div className="text-cyan-400 text-xs">Plan Professional</div>
           </div>
         </div>
@@ -335,7 +287,7 @@ export const ChatInterface: React.FC = () => {
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-purple-500/50 ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isRecording
                   ? 'bg-purple-500 shadow-purple-500/40 animate-pulse'
                   : 'bg-purple-500 hover:bg-purple-400'
@@ -346,7 +298,7 @@ export const ChatInterface: React.FC = () => {
 
             <button
               onClick={handleVolumeClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-green-500/50 ${
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isSpeaking
                   ? 'bg-green-500 shadow-green-500/40 animate-pulse'
                   : 'bg-green-500 hover:bg-green-400 shadow-lg'
@@ -357,8 +309,8 @@ export const ChatInterface: React.FC = () => {
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg hover:shadow-pink-500/50 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-              title="Analyser une photo"
+              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              title="Reconnaissance et détection humain"
             >
               <div className="relative">
                 <Camera className="w-6 h-6 text-white" />
@@ -369,23 +321,20 @@ export const ChatInterface: React.FC = () => {
 
           {/* Deuxième rangée de boutons */}
           <div className="grid grid-cols-3 gap-3 mb-3">
-            <button 
-              onClick={() => window.open('/upload', '_blank')}
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg hover:shadow-orange-500/50 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
-            >
+            <button className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105">
               <QrCode className="w-6 h-6 text-white" />
             </button>
 
             <button
               onClick={() => window.open('/upload', '_blank')}
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg hover:shadow-orange-500/50 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="QR Code pour upload photo mobile"
             >
               <Settings className="w-6 h-6 text-white" />
             </button>
 
             <button 
-              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg hover:shadow-green-500/50 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
             >
               <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
@@ -395,18 +344,18 @@ export const ChatInterface: React.FC = () => {
 
           {/* Troisième rangée de boutons */}
           <div className="grid grid-cols-3 gap-3 mb-3">
-            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg hover:shadow-blue-500/50 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
               <div className="text-white text-xs font-bold mb-1">+</div>
               <span className="text-white text-xs">Bouger</span>
             </button>
             <button
-              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg hover:shadow-purple-500/50 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-16 h-16 bg-purple-500 hover:bg-purple-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105"
             >
               <Music className="w-5 h-5 text-white mb-1" />
               <span className="text-white text-xs">Danser</span>
             </button>
 
-            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg hover:shadow-gray-500/50 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <button className="w-16 h-16 bg-gray-600 hover:bg-gray-500 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
               <div className="w-5 h-5 border-2 border-white rounded flex items-center justify-center mb-1">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
@@ -430,14 +379,14 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50 shadow-lg hover:shadow-purple-500/50">
+              <button className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50">
                 <QrCode className="w-5 h-5 text-purple-300" />
               </button>
               <CartButton 
                 items={cartItems}
-                onUpdateQuantity={handleUpdateCartQuantity}
-                onRemoveItem={handleRemoveCartItem}
-                onCheckout={handleCheckout}
+                onUpdateQuantity={() => {}}
+                onRemoveItem={() => {}}
+                onCheckout={() => {}}
               />
             </div>
           </div>
@@ -467,28 +416,6 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
           )}
-
-          {/* Affichage des produits recommandés */}
-          {products.length > 0 && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                ✨ Mes recommandations
-                <span className="bg-cyan-500/20 text-cyan-700 px-3 py-1 rounded-full text-sm border border-cyan-300">
-                  {products.length} produit{products.length > 1 ? 's' : ''}
-                </span>
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           <div ref={messagesEndRef} />
         </div>
 
@@ -497,25 +424,25 @@ export const ChatInterface: React.FC = () => {
           <div className="flex gap-3 overflow-x-auto pb-2">
             <button
               onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
-              className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-2 shadow-lg hover:shadow-blue-500/50 hover:scale-105"
+              className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-2"
             >
               🛋️ Canapé beige
             </button>
             <button
               onClick={() => handleSuggestionClick("🪑 Table ronde")}
-              className="flex-shrink-0 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-2 shadow-lg hover:shadow-orange-500/50 hover:scale-105"
+              className="flex-shrink-0 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-2"
             >
               🪑 Table ronde
             </button>
             <button
               onClick={() => handleSuggestionClick("💺 Chaise bureau")}
-              className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-2 shadow-lg hover:shadow-green-500/50 hover:scale-105"
+              className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-2"
             >
               💺 Chaise bureau
             </button>
             <button
               onClick={() => handleSuggestionClick("✨ Tendances 2025")}
-              className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center gap-2 shadow-lg hover:shadow-yellow-500/50 hover:scale-105"
+              className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center gap-2"
             >
               ✨ Tendances 2025
             </button>
@@ -538,7 +465,7 @@ export const ChatInterface: React.FC = () => {
             
             <button
               onClick={() => window.open('/upload', '_blank')}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/50"
+              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg"
               title="QR Code pour upload photo mobile"
             >
               <QrCode className="w-6 h-6 text-white" />
@@ -547,7 +474,7 @@ export const ChatInterface: React.FC = () => {
             <button
               onClick={() => handleSendMessage(inputMessage)}
               disabled={!inputMessage.trim()}
-              className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/50"
+              className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg"
             >
               <Send className="w-6 h-6 text-white" />
             </button>
