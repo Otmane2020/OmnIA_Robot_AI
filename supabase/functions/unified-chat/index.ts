@@ -24,6 +24,30 @@ Deno.serve(async (req: Request) => {
     const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
+    // RÈGLE IMPORTANTE: Ne pas proposer de produits pour les salutations simples
+    const lowerMessage = message.toLowerCase().trim();
+    const isSimpleGreeting = ['bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey'].some(greeting => 
+      lowerMessage === greeting || lowerMessage === greeting + ' !'
+    );
+
+    if (isSimpleGreeting) {
+      const greetingResponses = [
+        "Bonjour ! Ravi de vous voir ! 😊 Que cherchez-vous pour votre intérieur ?",
+        "Salut ! Bienvenue chez nous ! 👋 Comment puis-je vous aider ?", 
+        "Hello ! Que puis-je faire pour vous ? 🤖",
+        "Bonjour ! Prêt à décorer ? 🏠 Dites-moi vos envies !",
+        "Coucou ! Comment allez-vous ? ✨ Quel projet mobilier ?"
+      ];
+      
+      return new Response(JSON.stringify({
+        message: greetingResponses[Math.floor(Math.random() * greetingResponses.length)],
+        products: [],
+        should_show_products: false,
+        intent: 'greeting',
+        enriched_search: false
+      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
     // ÉTAPE 1: Analyser l'intention avec DeepSeek
     const analysisResult = await analyzeUserIntentWithDeepSeek(message);
     console.log('🧠 Analyse DeepSeek:', analysisResult);
@@ -343,7 +367,7 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
   if (products.length === 0) {
     if (analysis.attributes.category) {
       return {
-        message: `Malheureusement, nous n'avons actuellement aucun ${analysis.attributes.category} en stock correspondant exactement à vos critères. Mais restons en contact ! Dès que de nouveaux modèles arrivent, je vous préviens avec des suggestions adaptées à votre budget. Découvrez nos autres catégories ?`
+        message: `Malheureusement, nous n'avons actuellement aucun ${analysis.attributes.category} en stock correspondant exactement à vos critères. Mais restons en contact ! Dès que de nouveaux modèles arrivent, je vous préviens. Que diriez-vous d'explorer nos autres catégories ?`
       };
     }
     return {
@@ -354,12 +378,6 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
   const product = products[0];
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
   
-  if (lowerMessage.includes('table') && lowerMessage.includes('moins')) {
-    return {
-      message: `Parfait ! J'ai trouvé ${products.length} table${products.length > 1 ? 's' : ''} dans votre budget. ${hasDiscount ? 'Avec des promotions en cours !' : ''} Quelle taille conviendrait le mieux ?`
-    };
-  }
-
   return {
     message: `Excellente demande ! J'ai ${products.length} produit${products.length > 1 ? 's' : ''} qui pourrai${products.length > 1 ? 'ent' : 't'} vous intéresser. ${hasDiscount ? 'Avec des remises attractives !' : ''} Lequel vous plaît le plus ?`
   };

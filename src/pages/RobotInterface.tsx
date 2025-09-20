@@ -42,7 +42,6 @@ export const RobotInterface: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [currentSpeakingMessage, setCurrentSpeakingMessage] = useState<string | null>(null);
-  const [questioningMode, setQuestioningMode] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -119,7 +118,6 @@ export const RobotInterface: React.FC = () => {
     
     setMessages([greetingMessage]);
     speak(greeting);
-    handleRobotDance();
   };
 
   const handleSendMessage = async (messageText: string) => {
@@ -138,6 +136,7 @@ export const RobotInterface: React.FC = () => {
     setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Analyse de votre demande...' }));
 
     try {
+      // Appel à unified-chat qui utilise DeepSeek + products_enriched
       const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
         method: 'POST',
         headers: {
@@ -146,8 +145,7 @@ export const RobotInterface: React.FC = () => {
         },
         body: JSON.stringify({ 
           message: messageText,
-          retailer_id: 'demo-retailer-id',
-          questioning_mode: questioningMode
+          retailer_id: 'demo-retailer-id'
         }),
       });
 
@@ -159,16 +157,11 @@ export const RobotInterface: React.FC = () => {
         aiResponse = searchData.message;
         foundProducts = searchData.products || [];
         
-        if (foundProducts.length === 0 && messageText.toLowerCase().includes('canapé')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Canapé').slice(0, 2);
-          aiResponse += " Voici nos canapés disponibles :";
-        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('table')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Table').slice(0, 2);
-          aiResponse += " Découvrez nos tables :";
-        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('chaise')) {
-          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Chaise').slice(0, 2);
-          aiResponse += " Voici nos chaises :";
-        }
+        console.log('🤖 Réponse unified-chat:', {
+          message: aiResponse.substring(0, 50),
+          products_count: foundProducts.length,
+          enriched_search: searchData.enriched_search
+        });
       } else {
         aiResponse = "Je rencontre des difficultés techniques. Pouvez-vous reformuler ?";
       }
@@ -261,12 +254,11 @@ export const RobotInterface: React.FC = () => {
         content: analysis,
         isUser: false,
         timestamp: new Date(),
-        products: getDecoraFallbackProducts().slice(0, 2),
+        products: [],
         photoUrl: imageUrl
       };
 
       setMessages(prev => [...prev, photoMessage]);
-      setProducts(getDecoraFallbackProducts().slice(0, 2));
       
       speak(analysis);
       handleRobotDance(); // Danse après analyse photo
@@ -326,7 +318,7 @@ export const RobotInterface: React.FC = () => {
 
   const handlePowerToggle = () => {
     setIsRobotOn(!isRobotOn);
-    if (isRobotOn) {
+    if (!isRobotOn) {
       // Allumer le robot
       setIsMicOn(true);
       setIsVolumeOn(true);
@@ -501,78 +493,6 @@ export const RobotInterface: React.FC = () => {
     handleSendMessage(suggestion);
   };
 
-  const getDecoraFallbackProducts = () => [
-    {
-      id: 'decora-canape-alyana-beige',
-      handle: 'canape-alyana-beige',
-      title: 'Canapé ALYANA convertible - Beige',
-      productType: 'Canapé',
-      vendor: 'Decora Home',
-      tags: ['convertible', 'velours', 'beige'],
-      price: 799,
-      compareAtPrice: 1399,
-      availableForSale: true,
-      quantityAvailable: 100,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-      variants: [{
-        id: 'variant-beige',
-        title: 'Beige',
-        price: 799,
-        availableForSale: true,
-        quantityAvailable: 100,
-        selectedOptions: [{ name: 'Couleur', value: 'Beige' }]
-      }]
-    },
-    {
-      id: 'decora-table-aurea-100',
-      handle: 'table-aurea-100',
-      title: 'Table AUREA Ø100cm - Travertin',
-      productType: 'Table',
-      vendor: 'Decora Home',
-      tags: ['travertin', 'ronde', 'naturel'],
-      price: 499,
-      compareAtPrice: 859,
-      availableForSale: true,
-      quantityAvailable: 50,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-      description: 'Table ronde en travertin naturel avec pieds métal noir',
-      variants: [{
-        id: 'variant-100cm',
-        title: 'Ø100cm',
-        price: 499,
-        availableForSale: true,
-        quantityAvailable: 50,
-        selectedOptions: [{ name: 'Taille', value: '100cm' }]
-      }]
-    },
-    {
-      id: 'decora-chaise-inaya-gris',
-      handle: 'chaise-inaya-gris',
-      title: 'Chaise INAYA - Gris chenille',
-      productType: 'Chaise',
-      vendor: 'Decora Home',
-      tags: ['chenille', 'métal', 'gris'],
-      price: 99,
-      compareAtPrice: 149,
-      availableForSale: true,
-      quantityAvailable: 96,
-      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-      description: 'Chaise en tissu chenille avec pieds métal noir',
-      variants: [{
-        id: 'variant-gris',
-        title: 'Gris clair',
-        price: 99,
-        availableForSale: true,
-        quantityAvailable: 96,
-        selectedOptions: [{ name: 'Couleur', value: 'Gris clair' }]
-      }]
-    }
-  ];
-
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex overflow-hidden">
       {/* Background Effects */}
@@ -582,9 +502,9 @@ export const RobotInterface: React.FC = () => {
       </div>
 
       {/* Sidebar - Robot Control Panel - FIXE */}
-      <div className="w-96 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex-col relative z-10 h-screen overflow-hidden flex">
+      <div className="w-96 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex flex-col relative z-10 h-screen overflow-hidden">
         {/* Header */}
-        <div className="p-6">
+        <div className="p-6 flex-shrink-0">
           <button
             onClick={() => window.location.href = '/admin'}
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors mb-6"
@@ -593,7 +513,7 @@ export const RobotInterface: React.FC = () => {
             Admin
           </button>
           
-          {/* Logo OmnIA - Style exact de l'image */}
+          {/* Logo OmnIA */}
           <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-700/50">
             <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center relative shadow-2xl">
               <Bot className="w-8 h-8 text-white" />
@@ -606,9 +526,9 @@ export const RobotInterface: React.FC = () => {
           </div>
         </div>
 
-        {/* Contenu principal */}
-        <div className="flex flex-col items-center p-6 space-y-6 flex-1 justify-center">
-          {/* Robot Avatar - Style exact de l'image */}
+        {/* Contenu principal - CENTRÉ */}
+        <div className="flex flex-col items-center justify-center p-6 space-y-6 flex-1">
+          {/* Robot Avatar */}
           <div className="relative">
             <RobotAvatar
               mood={robotState.mood}
@@ -622,13 +542,13 @@ export const RobotInterface: React.FC = () => {
             />
           </div>
 
-          {/* Status du robot - Style exact de l'image */}
+          {/* Status du robot */}
           <div className="text-center">
-            <div className="text-white font-bold text-lg mb-3">Prêt à vous aider</div>
+            <div className="text-white font-bold text-lg mb-3">{robotState.currentTask}</div>
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-green-300 font-semibold">95%</span>
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-300 font-semibold">{robotState.battery}%</span>
               </div>
               <div className="flex items-center gap-1">
                 <Signal className="w-4 h-4 text-cyan-400" />
@@ -637,9 +557,9 @@ export const RobotInterface: React.FC = () => {
             </div>
           </div>
 
-          {/* Boutons de contrôle - Grid 3x3 comme sur l'image */}
+          {/* Boutons de contrôle - Grid 3x3 */}
           <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-            {/* Première rangée - Micro et Volume */}
+            {/* Première rangée */}
             <button
               onClick={handleMicClick}
               disabled={!sttSupported}
@@ -667,7 +587,6 @@ export const RobotInterface: React.FC = () => {
                 <div className="absolute inset-0 rounded-2xl border-2 border-red-400/50 animate-ping"></div>
               )}
               
-              {/* Indicateur ON/OFF */}
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isMicOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
@@ -692,7 +611,6 @@ export const RobotInterface: React.FC = () => {
                 <Volume2 className="w-6 h-6 text-white" />
               )}
               
-              {/* Indicateur ON/OFF */}
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isVolumeOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
@@ -747,7 +665,7 @@ export const RobotInterface: React.FC = () => {
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn && isDetectingHuman ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
-            {/* Troisième rangée - Danse et Mouvement */}
+            {/* Troisième rangée */}
             <button
               onClick={handleRobotMove}
               disabled={!isRobotOn || robotState.isMoving}
@@ -786,20 +704,12 @@ export const RobotInterface: React.FC = () => {
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
           </div>
-
-          {/* Statut final simplifié */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 font-bold">{robotState.currentTask}</span>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative z-10 h-screen">
-        {/* Chat Header */}
+        {/* Chat Header - FIXE */}
         <div className="bg-slate-800/90 backdrop-blur-xl border-b border-slate-700/50 p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -820,7 +730,7 @@ export const RobotInterface: React.FC = () => {
 
         {/* Messages Area - SCROLLABLE */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-700/20 backdrop-blur-sm">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="space-y-6 max-w-4xl mx-auto">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -854,7 +764,7 @@ export const RobotInterface: React.FC = () => {
               </div>
             )}
             
-            {/* Affichage des produits en grille */}
+            {/* Affichage des produits */}
             {products.length > 0 && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -864,7 +774,7 @@ export const RobotInterface: React.FC = () => {
                     {products.length} produit{products.length > 1 ? 's' : ''}
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {products.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -882,7 +792,7 @@ export const RobotInterface: React.FC = () => {
 
         {/* Input Area - FIXE EN BAS */}
         <div className="bg-slate-800/90 backdrop-blur-xl border-t border-slate-700/50 p-6 flex-shrink-0">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             {/* Suggestions */}
             <div className="mb-4">
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -1041,18 +951,6 @@ export const RobotInterface: React.FC = () => {
             </div>
             
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Mode questionnement</label>
-                <select
-                  value={questioningMode ? 'active' : 'passive'}
-                  onChange={(e) => setQuestioningMode(e.target.value === 'active')}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                >
-                  <option value="active">Actif - Pose des questions pour préciser</option>
-                  <option value="passive">Passif - Répond directement</option>
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm text-gray-300 mb-2">Personnalité robot</label>
                 <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">
