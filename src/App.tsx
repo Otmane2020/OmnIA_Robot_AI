@@ -34,7 +34,7 @@ interface Retailer {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
   const [pendingApplications, setPendingApplications] = React.useState(() => {
     // Charger les demandes depuis localStorage
     try {
@@ -57,58 +57,9 @@ function App() {
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
-      return;
     }
-    
-    // Vérifier les revendeurs validés
-    try {
-      // Vérifier d'abord en base de données
-      const { data: retailer, error } = await supabase
-        .from('retailers')
-        .select('*')
-        .eq('email', credentials.email)
-        .eq('status', 'active')
-        .single();
-
-      if (retailer && retailer.password_hash === credentials.password) {
-        console.log('✅ Connexion revendeur DB réussie:', retailer.company_name);
-        
-        // Mettre à jour last_login
-        await supabase
-          .from('retailers')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', retailer.id);
-        
-        setIsSuperAdmin(false);
-        setIsLoggedIn(true);
-        return;
-      }
-      
-      // Fallback localStorage
-      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-      const localRetailer = validatedRetailers.find((r: any) => 
-        r.email === credentials.email && r.password_hash === credentials.password
-      );
-      
-      if (localRetailer) {
-        console.log('✅ Connexion revendeur local réussie:', localRetailer.company_name);
-        
-        // Mettre à jour last_login
-        const updatedRetailers = validatedRetailers.map((r: any) => 
-          r.id === localRetailer.id ? { ...r, last_login: new Date().toISOString() } : r
-        );
-        localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
-        
-        setIsSuperAdmin(false);
-        setIsLoggedIn(true);
-        return;
-      }
-    } catch (error) {
-      console.error('❌ Erreur vérification revendeur:', error);
-    }
-    
     // Decora Home - Boutique principale
-    if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
+    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
     }
@@ -137,7 +88,7 @@ function App() {
       setIsLoggedIn(true);
     }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025\n\nOu utilisez les identifiants de revendeur validé.');
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
     }
   };
 
@@ -157,50 +108,15 @@ function App() {
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
-    const application = pendingApplications.find(app => app.id === applicationId);
-    if (!application) return;
-    
     // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
       prev.filter(app => app.id !== applicationId)
     );
     
     if (approved) {
-      // Créer le sous-domaine unique
-      const uniqueSubdomain = `${application.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15)}${Date.now().toString().slice(-4)}`;
-      
-      // Simuler création du compte revendeur
-      const newRetailerAccount = {
-        id: `retailer-${Date.now()}`,
-        company_name: application.companyName,
-        email: application.email,
-        subdomain: uniqueSubdomain,
-        password: application.password,
-        plan: application.selectedPlan,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        validated_at: new Date().toISOString()
-      };
-      
-      // Sauvegarder le nouveau revendeur
-      const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-      existingRetailers.push(newRetailerAccount);
-      localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
-      
-      console.log('✅ Revendeur créé:', {
-        company: newRetailerAccount.company_name,
-        subdomain: `${uniqueSubdomain}.omnia.sale`,
-        email: newRetailerAccount.email
-      });
-      
-      // Simuler envoi email d'approbation
-      console.log('📧 Email d\'approbation envoyé à:', application.email);
-      console.log('🌐 Sous-domaine créé:', `${uniqueSubdomain}.omnia.sale`);
-      console.log('🔑 Identifiants:', {
-        email: application.email,
-        password: application.password,
-        subdomain: uniqueSubdomain
-      });
+      console.log('📧 Email d\'approbation envoyé');
+      console.log('🌐 Sous-domaine créé');
+      console.log('🔑 Identifiants de connexion communiqués');
     } else {
       console.log('📧 Email de rejet envoyé');
       console.log('📋 Demande d\'informations complémentaires');
@@ -211,16 +127,19 @@ function App() {
     // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
+      id: Date.now().toString(),
+      submittedAt: new Date().toISOString(),
       submittedDate: new Date().toLocaleDateString('fr-FR'),
       submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending_validation'
+      status: 'pending',
+      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
     };
     
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    console.log('📧 Emails automatiques envoyés');
-    console.log('🌐 Sous-domaine réservé:', newApplication.subdomain);
+    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
+    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
   };
 
   return (
