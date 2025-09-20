@@ -820,73 +820,63 @@ export const RobotInterface: React.FC = () => {
 
         {/* Messages Area - SCROLLABLE */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-700/20 backdrop-blur-sm">
-          <div className="space-y-8 bg-slate-800/30 backdrop-blur-xl rounded-3xl p-8 border border-slate-600/30">
-            <h3 className="text-3xl font-bold text-white flex items-center gap-4 mb-6">
-              <Sparkles className="w-8 h-8 text-cyan-400" />
-              Mes Recommandations
-              <span className="bg-gradient-to-r from-cyan-500/30 to-blue-500/30 text-cyan-200 px-4 py-2 rounded-full text-lg font-bold border border-cyan-400/50">
-                {products.length} produit{products.length > 1 ? 's' : ''}
-              </span>
-            </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onAddToCart={handleAddToCart}
+                onSpeak={speak}
+                isPlaying={currentSpeakingMessage === message.content}
+              />
+            ))}
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onAddToCart={handleAddToCart}
-                  onSpeak={speak}
-                  isPlaying={currentSpeakingMessage === message.content}
-                />
-              ))}
-              
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="flex items-center gap-4">
-                    <RobotAvatar
-                      mood="thinking"
-                      isListening={false}
-                      isSpeaking={false}
-                      size="md"
-                    />
-                    <div className="bg-slate-700/80 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-cyan-500/30">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
-                        <span className="text-cyan-300 text-sm">OmnIA réfléchit...</span>
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-4">
+                  <RobotAvatar
+                    mood="thinking"
+                    isListening={false}
+                    isSpeaking={false}
+                    size="md"
+                  />
+                  <div className="bg-slate-700/80 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-cyan-500/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                       </div>
+                      <span className="text-cyan-300 text-sm">OmnIA réfléchit...</span>
                     </div>
                   </div>
                 </div>
-              )}
-              
-              {/* Affichage des produits en grille */}
-              {products.length > 0 && (
-                <div className="space-y-6">
-                  <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-                    <Sparkles className="w-6 h-6 text-cyan-400" />
-                    Mes recommandations
-                    <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm">
-                      {products.length} produit{products.length > 1 ? 's' : ''}
-                    </span>
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                    {products.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onAddToCart={handleAddToCart}
-                      />
-                    ))}
-                  </div>
+              </div>
+            )}
+            
+            {/* Affichage des produits en grille */}
+            {products.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-cyan-400" />
+                  Mes recommandations
+                  <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm">
+                    {products.length} produit{products.length > 1 ? 's' : ''}
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                    />
+                  ))}
                 </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
@@ -1030,7 +1020,7 @@ export const RobotInterface: React.FC = () => {
                 />
               </div>
               <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
-              <p className="text-cyan-400 text-sm mt-2">→ {window.location.origin}/upload</p>
+              <p className="text-cyan-400 text-sm mt-2 font-mono">→ {window.location.origin}/upload</p>
             </div>
           </div>
         </div>
