@@ -4,7 +4,7 @@ import {
   CheckCircle, X, Eye, Calendar, CreditCard, Globe,
   BarChart3, TrendingUp, DollarSign, Package, MessageSquare,
   Settings, LogOut, Search, Filter, Download, Upload,
-  AlertCircle, Clock, Star, Award, Zap, Bot
+  AlertCircle, Clock, Star, Award, Zap, Bot, User
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
