@@ -51,34 +51,41 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group hover:border-blue-300 relative overflow-hidden animate-in slide-in-from-bottom-4">
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-6 shadow-2xl border-2 border-gray-200 hover:shadow-cyan-500/20 hover:border-cyan-400 transition-all duration-500 hover:scale-105 group relative overflow-hidden animate-in slide-in-from-bottom-4">
       <div className="flex flex-col gap-6">
-        <div className="w-full h-40 md:h-48 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border border-gray-200 relative group-hover:shadow-blue-200/50 transition-all">
+        <div className="w-full h-56 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl border-2 border-gray-200 relative group-hover:shadow-cyan-200/50 transition-all group-hover:border-cyan-300">
           <img 
             src={safeProduct.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'} 
             alt={safeProduct.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop';
             }}
           />
+          
+          {/* Badge promotion */}
+          {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
+            <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse">
+              -{Math.round(((selectedVariant.compareAtPrice - selectedVariant.price) / selectedVariant.compareAtPrice) * 100)}%
+            </div>
+          )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-800 text-base md:text-lg mb-2 line-clamp-2 group-hover:text-blue-700 transition-colors leading-tight">{safeProduct.title}</h3>
-          <p className="text-blue-600 mb-3 font-semibold text-sm">{safeProduct.vendor || 'Vendeur'}</p>
+          <h3 className="font-bold text-gray-800 text-xl mb-3 line-clamp-2 group-hover:text-cyan-700 transition-colors leading-tight">{safeProduct.title}</h3>
+          <p className="text-cyan-600 mb-4 font-semibold">{safeProduct.vendor || 'Vendeur'}</p>
           
           {tagsToDisplay.length > 0 && (
-            <div className="flex flex-wrap gap-1 md:gap-2 mb-3 overflow-hidden">
+            <div className="flex flex-wrap gap-2 mb-4 overflow-hidden">
               {tagsToDisplay.slice(0, 3).map((tag, index) => (
-                <span key={index} className="inline-flex items-center gap-1 px-2 md:px-3 py-1 bg-blue-100 text-blue-700 text-xs md:text-sm rounded-full border border-blue-200">
+                <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-700 text-sm rounded-full border border-cyan-200 font-medium">
                   <Tag className="w-4 h-4" />
                   {tag}
                 </span>
               ))}
               {tagsToDisplay.length > 3 && (
-                <span className="text-xs md:text-sm text-gray-600 px-2 md:px-3 py-1 bg-gray-100 rounded-full border border-gray-200">+{tagsToDisplay.length - 3}</span>
+                <span className="text-sm text-gray-600 px-3 py-1 bg-gray-100 rounded-full border border-gray-200">+{tagsToDisplay.length - 3}</span>
               )}
             </div>
           )}
@@ -86,54 +93,51 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <div className="flex flex-col gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-xl md:text-2xl font-bold text-green-600">{selectedVariant.price}€</p>
+                <p className="text-3xl font-bold text-green-600">{selectedVariant.price}€</p>
                 {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
                   <>
-                    <p className="text-base md:text-lg text-gray-500 line-through">{selectedVariant.compareAtPrice}€</p>
-                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold border border-red-200 animate-pulse">
-                      -{Math.round(((selectedVariant.compareAtPrice - selectedVariant.price) / selectedVariant.compareAtPrice) * 100)}%
-                    </span>
+                    <p className="text-xl text-gray-500 line-through">{selectedVariant.compareAtPrice}€</p>
                   </>
                 )}
               </div>
-              <p className="text-sm text-gray-600 font-medium">
+              <p className="text-base text-gray-600 font-medium">
                 {safeProduct.availableForSale ? 
                   `✅ ${selectedVariant.quantityAvailable || safeProduct.quantityAvailable || 0} en stock` : 
                   'Rupture de stock'
                 }
               </p>
             </div>
-            <div className="flex gap-1 md:gap-2 flex-wrap">
+            <div className="flex gap-3 flex-wrap">
               <button
                 onClick={() => setShowSpecs(!showSpecs)}
-                className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-sm"
+                className="p-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-110 border border-purple-300 shadow-lg"
                 title="Voir spécifications"
               >
-                <Info className="w-4 h-4" />
+                <Info className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowQR(!showQR)}
-                className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-sm"
+                className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-110 border border-gray-300 shadow-lg"
                 title="Voir QR Code"
               >
-                <QrCode className="w-4 h-4" />
+                <QrCode className="w-5 h-5" />
               </button>
               <a
                 href={safeProduct.product_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-sm"
+                className="p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all hover:scale-110 border border-blue-300 shadow-lg"
                 title="Voir la fiche"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-5 h-5" />
               </a>
               {safeProduct.availableForSale && onAddToCart && (
                 <button
                   onClick={handleAddToCart}
-                  className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-all hover:scale-110 border border-green-300 font-bold shadow-lg hover:shadow-green-200/50"
+                  className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white rounded-xl transition-all hover:scale-110 border border-green-300 font-bold shadow-xl hover:shadow-green-500/50"
                   title="Ajouter au panier"
                 >
-                  <ShoppingCart className="w-4 h-4" />
+                  <ShoppingCart className="w-5 h-5" />
                 </button>
               )}
             </div>

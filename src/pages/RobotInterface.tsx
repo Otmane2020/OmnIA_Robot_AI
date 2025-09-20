@@ -812,15 +812,15 @@ export const RobotInterface: React.FC = () => {
             <CartButton 
               items={cartItems}
               onUpdateQuantity={handleUpdateCartQuantity}
-              onRemoveItem={handleRemoveCartItem}
-              onCheckout={handleCheckout}
+        <div className="space-y-8 bg-slate-800/30 backdrop-blur-xl rounded-3xl p-8 border border-slate-600/30">
+          <h3 className="text-3xl font-bold text-white flex items-center gap-4 mb-6">
             />
-          </div>
-        </div>
+            Mes Recommandations
+            <span className="bg-gradient-to-r from-cyan-500/30 to-blue-500/30 text-cyan-200 px-4 py-2 rounded-full text-lg font-bold border border-cyan-400/50">
 
         {/* Messages Area - SCROLLABLE */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-700/20 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -1020,7 +1020,7 @@ export const RobotInterface: React.FC = () => {
                 />
               </div>
               <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
-              <p className="text-cyan-400 text-sm mt-2">→ {window.location.origin}/upload</p>
+              <p className="text-cyan-400 text-sm mt-2 font-mono">→ {window.location.origin}/upload</p>
             </div>
           </div>
         </div>
