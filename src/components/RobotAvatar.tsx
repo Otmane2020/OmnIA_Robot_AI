@@ -151,17 +151,19 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
               />
             </div>
 
-            {/* Bouche souriante - Style exact de l'image */}
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
+            {/* Bouche souriante - NOUVELLE VERSION */}
+            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
               <div 
-                className={`robot-mouth-smile transition-all duration-200 ${
-                  isSpeaking ? 'robot-mouth-talking' : 
-                  mood === 'happy' || mood === 'dancing' ? 'robot-mouth-happy' : ''
+                className={`w-6 h-3 bg-blue-500 rounded-b-full border-b-2 border-blue-600 transition-all duration-200 ${
+                  isSpeaking ? 'animate-bounce' : 
+                  mood === 'happy' || mood === 'dancing' ? 'animate-pulse' : ''
                 }`}
+                style={{
+                  background: mood === 'speaking' ? '#10b981' : 
+                             mood === 'thinking' ? '#f59e0b' :
+                             mood === 'sleeping' ? '#6b7280' : '#3b82f6'
+                }}
               />
-            </div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-4 bg-black rounded border border-slate-400">
-              <div className="w-full h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded animate-pulse opacity-80"></div>
             </div>
           </div>
 
