@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building, User, Mail, Phone, MapPin, FileText, 
   Upload, ArrowLeft, CheckCircle, AlertCircle, 
@@ -54,6 +54,8 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAccountCreation, setShowAccountCreation] = useState(false);
+  const [accountCreationStep, setAccountCreationStep] = useState(0);
 
   const plans = [
     {
@@ -123,14 +125,15 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!validateStep(4)) return;
 
     setIsSubmitting(true);
     
     try {
-      // Simuler l'envoi
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simuler l'envoi de la demande
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       const submissionData = {
         ...formData,
@@ -140,13 +143,141 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
         proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
       };
       
-      onSubmit(submissionData);
+      // Passer à l'écran de création de compte
+      setShowAccountCreation(true);
+      setAccountCreationStep(0);
+      
     } catch (error) {
       console.error('Erreur soumission:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleAccountCreationComplete = () => {
+    // Finaliser l'inscription
+    const submissionData = {
+      ...formData,
+      id: Date.now().toString(),
+      submittedAt: new Date().toISOString(),
+      status: 'pending',
+      proposedSubdomain: formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+    };
+    
+    onSubmit(submissionData);
+  };
+
+  // Écran de création de compte
+  if (showAccountCreation) {
+    const creationSteps = [
+      { icon: CheckCircle, label: 'Validation demande', duration: 1000 },
+      { icon: FileText, label: 'Vérification Kbis', duration: 800 },
+      { icon: Globe, label: 'Création sous-domaine', duration: 600 },
+      { icon: User, label: 'Création compte', duration: 400 }
+    ];
+
+    useEffect(() => {
+      if (showAccountCreation) {
+        const timer = setTimeout(() => {
+          if (accountCreationStep < creationSteps.length - 1) {
+            setAccountCreationStep(prev => prev + 1);
+          } else {
+            // Terminer après toutes les étapes
+            setTimeout(handleAccountCreationComplete, 1000);
+          }
+        }, creationSteps[accountCreationStep]?.duration || 1000);
+
+        return () => clearTimeout(timer);
+      }
+    }, [accountCreationStep, showAccountCreation]);
+
+    const CurrentIcon = creationSteps[accountCreationStep]?.icon || CheckCircle;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+        {/* Background Effects */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
+
+        <div className="relative z-10 bg-white/10 backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full border border-white/20 shadow-2xl text-center">
+          {/* Animation principale */}
+          <div className="mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl relative">
+              <CurrentIcon className="w-10 h-10 text-white" />
+              <div className="absolute inset-0 border-4 border-cyan-400/30 rounded-full animate-ping"></div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Création de votre compte</h2>
+            <p className="text-cyan-300">Configuration en cours...</p>
+          </div>
+
+          {/* Étapes de création */}
+          <div className="space-y-4 mb-8">
+            {creationSteps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isActive = index === accountCreationStep;
+              const isCompleted = index < accountCreationStep;
+              
+              return (
+                <div 
+                  key={index}
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
+                    isCompleted 
+                      ? 'bg-green-500/20 border border-green-400/50' 
+                      : isActive 
+                        ? 'bg-cyan-500/20 border border-cyan-400/50 animate-pulse' 
+                        : 'bg-slate-700/30 border border-slate-600/30 opacity-50'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    isCompleted 
+                      ? 'bg-green-500' 
+                      : isActive 
+                        ? 'bg-cyan-500' 
+                        : 'bg-slate-600'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    ) : isActive ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <StepIcon className="w-4 h-4 text-white" />
+                    )}
+                  </div>
+                  <span className={`font-medium ${
+                    isActive ? 'text-white' : isCompleted ? 'text-green-300' : 'text-gray-400'
+                  }`}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Informations de création */}
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-6">
+            <h4 className="font-semibold text-blue-200 mb-2">🏢 Votre futur compte :</h4>
+            <div className="text-blue-300 text-sm space-y-1">
+              <div><strong>Entreprise :</strong> {formData.companyName}</div>
+              <div><strong>Email :</strong> {formData.email}</div>
+              <div><strong>Plan :</strong> {plans.find(p => p.id === formData.selectedPlan)?.name}</div>
+              <div><strong>Domaine :</strong> {formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}.omnia.sale</div>
+            </div>
+          </div>
+
+          {accountCreationStep === creationSteps.length - 1 && (
+            <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+              <div className="flex items-center gap-2 justify-center text-green-300">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-semibold">Compte créé avec succès !</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const renderStep1 = () => (
     <div className="space-y-6">
