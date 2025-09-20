@@ -34,7 +34,7 @@ interface Retailer {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(true);
   const [pendingApplications, setPendingApplications] = React.useState(() => {
     // Charger les demandes depuis localStorage
     try {

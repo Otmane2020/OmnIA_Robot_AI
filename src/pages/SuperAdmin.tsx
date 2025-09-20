@@ -51,6 +51,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [applicationToReject, setApplicationToReject] = useState<string | null>(null);
+  const [showApplications, setShowApplications] = useState(true);
 
   // Mock data for dashboard
   const [dashboardStats, setDashboardStats] = useState({
@@ -1027,7 +1028,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all font-medium ${
                       activeTab === tab.id
                         ? 'bg-cyan-500 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-white/10'
@@ -1049,7 +1050,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
 
         {/* Content */}
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'applications' && renderApplications()}
+        {activeTab === 'applications' && showApplications && renderApplications()}
         {activeTab === 'retailers' && renderRetailers()}
         {activeTab === 'analytics' && renderAnalytics()}
       </div>

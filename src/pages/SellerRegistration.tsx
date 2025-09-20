@@ -5,6 +5,7 @@ import {
   Eye, EyeOff, CreditCard, Globe, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { supabase } from '../lib/supabase';
 
 interface SellerRegistrationProps {
   onSubmit: (data: any) => void;
@@ -146,6 +147,38 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       password: accountPassword,
       proposedSubdomain: uniqueSubdomain
     };
+    
+    // NOUVEAU: Sauvegarder la demande dans la base de données
+    try {
+      const { data, error } = await supabase
+        .from('retailer_applications')
+        .insert({
+          company_name: formData.companyName,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postalCode,
+          siret: formData.siret,
+          position: formData.position,
+          plan: formData.selectedPlan,
+          proposed_subdomain: uniqueSubdomain,
+          kbis_document_url: formData.kbisFile ? `kbis-${Date.now()}.pdf` : null,
+          status: 'pending'
+        });
+
+      if (error) {
+        console.error('❌ Erreur sauvegarde DB:', error);
+        throw error;
+      }
+
+      console.log('✅ Demande sauvegardée en base de données:', data);
+    } catch (dbError) {
+      console.error('❌ Erreur base de données:', dbError);
+      // Continuer avec localStorage en fallback
+    }
     
     setCreatedAccountInfo(accountInfo);
     setIsAccountCreated(true);
