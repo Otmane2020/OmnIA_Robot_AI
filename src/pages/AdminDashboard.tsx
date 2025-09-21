@@ -6,7 +6,7 @@ import {
   DollarSign, Plus, X,
  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
   Battery, Signal,
-  Upload, Download, Loader2
+  Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
