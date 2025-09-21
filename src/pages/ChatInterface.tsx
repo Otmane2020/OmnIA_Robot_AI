@@ -193,157 +193,156 @@ export const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex flex-col lg:flex-row h-screen bg-white">
       
       {/* 👈 Sidebar Robot - Design exact de la photo */}
-      <div className="w-80 bg-slate-900/95 flex flex-col relative overflow-hidden">
+      <div className="w-full lg:w-80 bg-slate-900/95 flex flex-col relative overflow-hidden h-auto lg:h-screen">
         {/* Background effects */}
         <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-20 left-10 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
-          <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-400/20 rounded-full blur-2xl"></div>
+          <div className="absolute top-10 lg:top-20 left-5 lg:left-10 w-20 h-20 lg:w-32 lg:h-32 bg-cyan-400/20 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-10 lg:bottom-20 right-5 lg:right-10 w-24 h-24 lg:w-40 lg:h-40 bg-purple-400/20 rounded-full blur-2xl"></div>
         </div>
 
         {/* Header avec retour Admin */}
-        <div className="relative z-10 p-4 border-b border-white/10">
+        <div className="relative z-10 p-3 lg:p-4 border-b border-white/10">
           <button
             onClick={() => window.location.href = '/admin'}
-            className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition-colors mb-4"
+            className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200 transition-colors mb-3 lg:mb-4 text-sm lg:text-base"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3 h-3 lg:w-4 lg:h-4" />
             <span>Admin</span>
           </button>
           
           {/* Logo OmnIA - Style exact de la photo */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center relative shadow-2xl border-2 border-cyan-300/50">
-              <div className="w-7 h-7 bg-white rounded-xl flex items-center justify-center">
-                <div className="w-5 h-5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg"></div>
+          <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-4">
+            <div className="w-10 h-10 lg:w-14 lg:h-14 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl lg:rounded-2xl flex items-center justify-center relative shadow-2xl border-2 border-cyan-300/50">
+              <div className="w-5 h-5 lg:w-7 lg:h-7 bg-white rounded-lg lg:rounded-xl flex items-center justify-center">
+                <div className="w-3 h-3 lg:w-5 lg:h-5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-md lg:rounded-lg"></div>
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-bounce"></div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 bg-green-400 rounded-full animate-bounce"></div>
             </div>
             <div>
-              <h1 className="text-white font-bold text-lg">OmnIA</h1>
+              <h1 className="text-white font-bold text-base lg:text-lg">OmnIA</h1>
               <p className="text-cyan-300 text-xs">Commercial Mobilier IA</p>
             </div>
           </div>
 
           {/* Info magasin */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
-            <div className="text-white font-bold text-sm">Decora Home</div>
+          <div className="bg-white/10 backdrop-blur-xl rounded-lg lg:rounded-xl p-2 lg:p-3 border border-white/20">
+            <div className="text-white font-bold text-xs lg:text-sm">Decora Home</div>
             <div className="text-cyan-300 text-xs">668 produits actifs</div>
             <div className="text-cyan-400 text-xs">Plan Professional</div>
           </div>
         </div>
 
         {/* Contenu principal - Style exact de la photo */}
-        <div className="relative z-10 flex-1 flex flex-col p-6 space-y-6">
+        <div className="relative z-10 flex-1 flex flex-col p-4 lg:p-6 space-y-4 lg:space-y-6">
           {/* Robot Avatar en haut */}
-          <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-400/50">
+          <div className="relative mb-4 lg:mb-8">
+            <div className="w-32 h-32 lg:w-40 lg:h-40 mx-auto bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-2xl lg:rounded-3xl shadow-2xl relative overflow-hidden border-4 border-cyan-400/50">
               {/* Grands yeux ronds comme sur l'image */}
-              <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4">
-                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
-                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
+              <div className="absolute top-6 lg:top-8 left-1/2 transform -translate-x-1/2 flex gap-3 lg:gap-4">
+                <div className="w-6 h-6 lg:w-8 lg:h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
+                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-cyan-500 rounded-full"></div>
                 </div>
-                <div className="w-8 h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
-                  <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
+                <div className="w-6 h-6 lg:w-8 lg:h-8 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center">
+                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-cyan-500 rounded-full"></div>
                 </div>
               </div>
               
               {/* Particules d'énergie */}
-              <div className="absolute top-2 left-2 w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-              <div className="absolute top-4 right-3 w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }}></div>
-              <div className="absolute bottom-4 left-3 w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute top-2 left-2 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+              <div className="absolute top-3 lg:top-4 right-2 lg:right-3 w-1 h-1 lg:w-1.5 lg:h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+              <div className="absolute bottom-3 lg:bottom-4 left-2 lg:left-3 w-1.5 h-1.5 lg:w-2 lg:h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
               
               {/* Effet de brillance */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent pointer-events-none rounded-3xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent pointer-events-none rounded-2xl lg:rounded-3xl"></div>
             </div>
           </div>
 
           {/* Barre de progression cyan */}
-          <div className="w-full h-2 bg-slate-700/50 rounded-full mb-4">
+          <div className="w-full h-1.5 lg:h-2 bg-slate-700/50 rounded-full mb-3 lg:mb-4">
             <div className="w-full h-full bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full"></div>
           </div>
 
           {/* Statut Robot */}
-          <div className="text-center mb-6">
-            <div className="text-white font-bold text-xl mb-3">Prêt à vous aider</div>
+          <div className="text-center mb-4 lg:mb-6">
+            <div className="text-white font-bold text-lg lg:text-xl mb-2 lg:mb-3">Prêt à vous aider</div>
             <div className="flex items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-300 font-semibold">95%</span>
+                <span className="text-green-300 font-semibold text-xs lg:text-sm">95%</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-1 h-3 bg-cyan-400 rounded-full"></div>
+                <div className="w-1 h-2 lg:h-3 bg-cyan-400 rounded-full"></div>
                 <div className="w-1 h-2 bg-cyan-400 rounded-full"></div>
-                <div className="w-1 h-4 bg-cyan-400 rounded-full"></div>
-                <span className="text-cyan-300 font-semibold ml-2">Connecté</span>
+                <div className="w-1 h-3 lg:h-4 bg-cyan-400 rounded-full"></div>
+                <span className="text-cyan-300 font-semibold ml-2 text-xs lg:text-sm">Connecté</span>
               </div>
             </div>
           </div>
 
           {/* Boutons de contrôle - Grid 3x2 comme sur la photo */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-6 lg:grid-cols-3 gap-2 lg:gap-3 mb-2 lg:mb-3">
             {/* Première rangée */}
             <button
               onClick={handleMicClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
+              className={`w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isRecording
                   ? 'bg-purple-500 shadow-purple-500/40 animate-pulse'
                   : 'bg-purple-500 hover:bg-purple-400'
               }`}
             >
-              <Mic className="w-6 h-6 text-white" />
+              <Mic className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
 
             <button
               onClick={handleVolumeClick}
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
+              className={`w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 shadow-lg ${
                 isSpeaking
                   ? 'bg-green-500 shadow-green-500/40 animate-pulse'
                   : 'bg-green-500 hover:bg-green-400 shadow-lg'
               }`}
             >
-              <Volume2 className="w-6 h-6 text-white" />
+              <Volume2 className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 bg-pink-500 hover:bg-pink-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-12 h-12 lg:w-16 lg:h-16 bg-pink-500 hover:bg-pink-400 shadow-lg rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="Reconnaissance et détection humain"
             >
               <div className="relative">
-                <Camera className="w-6 h-6 text-white" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <Camera className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+                <div className="absolute -top-1 -right-1 w-2 h-2 lg:w-3 lg:h-3 bg-green-400 rounded-full animate-pulse"></div>
               </div>
             </button>
-          </div>
 
-          {/* Deuxième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <button className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105">
-              <QrCode className="w-6 h-6 text-white" />
+            
+            {/* Deuxième rangée de boutons */}
+            <button className="w-12 h-12 lg:w-16 lg:h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105">
+              <QrCode className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
 
             <button
               onClick={() => window.open('/upload', '_blank')}
-              className="w-16 h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-12 h-12 lg:w-16 lg:h-16 bg-orange-500 hover:bg-orange-400 shadow-lg rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
               title="QR Code pour upload photo mobile"
             >
-              <Settings className="w-6 h-6 text-white" />
+              <Settings className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
 
             <button 
-              className="w-16 h-16 bg-green-500 hover:bg-green-400 shadow-lg rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
+              className="w-12 h-12 lg:w-16 lg:h-16 bg-green-500 hover:bg-green-400 shadow-lg rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105"
             >
-              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              <div className="w-4 h-4 lg:w-6 lg:h-6 bg-white rounded-full flex items-center justify-center">
+                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-green-500 rounded-full"></div>
               </div>
             </button>
           </div>
 
-          {/* Troisième rangée de boutons */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          {/* Boutons supplémentaires masqués sur mobile */}
+          <div className="hidden lg:grid grid-cols-3 gap-3 mb-3">
             <button className="w-16 h-16 bg-blue-500 hover:bg-blue-400 shadow-lg rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
               <div className="text-white text-xs font-bold mb-1">+</div>
               <span className="text-white text-xs">Bouger</span>
@@ -367,19 +366,19 @@ export const ChatInterface: React.FC = () => {
       </div>
 
       {/* 👉 Zone de chat principale avec background rose */}
-      <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
+      <div className="flex-1 flex flex-col min-h-0" style={{ backgroundColor: 'rgb(236 72 153 / 0.2)' }}>
         {/* Header de conversation */}
-        <div className="bg-slate-800 border-b border-slate-700 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="bg-slate-800 border-b border-slate-700 p-4 lg:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 lg:gap-3 flex-1 min-w-0">
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
               <div>
-                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
-                <p className="text-gray-300">Robot IA à votre écoute</p>
+                <h2 className="text-lg lg:text-xl font-bold text-white">Conversation OmnIA</h2>
+                <p className="text-gray-300 text-sm lg:text-base">Robot IA à votre écoute</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <button className="hidden lg:block p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl transition-colors border border-purple-400/50">
                 <QrCode className="w-5 h-5 text-purple-300" />
               </button>
               <CartButton 
@@ -393,7 +392,7 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone des messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-6">
           {messages.map(msg => (
             <ChatMessage key={msg.id} message={msg} onAddToCart={handleAddToCart} />
           ))}
@@ -420,29 +419,29 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Suggestions rapides - Style exact de la photo */}
-        <div className="px-6 py-4">
-          <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="px-3 lg:px-6 py-3 lg:py-4">
+          <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2">
             <button
               onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
-              className="flex-shrink-0 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-2"
+              className="flex-shrink-0 px-3 lg:px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full border border-blue-300 transition-all whitespace-nowrap flex items-center gap-1 lg:gap-2 text-xs lg:text-sm"
             >
               🛋️ Canapé beige
             </button>
             <button
               onClick={() => handleSuggestionClick("🪑 Table ronde")}
-              className="flex-shrink-0 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-2"
+              className="flex-shrink-0 px-3 lg:px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-full border border-orange-300 transition-all whitespace-nowrap flex items-center gap-1 lg:gap-2 text-xs lg:text-sm"
             >
               🪑 Table ronde
             </button>
             <button
               onClick={() => handleSuggestionClick("💺 Chaise bureau")}
-              className="flex-shrink-0 px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-2"
+              className="flex-shrink-0 px-3 lg:px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-full border border-green-300 transition-all whitespace-nowrap flex items-center gap-1 lg:gap-2 text-xs lg:text-sm"
             >
               💺 Chaise bureau
             </button>
             <button
               onClick={() => handleSuggestionClick("✨ Tendances 2025")}
-              className="flex-shrink-0 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center gap-2"
+              className="col-span-2 lg:col-span-1 flex-shrink-0 px-3 lg:px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-full border border-yellow-300 transition-all whitespace-nowrap flex items-center justify-center gap-1 lg:gap-2 text-xs lg:text-sm"
             >
               ✨ Tendances 2025
             </button>
@@ -450,8 +449,8 @@ export const ChatInterface: React.FC = () => {
         </div>
 
         {/* Zone de saisie - Style exact de la photo */}
-        <div className="p-6 bg-slate-800 border-t border-slate-700">
-          <div className="flex gap-3">
+        <div className="p-3 lg:p-6 bg-slate-800 border-t border-slate-700">
+          <div className="flex gap-2 lg:gap-3">
             <div className="flex-1 relative">
               <input
                 type="text"
@@ -459,24 +458,24 @@ export const ChatInterface: React.FC = () => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                 placeholder="Écrivez votre message..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl lg:rounded-2xl px-4 lg:px-6 py-3 lg:py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 text-sm lg:text-base"
               />
             </div>
             
             <button
               onClick={() => window.open('/upload', '_blank')}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg"
+              className="w-12 h-12 lg:w-14 lg:h-14 bg-purple-500 hover:bg-purple-600 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all hover:scale-105 shadow-lg"
               title="QR Code pour upload photo mobile"
             >
-              <QrCode className="w-6 h-6 text-white" />
+              <QrCode className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
 
             <button
               onClick={() => handleSendMessage(inputMessage)}
               disabled={!inputMessage.trim()}
-              className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg"
+              className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-400 disabled:to-gray-500 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all hover:scale-105 disabled:cursor-not-allowed shadow-lg"
             >
-              <Send className="w-6 h-6 text-white" />
+              <Send className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </button>
           </div>
         </div>
