@@ -53,42 +53,104 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
+    // ✅ NOUVEAU: Vérification connexion revendeur améliorée
+    const validateRetailerLogin = async (email: string, password: string) => {
+      try {
+        // Vérifier en base de données d'abord
+        const { data: loginData, error } = await supabase
+          .from('retailer_logins')
+          .select('retailer_id, password_hash')
+          .eq('email', email)
+          .single();
+
+        if (!error && loginData) {
+          // Vérifier mot de passe (simple base64 pour démo, bcrypt en production)
+          const storedPassword = atob(loginData.password_hash);
+          if (storedPassword === password) {
+            // Mettre à jour last_login
+            await supabase
+              .from('retailer_logins')
+              .update({ 
+                last_login: new Date().toISOString(),
+                login_attempts: 0
+              })
+              .eq('email', email);
+
+            // Enregistrer session
+            localStorage.setItem('current_retailer_id', loginData.retailer_id);
+            localStorage.setItem('current_retailer_email', email);
+            
+            console.log('✅ Connexion revendeur DB réussie:', email);
+            return true;
+          }
+        }
+      } catch (dbError) {
+        console.log('⚠️ DB error, checking localStorage fallback');
+      }
+
+      // Fallback localStorage
+      const localRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const retailer = localRetailers.find((r: any) => 
+        r.email === email && r.password === password
+      );
+      
+      if (retailer) {
+        localStorage.setItem('current_retailer_id', retailer.id);
+        localStorage.setItem('current_retailer_email', email);
+        console.log('✅ Connexion revendeur localStorage réussie:', email);
+        return true;
+      }
+      
+      return false;
+    };
+
     // Super Admin
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      return;
     }
-    // Decora Home - Boutique principale
-    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
+
+    // ✅ Vérification revendeurs (démo + nouveaux inscrits)
+    const demoAccounts = [
+      { email: 'demo@decorahome.fr', password: 'demo123' },
+      { email: 'contact@mobilierdesign.fr', password: 'design123' },
+      { email: 'info@decocontemporain.com', password: 'deco123' },
+      { email: 'contact@meubleslyon.fr', password: 'lyon123' }
+    ];
+
+    // Vérifier comptes démo
+    const demoAccount = demoAccounts.find(acc => 
+      acc.email === credentials.email && acc.password === credentials.password
+    );
+
+    if (demoAccount) {
+      localStorage.setItem('current_retailer_email', credentials.email);
+      localStorage.setItem('current_retailer_id', `demo-${credentials.email.split('@')[0]}`);
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
+      console.log('✅ Connexion compte démo:', credentials.email);
+      return;
     }
-    // Mobilier Design Paris
-    else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    // Déco Contemporain
-    else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    // Meubles Lyon
-    else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    // Autres boutiques
-    else if (credentials.email === 'admin@mobilierdesign.fr' && credentials.password === 'design123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    else if (credentials.email === 'contact@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+
+    // Vérifier revendeurs validés
+    validateRetailerLogin(credentials.email, credentials.password).then(isValid => {
+      if (isValid) {
+        setIsSuperAdmin(false);
+        setIsLoggedIn(true);
+      } else {
+        alert(`❌ Identifiants incorrects.
+
+📧 Comptes disponibles :
+• demo@decorahome.fr / demo123
+• contact@mobilierdesign.fr / design123  
+• info@decocontemporain.com / deco123
+• contact@meubleslyon.fr / lyon123
+• superadmin@omnia.sale / superadmin2025
+
+🔑 Ou votre compte revendeur après validation`);
+      }
+    });
     }
   };
 

@@ -397,15 +397,25 @@ export const ChatInterface: React.FC = () => {
           {messages.map(msg => (
             <ChatMessage key={msg.id} message={msg} onAddToCart={handleAddToCart} />
           ))}
-          {isTyping && (
+          {products.length > 0 && messages.length > 0 && (
             <div className="flex justify-start">
+              {/* Séparateur avec animation */}
+              <div className="flex items-center gap-4 my-8">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent"></div>
+                <div className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 rounded-full shadow-lg">
+                  <Sparkles className="w-4 h-4 text-white animate-spin" />
+                  <span className="text-white font-bold text-sm">OmnIA recommande</span>
+                </div>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent"></div>
+              </div>
+              
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+                💎 Mes recommandations exclusives
                   <div className="w-5 h-5 bg-white/20 rounded-full animate-pulse"></div>
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-200">
                   <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
