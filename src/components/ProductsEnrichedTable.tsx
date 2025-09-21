@@ -173,14 +173,6 @@ export const ProductsEnrichedTable: React.FC = () => {
           }
         ]
       );
-    } catch (error) {
-      console.error('❌ Erreur import catalogue:', error);
-      showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
-    }
-    } catch (error) {
-      console.error('❌ Erreur import catalogue:', error);
-      showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
-    }
   };
     } catch (error) {
       console.error('❌ Erreur import catalogue:', error);
