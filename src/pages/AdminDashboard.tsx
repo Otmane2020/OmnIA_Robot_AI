@@ -1879,3 +1879,5 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 };
+
+export { AdminDashboard }
