@@ -52,6 +52,12 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
+    // Sauvegarder l'utilisateur connecté
+    const saveCurrentUser = (userInfo: any) => {
+      localStorage.setItem('current_logged_user', JSON.stringify(userInfo));
+      console.log('✅ Utilisateur sauvegardé:', userInfo.email);
+    };
+    
     // Vérifier les revendeurs validés en localStorage
     const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
     const validatedRetailer = validatedRetailers.find((retailer: any) => 
@@ -60,6 +66,7 @@ function App() {
     
     if (validatedRetailer) {
       console.log('✅ Connexion revendeur validé:', validatedRetailer.company_name);
+      saveCurrentUser(validatedRetailer);
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
       return;
@@ -69,25 +76,30 @@ function App() {
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Super Admin', plan: 'Admin' });
     }
     // Decora Home - Boutique principale
     else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
       setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Decora Home', plan: 'Professional' });
     }
     // Mobilier Design Paris
     else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Mobilier Design Paris', plan: 'Professional' });
     }
     // Déco Contemporain
     else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Déco Contemporain', plan: 'Enterprise' });
     }
     // Meubles Lyon
     else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Meubles Lyon', plan: 'Starter' });
     }
     else {
       alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
@@ -97,6 +109,7 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setIsSuperAdmin(false);
+    localStorage.removeItem('current_logged_user');
   };
 
   const handleGetStarted = () => {

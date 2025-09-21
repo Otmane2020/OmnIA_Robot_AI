@@ -36,6 +36,26 @@ interface DashboardStats {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
+  const [currentUser, setCurrentUser] = useState(() => {
+    // Récupérer l'utilisateur connecté depuis localStorage
+    const loggedUser = localStorage.getItem('current_logged_user');
+    if (loggedUser) {
+      try {
+        return JSON.parse(loggedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Générer un ID unique pour chaque revendeur basé sur son email
+  const getRetailerStorageKey = (key: string) => {
+    if (!currentUser?.email) return key;
+    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${key}_${emailHash}`;
+  };
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeSubTab, setActiveSubTab] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
@@ -147,9 +167,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { title: 'Admin', subtitle: '100% Uptime', icon: Settings, color: 'bg-gray-500', stats: '100% Uptime' }
   ];
 
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    // Charger les données spécifiques au revendeur connecté
+    const savedPlatforms = localStorage.getItem(getRetailerStorageKey('connected_platforms'));
+    if (savedPlatforms) {
+      try {
+        setConnectedPlatforms(JSON.parse(savedPlatforms));
+      } catch (error) {
+        console.error('Erreur chargement plateformes:', error);
+      }
+    }
+    
+    // Charger les stats spécifiques au revendeur
+    const savedStats = localStorage.getItem(getRetailerStorageKey('retailer_stats'));
+    if (savedStats) {
+      try {
+        setStats(JSON.parse(savedStats));
+      } catch (error) {
+        console.error('Erreur chargement stats:', error);
+      }
+    }
+  }, [currentUser]);
+
   const handlePlatformConnected = (platformData: any) => {
-    setConnectedPlatforms(prev => [...prev, platformData]);
-    showSuccess('Plateforme connectée', `${platformData.name} connectée avec succès !`);
+    const newPlatform: ConnectedPlatform = {
+      id: Date.now().toString(),
+      ...platformData,
+      connected_at: new Date().toISOString()
+    };
+    
+    const updatedPlatforms = [...connectedPlatforms, newPlatform];
+    setConnectedPlatforms(updatedPlatforms);
+    
+    // Sauvegarder pour ce revendeur spécifique
+    localStorage.setItem(getRetailerStorageKey('connected_platforms'), JSON.stringify(updatedPlatforms));
+    
+    showSuccess('Plateforme connectée', `${platformData.name} connecté avec succès !`);
+    
+    // Mettre à jour les stats
+    const newStats = {
+      ...stats,
+      totalProducts: platformData.products_count || 0
+    };
+    setStats(newStats);
+    localStorage.setItem(getRetailerStorageKey('retailer_stats'), JSON.stringify(newStats));
+  };
+
+  const handleDisconnectPlatform = (platformId: string) => {
+    const updatedPlatforms = connectedPlatforms.filter(p => p.id !== platformId);
+    setConnectedPlatforms(updatedPlatforms);
+    localStorage.setItem(getRetailerStorageKey('connected_platforms'), JSON.stringify(updatedPlatforms));
+    showSuccess('Plateforme déconnectée', 'Plateforme supprimée avec succès.');
   };
 
   const handleTabClick = (tabId: string) => {

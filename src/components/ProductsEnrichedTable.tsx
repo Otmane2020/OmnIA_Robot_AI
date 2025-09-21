@@ -57,6 +57,25 @@ export const ProductsEnrichedTable: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [cronStatus, setCronStatus] = useState<any>(null);
   const [cronLoading, setCronLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const loggedUser = localStorage.getItem('current_logged_user');
+    if (loggedUser) {
+      try {
+        return JSON.parse(loggedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Générer clé de stockage spécifique au revendeur
+  const getRetailerStorageKey = (key: string) => {
+    if (!currentUser?.email) return key;
+    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${key}_${emailHash}`;
+  };
+
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
@@ -157,12 +176,12 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       setLoading(true);
       
-      // Charger depuis localStorage d'abord
-      const localEnrichedProducts = localStorage.getItem('enriched_products');
+      // Charger depuis localStorage spécifique au revendeur
+      const localEnrichedProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
       if (localEnrichedProducts) {
         try {
           const parsedProducts = JSON.parse(localEnrichedProducts);
-          console.log('✅ Catalogue enrichi chargé depuis localStorage:', parsedProducts.length);
+          console.log(`✅ Catalogue enrichi chargé pour ${currentUser?.email}:`, parsedProducts.length);
           setProducts(parsedProducts);
           return;
         } catch (error) {
@@ -170,26 +189,9 @@ export const ProductsEnrichedTable: React.FC = () => {
         }
       }
       
-      // Fallback vers Supabase
-      try {
-        const { data, error } = await supabase
-          .from('products_enriched')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          console.log('✅ Catalogue enrichi chargé depuis Supabase:', data.length);
-          setProducts(data);
-          // Sauvegarder en localStorage pour la prochaine fois
-          localStorage.setItem('enriched_products', JSON.stringify(data));
-        } else {
-          console.log('⚠️ Aucun produit enrichi en base, catalogue vide');
-          setProducts([]);
-        }
-      } catch (error) {
-        console.error('❌ Erreur Supabase:', error);
-        setProducts([]);
-      }
+      // Nouveau revendeur = catalogue vide
+      console.log(`📦 Nouveau revendeur ${currentUser?.email} - catalogue vide`);
+      setProducts([]);
       
     } catch (error) {
       console.error('❌ Erreur:', error);
@@ -201,14 +203,14 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const handleImportCatalog = async () => {
     try {
-      const catalogProducts = localStorage.getItem('catalog_products');
+      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
         showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue dans l\'onglet Catalogue.');
         return;
       }
 
       const products = JSON.parse(catalogProducts);
-      console.log('📦 Import catalogue vers catalogue enrichi:', products.length);
+      console.log(`📦 Import catalogue pour ${currentUser?.email}:`, products.length);
 
       // Transformer les produits du catalogue en produits enrichis
       const enrichedProducts = products.map((product: any) => ({
@@ -253,6 +255,9 @@ export const ProductsEnrichedTable: React.FC = () => {
       setProducts(enrichedProducts);
       setShowImportModal(false);
       
+      // Sauvegarder pour ce revendeur
+      localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedProducts));
+      
       showSuccess(
         'Catalogue importé !', 
         `${enrichedProducts.length} produits importés dans le catalogue enrichi.`,
@@ -284,14 +289,14 @@ export const ProductsEnrichedTable: React.FC = () => {
       showInfo('Enrichissement démarré', 'Analyse des produits avec DeepSeek IA...');
 
       // Récupérer les produits du catalogue local
-      const catalogProducts = localStorage.getItem('catalog_products');
+      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
         showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue.');
         return;
       }
 
       const products = JSON.parse(catalogProducts);
-      console.log('📦 Produits à enrichir:', products.length);
+      console.log(`📦 Produits à enrichir pour ${currentUser?.email}:`, products.length);
 
       // Traitement par batch pour éviter les timeouts
       const batchSize = 5;
@@ -299,48 +304,76 @@ export const ProductsEnrichedTable: React.FC = () => {
       
       for (let i = 0; i < products.length; i += batchSize) {
         const batch = products.slice(i, i + batchSize);
-        console.log(`🔄 Traitement batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(products.length/batchSize)}`);
+        const batchNumber = Math.floor(i/batchSize) + 1;
+        const totalBatches = Math.ceil(products.length/batchSize);
+        
+        console.log(`🔄 Batch ${batchNumber}/${totalBatches} - ${batch.length} produits`);
         
         // Appeler DeepSeek pour chaque batch
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            products: batch,
-            source: 'catalog',
-            retailer_id: 'demo-retailer-id'
-          }),
-        });
+        try {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              products: batch,
+              source: 'catalog',
+              retailer_id: currentUser?.email || 'demo-retailer-id'
+            }),
+          });
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.enriched_products) {
-            enrichedProducts.push(...result.enriched_products);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.enriched_products) {
+              enrichedProducts.push(...result.enriched_products);
+              console.log(`✅ Batch ${batchNumber} enrichi: ${result.enriched_products.length} produits`);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error(`❌ Erreur batch ${batchNumber}:`, errorText);
+            
+            // Ajouter les produits sans enrichissement en cas d'erreur
+            const basicProducts = batch.map(product => ({
+              id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              title: product.name || product.title || 'Produit sans nom',
+              description: product.description || '',
+              product_type: product.category || 'Mobilier',
+              subcategory: '',
+              vendor: product.vendor || 'Boutique',
+              price: parseFloat(product.price) || 0,
+              stock_quantity: parseInt(product.stock) || 0,
+              image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+              product_url: product.product_url || '#',
+              enrichment_source: 'basic',
+              ai_confidence: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            enrichedProducts.push(...basicProducts);
           }
-          console.log(`✅ Batch ${Math.floor(i/batchSize) + 1} enrichi:`, result.enriched_products?.length || 0);
-        } else {
-          console.error('❌ Erreur batch:', await response.text());
+        } catch (batchError) {
+          console.error(`❌ Erreur réseau batch ${batchNumber}:`, batchError);
         }
         
         // Mettre à jour la progression
-        const progress = Math.min(((i + batchSize) / products.length) * 100, 100);
+        const progress = Math.round(((i + batchSize) / products.length) * 100);
         setEnrichmentProgress(progress);
+        console.log(`📊 Progression: ${progress}%`);
         
         // Pause entre les batches
         if (i + batchSize < products.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
       
       // Sauvegarder les produits enrichis dans products_enriched
       if (enrichedProducts.length > 0) {
-        console.log('💾 Sauvegarde dans products_enriched:', enrichedProducts.length);
+        console.log(`💾 Sauvegarde pour ${currentUser?.email}:`, enrichedProducts.length);
         
-        // Sauvegarder dans localStorage pour affichage immédiat
-        localStorage.setItem('enriched_products', JSON.stringify(enrichedProducts));
+        // Sauvegarder dans localStorage spécifique au revendeur
+        localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedProducts));
         
         // Mettre à jour l'état local
         setProducts(enrichedProducts);

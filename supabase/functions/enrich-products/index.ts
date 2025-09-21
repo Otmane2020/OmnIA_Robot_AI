@@ -281,12 +281,13 @@ PRIX: ${product.price || 0}€
 VENDEUR: ${product.vendor || ''}
   `.trim();
 
-  const prompt = `Analyse ce produit mobilier et extrait les attributs au format JSON strict.
+  const prompt = `Tu es un expert en mobilier et SEO. Analyse ce produit et extrait TOUS les attributs au format JSON strict.
 
 ${productText}
 
-EXTRAIT ces attributs au format JSON exact :
+EXTRAIT OBLIGATOIREMENT ces attributs au format JSON exact :
 {
+  "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
   "product_type": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
   "subcategory": "Canapé d'angle|Table basse|Chaise de bureau|Lit double|Commode|Console TV|Miroir",
   "material": "matériau principal",
@@ -296,23 +297,20 @@ EXTRAIT ces attributs au format JSON exact :
   "dimensions": "LxlxH en cm si trouvé",
   "weight": "poids approximatif en kg",
   "capacity": "capacité (ex: 4 places, 6 personnes)",
-  "dimensions": "dimensions si trouvées",
-  "weight": "poids approximatif",
-  "capacity": "capacité (ex: 4 places, 6 personnes)",
   "gtin": "code-barres si disponible",
   "mpn": "référence fabricant",
-  "seo_title": "titre optimisé SEO (60 caractères max)",
-  "seo_description": "description SEO (155 caractères max)",
+  "seo_title": "TITRE SEO OPTIMISÉ 60 caractères max avec mots-clés",
+  "seo_description": "META DESCRIPTION SEO 155 caractères max attractive et vendeuse",
   "tags": ["tag1", "tag2", "tag3"],
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- Utilise UNIQUEMENT les valeurs listées pour product_type et style
-- seo_title: titre optimisé pour Google avec mots-clés
-- seo_description: description marketing attractive
+- category ET product_type: OBLIGATOIRES, utilise les valeurs listées
+- seo_title: OBLIGATOIRE, titre optimisé Google avec mots-clés (ex: "Canapé Moderne 3 Places - Velours Beige - Decora Home")
+- seo_description: OBLIGATOIRE, description vendeuse 155 caractères (ex: "Découvrez notre canapé moderne 3 places en velours beige. Confort optimal, design contemporain. Livraison gratuite. ⭐")
 - confidence_score: 0-100 basé sur la qualité des informations
-- Si information manquante, laisser chaîne vide ""
+- Si information manquante, mettre valeur par défaut logique
 - Réponse JSON uniquement, aucun texte supplémentaire
 
 RÉPONSE JSON UNIQUEMENT:`;
