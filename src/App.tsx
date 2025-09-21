@@ -53,65 +53,17 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
-    // ✅ NOUVEAU: Vérification connexion revendeur améliorée
-    const validateRetailerLogin = async (email: string, password: string) => {
-      try {
-        // Vérifier en base de données d'abord
-        const { data: loginData, error } = await supabase
-          .from('retailer_logins')
-          .select('retailer_id, password_hash')
-          .eq('email', email)
-          .single();
-
-        if (!error && loginData) {
-          // Vérifier mot de passe (simple base64 pour démo, bcrypt en production)
-          const storedPassword = atob(loginData.password_hash);
-          if (storedPassword === password) {
-            // Mettre à jour last_login
-            await supabase
-              .from('retailer_logins')
-              .update({ 
-                last_login: new Date().toISOString(),
-                login_attempts: 0
-              })
-              .eq('email', email);
-
-            // Enregistrer session
-            localStorage.setItem('current_retailer_id', loginData.retailer_id);
-            localStorage.setItem('current_retailer_email', email);
-            
-            console.log('✅ Connexion revendeur DB réussie:', email);
-            return true;
-          }
-        }
-      } catch (dbError) {
-        console.log('⚠️ DB error, checking localStorage fallback');
-      }
-
-      // Fallback localStorage
-      const localRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-      const retailer = localRetailers.find((r: any) => 
-        r.email === email && r.password === password
-      );
-      
-      if (retailer) {
-        localStorage.setItem('current_retailer_id', retailer.id);
-        localStorage.setItem('current_retailer_email', email);
-        console.log('✅ Connexion revendeur localStorage réussie:', email);
-        return true;
-      }
-      
-      return false;
-    };
-
     // Super Admin
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
+      localStorage.setItem('current_user_role', 'super_admin');
+      localStorage.setItem('current_user_email', credentials.email);
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      console.log('✅ Connexion Super Admin réussie');
       return;
     }
 
-    // ✅ Vérification revendeurs (démo + nouveaux inscrits)
+    // ✅ Vérification comptes démo revendeurs
     const demoAccounts = [
       { email: 'demo@decorahome.fr', password: 'demo123' },
       { email: 'contact@mobilierdesign.fr', password: 'design123' },
@@ -119,12 +71,12 @@ function App() {
       { email: 'contact@meubleslyon.fr', password: 'lyon123' }
     ];
 
-    // Vérifier comptes démo
     const demoAccount = demoAccounts.find(acc => 
       acc.email === credentials.email && acc.password === credentials.password
     );
 
     if (demoAccount) {
+      localStorage.setItem('current_user_role', 'retailer');
       localStorage.setItem('current_retailer_email', credentials.email);
       localStorage.setItem('current_retailer_id', `demo-${credentials.email.split('@')[0]}`);
       setIsSuperAdmin(false);
@@ -133,13 +85,29 @@ function App() {
       return;
     }
 
-    // Vérifier revendeurs validés
-    validateRetailerLogin(credentials.email, credentials.password).then(isValid => {
-      if (isValid) {
+    // ✅ Vérifier revendeurs approuvés (localStorage)
+    try {
+      const approvedRetailers = JSON.parse(localStorage.getItem('approved_retailers') || '[]');
+      const validRetailer = approvedRetailers.find((retailer: any) => 
+        retailer.email === credentials.email && retailer.password === credentials.password
+      );
+
+      if (validRetailer) {
+        localStorage.setItem('current_user_role', 'retailer');
+        localStorage.setItem('current_retailer_email', credentials.email);
+        localStorage.setItem('current_retailer_id', validRetailer.id);
+        localStorage.setItem('current_retailer_company', validRetailer.companyName);
         setIsSuperAdmin(false);
         setIsLoggedIn(true);
-      } else {
-        alert(`❌ Identifiants incorrects.
+        console.log('✅ Connexion revendeur approuvé:', credentials.email);
+        return;
+      }
+    } catch (error) {
+      console.error('Erreur vérification revendeurs approuvés:', error);
+    }
+
+    // ❌ Identifiants incorrects
+    alert(`❌ Identifiants incorrects.
 
 📧 Comptes disponibles :
 • demo@decorahome.fr / demo123
@@ -148,14 +116,18 @@ function App() {
 • contact@meubleslyon.fr / lyon123
 • superadmin@omnia.sale / superadmin2025
 
-🔑 Ou votre compte revendeur après validation`);
-      }
-    });
+🔑 Ou votre compte revendeur après validation par le Super Admin`);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('current_user_role');
+    localStorage.removeItem('current_user_email');
+    localStorage.removeItem('current_retailer_email');
+    localStorage.removeItem('current_retailer_id');
+    localStorage.removeItem('current_retailer_company');
     setIsLoggedIn(false);
     setIsSuperAdmin(false);
+    console.log('✅ Déconnexion réussie');
   };
 
   const handleGetStarted = () => {
