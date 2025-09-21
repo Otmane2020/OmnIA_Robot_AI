@@ -16,6 +16,7 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
+import { ResponsiveAdminWrapper } from './components/ResponsiveAdminWrapper';
 
 interface Retailer {
   id: string;
@@ -196,7 +197,7 @@ function App() {
               onValidateApplication={handleValidateApplication}
             />
           ) : (
-            <AdminDashboard onLogout={handleLogout} />
+            <ResponsiveAdminWrapper onLogout={handleLogout} />
           )
         ) : (
           <AdminLogin 
