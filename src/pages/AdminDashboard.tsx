@@ -94,90 +94,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const renderStats = () => (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
-      <div className="bg-blue-600/20 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-blue-500/30">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+      <div className="bg-blue-600/20 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border border-blue-500/30">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-blue-200 text-xs lg:text-sm mb-1">Conversations</p>
-            <p className="text-2xl lg:text-3xl font-bold text-white">{stats?.conversations.toLocaleString()}</p>
-            <p className="text-blue-300 text-xs lg:text-sm">+12% ce mois</p>
+            <p className="text-blue-200 text-xs md:text-sm mb-1">Conversations</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.conversations.toLocaleString()}</p>
+            <p className="text-blue-300 text-xs md:text-sm">+12% ce mois</p>
           </div>
-          <MessageSquare className="w-6 h-6 lg:w-8 lg:h-8 text-blue-400" />
+          <MessageSquare className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
         </div>
       </div>
       
-      <div className="bg-green-600/20 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-green-500/30">
+      <div className="bg-green-600/20 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border border-green-500/30">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-green-200 text-xs lg:text-sm mb-1">Produits</p>
-            <p className="text-2xl lg:text-3xl font-bold text-white">{stats?.products}</p>
-            <p className="text-green-300 text-xs lg:text-sm">+5 cette semaine</p>
+            <p className="text-green-200 text-xs md:text-sm mb-1">Produits</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.products}</p>
+            <p className="text-green-300 text-xs md:text-sm">+5 cette semaine</p>
           </div>
-          <Package className="w-6 h-6 lg:w-8 lg:h-8 text-green-400" />
+          <Package className="w-6 h-6 md:w-8 md:h-8 text-green-400" />
         </div>
       </div>
       
-      <div className="bg-purple-600/20 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-purple-500/30">
+      <div className="bg-purple-600/20 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border border-purple-500/30">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-purple-200 text-xs lg:text-sm mb-1">Revenus</p>
-            <p className="text-2xl lg:text-3xl font-bold text-white">{stats?.revenue.toLocaleString()}€</p>
-            <p className="text-purple-300 text-xs lg:text-sm">+28% ce mois</p>
+            <p className="text-purple-200 text-xs md:text-sm mb-1">Revenus</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.revenue.toLocaleString()}€</p>
+            <p className="text-purple-300 text-xs md:text-sm">+28% ce mois</p>
           </div>
-          <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-purple-400" />
+          <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-purple-400" />
         </div>
       </div>
       
-      <div className="bg-orange-600/20 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-orange-500/30">
+      <div className="bg-orange-600/20 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border border-orange-500/30">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-orange-200 text-xs lg:text-sm mb-1">Conversions</p>
-            <p className="text-2xl lg:text-3xl font-bold text-white">{stats?.conversion}%</p>
-            <p className="text-orange-300 text-xs lg:text-sm">+15% ce mois</p>
+            <p className="text-orange-200 text-xs md:text-sm mb-1">Conversions</p>
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats?.conversion}%</p>
+            <p className="text-orange-300 text-xs md:text-sm">+15% ce mois</p>
           </div>
-          <BarChart3 className="w-6 h-6 lg:w-8 lg:h-8 text-orange-400" />
+          <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-orange-400" />
         </div>
       </div>
     </div>
   );
 
   const renderDashboard = () => (
-    <div className="space-y-4 lg:space-y-8">
+    <div className="space-y-4 md:space-y-8">
       {/* Stats principales */}
       {renderStats()}
 
       {/* Activité récente */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
-        <div className="bg-white/10 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-white/20">
-          <h3 className="text-lg lg:text-xl font-bold text-white mb-4 lg:mb-6">Activité récente</h3>
-          <div className="space-y-3 lg:space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/20">
+          <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Activité récente</h3>
+          <div className="space-y-3 md:space-y-4">
             {stats?.recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 bg-black/20 rounded-lg lg:rounded-xl">
+              <div key={index} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-black/20 rounded-lg md:rounded-xl">
                 <div className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full ${
                   activity.type === 'sale' ? 'bg-green-400' :
                   activity.type === 'conversation' ? 'bg-blue-400' :
                   'bg-purple-400'
                 } animate-pulse`}></div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm lg:text-base">{activity.message}</p>
-                  <p className="text-gray-400 text-xs lg:text-sm">{activity.timestamp}</p>
+                  <p className="text-white text-sm md:text-base">{activity.message}</p>
+                  <p className="text-gray-400 text-xs md:text-sm">{activity.timestamp}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-white/20">
-          <h3 className="text-lg lg:text-xl font-bold text-white mb-4 lg:mb-6">Produits populaires</h3>
-          <div className="space-y-3 lg:space-y-4">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-white/20">
+          <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Produits populaires</h3>
+          <div className="space-y-3 md:space-y-4">
             {stats?.popularProducts.map((product, index) => (
-              <div key={index} className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 bg-black/20 rounded-lg lg:rounded-xl">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg lg:rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-sm lg:text-base">{index + 1}</span>
+              <div key={index} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-black/20 rounded-lg md:rounded-xl">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg md:rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold text-sm md:text-base">{index + 1}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm lg:text-base">{product}</p>
-                  <p className="text-gray-400 text-xs lg:text-sm">Top ventes</p>
+                  <p className="text-white font-semibold text-sm md:text-base">{product}</p>
+                  <p className="text-gray-400 text-xs md:text-sm">Top ventes</p>
                 </div>
               </div>
             ))}
@@ -199,7 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex flex-col md:flex-row">
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
@@ -207,7 +207,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden bg-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 p-4 relative z-50">
+      <div className="md:hidden bg-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 p-4 relative z-50">
         <div className="flex items-center justify-between">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
@@ -226,7 +226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       {/* Mobile Menu Overlay */}
       {showMobileMenu && (
-        <div className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40">
+        <div className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40">
           <div className="bg-slate-800/95 backdrop-blur-xl w-full h-full p-6 pt-20">
             <div className="space-y-3">
               {tabs.map((tab) => {
@@ -262,7 +262,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex w-80 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex-col relative z-10">
+      <div className="hidden md:flex w-80 bg-slate-800/95 backdrop-blur-xl border-r border-slate-700/50 flex-col relative z-10">
         {/* Header */}
         <div className="p-6 border-b border-slate-700/50">
           <Logo size="md" />
@@ -315,7 +315,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative z-10 min-h-0">
         {/* Desktop Header */}
-        <div className="hidden lg:flex bg-slate-800/80 backdrop-blur-xl border-b border-slate-700/50 p-6">
+        <div className="hidden md:flex bg-slate-800/80 backdrop-blur-xl border-b border-slate-700/50 p-6">
           <div className="flex items-center justify-between w-full">
             <div>
               <h1 className="text-2xl font-bold text-white mb-1">
@@ -346,7 +346,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* Mobile Tabs */}
-        <div className="lg:hidden bg-slate-800/80 backdrop-blur-xl border-b border-slate-700/50 px-4 py-3">
+        <div className="md:hidden bg-slate-800/80 backdrop-blur-xl border-b border-slate-700/50 px-4 py-3">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -369,7 +369,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && renderDashboard()}
             {activeTab === 'catalog' && <CatalogManagement />}
@@ -381,8 +381,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             {activeTab === 'training' && <AITrainingInterface />}
             {activeTab === 'ml-dashboard' && <MLTrainingDashboard />}
             {activeTab === 'settings' && (
-              <div className="bg-white/10 backdrop-blur-xl rounded-xl lg:rounded-2xl p-6 lg:p-8 border border-white/20">
-                <h2 className="text-xl lg:text-2xl font-bold text-white mb-6">Paramètres du compte</h2>
+              <div className="bg-white/10 backdrop-blur-xl rounded-xl md:rounded-2xl p-6 md:p-8 border border-white/20">
+                <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Paramètres du compte</h2>
                 <p className="text-gray-300">Configuration de votre compte et préférences...</p>
               </div>
             )}
