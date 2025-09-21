@@ -3,7 +3,7 @@ import {
   Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
   Package, Tag, DollarSign, Image, BarChart3, Settings,
   ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
-  Brain, Zap, RefreshCw, Loader2
+  Brain, Zap, RefreshCw, Loader2, Upload
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { supabase } from '../lib/supabase';
@@ -42,6 +42,7 @@ interface EnrichedProduct {
   enrichment_source: string;
   created_at: string;
   updated_at: string;
+  category: string;
 }
 
 export const ProductsEnrichedTable: React.FC = () => {
@@ -109,8 +110,6 @@ export const ProductsEnrichedTable: React.FC = () => {
     setFilteredProducts(filtered);
   };
 
-  };
-
   const handleImportCatalog = () => {
     try {
       const catalogProducts = localStorage.getItem('catalog_products');
@@ -157,7 +156,8 @@ export const ProductsEnrichedTable: React.FC = () => {
         confidence_score: 0,
         enrichment_source: 'import',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        category: product.category || product.productType || 'Mobilier'
       }));
 
       setProducts(enrichedProducts);
@@ -173,7 +173,6 @@ export const ProductsEnrichedTable: React.FC = () => {
           }
         ]
       );
-  };
     } catch (error) {
       console.error('❌ Erreur import catalogue:', error);
       showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
