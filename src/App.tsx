@@ -16,7 +16,6 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
-import { ResponsiveAdminWrapper } from './components/ResponsiveAdminWrapper';
 
 interface Retailer {
   id: string;
@@ -56,79 +55,46 @@ function App() {
     
     // Super Admin
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
-      localStorage.setItem('current_user_role', 'super_admin');
-      localStorage.setItem('current_user_email', credentials.email);
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
-      console.log('✅ Connexion Super Admin réussie');
-      return;
     }
-
-    // ✅ Vérification comptes démo revendeurs
-    const demoAccounts = [
-      { email: 'demo@decorahome.fr', password: 'demo123' },
-      { email: 'contact@mobilierdesign.fr', password: 'design123' },
-      { email: 'info@decocontemporain.com', password: 'deco123' },
-      { email: 'contact@meubleslyon.fr', password: 'lyon123' }
-    ];
-
-    const demoAccount = demoAccounts.find(acc => 
-      acc.email === credentials.email && acc.password === credentials.password
-    );
-
-    if (demoAccount) {
-      localStorage.setItem('current_user_role', 'retailer');
-      localStorage.setItem('current_retailer_email', credentials.email);
-      localStorage.setItem('current_retailer_id', `demo-${credentials.email.split('@')[0]}`);
+    // Decora Home - Boutique principale
+    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
-      console.log('✅ Connexion compte démo:', credentials.email);
-      return;
     }
-
-    // ✅ Vérifier revendeurs approuvés (localStorage)
-    try {
-      const approvedRetailers = JSON.parse(localStorage.getItem('approved_retailers') || '[]');
-      const validRetailer = approvedRetailers.find((retailer: any) => 
-        retailer.email === credentials.email && retailer.password === credentials.password
-      );
-
-      if (validRetailer) {
-        localStorage.setItem('current_user_role', 'retailer');
-        localStorage.setItem('current_retailer_email', credentials.email);
-        localStorage.setItem('current_retailer_id', validRetailer.id);
-        localStorage.setItem('current_retailer_company', validRetailer.companyName);
-        setIsSuperAdmin(false);
-        setIsLoggedIn(true);
-        console.log('✅ Connexion revendeur approuvé:', credentials.email);
-        return;
-      }
-    } catch (error) {
-      console.error('Erreur vérification revendeurs approuvés:', error);
+    // Mobilier Design Paris
+    else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
     }
-
-    // ❌ Identifiants incorrects
-    alert(`❌ Identifiants incorrects.
-
-📧 Comptes disponibles :
-• demo@decorahome.fr / demo123
-• contact@mobilierdesign.fr / design123  
-• info@decocontemporain.com / deco123
-• contact@meubleslyon.fr / lyon123
-• superadmin@omnia.sale / superadmin2025
-
-🔑 Ou votre compte revendeur après validation par le Super Admin`);
+    // Déco Contemporain
+    else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+    }
+    // Meubles Lyon
+    else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+    }
+    // Autres boutiques
+    else if (credentials.email === 'admin@mobilierdesign.fr' && credentials.password === 'design123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+    }
+    else if (credentials.email === 'contact@decocontemporain.com' && credentials.password === 'deco123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+    }
+    else {
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('current_user_role');
-    localStorage.removeItem('current_user_email');
-    localStorage.removeItem('current_retailer_email');
-    localStorage.removeItem('current_retailer_id');
-    localStorage.removeItem('current_retailer_company');
     setIsLoggedIn(false);
     setIsSuperAdmin(false);
-    console.log('✅ Déconnexion réussie');
   };
 
   const handleGetStarted = () => {
@@ -197,7 +163,7 @@ function App() {
               onValidateApplication={handleValidateApplication}
             />
           ) : (
-            <ResponsiveAdminWrapper onLogout={handleLogout} />
+            <AdminDashboard onLogout={handleLogout} />
           )
         ) : (
           <AdminLogin 

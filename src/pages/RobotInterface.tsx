@@ -534,7 +534,7 @@ export const RobotInterface: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex">
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
@@ -542,7 +542,7 @@ export const RobotInterface: React.FC = () => {
       </div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden bg-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 p-4 relative z-40">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 p-4">
         <div className="flex items-center justify-between">
           <button
             onClick={() => window.location.href = '/admin'}
@@ -553,12 +553,12 @@ export const RobotInterface: React.FC = () => {
           </button>
           
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center relative">
-              <Bot className="w-4 h-4 text-white" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center relative">
+              <Bot className="w-5 h-5 text-white" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-bounce"></div>
             </div>
             <div>
-              <h1 className="text-white font-bold text-sm">OmnIA</h1>
+              <h1 className="text-white font-bold">OmnIA</h1>
               <p className="text-cyan-300 text-xs">Robot IA</p>
             </div>
           </div>
@@ -731,12 +731,12 @@ export const RobotInterface: React.FC = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10 lg:ml-0 min-h-0">
+      <div className="flex-1 flex flex-col relative z-10 lg:ml-0 mt-20 lg:mt-0">
         {/* Chat Header - Supprimé comme demandé */}
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 bg-slate-700/20 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-700/20 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto space-y-6">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -772,15 +772,15 @@ export const RobotInterface: React.FC = () => {
             
             {/* Affichage des produits en grille */}
             {products.length > 0 && (
-              <div className="space-y-4 lg:space-y-6">
-                <h3 className="text-lg lg:text-2xl font-bold text-white flex items-center gap-2 lg:gap-3">
-                  <Sparkles className="w-5 h-5 lg:w-6 lg:h-6 text-cyan-400" />
+              <div className="space-y-6">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-cyan-400" />
                   Mes recommandations
-                  <span className="bg-cyan-500/20 text-cyan-300 px-2 lg:px-3 py-1 rounded-full text-xs lg:text-sm">
+                  <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm">
                     {products.length} produit{products.length > 1 ? 's' : ''}
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                   {products.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -797,32 +797,32 @@ export const RobotInterface: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 lg:p-8 bg-slate-800/80 backdrop-blur-xl border-t border-slate-700/50">
+        <div className="p-8 bg-slate-800/80 backdrop-blur-xl border-t border-slate-700/50">
           <div className="max-w-6xl mx-auto">
             {/* Suggestions */}
-            <div className="mb-3 lg:mb-4">
-              <div className="flex gap-1 lg:gap-3 overflow-x-auto pb-2 lg:pb-3 scrollbar-hide">
+            <div className="mb-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 <button
                   onClick={() => handleSuggestionClick("🛋️ Canapé beige")}
-                  className="flex-shrink-0 px-2 lg:px-3 py-1 lg:py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white text-xs rounded-lg border border-purple-500/30 transition-all whitespace-nowrap"
+                  className="flex-shrink-0 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white text-sm rounded-xl border border-purple-500/30 transition-all whitespace-nowrap"
                 >
                   🛋️ Canapé beige
                 </button>
                 <button
                   onClick={() => handleSuggestionClick("🪑 Table ronde")}
-                  className="flex-shrink-0 px-2 lg:px-3 py-1 lg:py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-white text-xs rounded-lg border border-blue-500/30 transition-all whitespace-nowrap"
+                  className="flex-shrink-0 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-white text-sm rounded-xl border border-blue-500/30 transition-all whitespace-nowrap"
                 >
                   🪑 Table ronde
                 </button>
                 <button
                   onClick={() => handleSuggestionClick("💺 Chaise bureau")}
-                  className="flex-shrink-0 px-2 lg:px-3 py-1 lg:py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white text-xs rounded-lg border border-purple-500/30 transition-all whitespace-nowrap"
+                  className="flex-shrink-0 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white text-sm rounded-xl border border-purple-500/30 transition-all whitespace-nowrap"
                 >
                   💺 Chaise bureau
                 </button>
                 <button
                   onClick={() => handleSuggestionClick("✨ Tendances 2025")}
-                  className="flex-shrink-0 px-2 lg:px-3 py-1 lg:py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 hover:text-white text-xs rounded-lg border border-yellow-500/30 transition-all whitespace-nowrap"
+                  className="flex-shrink-0 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 hover:text-white text-sm rounded-xl border border-yellow-500/30 transition-all whitespace-nowrap"
                 >
                   ✨ Tendances 2025
                 </button>
@@ -831,22 +831,22 @@ export const RobotInterface: React.FC = () => {
 
             {/* Statut vocal */}
             {(isRecording || isProcessing || isAnalyzingPhoto) && (
-              <div className="mb-3 lg:mb-4 p-3 lg:p-4 bg-blue-500/20 border border-blue-400/50 rounded-lg lg:rounded-xl">
+              <div className="mb-4 p-4 bg-blue-500/20 border border-blue-400/50 rounded-xl">
                 <div className="flex items-center gap-3">
                   {isRecording ? (
                     <>
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-red-300 font-semibold text-sm lg:text-base">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
+                      <span className="text-red-300 font-semibold">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
                     </>
                   ) : isProcessing ? (
                     <>
-                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 text-blue-400 animate-spin" />
-                      <span className="text-blue-300 font-semibold text-sm lg:text-base">🔄 Transcription en cours...</span>
+                      <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                      <span className="text-blue-300 font-semibold">🔄 Transcription en cours...</span>
                     </>
                   ) : isAnalyzingPhoto ? (
                     <>
-                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 text-purple-400 animate-spin" />
-                      <span className="text-purple-300 font-semibold text-sm lg:text-base">📸 Analyse photo en cours...</span>
+                      <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                      <span className="text-purple-300 font-semibold">📸 Analyse photo en cours...</span>
                     </>
                   ) : null}
                 </div>
@@ -854,7 +854,7 @@ export const RobotInterface: React.FC = () => {
             )}
 
             {/* Input avec boutons - QR Code à côté du champ comme demandé */}
-            <div className="flex gap-2 lg:gap-4">
+            <div className="flex gap-4">
               <div className="flex-1 relative">
                 <input
                   ref={inputRef}
@@ -863,17 +863,17 @@ export const RobotInterface: React.FC = () => {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                   placeholder="Écrivez votre message..."
-                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl lg:rounded-2xl px-4 lg:px-6 py-3 lg:py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 text-sm lg:text-base"
+                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                 />
               </div>
               
               {/* QR Code à côté du champ de saisie comme demandé */}
               <button
                 onClick={() => setShowQR(!showQR)}
-                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
+                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
                 title="QR Code pour mobile"
               >
-                <QrCode className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+                <QrCode className="w-6 h-6 text-white" />
               </button>
 
               {/* Input photo caché */}
@@ -892,13 +892,13 @@ export const RobotInterface: React.FC = () => {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isAnalyzingPhoto}
-                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+                className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
                 title="Analyser une photo"
               >
                 {isAnalyzingPhoto ? (
-                  <Loader2 className="w-4 h-4 lg:w-6 lg:h-6 text-white animate-spin" />
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
                 ) : (
-                  <Image className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+                  <Image className="w-6 h-6 text-white" />
                 )}
               </button>
 
@@ -906,17 +906,17 @@ export const RobotInterface: React.FC = () => {
               <button
                 onClick={() => handleSendMessage(inputMessage)}
                 disabled={!inputMessage.trim()}
-                className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100 border-2 border-white/20"
+                className="relative group bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 disabled:cursor-not-allowed disabled:scale-100 border-2 border-white/20"
                 title="Envoyer le message"
               >
-                <Send className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+                <Send className="w-6 h-6 text-white" />
               </button>
             </div>
 
             {/* Erreur vocale */}
             {sttError && (
-              <div className="mt-3 lg:mt-4 p-3 lg:p-4 bg-red-500/20 border border-red-400/50 rounded-lg lg:rounded-xl">
-                <p className="text-red-300 text-sm lg:text-base">🎤 {sttError}</p>
+              <div className="mt-3 p-3 bg-red-500/20 border border-red-400/50 rounded-xl">
+                <p className="text-red-300">🎤 {sttError}</p>
               </div>
             )}
           </div>
