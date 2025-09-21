@@ -1065,11 +1065,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         );
                       })}
                     </div>
-                  <span className="font-medium">{tab.label}</span>
-                  {tab.badge && tab.badge > 0 && (
-                    <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold ml-auto">
-                      {tab.badge}
-                    </span>
                   )}
                 </div>
               );

@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     const relevantProducts = await searchEnrichedProducts(analysisResult.attributes);
     console.log('📦 Produits enrichis trouvés:', relevantProducts.length);
 
-    // ÉTAPE 3: Générer réponse conversationnelle adaptée
+    // ÉTAPE 3: Générer réponse conversationnelle adaptée SANS produits dans le texte
     const aiResponse = await generateConversationalResponse(message, analysisResult, relevantProducts);
 
     return new Response(JSON.stringify({
@@ -257,7 +257,7 @@ async function searchEnrichedProducts(attributes: any) {
 
     // Filtres basés sur les attributs DeepSeek
     if (attributes.category) {
-      query = query.ilike('category', `%${attributes.category}%`);
+      query = query.or(`product_type.ilike.%${attributes.category}%,title.ilike.%${attributes.category}%`);
     }
     if (attributes.color) {
       query = query.ilike('color', `%${attributes.color}%`);
@@ -303,7 +303,7 @@ async function searchEnrichedProducts(attributes: any) {
       id: product.id,
       handle: product.handle || `product-${product.id}`,
       title: product.title,
-      productType: product.category,
+      productType: product.product_type,
       vendor: product.vendor || 'Decora Home',
       tags: Array.isArray(product.tags) ? product.tags : [],
       price: product.price,
@@ -311,7 +311,7 @@ async function searchEnrichedProducts(attributes: any) {
       availableForSale: product.stock_qty > 0,
       quantityAvailable: product.stock_qty,
       image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.product_url || '#',
+      product_url: product.canonical_link || product.product_url || '#',
       description: product.description || product.title,
       variants: [{
         id: `${product.id}-default`,
@@ -338,9 +338,9 @@ async function generateConversationalResponse(message: string, analysis: any, pr
   }
 
   try {
-    const productsContext = products.length > 0 ? 
-      products.map(p => `• ${p.title} - ${p.price}€${p.compareAtPrice ? ` (était ${p.compareAtPrice}€)` : ''}`).join('\n') :
-      'Aucun produit en stock correspondant exactement.';
+    // NE PAS inclure les détails produits dans le prompt pour éviter qu'ils apparaissent dans la réponse
+    const hasProducts = products.length > 0;
+    const productCount = products.length;
 
     const prompt = `Tu es OmnIA, robot vendeur expert chez Decora Home. Réponds de manière naturelle et commerciale.
 
@@ -348,16 +348,16 @@ MESSAGE CLIENT: "${message}"
 INTENTION DÉTECTÉE: ${analysis.intent}
 ATTRIBUTS: ${JSON.stringify(analysis.attributes)}
 
-PRODUITS DISPONIBLES:
-${productsContext}
+PRODUITS TROUVÉS: ${hasProducts ? `${productCount} produit(s) correspondant(s)` : 'Aucun produit correspondant'}
 
 RÈGLES:
-- Réponse courte (2-3 phrases max)
+- Réponse courte (1-2 phrases max)
 - Ton commercial chaleureux
-- Si produits trouvés → les présenter avec enthousiasme
-- Si aucun produit → proposer alternatives ou conseil
+- Si produits trouvés → dire qu'on a trouvé des produits SANS les détailler (ils s'afficheront séparément)
+- Si aucun produit → proposer alternatives ou poser une question
 - Toujours finir par une question engageante
-- Utiliser emojis avec modération
+- NE JAMAIS mentionner les noms, prix ou détails des produits dans ta réponse
+- Les produits s'affichent automatiquement sous ton message
 
 RÉPONSE:`;
 
@@ -372,7 +372,7 @@ RÉPONSE:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es OmnIA, robot vendeur expert en mobilier. Réponds de manière naturelle et commerciale.'
+            content: 'Tu es OmnIA, robot vendeur expert en mobilier. Réponds de manière naturelle et commerciale. NE JAMAIS mentionner les détails des produits dans tes réponses.'
           },
           {
             role: 'user',
@@ -404,7 +404,7 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
   if (products.length === 0) {
     if (analysis.attributes.category) {
       return {
-        message: `Malheureusement, nous n'avons actuellement aucun ${analysis.attributes.category} en stock correspondant exactement à vos critères. Mais restons en contact ! Dès que de nouveaux modèles arrivent, je vous préviens. Que diriez-vous d'explorer nos autres catégories ?`
+        message: `Je n'ai pas trouvé de ${analysis.attributes.category} correspondant exactement. Que diriez-vous d'explorer d'autres options ?`
       };
     }
     return {
@@ -412,11 +412,8 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
     };
   }
 
-  const product = products[0];
-  const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
-  
   return {
-    message: `Excellente demande ! J'ai ${products.length} produit${products.length > 1 ? 's' : ''} qui pourrai${products.length > 1 ? 'ent' : 't'} vous intéresser. ${hasDiscount ? 'Avec des remises attractives !' : ''} Lequel vous plaît le plus ?`
+    message: `Parfait ! J'ai trouvé ${products.length} produit${products.length > 1 ? 's' : ''} qui pourrai${products.length > 1 ? 'ent' : 't'} vous intéresser. Lequel vous plaît le plus ?`
   };
 }
 

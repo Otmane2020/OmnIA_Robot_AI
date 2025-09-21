@@ -6,6 +6,16 @@ const corsHeaders = {
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+function generateHandle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .substring(0, 100);
+}
+
 interface EnrichProductsRequest {
   products: any[];
   source: 'catalog' | 'shopify' | 'csv' | 'xml';
