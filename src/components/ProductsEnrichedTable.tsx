@@ -114,9 +114,10 @@ export const ProductsEnrichedTable: React.FC = () => {
       const products = JSON.parse(catalogProducts);
       console.log('📦 Produits à enrichir:', products.length);
 
-      // Progression réelle basée sur le traitement
-      let processedCount = 0;
-      const totalProducts = products.length;
+      // Simuler progression
+      const progressInterval = setInterval(() => {
+        setEnrichmentProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
 
       // Appeler l'enrichissement DeepSeek
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
@@ -132,6 +133,7 @@ export const ProductsEnrichedTable: React.FC = () => {
         }),
       });
 
+      clearInterval(progressInterval);
       setEnrichmentProgress(100);
 
       if (response.ok) {
@@ -167,48 +169,6 @@ export const ProductsEnrichedTable: React.FC = () => {
     }
   };
 
-  const handleImportCatalog = () => {
-    const catalogProducts = localStorage.getItem('catalog_products');
-    if (!catalogProducts) {
-      showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue depuis l\'onglet Catalogue.');
-      return;
-    }
-
-    try {
-      const products = JSON.parse(catalogProducts);
-      const enrichedProducts = products.map((product: any) => ({
-        id: `imported-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        handle: product.handle || product.id || 'product',
-        title: product.name || product.title || 'Produit sans nom',
-        description: product.description || '',
-        vendor: product.vendor || 'Decora Home',
-        brand: product.vendor || 'Decora Home',
-        category: product.category || product.productType || 'Mobilier',
-        subcategory: '',
-        tags: Array.isArray(product.tags) ? product.tags : [],
-        material: '',
-        color: '',
-        style: '',
-        room: '',
-        dimensions: '',
-        price: parseFloat(product.price) || 0,
-        compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-        stock_qty: parseInt(product.stock) || parseInt(product.quantityAvailable) || 0,
-        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        product_url: product.product_url || '#',
-        confidence_score: 0,
-        enrichment_source: 'import',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
-
-      setProducts(enrichedProducts);
-      showSuccess('Import réussi', `${enrichedProducts.length} produits importés dans les produits enrichis.`);
-    } catch (error) {
-      console.error('❌ Erreur import:', error);
-      showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
-    }
-  };
   const handleAutoTraining = async () => {
     try {
       showInfo('Entraînement auto', 'Démarrage de l\'entraînement automatique...');
@@ -267,14 +227,6 @@ export const ProductsEnrichedTable: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={handleImportCatalog}
-            className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
-          >
-            <Package className="w-5 h-5" />
-            Importer Catalogue
-          </button>
-          
           <button
             onClick={handleEnrichWithDeepSeek}
             disabled={isEnriching}
@@ -351,15 +303,7 @@ export const ProductsEnrichedTable: React.FC = () => {
               style={{ width: `${enrichmentProgress}%` }}
             ></div>
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-purple-300 text-sm">{enrichmentProgress}% - Analyse IA des attributs produits</p>
-            {enrichmentProgress === 100 && (
-              <div className="flex items-center gap-2 text-green-400">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-semibold">Terminé !</span>
-              </div>
-            )}
-          </div>
+          <p className="text-purple-300 text-sm">{enrichmentProgress}% - Analyse IA des attributs produits</p>
         </div>
       )}
 
@@ -369,22 +313,14 @@ export const ProductsEnrichedTable: React.FC = () => {
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Aucun produit enrichi</h3>
           <p className="text-gray-400 mb-6">
-            Importez votre catalogue ou enrichissez les produits existants avec DeepSeek IA.
+            Importez d'abord votre catalogue, puis lancez l'enrichissement DeepSeek.
           </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={handleImportCatalog}
-              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Importer Catalogue
-            </button>
-            <button
-              onClick={handleEnrichWithDeepSeek}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Enrichir avec IA
-            </button>
-          </div>
+          <button
+            onClick={handleEnrichWithDeepSeek}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          >
+            Enrichir le catalogue
+          </button>
         </div>
       ) : (
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
@@ -393,12 +329,7 @@ export const ProductsEnrichedTable: React.FC = () => {
               <thead className="bg-black/20">
                 <tr>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Catégorie</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Couleur</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Matériau</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Style</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Pièce</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Tags</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Stock</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Confiance</th>
@@ -429,57 +360,26 @@ export const ProductsEnrichedTable: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className="text-white text-sm">{product.category || 'Non défini'}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        product.color 
-                          ? 'bg-blue-500/20 text-blue-300' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {product.color || 'Non défini'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        product.material 
-                          ? 'bg-green-500/20 text-green-300' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {product.material || 'Non défini'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        product.style 
-                          ? 'bg-purple-500/20 text-purple-300' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {product.style || 'Non défini'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        product.room 
-                          ? 'bg-orange-500/20 text-orange-300' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {product.room || 'Non défini'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {Array.isArray(product.tags) && product.tags.length > 0 ? (
-                          product.tags.slice(0, 3).map((tag, index) => (
-                            <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
-                              {tag}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-400 text-xs">Aucun tag</span>
+                      <div className="space-y-1">
+                        {product.material && (
+                          <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
+                            {product.material}
+                          </span>
                         )}
-                        {Array.isArray(product.tags) && product.tags.length > 3 && (
-                          <span className="text-gray-400 text-xs">+{product.tags.length - 3}</span>
+                        {product.color && (
+                          <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
+                            {product.color}
+                          </span>
+                        )}
+                        {product.style && (
+                          <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
+                            {product.style}
+                          </span>
+                        )}
+                        {product.room && (
+                          <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs mr-1">
+                            {product.room}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -492,12 +392,9 @@ export const ProductsEnrichedTable: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${product.stock_qty > 0 ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                        <span className={`font-semibold ${product.stock_qty > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {product.stock_qty > 0 ? `${product.stock_qty} en stock` : 'Rupture'}
-                        </span>
-                      </div>
+                      <span className={`font-semibold ${product.stock_qty > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {product.stock_qty}
+                      </span>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
