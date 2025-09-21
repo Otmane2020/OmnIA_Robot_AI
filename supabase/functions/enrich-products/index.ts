@@ -360,6 +360,13 @@ RÉPONSE JSON UNIQUEMENT:`;
           style: parsed.style || '',
           room: parsed.room || '',
           dimensions: parsed.dimensions || '',
+          weight: parsed.weight || '',
+          capacity: parsed.capacity || '',
+          gtin: parsed.gtin || '',
+          mpn: parsed.mpn || '',
+          seo_title: parsed.seo_title || '',
+          seo_description: parsed.seo_description || '',
+          additional_images: parsed.additional_images || [],
           tags: Array.isArray(parsed.tags) ? parsed.tags : [],
           confidence_score: parsed.confidence_score || 50
         };
