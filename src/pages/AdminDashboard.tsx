@@ -458,7 +458,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Temps de réponse</span>
-              <span className="text-green-400 font-bold">< 200ms</span>
+              <span className="text-green-400 font-bold">{"< 200ms"}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Uptime</span>
