@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
     const relevantProducts = await searchEnrichedProducts(analysisResult.attributes);
     console.log('📦 Produits enrichis trouvés:', relevantProducts.length);
 
-    // ÉTAPE 3: Générer réponse conversationnelle adaptée avec DeepSeek
-    const aiResponse = await generateConversationalResponseWithDeepSeek(message, analysisResult, relevantProducts);
+    // ÉTAPE 3: Générer réponse conversationnelle adaptée
+    const aiResponse = await generateConversationalResponse(message, analysisResult, relevantProducts);
 
     return new Response(JSON.stringify({
       message: aiResponse.message,
@@ -181,80 +181,6 @@ RÉPONSE JSON:`;
   }
 
   return analyzeIntentBasic(message);
-}
-
-async function generateConversationalResponseWithDeepSeek(message: string, analysis: any, products: any[]) {
-  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-  
-  if (!deepseekApiKey) {
-    return generateFallbackResponse(message, analysis, products);
-  }
-
-  try {
-    const productsContext = products.length > 0 ? 
-      products.map(p => `• ${p.title} - ${p.price}€${p.compareAtPrice ? ` (était ${p.compareAtPrice}€)` : ''} - ${p.productType || 'Mobilier'}`).join('\n') :
-      'Aucun produit en stock correspondant exactement.';
-
-    const prompt = `Tu es OmnIA, robot vendeur expert chez Decora Home. Réponds de manière naturelle et commerciale.
-
-MESSAGE CLIENT: "${message}"
-INTENTION DÉTECTÉE: ${analysis.intent}
-ATTRIBUTS RECHERCHÉS: ${JSON.stringify(analysis.attributes)}
-
-PRODUITS DISPONIBLES EN STOCK:
-${productsContext}
-
-RÈGLES IMPORTANTES:
-- Réponse courte (2-3 phrases max)
-- Ton commercial chaleureux et humain
-- Si produits trouvés → les présenter avec enthousiasme et prix
-- Si aucun produit → proposer alternatives ou conseil
-- Toujours finir par une question engageante
-- Utiliser emojis avec modération
-- Focus sur les bénéfices client
-
-EXEMPLES DE RÉPONSES:
-- "Parfait ! Notre ALYANA beige 799€ est idéal pour votre salon ! Convertible ou fixe ?"
-- "Excellente idée ! Table AUREA travertin 499€ apportera élégance ! Ø100 ou 120cm ?"
-- "Super choix ! Chaise INAYA 99€ design contemporain ! Combien en faut-il ?"
-
-RÉPONSE COMMERCIALE:`;
-
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${deepseekApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'Tu es OmnIA, robot vendeur expert en mobilier chez Decora Home. Réponds de manière naturelle, commerciale et engageante.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.8,
-        stream: false
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const aiMessage = data.choices[0]?.message?.content || generateFallbackResponse(message, analysis, products).message;
-      
-      return { message: aiMessage };
-    }
-  } catch (error) {
-    console.log('⚠️ Erreur DeepSeek réponse, fallback');
-  }
-
-  return generateFallbackResponse(message, analysis, products);
 }
 
 function hasSpecificProductMention(message: string): boolean {
