@@ -1,820 +1,729 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Building, CheckCircle, X, Eye, Mail, Phone, MapPin, 
-  Calendar, AlertCircle, FileText, Globe, Settings, Send,
-  MessageSquare, Inbox, Archive, Star, Search, Filter,
-  Server, Wifi, Database, TestTube, RefreshCw, Loader2
+import {
+  Users, Building, CheckCircle, X, Eye, Edit, Trash2, Plus,
+  Mail, Phone, MapPin, Calendar, FileText, AlertCircle,
+  Search, Filter, Download, Upload, Settings, LogOut,
+  User, CreditCard, Globe, BarChart3, Clock, Star
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { supabase } from '../lib/supabase';
-import { useNotifications } from '../components/NotificationSystem';
+
+interface Application {
+  id: string;
+  companyName: string;
+  siret: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  position: string;
+  password: string;
+  selectedPlan: 'starter' | 'professional' | 'enterprise';
+  kbisFile: File | null;
+  submittedAt: string;
+  submittedDate: string;
+  submittedTime: string;
+  status: 'pending' | 'approved' | 'rejected';
+  proposedSubdomain: string;
+}
+
+interface Retailer {
+  id: string;
+  companyName: string;
+  email: string;
+  password: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended';
+  revenue: number;
+  conversations: number;
+  products: number;
+  joinDate: string;
+  lastActive: string;
+  subdomain: string;
+  contactName: string;
+  phone: string;
+  address: string;
+  city: string;
+  siret: string;
+}
 
 interface SuperAdminProps {
   onLogout: () => void;
-  pendingApplications: any[];
-  onValidateApplication: (id: string, approved: boolean) => void;
+  pendingApplications: Application[];
+  onValidateApplication: (applicationId: string, approved: boolean) => void;
 }
 
-interface EmailMessage {
-  id: string;
-  from: string;
-  to: string;
-  subject: string;
-  content: string;
-  type: 'incoming' | 'outgoing';
-  status: 'unread' | 'read' | 'replied';
-  created_at: string;
-  retailer_id?: string;
-}
+export const SuperAdmin: React.FC<SuperAdminProps> = ({ 
+  onLogout, 
+  pendingApplications, 
+  onValidateApplication 
+}) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showRetailerModal, setShowRetailerModal] = useState(false);
+  const [showCreateRetailerModal, setShowCreateRetailerModal] = useState(false);
+  const [selectedKbis, setSelectedKbis] = useState<{ application: Application; kbisFile: File } | null>(null);
+  const [showKbisModal, setShowKbisModal] = useState(false);
 
-interface IMAPConfig {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  secure: boolean;
-}
-
-export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplications, onValidateApplication }) => {
-  const [activeTab, setActiveTab] = useState('applications');
-  const [retailers, setRetailers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  
-  // Messagerie
-  const [messages, setMessages] = useState<EmailMessage[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<EmailMessage | null>(null);
-  const [replyContent, setReplyContent] = useState('');
-  const [newMessageTo, setNewMessageTo] = useState('');
-  const [newMessageSubject, setNewMessageSubject] = useState('');
-  const [newMessageContent, setNewMessageContent] = useState('');
-  const [showNewMessage, setShowNewMessage] = useState(false);
-  const [messageFilter, setMessageFilter] = useState('all');
-  
-  // Configuration IMAP
-  const [imapConfig, setImapConfig] = useState<IMAPConfig>({
-    host: 'imap.gmail.com',
-    port: 993,
-    username: 'support@omnia.sale',
-    password: '',
-    secure: true
-  });
-  const [isTestingIMAP, setIsTestingIMAP] = useState(false);
-  const [imapTestResult, setImapTestResult] = useState<string>('');
-  
-  const { showSuccess, showError, showInfo } = useNotifications();
-
+  // Charger les revendeurs depuis localStorage
   useEffect(() => {
-    loadRetailers();
-    loadMessages();
+    try {
+      const savedRetailers = localStorage.getItem('approved_retailers');
+      if (savedRetailers) {
+        setRetailers(JSON.parse(savedRetailers));
+      } else {
+        // Revendeurs de démonstration
+        const demoRetailers: Retailer[] = [
+          {
+            id: 'retailer-1',
+            companyName: 'Decora Home',
+            email: 'demo@decorahome.fr',
+            password: 'demo123',
+            plan: 'professional',
+            status: 'active',
+            revenue: 15420,
+            conversations: 1234,
+            products: 247,
+            joinDate: '2024-03-15',
+            lastActive: '2025-01-15',
+            subdomain: 'decorahome',
+            contactName: 'Marie Dubois',
+            phone: '+33 1 23 45 67 89',
+            address: '123 Rue de la Paix',
+            city: 'Paris',
+            siret: '12345678901234'
+          },
+          {
+            id: 'retailer-2',
+            companyName: 'Mobilier Design',
+            email: 'contact@mobilierdesign.fr',
+            password: 'design123',
+            plan: 'enterprise',
+            status: 'active',
+            revenue: 28750,
+            conversations: 2156,
+            products: 456,
+            joinDate: '2024-01-20',
+            lastActive: '2025-01-14',
+            subdomain: 'mobilierdesign',
+            contactName: 'Jean Martin',
+            phone: '+33 1 34 56 78 90',
+            address: '456 Avenue Montaigne',
+            city: 'Lyon',
+            siret: '23456789012345'
+          }
+        ];
+        setRetailers(demoRetailers);
+        localStorage.setItem('approved_retailers', JSON.stringify(demoRetailers));
+      }
+    } catch (error) {
+      console.error('Erreur chargement revendeurs:', error);
+    }
   }, []);
 
-  const loadRetailers = async () => {
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('retailers')
-        .select('*')
-        .order('created_at', { ascending: false });
+  // Sauvegarder les revendeurs dans localStorage
+  useEffect(() => {
+    localStorage.setItem('approved_retailers', JSON.stringify(retailers));
+  }, [retailers]);
 
-      if (error) {
-        console.error('❌ Erreur chargement revendeurs:', error);
-        // Fallback vers localStorage
-        const localRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-        setRetailers(localRetailers);
-      } else {
-        setRetailers(data || []);
-      }
-    } catch (error) {
-      console.error('❌ Erreur:', error);
-    } finally {
-      setLoading(false);
+  const handleApproveApplication = (application: Application) => {
+    console.log('✅ APPROBATION:', application.companyName);
+    
+    // Créer le nouveau revendeur
+    const newRetailer: Retailer = {
+      id: `retailer-${Date.now()}`,
+      companyName: application.companyName,
+      email: application.email,
+      password: application.password,
+      plan: application.selectedPlan,
+      status: 'active',
+      revenue: 0,
+      conversations: 0,
+      products: 0,
+      joinDate: new Date().toISOString().split('T')[0],
+      lastActive: new Date().toISOString().split('T')[0],
+      subdomain: application.proposedSubdomain,
+      contactName: `${application.firstName} ${application.lastName}`,
+      phone: application.phone,
+      address: application.address,
+      city: application.city,
+      siret: application.siret
+    };
+
+    // Ajouter aux revendeurs
+    setRetailers(prev => [...prev, newRetailer]);
+    
+    // Supprimer de la liste des demandes
+    onValidateApplication(application.id, true);
+    
+    // Simuler l'envoi d'email
+    console.log('📧 EMAIL APPROBATION envoyé à:', application.email);
+    console.log('🔑 Identifiants:', {
+      email: application.email,
+      password: application.password,
+      subdomain: `${application.proposedSubdomain}.omnia.sale`
+    });
+    
+    alert(`✅ Revendeur approuvé !\n\nIdentifiants envoyés à ${application.email} :\n• Email: ${application.email}\n• Mot de passe: ${application.password}\n• Domaine: ${application.proposedSubdomain}.omnia.sale`);
+  };
+
+  const handleRejectApplication = (application: Application) => {
+    const reason = prompt('Raison du rejet (sera envoyée par email) :');
+    if (reason) {
+      console.log('❌ REJET:', application.companyName, 'Raison:', reason);
+      console.log('📧 EMAIL REJET envoyé à:', application.email);
+      
+      onValidateApplication(application.id, false);
+      alert(`❌ Demande rejetée.\n\nEmail envoyé à ${application.email} avec la raison :\n"${reason}"`);
     }
   };
 
-  const loadMessages = () => {
-    // Charger messages depuis localStorage (simulation)
-    const savedMessages = localStorage.getItem('admin_messages');
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
+  const handleViewApplication = (application: Application) => {
+    setSelectedApplication(application);
+    setShowApplicationModal(true);
+  };
+
+  const handleEditApplication = (application: Application) => {
+    setSelectedApplication(application);
+    setShowApplicationModal(true);
+  };
+
+  const handleDeleteApplication = (applicationId: string) => {
+    if (confirm('Supprimer définitivement cette demande ?')) {
+      onValidateApplication(applicationId, false);
+      console.log('🗑️ Demande supprimée:', applicationId);
+    }
+  };
+
+  const handleViewKbis = (application: Application) => {
+    if (application.kbisFile) {
+      setSelectedKbis({ application, kbisFile: application.kbisFile });
+      setShowKbisModal(true);
     } else {
-      // Messages de démo
-      const demoMessages: EmailMessage[] = [
-        {
-          id: '1',
-          from: 'contact@mobilierdesign.fr',
-          to: 'support@omnia.sale',
-          subject: 'Problème connexion catalogue Shopify',
-          content: 'Bonjour, je n\'arrive pas à connecter mon catalogue Shopify. Le token semble correct mais j\'ai une erreur. Pouvez-vous m\'aider ?',
-          type: 'incoming',
-          status: 'unread',
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          retailer_id: 'retailer-1'
-        },
-        {
-          id: '2',
-          from: 'info@decocontemporain.com',
-          to: 'support@omnia.sale',
-          subject: 'Demande formation équipe',
-          content: 'Bonjour, nous souhaitons former notre équipe à l\'utilisation d\'OmnIA. Proposez-vous des sessions de formation ?',
-          type: 'incoming',
-          status: 'read',
-          created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          retailer_id: 'retailer-2'
-        }
-      ];
-      setMessages(demoMessages);
-      localStorage.setItem('admin_messages', JSON.stringify(demoMessages));
+      alert('Aucun document Kbis disponible pour cette demande.');
     }
   };
 
-  const handleValidateApplication = async (applicationId: string, approved: boolean, reason?: string) => {
-    try {
-      console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
-      
-      const application = pendingApplications.find(app => app.id === applicationId);
-      if (!application) {
-        showError('Erreur', 'Demande introuvable');
-        return;
-      }
-
-      if (approved) {
-        // Créer le sous-domaine au format correct
-        const cleanSubdomain = application.companyName
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '')
-          .substring(0, 20);
-        
-        const newRetailer = {
-          id: `retailer-${Date.now()}`,
-          email: application.email,
-          password_hash: 'hashed_password',
-          company_name: application.companyName,
-          subdomain: cleanSubdomain, // Format: movala.omnia.sale
-          plan: application.selectedPlan,
-          status: 'active',
-          contact_name: `${application.firstName} ${application.lastName}`,
-          phone: application.phone,
-          address: application.address,
-          city: application.city,
-          postal_code: application.postalCode,
-          siret: application.siret,
-          position: application.position,
-          created_at: new Date().toISOString(),
-          validated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        // Sauvegarder en base de données
-        const { data: retailerData, error: retailerError } = await supabase
-          .from('retailers')
-          .insert(newRetailer)
-          .select()
-          .single();
-
-        if (retailerError) {
-          console.error('❌ Erreur création revendeur:', retailerError);
-          showError('Erreur DB', 'Impossible de créer le revendeur en base');
-          return;
-        }
-
-        // Créer le sous-domaine
-        const { error: subdomainError } = await supabase
-          .from('retailer_subdomains')
-          .insert({
-            retailer_id: retailerData.id,
-            subdomain: cleanSubdomain,
-            dns_status: 'active',
-            ssl_status: 'active',
-            activated_at: new Date().toISOString()
-          });
-
-        if (subdomainError) {
-          console.warn('⚠️ Erreur création sous-domaine:', subdomainError);
-        }
-
-        // Initialiser analytics à zéro
-        const { error: analyticsError } = await supabase
-          .from('retailer_analytics')
-          .insert({
-            retailer_id: retailerData.id,
-            date: new Date().toISOString().split('T')[0],
-            conversations_count: 0,
-            unique_visitors: 0,
-            products_viewed: 0,
-            cart_additions: 0,
-            conversions: 0,
-            revenue: 0
-          });
-
-        if (analyticsError) {
-          console.warn('⚠️ Erreur initialisation analytics:', analyticsError);
-        }
-
-        // Sauvegarder aussi en localStorage
-        const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-        existingRetailers.push(newRetailer);
-        localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
-
-        showSuccess(
-          'Revendeur approuvé !', 
-          `${application.companyName} créé avec le domaine ${cleanSubdomain}.omnia.sale`,
-          [
-            {
-              label: 'Envoyer email',
-              action: () => sendApprovalEmail(application, cleanSubdomain),
-              variant: 'primary'
-            }
-          ]
-        );
-
-        console.log('✅ Revendeur créé:', {
-          company: application.companyName,
-          subdomain: `${cleanSubdomain}.omnia.sale`,
-          email: application.email,
-          id: retailerData.id
-        });
-
-      } else {
-        // Rejeter la demande
-        const { error } = await supabase
-          .from('retailer_applications')
-          .update({
-            status: 'rejected',
-            rejection_reason: reason || 'Informations insuffisantes',
-            processed_at: new Date().toISOString()
-          })
-          .eq('id', applicationId);
-
-        if (error) {
-          console.warn('⚠️ Erreur mise à jour statut:', error);
-        }
-
-        showError('Demande rejetée', `Raison: ${reason || 'Informations insuffisantes'}`);
-        console.log('❌ Demande rejetée:', applicationId, reason);
-      }
-
-      // Supprimer de la liste des demandes en attente
-      onValidateApplication(applicationId, approved);
-      
-      // Recharger la liste des revendeurs
-      await loadRetailers();
-
-    } catch (error) {
-      console.error('❌ Erreur validation:', error);
-      showError('Erreur de validation', 'Impossible de traiter la demande');
-    }
-  };
-
-  const sendApprovalEmail = async (application: any, subdomain: string) => {
-    try {
-      const emailData = {
-        to: application.email,
-        subject: '🎉 Bienvenue sur OmnIA.sale - Votre compte est activé !',
-        content: `Félicitations ${application.firstName} !
-
-Votre inscription pour ${application.companyName} a été approuvée.
-
-🔑 Vos accès :
-• Interface Admin : https://omnia.sale/admin
-• Votre domaine : https://${subdomain}.omnia.sale
-• Email : ${application.email}
-• Mot de passe : ${application.password}
-
-🚀 Prochaines étapes :
-1. Connectez-vous à votre interface admin
-2. Importez votre catalogue
-3. Personnalisez OmnIA
-4. Intégrez le widget sur votre site
-
-Besoin d'aide ? support@omnia.sale
-
-L'équipe OmnIA.sale`
-      };
-
-      // Simuler l'envoi d'email
-      console.log('📧 Email d\'approbation simulé:', emailData);
-      showInfo('Email envoyé', `Email d'approbation envoyé à ${application.email}`);
-
-    } catch (error) {
-      console.error('❌ Erreur envoi email:', error);
-      showError('Erreur email', 'Impossible d\'envoyer l\'email d\'approbation');
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessageTo || !newMessageSubject || !newMessageContent) {
-      showError('Champs manquants', 'Veuillez remplir tous les champs');
-      return;
-    }
-
-    const newMessage: EmailMessage = {
-      id: Date.now().toString(),
-      from: 'support@omnia.sale',
-      to: newMessageTo,
-      subject: newMessageSubject,
-      content: newMessageContent,
-      type: 'outgoing',
-      status: 'read',
-      created_at: new Date().toISOString()
+  const handleCreateRetailer = (retailerData: any) => {
+    const newRetailer: Retailer = {
+      id: `retailer-${Date.now()}`,
+      companyName: retailerData.companyName,
+      email: retailerData.email,
+      password: retailerData.password,
+      plan: retailerData.plan,
+      status: 'active',
+      revenue: 0,
+      conversations: 0,
+      products: 0,
+      joinDate: new Date().toISOString().split('T')[0],
+      lastActive: new Date().toISOString().split('T')[0],
+      subdomain: retailerData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
+      contactName: `${retailerData.firstName} ${retailerData.lastName}`,
+      phone: retailerData.phone,
+      address: retailerData.address,
+      city: retailerData.city,
+      siret: retailerData.siret
     };
 
-    const updatedMessages = [...messages, newMessage];
-    setMessages(updatedMessages);
-    localStorage.setItem('admin_messages', JSON.stringify(updatedMessages));
-
-    // Reset form
-    setNewMessageTo('');
-    setNewMessageSubject('');
-    setNewMessageContent('');
-    setShowNewMessage(false);
-
-    showSuccess('Message envoyé', `Email envoyé à ${newMessage.to}`);
+    setRetailers(prev => [...prev, newRetailer]);
+    setShowCreateRetailerModal(false);
+    
+    console.log('✅ Revendeur créé manuellement:', newRetailer.companyName);
+    alert(`✅ Revendeur créé !\n\nIdentifiants :\n• Email: ${newRetailer.email}\n• Mot de passe: ${newRetailer.password}\n• Domaine: ${newRetailer.subdomain}.omnia.sale`);
   };
 
-  const handleReplyMessage = async () => {
-    if (!selectedMessage || !replyContent) return;
-
-    const replyMessage: EmailMessage = {
-      id: Date.now().toString(),
-      from: 'support@omnia.sale',
-      to: selectedMessage.from,
-      subject: `Re: ${selectedMessage.subject}`,
-      content: replyContent,
-      type: 'outgoing',
-      status: 'read',
-      created_at: new Date().toISOString(),
-      retailer_id: selectedMessage.retailer_id
-    };
-
-    const updatedMessages = [...messages, replyMessage];
-    setMessages(updatedMessages);
-    localStorage.setItem('admin_messages', JSON.stringify(updatedMessages));
-
-    // Marquer le message original comme répondu
-    const updatedOriginalMessages = messages.map(msg =>
-      msg.id === selectedMessage.id ? { ...msg, status: 'replied' as const } : msg
-    );
-    setMessages(updatedOriginalMessages);
-    localStorage.setItem('admin_messages', JSON.stringify(updatedOriginalMessages));
-
-    setReplyContent('');
-    setSelectedMessage(null);
-    showSuccess('Réponse envoyée', `Réponse envoyée à ${selectedMessage.from}`);
+  const handleEditRetailer = (retailer: Retailer) => {
+    setSelectedRetailer(retailer);
+    setShowRetailerModal(true);
   };
 
-  const testIMAPConnection = async () => {
-    setIsTestingIMAP(true);
-    setImapTestResult('');
-
-    try {
-      // Simuler test IMAP
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (imapConfig.username && imapConfig.password) {
-        setImapTestResult('✅ Connexion IMAP réussie ! 3 nouveaux messages récupérés.');
-        showSuccess('IMAP connecté', 'Configuration IMAP validée avec succès');
-      } else {
-        setImapTestResult('❌ Identifiants IMAP manquants');
-        showError('IMAP échoué', 'Veuillez renseigner username et password');
-      }
-    } catch (error) {
-      setImapTestResult('❌ Erreur de connexion IMAP');
-      showError('Erreur IMAP', 'Impossible de se connecter au serveur IMAP');
-    } finally {
-      setIsTestingIMAP(false);
+  const handleUpdateRetailer = (updatedData: any) => {
+    if (selectedRetailer) {
+      setRetailers(prev => prev.map(r => 
+        r.id === selectedRetailer.id 
+          ? { ...r, ...updatedData, lastActive: new Date().toISOString().split('T')[0] }
+          : r
+      ));
+      setShowRetailerModal(false);
+      setSelectedRetailer(null);
+      console.log('✅ Revendeur modifié:', updatedData.companyName);
     }
   };
 
-  const filteredMessages = messages.filter(msg => {
-    if (messageFilter === 'unread') return msg.status === 'unread';
-    if (messageFilter === 'outgoing') return msg.type === 'outgoing';
-    if (messageFilter === 'incoming') return msg.type === 'incoming';
-    return true;
+  const handleDeleteRetailer = (retailerId: string) => {
+    if (confirm('Supprimer définitivement ce revendeur ? Cette action est irréversible.')) {
+      setRetailers(prev => prev.filter(r => r.id !== retailerId));
+      console.log('🗑️ Revendeur supprimé:', retailerId);
+    }
+  };
+
+  const filteredApplications = pendingApplications.filter(app => {
+    const matchesSearch = searchTerm === '' || 
+      app.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${app.firstName} ${app.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesSearch;
   });
 
-  const renderApplicationsTab = () => (
-    <div className="space-y-6">
+  const filteredRetailers = retailers.filter(retailer => {
+    const matchesSearch = searchTerm === '' || 
+      retailer.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      retailer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      retailer.contactName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || retailer.status === statusFilter;
+    const matchesPlan = planFilter === 'all' || retailer.plan === planFilter;
+    
+    return matchesSearch && matchesStatus && matchesPlan;
+  });
+
+  const stats = {
+    totalRetailers: retailers.length,
+    activeRetailers: retailers.filter(r => r.status === 'active').length,
+    pendingApplications: pendingApplications.length,
+    totalRevenue: retailers.reduce((sum, r) => sum + r.revenue, 0),
+    totalConversations: retailers.reduce((sum, r) => sum + r.conversations, 0),
+    totalProducts: retailers.reduce((sum, r) => sum + r.products, 0)
+  };
+
+  const tabs = [
+    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
+    { id: 'applications', label: 'Demandes en attente', icon: Clock },
+    { id: 'retailers', label: 'Revendeurs', icon: Users },
+    { id: 'settings', label: 'Paramètres', icon: Settings }
+  ];
+
+  const renderDashboard = () => (
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Demandes d'inscription</h2>
-        <span className="bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full text-sm">
-          {pendingApplications.length} en attente
-        </span>
+        <h2 className="text-3xl font-bold text-white">Tableau de bord Super Admin</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-green-300 text-sm">Système opérationnel</span>
+        </div>
       </div>
 
-      {pendingApplications.length === 0 ? (
-        <div className="text-center py-20">
-          <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucune demande en attente</h3>
-          <p className="text-gray-400">Les nouvelles inscriptions apparaîtront ici</p>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {pendingApplications.map((application) => (
-            <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Building className="w-6 h-6 text-cyan-400" />
-                    <h3 className="text-xl font-bold text-white">{application.companyName}</h3>
-                    <span className="bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full text-xs">
-                      En attente
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Mail className="w-4 h-4 text-blue-400" />
-                        <span>{application.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Phone className="w-4 h-4 text-green-400" />
-                        <span>{application.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <MapPin className="w-4 h-4 text-red-400" />
-                        <span>{application.address}, {application.city}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <FileText className="w-4 h-4 text-purple-400" />
-                        <span>SIRET: {application.siret}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Calendar className="w-4 h-4 text-orange-400" />
-                        <span>Soumis le {new Date(application.submittedAt).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Globe className="w-4 h-4 text-cyan-400" />
-                        <span className="font-mono text-cyan-300">
-                          {application.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}.omnia.sale
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-4">
-                    <h4 className="font-semibold text-blue-200 mb-2">Plan choisi :</h4>
-                    <p className="text-blue-300">{application.selectedPlan.charAt(0).toUpperCase() + application.selectedPlan.slice(1)}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 ml-6">
-                  <button
-                    onClick={() => handleValidateApplication(application.id, true)}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approuver
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setSelectedApplication(application);
-                      setShowRejectionModal(true);
-                    }}
-                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-                  >
-                    <X className="w-4 h-4" />
-                    Rejeter
-                  </button>
-                  
-                  <button
-                    onClick={() => setSelectedApplication(application)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Détails
-                  </button>
-                </div>
-              </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-200 text-sm mb-1">Revendeurs Actifs</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.activeRetailers}</p>
+              <p className="text-green-400 text-sm">sur {stats.totalRetailers} total</p>
             </div>
-          ))}
+            <Users className="w-10 h-10 text-blue-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Demandes en attente</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.pendingApplications}</p>
+              <p className="text-orange-400 text-sm">À traiter</p>
+            </div>
+            <Clock className="w-10 h-10 text-orange-400" />
+          </div>
+        </div>
+        
+        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-200 text-sm mb-1">Revenus Total</p>
+              <p className="text-3xl font-bold text-white mb-1">€{stats.totalRevenue.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">Ce mois</p>
+            </div>
+            <CreditCard className="w-10 h-10 text-green-400" />
+          </div>
+        </div>
+        
+        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-200 text-sm mb-1">Conversations</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.totalConversations.toLocaleString()}</p>
+              <p className="text-purple-400 text-sm">Total plateforme</p>
+            </div>
+            <BarChart3 className="w-10 h-10 text-purple-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-2xl font-bold text-white mb-6">Actions Rapides</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <button
+            onClick={() => setActiveTab('applications')}
+            className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Clock className="w-8 h-8 text-orange-400 mb-3" />
+            <h4 className="text-lg font-semibold text-white mb-2">Traiter les demandes</h4>
+            <p className="text-gray-300 text-sm">{stats.pendingApplications} en attente</p>
+          </button>
+          
+          <button
+            onClick={() => setShowCreateRetailerModal(true)}
+            className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Plus className="w-8 h-8 text-green-400 mb-3" />
+            <h4 className="text-lg font-semibold text-white mb-2">Nouveau revendeur</h4>
+            <p className="text-gray-300 text-sm">Création manuelle</p>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('retailers')}
+            className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Users className="w-8 h-8 text-blue-400 mb-3" />
+            <h4 className="text-lg font-semibold text-white mb-2">Gérer revendeurs</h4>
+            <p className="text-gray-300 text-sm">{stats.activeRetailers} actifs</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderApplications = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Demandes d'inscription</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
+          <span className="text-orange-300 text-sm">{pendingApplications.length} en attente</span>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Rechercher par entreprise, email, contact..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+          />
+        </div>
+      </div>
+
+      {/* Applications Table */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Entreprise</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Contact</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Soumis le</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredApplications.map((application) => (
+                <tr key={application.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div>
+                      <div className="font-semibold text-white">{application.companyName}</div>
+                      <div className="text-gray-400 text-sm">SIRET: {application.siret}</div>
+                      <div className="text-gray-400 text-sm">{application.city}, {application.country}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div>
+                      <div className="text-white">{application.firstName} {application.lastName}</div>
+                      <div className="text-gray-400 text-sm">{application.email}</div>
+                      <div className="text-gray-400 text-sm">{application.phone}</div>
+                      <div className="text-gray-400 text-sm">{application.position}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      application.selectedPlan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
+                      application.selectedPlan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
+                      'bg-gray-500/20 text-gray-300'
+                    }`}>
+                      {application.selectedPlan}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-white text-sm">{application.submittedDate}</div>
+                    <div className="text-gray-400 text-xs">{application.submittedTime}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-2">
+                      <div className="text-green-300 text-xs">Email: {application.email}</div>
+                      <div className="text-green-300 text-xs">Mot de passe: {application.password}</div>
+                      <div className="text-green-300 text-xs">Domaine: {application.proposedSubdomain}.omnia.sale</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleViewApplication(application)}
+                        className="text-blue-400 hover:text-blue-300 p-1"
+                        title="Voir détails"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEditApplication(application)}
+                        className="text-yellow-400 hover:text-yellow-300 p-1"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleViewKbis(application)}
+                        className="text-purple-400 hover:text-purple-300 p-1"
+                        title="Voir Kbis"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteApplication(application.id)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleApproveApplication(application)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
+                      >
+                        ✅ Approuver
+                      </button>
+                      <button
+                        onClick={() => handleRejectApplication(application)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-xs"
+                      >
+                        ❌ Rejeter
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {filteredApplications.length === 0 && (
+        <div className="text-center py-20">
+          <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucune demande en attente</h3>
+          <p className="text-gray-400">Toutes les demandes ont été traitées</p>
         </div>
       )}
     </div>
   );
 
-  const renderRetailersTab = () => (
-    <div className="space-y-6">
+  const renderRetailers = () => (
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Revendeurs actifs</h2>
-        <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm">
-          {retailers.length} actifs
-        </span>
+        <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
+        <button
+          onClick={() => setShowCreateRetailerModal(true)}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Nouveau revendeur
+        </button>
       </div>
 
-      <div className="grid gap-4">
-        {retailers.map((retailer) => (
-          <div key={retailer.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">{retailer.company_name}</h3>
-                  <p className="text-gray-300">{retailer.email}</p>
-                  <p className="text-cyan-400 font-mono text-sm">{retailer.subdomain}.omnia.sale</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-green-400 font-bold">{retailer.plan}</div>
-                  <div className="text-gray-400 text-sm">
-                    Créé le {new Date(retailer.created_at).toLocaleDateString('fr-FR')}
-                  </div>
-                </div>
-                <div className={`w-3 h-3 rounded-full ${
-                  retailer.status === 'active' ? 'bg-green-400' : 'bg-red-400'
-                } animate-pulse`}></div>
-              </div>
-            </div>
+      {/* Filters */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+            />
           </div>
-        ))}
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+            <option value="suspended">Suspendu</option>
+          </select>
+          
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="all">Tous les plans</option>
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+          
+          <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-3 rounded-xl flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Exporter
+          </button>
+        </div>
       </div>
+
+      {/* Retailers Table */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Performances</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRetailers.map((retailer) => (
+                <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div>
+                      <div className="font-semibold text-white">{retailer.companyName}</div>
+                      <div className="text-gray-400 text-sm">{retailer.contactName}</div>
+                      <div className="text-gray-400 text-sm">{retailer.email}</div>
+                      <div className="text-gray-400 text-sm">{retailer.subdomain}.omnia.sale</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      retailer.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
+                      retailer.plan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
+                      'bg-gray-500/20 text-gray-300'
+                    }`}>
+                      {retailer.plan}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      retailer.status === 'active' ? 'bg-green-500/20 text-green-300' :
+                      retailer.status === 'inactive' ? 'bg-yellow-500/20 text-yellow-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {retailer.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm">
+                      <div className="text-green-400">€{retailer.revenue.toLocaleString()}</div>
+                      <div className="text-blue-400">{retailer.conversations} conv.</div>
+                      <div className="text-purple-400">{retailer.products} prod.</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-2">
+                      <div className="text-blue-300 text-xs">Email: {retailer.email}</div>
+                      <div className="text-blue-300 text-xs">Mot de passe: {retailer.password}</div>
+                      <div className="text-blue-300 text-xs">Domaine: {retailer.subdomain}.omnia.sale</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditRetailer(retailer)}
+                        className="text-yellow-400 hover:text-yellow-300 p-1"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRetailer(retailer.id)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {filteredRetailers.length === 0 && (
+        <div className="text-center py-20">
+          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucun revendeur trouvé</h3>
+          <p className="text-gray-400">Aucun revendeur ne correspond à vos critères</p>
+        </div>
+      )}
     </div>
   );
 
-  const renderMessagingTab = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-      {/* Liste des messages */}
-      <div className="lg:col-span-1 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Messages</h3>
-            <button
-              onClick={() => setShowNewMessage(true)}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg text-sm"
-            >
-              Nouveau
-            </button>
-          </div>
-          
-          <div className="flex gap-2 mb-4">
-            <select
-              value={messageFilter}
-              onChange={(e) => setMessageFilter(e.target.value)}
-              className="bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-            >
-              <option value="all">Tous</option>
-              <option value="unread">Non lus</option>
-              <option value="incoming">Reçus</option>
-              <option value="outgoing">Envoyés</option>
+  const renderSettings = () => (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-white">Paramètres Système</h2>
+      
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Configuration Globale</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Validation automatique</label>
+            <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">
+              <option value="manual">Validation manuelle</option>
+              <option value="auto">Validation automatique</option>
             </select>
           </div>
-        </div>
-
-        <div className="overflow-y-auto h-96">
-          {filteredMessages.map((message) => (
-            <div
-              key={message.id}
-              onClick={() => setSelectedMessage(message)}
-              className={`p-4 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-all ${
-                selectedMessage?.id === message.id ? 'bg-cyan-500/20' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  message.status === 'unread' ? 'bg-blue-400' : 'bg-gray-400'
-                }`}></div>
-                <span className={`text-sm font-medium ${
-                  message.type === 'incoming' ? 'text-green-300' : 'text-blue-300'
-                }`}>
-                  {message.type === 'incoming' ? 'De:' : 'À:'} {message.type === 'incoming' ? message.from : message.to}
-                </span>
-              </div>
-              <h4 className="text-white font-semibold text-sm mb-1">{message.subject}</h4>
-              <p className="text-gray-300 text-xs line-clamp-2">{message.content}</p>
-              <div className="text-gray-400 text-xs mt-2">
-                {new Date(message.created_at).toLocaleDateString('fr-FR')}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Contenu du message */}
-      <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20">
-        {selectedMessage ? (
-          <div className="h-full flex flex-col">
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">{selectedMessage.subject}</h3>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    selectedMessage.type === 'incoming' ? 'bg-green-500/20 text-green-300' : 'bg-blue-500/20 text-blue-300'
-                  }`}>
-                    {selectedMessage.type === 'incoming' ? 'Reçu' : 'Envoyé'}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    selectedMessage.status === 'unread' ? 'bg-orange-500/20 text-orange-300' : 'bg-gray-500/20 text-gray-300'
-                  }`}>
-                    {selectedMessage.status}
-                  </span>
-                </div>
-              </div>
-              <div className="text-gray-300 text-sm">
-                <strong>De:</strong> {selectedMessage.from}<br />
-                <strong>À:</strong> {selectedMessage.to}<br />
-                <strong>Date:</strong> {new Date(selectedMessage.created_at).toLocaleString('fr-FR')}
-              </div>
-            </div>
-
-            <div className="flex-1 p-6">
-              <div className="bg-black/20 rounded-xl p-4 mb-6">
-                <p className="text-white whitespace-pre-wrap">{selectedMessage.content}</p>
-              </div>
-
-              {selectedMessage.type === 'incoming' && (
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-white">Répondre :</h4>
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    rows={6}
-                    placeholder="Votre réponse..."
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 resize-none"
-                  />
-                  <button
-                    onClick={handleReplyMessage}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    Envoyer la réponse
-                  </button>
-                </div>
-              )}
-            </div>
+          
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Délai de validation (heures)</label>
+            <input
+              type="number"
+              defaultValue="24"
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
           </div>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Sélectionnez un message</h3>
-              <p className="text-gray-400">Choisissez un message dans la liste pour le lire</p>
-            </div>
-          </div>
-        )}
+        </div>
+        
+        <div className="mt-6">
+          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+            Sauvegarder les paramètres
+          </button>
+        </div>
       </div>
     </div>
   );
 
-  const renderConfigTab = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Configuration Messagerie</h2>
-
-      {/* Configuration IMAP */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Server className="w-6 h-6 text-blue-400" />
-          Configuration IMAP
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Serveur IMAP</label>
-            <input
-              type="text"
-              value={imapConfig.host}
-              onChange={(e) => setImapConfig(prev => ({ ...prev, host: e.target.value }))}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              placeholder="imap.gmail.com"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Port</label>
-            <input
-              type="number"
-              value={imapConfig.port}
-              onChange={(e) => setImapConfig(prev => ({ ...prev, port: parseInt(e.target.value) }))}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              placeholder="993"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Username</label>
-            <input
-              type="email"
-              value={imapConfig.username}
-              onChange={(e) => setImapConfig(prev => ({ ...prev, username: e.target.value }))}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              placeholder="support@omnia.sale"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Password</label>
-            <input
-              type="password"
-              value={imapConfig.password}
-              onChange={(e) => setImapConfig(prev => ({ ...prev, password: e.target.value }))}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              placeholder="Mot de passe application"
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={imapConfig.secure}
-                onChange={(e) => setImapConfig(prev => ({ ...prev, secure: e.target.checked }))}
-                className="w-4 h-4 text-cyan-600"
-              />
-              <span className="text-gray-300">Connexion sécurisée (SSL/TLS)</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="flex gap-4 mt-6">
-          <button
-            onClick={testIMAPConnection}
-            disabled={isTestingIMAP}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-          >
-            {isTestingIMAP ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Test en cours...
-              </>
-            ) : (
-              <>
-                <TestTube className="w-4 h-4" />
-                Tester la connexion
-              </>
-            )}
-          </button>
-          
-          <button
-            onClick={() => {
-              localStorage.setItem('imap_config', JSON.stringify(imapConfig));
-              showSuccess('Configuration sauvée', 'Paramètres IMAP sauvegardés');
-            }}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-          >
-            Sauvegarder
-          </button>
-        </div>
-
-        {imapTestResult && (
-          <div className={`mt-4 p-4 rounded-xl ${
-            imapTestResult.includes('✅') ? 'bg-green-500/20 border border-green-400/50' : 'bg-red-500/20 border border-red-400/50'
-          }`}>
-            <p className={imapTestResult.includes('✅') ? 'text-green-300' : 'text-red-300'}>
-              {imapTestResult}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Configuration email sortant */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Send className="w-6 h-6 text-green-400" />
-          Configuration SMTP (Email sortant)
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Serveur SMTP</label>
-            <input
-              type="text"
-              defaultValue="smtp.gmail.com"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Port SMTP</label>
-            <input
-              type="number"
-              defaultValue="587"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            />
-          </div>
-        </div>
-
-        <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mt-6">
-          <h4 className="font-semibold text-blue-200 mb-2">📧 Configuration Gmail :</h4>
-          <ul className="text-blue-300 text-sm space-y-1">
-            <li>• Activez l'authentification à 2 facteurs</li>
-            <li>• Générez un mot de passe d'application</li>
-            <li>• Utilisez support@omnia.sale comme expéditeur</li>
-            <li>• IMAP: imap.gmail.com:993 (SSL)</li>
-            <li>• SMTP: smtp.gmail.com:587 (TLS)</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return renderDashboard();
+      case 'applications': return renderApplications();
+      case 'retailers': return renderRetailers();
+      case 'settings': return renderSettings();
+      default: return renderDashboard();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
@@ -824,145 +733,156 @@ L'équipe OmnIA.sale`
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Logo size="md" />
-            <div className="flex items-center space-x-4">
-              <span className="text-cyan-300">Super Admin</span>
-              <button
-                onClick={onLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-all"
-              >
-                Déconnexion
-              </button>
+      <div className="relative z-10 flex h-screen">
+        {/* Sidebar */}
+        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
+              <Settings className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Super Admin</h1>
+              <p className="text-sm text-red-300">OmnIA.sale</p>
             </div>
           </div>
-        </div>
-      </header>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-2 border border-white/20">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setActiveTab('applications')}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
-                  activeTab === 'applications'
-                    ? 'bg-cyan-500 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Building className="w-4 h-4" />
-                Demandes ({pendingApplications.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('retailers')}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
-                  activeTab === 'retailers'
-                    ? 'bg-cyan-500 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                Revendeurs ({retailers.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('messaging')}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
-                  activeTab === 'messaging'
-                    ? 'bg-cyan-500 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                Messagerie ({messages.filter(m => m.status === 'unread').length})
-              </button>
-              <button
-                onClick={() => setActiveTab('config')}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${
-                  activeTab === 'config'
-                    ? 'bg-cyan-500 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                Configuration
-              </button>
-            </div>
-          </div>
+          {/* Navigation */}
+          <nav className="space-y-2 mb-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                    activeTab === tab.id
+                      ? 'bg-red-500/30 text-white border border-red-500/50'
+                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{tab.label}</span>
+                  {tab.id === 'applications' && pendingApplications.length > 0 && (
+                    <span className="ml-auto bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                      {pendingApplications.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <button
+            onClick={onLogout}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all flex items-center gap-2"
+          >
+            <LogOut className="w-5 h-5" />
+            Déconnexion
+          </button>
         </div>
 
-        {/* Tab Content */}
-        {activeTab === 'applications' && renderApplicationsTab()}
-        {activeTab === 'retailers' && renderRetailersTab()}
-        {activeTab === 'messaging' && renderMessagingTab()}
-        {activeTab === 'config' && renderConfigTab()}
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          {renderContent()}
+        </div>
       </div>
 
-      {/* Modal nouveau message */}
-      {showNewMessage && (
+      {/* Application Detail Modal */}
+      {showApplicationModal && selectedApplication && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-2xl w-full border border-slate-600/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Nouveau message</h3>
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-2xl font-bold text-white">Détails de la demande</h3>
               <button
-                onClick={() => setShowNewMessage(false)}
+                onClick={() => setShowApplicationModal(false)}
                 className="text-gray-400 hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">🏢 Informations entreprise</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Entreprise:</span> <span className="text-white">{selectedApplication.companyName}</span></div>
+                    <div><span className="text-gray-400">SIRET:</span> <span className="text-white">{selectedApplication.siret}</span></div>
+                    <div><span className="text-gray-400">Adresse:</span> <span className="text-white">{selectedApplication.address}</span></div>
+                    <div><span className="text-gray-400">Ville:</span> <span className="text-white">{selectedApplication.postalCode} {selectedApplication.city}</span></div>
+                    <div><span className="text-gray-400">Pays:</span> <span className="text-white">{selectedApplication.country}</span></div>
+                  </div>
+                </div>
+                
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">👤 Contact responsable</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedApplication.firstName} {selectedApplication.lastName}</span></div>
+                    <div><span className="text-gray-400">Email:</span> <span className="text-white">{selectedApplication.email}</span></div>
+                    <div><span className="text-gray-400">Téléphone:</span> <span className="text-white">{selectedApplication.phone}</span></div>
+                    <div><span className="text-gray-400">Fonction:</span> <span className="text-white">{selectedApplication.position}</span></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">💳 Plan et domaine</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Plan choisi:</span> <span className="text-white">{selectedApplication.selectedPlan}</span></div>
+                    <div><span className="text-gray-400">Sous-domaine:</span> <span className="text-cyan-400">{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
+                  </div>
+                </div>
+                
+                <div className="bg-black/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-white mb-3">📅 Informations soumission</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-400">Date:</span> <span className="text-white">{selectedApplication.submittedDate}</span></div>
+                    <div><span className="text-gray-400">Heure:</span> <span className="text-white">{selectedApplication.submittedTime}</span></div>
+                    <div><span className="text-gray-400">Référence:</span> <span className="text-white">#{selectedApplication.id}</span></div>
+                  </div>
+                </div>
+              </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Destinataire</label>
-                <input
-                  type="email"
-                  value={newMessageTo}
-                  onChange={(e) => setNewMessageTo(e.target.value)}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  placeholder="email@revendeur.com"
-                />
+              <div className="bg-green-500/20 border border-green-400/30 rounded-xl p-4">
+                <h4 className="font-semibold text-green-200 mb-3">🔑 Identifiants de connexion</h4>
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-green-300">Email:</span> <span className="text-white font-mono">{selectedApplication.email}</span></div>
+                  <div><span className="text-green-300">Mot de passe:</span> <span className="text-white font-mono">{selectedApplication.password}</span></div>
+                  <div><span className="text-green-300">URL admin:</span> <span className="text-cyan-400">https://omnia.sale/admin</span></div>
+                  <div><span className="text-green-300">Domaine boutique:</span> <span className="text-cyan-400">https://{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
+                </div>
               </div>
               
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Sujet</label>
-                <input
-                  type="text"
-                  value={newMessageSubject}
-                  onChange={(e) => setNewMessageSubject(e.target.value)}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  placeholder="Sujet du message"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Message</label>
-                <textarea
-                  value={newMessageContent}
-                  onChange={(e) => setNewMessageContent(e.target.value)}
-                  rows={8}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white resize-none"
-                  placeholder="Votre message..."
-                />
-              </div>
-              
-              <div className="flex gap-4">
+              <div className="flex justify-between">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleApproveApplication(selectedApplication)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    ✅ Approuver
+                  </button>
+                  <button
+                    onClick={() => handleRejectApplication(selectedApplication)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  >
+                    ❌ Rejeter
+                  </button>
+                  {selectedApplication.kbisFile && (
+                    <button
+                      onClick={() => handleViewKbis(selectedApplication)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                    >
+                      📄 Voir Kbis
+                    </button>
+                  )}
+                </div>
                 <button
-                  onClick={handleSendMessage}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  Envoyer
-                </button>
-                <button
-                  onClick={() => setShowNewMessage(false)}
+                  onClick={() => setShowApplicationModal(false)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
                 >
-                  Annuler
+                  Fermer
                 </button>
               </div>
             </div>
@@ -970,52 +890,399 @@ L'équipe OmnIA.sale`
         </div>
       )}
 
-      {/* Modal rejet */}
-      {showRejectionModal && selectedApplication && (
+      {/* Kbis Viewer Modal */}
+      {showKbisModal && selectedKbis && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Rejeter la demande</h3>
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-2xl font-bold text-white">Document Kbis - {selectedKbis.application.companyName}</h3>
               <button
-                onClick={() => setShowRejectionModal(false)}
+                onClick={() => setShowKbisModal(false)}
                 className="text-gray-400 hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">Raison du rejet</label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  rows={4}
-                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white resize-none"
-                  placeholder="Expliquez la raison du rejet..."
-                />
+            
+            <div className="p-6">
+              <div className="bg-black/20 rounded-xl p-4 mb-6">
+                <h4 className="font-semibold text-white mb-2">📄 Informations document</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedKbis.kbisFile.name}</span></div>
+                  <div><span className="text-gray-400">Taille:</span> <span className="text-white">{(selectedKbis.kbisFile.size / 1024 / 1024).toFixed(2)} MB</span></div>
+                  <div><span className="text-gray-400">Type:</span> <span className="text-white">{selectedKbis.kbisFile.type}</span></div>
+                  <div><span className="text-gray-400">Modifié:</span> <span className="text-white">{new Date(selectedKbis.kbisFile.lastModified).toLocaleDateString('fr-FR')}</span></div>
+                </div>
               </div>
               
-              <div className="flex gap-4">
+              <div className="text-center">
+                {selectedKbis.kbisFile.type.startsWith('image/') ? (
+                  <img
+                    src={URL.createObjectURL(selectedKbis.kbisFile)}
+                    alt="Document Kbis"
+                    className="max-w-full h-auto rounded-xl border border-gray-600"
+                  />
+                ) : selectedKbis.kbisFile.type === 'application/pdf' ? (
+                  <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-8">
+                    <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-white mb-2">Document PDF</h4>
+                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
+                    <button
+                      onClick={() => {
+                        const url = URL.createObjectURL(selectedKbis.kbisFile);
+                        window.open(url, '_blank');
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl"
+                    >
+                      Ouvrir le PDF
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-500/20 border border-gray-400/50 rounded-xl p-8">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-white mb-2">Document non prévisualisable</h4>
+                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
+                    <button
+                      onClick={() => {
+                        const url = URL.createObjectURL(selectedKbis.kbisFile);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = selectedKbis.kbisFile.name;
+                        a.click();
+                      }}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl"
+                    >
+                      Télécharger
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-center mt-6">
                 <button
-                  onClick={() => {
-                    handleValidateApplication(selectedApplication.id, false, rejectionReason);
-                    setShowRejectionModal(false);
-                    setRejectionReason('');
-                    setSelectedApplication(null);
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                  onClick={() => setShowKbisModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
                 >
-                  Confirmer le rejet
+                  Fermer
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Retailer Modal */}
+      {showCreateRetailerModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-2xl font-bold text-white">Créer un nouveau revendeur</h3>
+              <button
+                onClick={() => setShowCreateRetailerModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              const retailerData = {
+                companyName: formData.get('companyName'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                phone: formData.get('phone'),
+                address: formData.get('address'),
+                city: formData.get('city'),
+                siret: formData.get('siret'),
+                plan: formData.get('plan')
+              };
+              handleCreateRetailer(retailerData);
+            }} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
+                  <input
+                    name="companyName"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="Mon Magasin"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
+                  <input
+                    name="siret"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="12345678901234"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Prénom *</label>
+                  <input
+                    name="firstName"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="Jean"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Nom *</label>
+                  <input
+                    name="lastName"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="Dupont"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="contact@monmagasin.fr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
+                  <input
+                    name="password"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="motdepasse123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
+                  <input
+                    name="phone"
+                    type="tel"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="+33 1 23 45 67 89"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
+                  <select
+                    name="plan"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="starter">Starter</option>
+                    <option value="professional">Professional</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
+                  <input
+                    name="address"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="123 Rue de la Paix"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
+                  <input
+                    name="city"
+                    type="text"
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                    placeholder="Paris"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-between">
                 <button
-                  onClick={() => setShowRejectionModal(false)}
+                  type="button"
+                  onClick={() => setShowCreateRetailerModal(false)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
                 >
                   Annuler
                 </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                >
+                  Créer le revendeur
+                </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Retailer Modal */}
+      {showRetailerModal && selectedRetailer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-2xl font-bold text-white">Modifier le revendeur</h3>
+              <button
+                onClick={() => setShowRetailerModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              const updatedData = {
+                companyName: formData.get('companyName'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                contactName: formData.get('contactName'),
+                phone: formData.get('phone'),
+                address: formData.get('address'),
+                city: formData.get('city'),
+                siret: formData.get('siret'),
+                plan: formData.get('plan'),
+                status: formData.get('status')
+              };
+              handleUpdateRetailer(updatedData);
+            }} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
+                  <input
+                    name="companyName"
+                    type="text"
+                    defaultValue={selectedRetailer.companyName}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Contact *</label>
+                  <input
+                    name="contactName"
+                    type="text"
+                    defaultValue={selectedRetailer.contactName}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
+                  <input
+                    name="email"
+                    type="email"
+                    defaultValue={selectedRetailer.email}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
+                  <input
+                    name="password"
+                    type="text"
+                    defaultValue={selectedRetailer.password}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
+                  <input
+                    name="phone"
+                    type="tel"
+                    defaultValue={selectedRetailer.phone}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
+                  <select
+                    name="plan"
+                    defaultValue={selectedRetailer.plan}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="starter">Starter</option>
+                    <option value="professional">Professional</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Statut *</label>
+                  <select
+                    name="status"
+                    defaultValue={selectedRetailer.status}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="active">Actif</option>
+                    <option value="inactive">Inactif</option>
+                    <option value="suspended">Suspendu</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
+                  <input
+                    name="siret"
+                    type="text"
+                    defaultValue={selectedRetailer.siret}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
+                  <input
+                    name="address"
+                    type="text"
+                    defaultValue={selectedRetailer.address}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
+                  <input
+                    name="city"
+                    type="text"
+                    defaultValue={selectedRetailer.city}
+                    required
+                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowRetailerModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+                >
+                  Sauvegarder
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
