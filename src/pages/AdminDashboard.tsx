@@ -5,7 +5,8 @@ import {
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   Clock, Star, X, ShoppingBag, Search, Zap, Target, PenTool, Image, Plus,
   Megaphone, DollarSign, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
-  ExternalLink, Mail, Phone, MapPin, Calendar, Filter, RefreshCw, Save, Package, Sparkles
+  ExternalLink, Mail, Phone, MapPin, Calendar, Filter, RefreshCw, Save, Package, Sparkles,
+  Menu
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -38,6 +39,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeSubTab, setActiveSubTab] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
     conversions: 42,
