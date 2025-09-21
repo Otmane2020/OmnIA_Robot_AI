@@ -3,7 +3,7 @@ import {
   BarChart3, Users, ShoppingCart, TrendingUp, Settings, 
   LogOut, Package, MessageSquare, Brain, Zap, Upload,
   Store, Globe, CreditCard, Calendar, Clock, RefreshCw,
-  CheckCircle, AlertCircle, Eye, ExternalLink, Bot
+  CheckCircle, AlertCircle, Eye, ExternalLink, Bot, DollarSign
 } from 'lucide-react';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
