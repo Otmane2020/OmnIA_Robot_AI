@@ -372,15 +372,22 @@ export const ProductsEnrichedTable: React.FC = () => {
       if (enrichedProducts.length > 0) {
         console.log(`💾 Sauvegarde pour ${currentUser?.email}:`, enrichedProducts.length);
         
+        // Ajouter retailer_id aux produits enrichis
+        const enrichedWithRetailer = enrichedProducts.map(product => ({
+          ...product,
+          retailer_id: currentUser?.email || 'demo-retailer-id',
+          vendor: currentUser?.company_name || product.vendor
+        }));
+        
         // Sauvegarder dans localStorage spécifique au revendeur
-        localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedProducts));
+        localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedWithRetailer));
         
         // Mettre à jour l'état local
-        setProducts(enrichedProducts);
+        setProducts(enrichedWithRetailer);
         
         showSuccess(
           'Enrichissement terminé !', 
-          `${enrichedProducts.length} produits enrichis et sauvegardés avec DeepSeek IA !`,
+          `${enrichedWithRetailer.length} produits enrichis pour ${currentUser?.company_name} avec DeepSeek IA !`,
           [
             {
               label: 'Voir les résultats',

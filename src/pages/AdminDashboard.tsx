@@ -42,7 +42,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     const loggedUser = localStorage.getItem('current_logged_user');
     if (loggedUser) {
       try {
-        return JSON.parse(loggedUser);
+        const user = JSON.parse(loggedUser);
+        console.log('👤 Utilisateur connecté:', user.company_name || user.email);
+        return user;
       } catch {
         return null;
       }
@@ -58,6 +60,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
   
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [orders, setOrders] = useState(() => {
+    const savedOrders = localStorage.getItem(getRetailerStorageKey('orders'));
+    return savedOrders ? JSON.parse(savedOrders) : [];
+  });
+  const [newOrder, setNewOrder] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_address: '',
+    customer_phone: '',
+    payment_method: 'card',
+    products: [],
+    total: 0,
+    status: 'pending'
+  });
   const [activeSubTab, setActiveSubTab] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
@@ -90,9 +107,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       color: 'bg-green-500',
       subItems: [
         { id: 'catalog', label: 'Catalogue', icon: Package },
-        { id: 'products', label: 'Produits', icon: ShoppingBag },
-        { id: 'inventory', label: 'Inventaire', icon: Database },
-        { id: 'orders', label: 'Commandes', icon: Receipt }
+        { id: 'enriched', label: 'Produits Enrichis', icon: Brain },
+        { id: 'inventory', label: 'Inventaire', icon: Eye },
+        { id: 'robot', label: 'Robot OmnIA', icon: Bot },
+        { id: 'orders', label: 'Commandes', icon: ShoppingCart },
+        { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'marketing', label: 'Marketing', icon: TrendingUp },
+        { id: 'google-merchant', label: 'Google Merchant', icon: Globe },
+        { id: 'training', label: 'Entraînement IA', icon: Zap },
+        { id: 'messages', label: 'Messagerie', icon: Mail },
+        { id: 'stt', label: 'Speech-to-Text', icon: Mic },
+        { id: 'integrations', label: 'Intégrations', icon: Database }
       ]
     },
     { 
@@ -570,6 +596,639 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
     </div>
   );
+
+  const renderInventory = () => {
+    const products = JSON.parse(localStorage.getItem(getRetailerStorageKey('catalog_products')) || '[]');
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Inventaire Produits</h2>
+            <p className="text-gray-300">{products.length} produit(s) en stock</p>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Photo</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Titre</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">SKU</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Disponibilité</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Quantité</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product: any) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-600">
+                        <img 
+                          src={product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg'} 
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                          }}
+                        />
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-semibold text-white">{product.name || product.title}</div>
+                      <div className="text-gray-400 text-sm">{product.category}</div>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-cyan-400 font-mono text-sm">{product.sku || 'N/A'}</span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-400">{product.price}€</span>
+                        {product.compare_at_price && product.compare_at_price > product.price && (
+                          <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        product.stock > 0 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
+                      }`}>
+                        {product.stock > 0 ? 'En stock' : 'Rupture'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {product.stock || 0}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        product.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                      }`}>
+                        {product.status || 'active'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {products.length === 0 && (
+          <div className="text-center py-20">
+            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Inventaire vide</h3>
+            <p className="text-gray-400">Importez votre catalogue pour voir l'inventaire</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderOrders = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Gestion des Commandes</h2>
+          <p className="text-gray-300">{orders.length} commande(s) • OmnIA Robot + Manuelles</p>
+        </div>
+        <button
+          onClick={() => setShowCreateOrder(true)}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Commande manuelle
+        </button>
+      </div>
+
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">ID</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Client</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Produits</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Total</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Paiement</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Source</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order: any) => (
+                <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <span className="text-cyan-400 font-mono text-sm">#{order.id.substring(0, 8)}</span>
+                  </td>
+                  <td className="p-4">
+                    <div>
+                      <div className="font-semibold text-white">{order.customer_name}</div>
+                      <div className="text-gray-400 text-sm">{order.customer_email}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-white">{order.products?.length || 0} article(s)</span>
+                  </td>
+                  <td className="p-4">
+                    <span className="font-bold text-green-400">{order.total}€</span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-gray-300">{order.payment_method}</span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                      order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      order.source === 'omnia_robot' ? 'bg-blue-500/20 text-blue-300' : 'bg-purple-500/20 text-purple-300'
+                    }`}>
+                      {order.source === 'omnia_robot' ? 'OmnIA Robot' : 'Manuel'}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-gray-300 text-sm">
+                      {new Date(order.created_at).toLocaleDateString('fr-FR')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {orders.length === 0 && (
+        <div className="text-center py-20">
+          <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucune commande</h3>
+          <p className="text-gray-400">Les commandes OmnIA Robot et manuelles apparaîtront ici</p>
+        </div>
+      )}
+
+      {/* Modal création commande manuelle */}
+      {showCreateOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Nouvelle commande manuelle</h3>
+              <button
+                onClick={() => setShowCreateOrder(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Nom client</label>
+                <input
+                  type="text"
+                  value={newOrder.customer_name}
+                  onChange={(e) => setNewOrder(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="Jean Dupont"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={newOrder.customer_email}
+                  onChange={(e) => setNewOrder(prev => ({ ...prev, customer_email: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="jean@email.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Adresse</label>
+                <input
+                  type="text"
+                  value={newOrder.customer_address}
+                  onChange={(e) => setNewOrder(prev => ({ ...prev, customer_address: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                  placeholder="123 Rue de la Paix, 75001 Paris"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Mode de paiement</label>
+                <select
+                  value={newOrder.payment_method}
+                  onChange={(e) => setNewOrder(prev => ({ ...prev, payment_method: e.target.value }))}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                >
+                  <option value="card">Carte bancaire</option>
+                  <option value="cash">Espèces</option>
+                  <option value="check">Chèque</option>
+                  <option value="transfer">Virement</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCreateOrder(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => {
+                    const order = {
+                      ...newOrder,
+                      id: Date.now().toString(),
+                      source: 'manual',
+                      created_at: new Date().toISOString()
+                    };
+                    const updatedOrders = [order, ...orders];
+                    setOrders(updatedOrders);
+                    localStorage.setItem(getRetailerStorageKey('orders'), JSON.stringify(updatedOrders));
+                    setShowCreateOrder(false);
+                    setNewOrder({
+                      customer_name: '',
+                      customer_email: '',
+                      customer_address: '',
+                      customer_phone: '',
+                      payment_method: 'card',
+                      products: [],
+                      total: 0,
+                      status: 'pending'
+                    });
+                  }}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 rounded-xl font-semibold transition-all"
+                >
+                  Créer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderGoogleMerchant = () => {
+    const [googleProducts, setGoogleProducts] = useState(() => {
+      const saved = localStorage.getItem(getRetailerStorageKey('google_merchant_products'));
+      return saved ? JSON.parse(saved) : [];
+    });
+    const [categoryMapping, setCategoryMapping] = useState(() => {
+      const saved = localStorage.getItem(getRetailerStorageKey('google_category_mapping'));
+      return saved ? JSON.parse(saved) : [];
+    });
+    const [showMappingImport, setShowMappingImport] = useState(false);
+    const [isGeneratingXML, setIsGeneratingXML] = useState(false);
+    
+    const generateGoogleMerchantFeed = () => {
+      setIsGeneratingXML(true);
+      
+      // Récupérer les produits enrichis
+      const enrichedProducts = JSON.parse(localStorage.getItem(getRetailerStorageKey('enriched_products')) || '[]');
+      
+      const googleFeedProducts = enrichedProducts.map((product: any) => ({
+        id: `${currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}-${product.id}`,
+        title: product.title,
+        description: product.seo_description || product.description || product.title,
+        item_group_id: product.handle || product.id,
+        link: product.product_url || `https://${currentUser?.company_name?.toLowerCase()}.omnia.sale/products/${product.handle}`,
+        product_type: `Mobilier > ${product.product_type} > ${product.subcategory || product.product_type}`,
+        google_product_category: mapToGoogleCategory(product.product_type, categoryMapping),
+        image_link: product.image_url,
+        condition: 'new',
+        availability: product.stock_quantity > 0 ? 'in stock' : 'out of stock',
+        price: `${product.price}.00 EUR`,
+        sale_price: product.compare_at_price ? `${product.compare_at_price}.00 EUR` : null,
+        mpn: product.mpn || `${product.handle}-${new Date().getFullYear()}`,
+        brand: product.brand || currentUser?.company_name || 'Boutique',
+        canonical_link: product.product_url,
+        additional_image_link_1: product.additional_image_links?.[0] || '',
+        additional_image_link_2: product.additional_image_links?.[1] || '',
+        additional_image_link_3: product.additional_image_links?.[2] || '',
+        additional_image_link_4: product.additional_image_links?.[3] || '',
+        product_length: product.dimensions?.includes('L') ? product.dimensions.split('x')[0] + ' cm' : '',
+        product_width: product.dimensions?.includes('x') ? product.dimensions.split('x')[1] + ' cm' : '',
+        percent_off: product.percent_off || 0,
+        material: product.material || '',
+        gtin: product.gtin || '',
+        color: product.color || '',
+        quantity: product.stock_quantity || 0,
+        size: product.capacity || '',
+        identifier_exists: product.gtin ? 'yes' : 'no'
+      }));
+      
+      setGoogleProducts(googleFeedProducts);
+      localStorage.setItem(getRetailerStorageKey('google_merchant_products'), JSON.stringify(googleFeedProducts));
+      
+      setTimeout(() => {
+        setIsGeneratingXML(false);
+        showSuccess('Flux généré', `${googleFeedProducts.length} produits ajoutés au flux Google Merchant !`);
+      }, 2000);
+    };
+    
+    const mapToGoogleCategory = (productType: string, mapping: any[]) => {
+      const match = mapping.find(m => m.category === productType);
+      return match?.google_product_category || 'Furniture';
+    };
+    
+    const generateXMLFile = () => {
+      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>${currentUser?.company_name || 'Boutique'} - Flux Google Shopping</title>
+    <link>https://${currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.omnia.sale</link>
+    <description>Flux produits Google Shopping pour ${currentUser?.company_name || 'Boutique'}</description>
+    ${googleProducts.map((product: any) => `
+    <item>
+      <g:id>${product.id}</g:id>
+      <g:title><![CDATA[${product.title}]]></g:title>
+      <g:description><![CDATA[${product.description}]]></g:description>
+      <g:link>${product.link}</g:link>
+      <g:image_link>${product.image_link}</g:image_link>
+      <g:condition>${product.condition}</g:condition>
+      <g:availability>${product.availability}</g:availability>
+      <g:price>${product.price}</g:price>
+      ${product.sale_price ? `<g:sale_price>${product.sale_price}</g:sale_price>` : ''}
+      <g:brand>${product.brand}</g:brand>
+      <g:product_type>${product.product_type}</g:product_type>
+      <g:google_product_category>${product.google_product_category}</g:google_product_category>
+      <g:mpn>${product.mpn}</g:mpn>
+      <g:gtin>${product.gtin}</g:gtin>
+      <g:color>${product.color}</g:color>
+      <g:material>${product.material}</g:material>
+      <g:identifier_exists>${product.identifier_exists}</g:identifier_exists>
+    </item>`).join('')}
+  </channel>
+</rss>`;
+      
+      const blob = new Blob([xmlContent], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flux-google-${currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.xml`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Google Merchant Center</h2>
+            <p className="text-gray-300">Flux XML Google Shopping pour {currentUser?.company_name || 'votre boutique'}</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={generateGoogleMerchantFeed}
+              disabled={isGeneratingXML}
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+            >
+              {isGeneratingXML ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Génération...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-5 h-5" />
+                  Générer flux
+                </>
+              )}
+            </button>
+            {googleProducts.length > 0 && (
+              <button
+                onClick={generateXMLFile}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Télécharger XML
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* URL du flux */}
+        <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
+          <h3 className="font-semibold text-blue-200 mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5" />
+            URL de votre flux Google Shopping
+          </h3>
+          <div className="bg-black/40 rounded-xl p-4 border border-blue-500/30">
+            <code className="text-blue-400 text-sm">
+              https://omnia.sale/fluxgoogle/{currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.xml
+            </code>
+          </div>
+          <p className="text-blue-300 text-sm mt-3">
+            Utilisez cette URL dans Google Merchant Center pour importer automatiquement vos produits
+          </p>
+        </div>
+
+        {/* Mapping des catégories */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white">Mapping Catégories Google</h3>
+            <button
+              onClick={() => setShowMappingImport(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importer CSV
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Code catégorie</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Catégorie principale</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Sous-catégorie</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Google Product Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryMapping.map((mapping: any, index: number) => (
+                  <tr key={index} className="border-b border-white/10">
+                    <td className="p-3 text-white">{mapping.code}</td>
+                    <td className="p-3 text-white">{mapping.category}</td>
+                    <td className="p-3 text-gray-300">{mapping.subcategory}</td>
+                    <td className="p-3 text-cyan-400">{mapping.google_product_category}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {categoryMapping.length === 0 && (
+            <div className="text-center py-8">
+              <Tag className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-400">Aucun mapping de catégorie configuré</p>
+              <p className="text-gray-500 text-sm">Importez un fichier CSV pour configurer le mapping</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tableau Google Merchant */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h3 className="text-xl font-bold text-white">Produits Google Merchant ({googleProducts.length})</h3>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">ID</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Titre</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Catégorie Google</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Prix</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Disponibilité</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">GTIN</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Couleur</th>
+                  <th className="text-left p-3 text-cyan-300 font-semibold">Matériau</th>
+                </tr>
+              </thead>
+              <tbody>
+                {googleProducts.map((product: any) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-3 text-cyan-400 font-mono">{product.id.substring(0, 20)}...</td>
+                    <td className="p-3 text-white">{product.title.substring(0, 40)}...</td>
+                    <td className="p-3 text-purple-300">{product.google_product_category}</td>
+                    <td className="p-3 text-green-400 font-bold">{product.price}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        product.availability === 'in stock' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
+                      }`}>
+                        {product.availability}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-300">{product.gtin || 'N/A'}</td>
+                    <td className="p-3 text-blue-300">{product.color || 'N/A'}</td>
+                    <td className="p-3 text-orange-300">{product.material || 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Guide d'importation */}
+        <div className="bg-gradient-to-r from-green-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-400/30">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-green-400" />
+            Guide d'importation Google Merchant
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-green-300 mb-2">📋 Étapes d'importation :</h4>
+              <ol className="text-green-200 text-sm space-y-1">
+                <li>1. Connectez-vous à Google Merchant Center</li>
+                <li>2. Allez dans "Produits" → "Flux"</li>
+                <li>3. Cliquez "Ajouter un flux"</li>
+                <li>4. Sélectionnez "Flux programmé"</li>
+                <li>5. Collez l'URL de votre flux XML</li>
+                <li>6. Configurez la fréquence (quotidienne recommandée)</li>
+              </ol>
+            </div>
+            <div>
+              <h4 className="font-semibold text-green-300 mb-2">✅ Avantages du flux automatique :</h4>
+              <ul className="text-green-200 text-sm space-y-1">
+                <li>• Synchronisation automatique des prix</li>
+                <li>• Mise à jour des stocks en temps réel</li>
+                <li>• Nouveaux produits ajoutés automatiquement</li>
+                <li>• Optimisation SEO avec DeepSeek</li>
+                <li>• Catégories Google mappées correctement</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal import mapping */}
+        {showMappingImport && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white">Import Mapping Catégories</h3>
+                <button
+                  onClick={() => setShowMappingImport(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                  <h4 className="font-semibold text-blue-200 mb-2">📄 Format CSV attendu :</h4>
+                  <code className="text-blue-400 text-sm block">
+                    code,category,subcategory,google_product_category
+                  </code>
+                  <div className="mt-2 text-xs text-blue-300">
+                    <p>Exemple :</p>
+                    <p>CAN001,Canapé,Canapé d'angle,Furniture > Living Room Furniture > Sofas</p>
+                  </div>
+                </div>
+                
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const csv = event.target?.result as string;
+                        const lines = csv.split('\n');
+                        const headers = lines[0].split(',');
+                        const mappings = lines.slice(1).map(line => {
+                          const values = line.split(',');
+                          return {
+                            code: values[0],
+                            category: values[1],
+                            subcategory: values[2],
+                            google_product_category: values[3]
+                          };
+                        }).filter(m => m.code);
+                        
+                        setCategoryMapping(mappings);
+                        localStorage.setItem(getRetailerStorageKey('google_category_mapping'), JSON.stringify(mappings));
+                        setShowMappingImport(false);
+                        showSuccess('Mapping importé', `${mappings.length} catégories mappées !`);
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                />
+                
+                <button
+                  onClick={() => setShowMappingImport(false)}
+                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderDashboard = () => (
     <div className="space-y-8">
@@ -1057,6 +1716,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return renderDashboard();
+      case 'catalog': return <CatalogManagement />;
+      case 'enriched': return <ProductsEnrichedTable />;
+      case 'inventory': return renderInventory();
+      case 'robot': return <OmniaRobotTab />;
+      case 'orders': return renderOrders();
+      case 'conversations': return <ConversationHistory />;
+      case 'analytics': return renderAnalytics();
+      case 'marketing': return renderMarketing();
+      case 'google-merchant': return renderGoogleMerchant();
+      case 'training': return <MLTrainingDashboard />;
+      case 'messages': return <MessagingSystem />;
+      case 'stt': return <SpeechToTextInterface />;
+      case 'integrations': return <EcommerceIntegration onPlatformConnected={handlePlatformConnected} />;
+      case 'ecommerce': return renderECommerce();
+      case 'ads': return renderAdsMarketing();
+      case 'vision': return renderVisionStudio();
+      case 'seo': return renderSEO();
+      case 'omnia': return renderOmnIABot();
+      case 'admin': return renderAdmin();
+      default: return renderDashboard();
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
@@ -1153,8 +1838,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white">OmnIA Admin</h1>
-                  <p className="text-cyan-300 text-sm">Decora Home</p>
+                  <h1 className="text-xl font-bold text-white">
+                    Admin {currentUser?.company_name || 'Revendeur'}
+                  </h1>
+                  <p className="text-cyan-300">
+                    Interface de gestion OmnIA • {currentUser?.plan || 'Plan'} • {currentUser?.email}
+                  </p>
                 </div>
               </div>
               

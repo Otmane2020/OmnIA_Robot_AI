@@ -122,6 +122,7 @@ Deno.serve(async (req: Request) => {
         const enrichedProduct: EnrichedProduct = {
           id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           handle: product.handle || generateHandle(product.name || product.title || ''),
+          retailer_id: retailer_id,
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
           short_description: (product.description || product.title || '').substring(0, 160),
@@ -177,6 +178,7 @@ Deno.serve(async (req: Request) => {
         // Ajouter le produit sans enrichissement
         const basicProduct: EnrichedProduct = {
           id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          retailer_id: retailer_id,
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
           vendor: product.vendor || 'Decora Home',

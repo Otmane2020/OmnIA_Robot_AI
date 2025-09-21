@@ -63,6 +63,17 @@ export const RobotInterface: React.FC = () => {
   const [isDetectingHuman, setIsDetectingHuman] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVolumeOn, setIsVolumeOn] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const loggedUser = localStorage.getItem('current_logged_user');
+    if (loggedUser) {
+      try {
+        return JSON.parse(loggedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -129,7 +140,8 @@ export const RobotInterface: React.FC = () => {
   }, [isSpeaking, isRecording]);
 
   const handleInitialGreeting = () => {
-    const greeting = "Bonjour ! Je suis OmnIA 🤖 Votre Robot Designer spécialisé en mobilier. Comment puis-je vous aider aujourd'hui ?";
+    const companyName = currentUser?.company_name || 'notre boutique';
+    const greeting = `Bonjour ! Je suis OmnIA 🤖 Robot Designer spécialisé pour ${companyName}. Comment puis-je vous aider aujourd'hui ?`;
     
     const greetingMessage: ChatMessageType = {
       id: Date.now().toString(),
@@ -168,7 +180,7 @@ export const RobotInterface: React.FC = () => {
         },
         body: JSON.stringify({ 
           message: messageText,
-          retailer_id: 'demo-retailer-id'
+          retailer_id: currentUser?.email || 'demo-retailer-id'
         }),
       });
 
@@ -738,8 +750,10 @@ export const RobotInterface: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
               <div>
-                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
-                <p className="text-gray-300">Robot IA à votre écoute</p>
+                <h2 className="text-xl font-bold text-white">
+                  Conversation OmnIA • {currentUser?.company_name || 'Revendeur'}
+                </h2>
+                <p className="text-gray-300">Robot IA spécialisé {currentUser?.company_name || 'mobilier'}</p>
               </div>
             </div>
             <CartButton 
@@ -875,7 +889,9 @@ export const RobotInterface: React.FC = () => {
               <div className="mb-4 p-4 bg-green-500/20 border border-green-400/50 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Eye className="w-4 h-4 text-green-400" />
-                  <span className="text-green-300 font-semibold">👁️ Détection humaine active - Showroom surveillé</span>
+                  <span className="text-green-300 font-semibold">
+                    👁️ Détection humaine active - Showroom {currentUser?.company_name || 'boutique'} surveillé
+                  </span>
                 </div>
               </div>
             )}

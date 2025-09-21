@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
     console.log('🧠 Analyse DeepSeek:', analysisResult);
 
     // ÉTAPE 2: Rechercher dans products_enriched avec les attributs détectés
-    const relevantProducts = await searchEnrichedProducts(analysisResult.attributes);
+    const relevantProducts = await searchEnrichedProducts(analysisResult.attributes, retailer_id);
     console.log('📦 Produits enrichis trouvés:', relevantProducts.length);
 
     // ÉTAPE 3: Générer réponse conversationnelle adaptée SANS produits dans le texte
@@ -237,23 +237,24 @@ function analyzeIntentBasic(message: string) {
   return { intent, attributes, confidence: 60 };
 }
 
-async function searchEnrichedProducts(attributes: any) {
+async function searchEnrichedProducts(attributes: any, retailer_id: string) {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       console.log('⚠️ Supabase non configuré, produits fallback');
-      return getDecoraFallbackProducts(attributes);
+      return getRetailerFallbackProducts(attributes, retailer_id);
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Construire la requête avec les attributs
+    // IMPORTANT: Filtrer par revendeur d'abord
     let query = supabase
       .from('products_enriched')
       .select('*')
-      .gt('stock_qty', 0);
+      .gt('stock_qty', 0)
+      .eq('retailer_id', retailer_id); // Filtrage par revendeur
 
     // Filtres basés sur les attributs DeepSeek
     if (attributes.category) {
@@ -293,10 +294,10 @@ async function searchEnrichedProducts(attributes: any) {
 
     if (error) {
       console.error('❌ Erreur requête products_enriched:', error);
-      return getDecoraFallbackProducts(attributes);
+      return getRetailerFallbackProducts(attributes, retailer_id);
     }
 
-    console.log('✅ Produits enrichis trouvés:', products?.length || 0, 'avec filtres:', attributes);
+    console.log('✅ Produits enrichis trouvés pour', retailer_id, ':', products?.length || 0, 'avec filtres:', attributes);
 
     // Transformer au format attendu
     return (products || []).map(product => ({
@@ -326,7 +327,7 @@ async function searchEnrichedProducts(attributes: any) {
 
   } catch (error) {
     console.error('❌ Erreur recherche enrichie:', error);
-    return getDecoraFallbackProducts(attributes);
+    return getRetailerFallbackProducts(attributes, retailer_id);
   }
 }
 
@@ -417,7 +418,52 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
   };
 }
 
-function getDecoraFallbackProducts(attributes: any) {
+function getRetailerFallbackProducts(attributes: any, retailer_id: string) {
+  // Récupérer les produits du localStorage spécifique au revendeur
+  try {
+    const retailerStorageKey = `enriched_products_${btoa(retailer_id).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8)}`;
+    const retailerProducts = localStorage.getItem(retailerStorageKey);
+    
+    if (retailerProducts) {
+      const products = JSON.parse(retailerProducts);
+      console.log('📦 Produits fallback du revendeur:', products.length);
+      
+      // Filtrer selon les attributs
+      return products.filter((product: any) => {
+        if (attributes.category && !product.product_type?.toLowerCase().includes(attributes.category)) return false;
+        if (attributes.color && !product.color?.toLowerCase().includes(attributes.color)) return false;
+        if (attributes.material && !product.material?.toLowerCase().includes(attributes.material)) return false;
+        return product.stock_quantity > 0;
+      }).slice(0, 3).map((product: any) => ({
+        id: product.id,
+        handle: product.handle || `product-${product.id}`,
+        title: product.title,
+        productType: product.product_type,
+        vendor: product.vendor || 'Boutique',
+        tags: Array.isArray(product.tags) ? product.tags : [],
+        price: product.price,
+        compareAtPrice: product.compare_at_price,
+        availableForSale: product.stock_quantity > 0,
+        quantityAvailable: product.stock_quantity,
+        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        product_url: product.product_url || '#',
+        description: product.description || product.title,
+        variants: [{
+          id: `${product.id}-default`,
+          title: 'Default',
+          price: product.price,
+          compareAtPrice: product.compare_at_price,
+          availableForSale: true,
+          quantityAvailable: product.stock_quantity,
+          selectedOptions: []
+        }]
+      }));
+    }
+  } catch (error) {
+    console.error('❌ Erreur récupération produits revendeur:', error);
+  }
+  
+  // Fallback Decora Home si pas de produits revendeur
   const allProducts = [
     {
       id: 'decora-canape-alyana-beige',
