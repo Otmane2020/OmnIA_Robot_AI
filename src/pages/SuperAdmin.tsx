@@ -232,3 +232,6 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
       address: retailerData.address,
       city: retailerData.city,
       siret: retailerData.siret
+    }
+  }
+}
