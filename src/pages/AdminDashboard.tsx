@@ -112,6 +112,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [currentTheme, setCurrentTheme] = useState(() => {
     return localStorage.getItem('admin_theme') || 'dark';
   });
+  const [activeSEOTab, setActiveSEOTab] = useState('blog');
 
   const themes = [
     { 
@@ -1422,6 +1423,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             }`}
           >
             Robot OmnIA
+          </button>
+          <button
+            onClick={() => setActiveTab('seo')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
+              activeTab === 'seo'
+                ? `${themes[theme].accent} text-white`
+                : `${themes[theme].text} hover:${themes[theme].hover}`
+            }`}
+          >
+            <Search className="w-5 h-5" />
+            SEO
           </button>
           <button
             onClick={() => setActiveSubTab('orders')}
