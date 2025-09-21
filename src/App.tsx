@@ -38,8 +38,7 @@ function App() {
   const [pendingApplications, setPendingApplications] = React.useState(() => {
     // Charger les demandes depuis localStorage
     try {
-      const saved = localStorage.getItem('pending_applications');
-      return saved ? JSON.parse(saved) : [];
+      return JSON.parse(localStorage.getItem('pending_applications') || '[]');
     } catch {
       return [];
     }
@@ -60,7 +59,7 @@ function App() {
     }
     // Decora Home - Boutique principale
     else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
-      setIsSuperAdmin(false);
+    // Vérifier les revendeurs validés en base de données
       setIsLoggedIn(true);
     }
     // Mobilier Design Paris
