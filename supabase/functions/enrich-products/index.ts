@@ -6,6 +6,16 @@ const corsHeaders = {
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+function generateHandle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .substring(0, 100);
+}
+
 interface EnrichProductsRequest {
   products: any[];
   source: 'catalog' | 'shopify' | 'csv' | 'xml';
@@ -17,6 +27,7 @@ interface EnrichedProduct {
   id: string;
   title: string;
   description: string;
+  short_description: string;
   vendor: string;
   brand: string;
   category: string;
@@ -27,11 +38,24 @@ interface EnrichedProduct {
   style: string;
   room: string;
   dimensions: string;
+  weight: string;
+  capacity: string;
   price: number;
   compare_at_price?: number;
+  currency: string;
+  stock_quantity: number;
+  availability_status: string;
+  gtin: string;
+  mpn: string;
+  identifier_exists: boolean;
   stock_qty: number;
   image_url: string;
+  additional_image_links: string[];
   product_url: string;
+  canonical_link: string;
+  percent_off: number;
+  seo_title: string;
+  seo_description: string;
   confidence_score: number;
   enrichment_source: string;
 }
@@ -93,33 +117,48 @@ Deno.serve(async (req: Request) => {
       try {
         console.log(`🔍 Enrichissement ${i + 1}/${products.length}: ${product.name?.substring(0, 30)}...`);
         
-        // Simuler progression pour le frontend
-        const progress = Math.round(((i + 1) / products.length) * 90);
-        console.log(`📊 Progression: ${progress}%`);
-        
         const enrichedData = await enrichProductWithDeepSeek(product, deepseekApiKey);
         
         const enrichedProduct: EnrichedProduct = {
           id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          handle: product.handle || generateHandle(product.name || product.title || ''),
+          retailer_id: retailer_id,
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          category: enrichedData.category || product.category || 'Mobilier',
+          short_description: (product.description || product.title || '').substring(0, 160),
+          product_type: enrichedData.product_type || product.category || 'Mobilier',
           subcategory: enrichedData.subcategory || '',
           tags: enrichedData.tags || [],
+          vendor: product.vendor || 'Decora Home',
+          brand: product.vendor || 'Decora Home',
           material: enrichedData.material || '',
           color: enrichedData.color || '',
           style: enrichedData.style || '',
           room: enrichedData.room || '',
           dimensions: enrichedData.dimensions || '',
+          weight: enrichedData.weight || '',
+          capacity: enrichedData.capacity || '',
           price: parseFloat(product.price) || 0,
           compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+          currency: 'EUR',
+          stock_quantity: parseInt(product.stock) || 0,
           stock_qty: parseInt(product.stock) || 0,
+          availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+          gtin: enrichedData.gtin || '',
+          mpn: product.sku || enrichedData.mpn || '',
+          identifier_exists: !!(product.sku || enrichedData.gtin),
           image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          additional_image_links: [],
           product_url: product.product_url || '#',
-          confidence_score: enrichedData.confidence_score || 50,
-          enrichment_source: 'deepseek'
+          canonical_link: product.product_url || '#',
+          percent_off: product.compare_at_price && product.price ? 
+            Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
+          ai_confidence: (enrichedData.confidence_score || 50) / 100,
+          seo_title: enrichedData.seo_title || product.name || product.title || '',
+          seo_description: enrichedData.seo_description || (product.description || product.title || '').substring(0, 155),
+          enrichment_source: 'deepseek',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
 
         enrichedProducts.push(enrichedProduct);
@@ -139,6 +178,7 @@ Deno.serve(async (req: Request) => {
         // Ajouter le produit sans enrichissement
         const basicProduct: EnrichedProduct = {
           id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          retailer_id: retailer_id,
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
           vendor: product.vendor || 'Decora Home',
@@ -168,20 +208,24 @@ Deno.serve(async (req: Request) => {
     if (enrichedProducts.length > 0) {
       console.log('💾 Sauvegarde dans products_enriched...');
       
-      const { data, error } = await supabase
-        .from('products_enriched')
-        .upsert(enrichedProducts, { 
-          onConflict: 'title,vendor',
-          ignoreDuplicates: false 
-        })
-        .select();
+      try {
+        const { data, error } = await supabase
+          .from('products_enriched')
+          .upsert(enrichedProducts, { 
+            onConflict: 'handle',
+            ignoreDuplicates: false 
+          })
+          .select();
 
-      if (error) {
-        console.error('❌ Erreur sauvegarde:', error);
-        throw error;
+        if (error) {
+          console.error('❌ Erreur sauvegarde Supabase:', error);
+          console.log('💾 Sauvegarde en localStorage en fallback...');
+        } else {
+          console.log('✅ Produits enrichis sauvegardés en Supabase:', data?.length || 0);
+        }
+      } catch (dbError) {
+        console.error('❌ Erreur DB, sauvegarde locale:', dbError);
       }
-
-      console.log('✅ Produits enrichis sauvegardés:', data?.length || 0);
     }
 
     const stats = {
@@ -239,27 +283,36 @@ PRIX: ${product.price || 0}€
 VENDEUR: ${product.vendor || ''}
   `.trim();
 
-  const prompt = `Analyse ce produit mobilier et extrait les attributs au format JSON strict.
+  const prompt = `Tu es un expert en mobilier et SEO. Analyse ce produit et extrait TOUS les attributs au format JSON strict.
 
 ${productText}
 
-EXTRAIT ces attributs au format JSON exact :
+EXTRAIT OBLIGATOIREMENT ces attributs au format JSON exact :
 {
   "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
-  "subcategory": "sous-catégorie spécifique",
+  "product_type": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
+  "subcategory": "Canapé d'angle|Table basse|Chaise de bureau|Lit double|Commode|Console TV|Miroir",
   "material": "matériau principal",
   "color": "couleur principale", 
   "style": "Moderne|Contemporain|Scandinave|Industriel|Vintage|Classique|Minimaliste",
   "room": "Salon|Chambre|Cuisine|Bureau|Salle à manger|Entrée",
-  "dimensions": "dimensions si trouvées",
+  "dimensions": "LxlxH en cm si trouvé",
+  "weight": "poids approximatif en kg",
+  "capacity": "capacité (ex: 4 places, 6 personnes)",
+  "gtin": "code-barres si disponible",
+  "mpn": "référence fabricant",
+  "seo_title": "TITRE SEO OPTIMISÉ 60 caractères max avec mots-clés",
+  "seo_description": "META DESCRIPTION SEO 155 caractères max attractive et vendeuse",
   "tags": ["tag1", "tag2", "tag3"],
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- Utilise UNIQUEMENT les valeurs listées pour category et style
+- category ET product_type: OBLIGATOIRES, utilise les valeurs listées
+- seo_title: OBLIGATOIRE, titre optimisé Google avec mots-clés (ex: "Canapé Moderne 3 Places - Velours Beige - Decora Home")
+- seo_description: OBLIGATOIRE, description vendeuse 155 caractères (ex: "Découvrez notre canapé moderne 3 places en velours beige. Confort optimal, design contemporain. Livraison gratuite. ⭐")
 - confidence_score: 0-100 basé sur la qualité des informations
-- Si information manquante, laisser chaîne vide ""
+- Si information manquante, mettre valeur par défaut logique
 - Réponse JSON uniquement, aucun texte supplémentaire
 
 RÉPONSE JSON UNIQUEMENT:`;
@@ -303,19 +356,29 @@ RÉPONSE JSON UNIQUEMENT:`;
         const parsed = JSON.parse(content);
         console.log('✅ DeepSeek extraction réussie:', {
           category: parsed.category,
+          product_type: parsed.product_type,
+          subcategory: parsed.subcategory,
           material: parsed.material,
           color: parsed.color,
+          seo_title: parsed.seo_title?.substring(0, 30),
+          seo_description: parsed.seo_description?.substring(0, 50),
           confidence: parsed.confidence_score
         });
         
         return {
-          category: parsed.category || '',
+          product_type: parsed.product_type || parsed.category || '',
           subcategory: parsed.subcategory || '',
           material: parsed.material || '',
           color: parsed.color || '',
           style: parsed.style || '',
           room: parsed.room || '',
           dimensions: parsed.dimensions || '',
+          weight: parsed.weight || '',
+          capacity: parsed.capacity || '',
+          gtin: parsed.gtin || '',
+          mpn: parsed.mpn || '',
+          seo_title: parsed.seo_title || '',
+          seo_description: parsed.seo_description || '',
           tags: Array.isArray(parsed.tags) ? parsed.tags : [],
           confidence_score: parsed.confidence_score || 50
         };
