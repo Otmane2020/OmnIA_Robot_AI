@@ -20,6 +20,7 @@ import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { MessagingSystem } from '../components/MessagingSystem';
+import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { SpeechToTextInterface } from '../components/SpeechToTextInterface';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 
@@ -783,6 +784,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <h2 className="text-2xl font-bold text-white">Gestion des Commandes</h2>
           <p className="text-gray-300">{orders.length} commande(s) • OmnIA Robot + Manuelles</p>
         </div>
+        <button
+          onClick={() => setActiveTab('enriched')}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+            activeTab === 'enriched'
+              ? `bg-gradient-to-r ${themes[currentTheme].accent} text-white shadow-lg`
+              : 'text-gray-300 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-400" />
+            <span>Catalogue Enrichi</span>
+          </div>
+        </button>
         <button
           onClick={() => setShowCreateOrder(true)}
           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
