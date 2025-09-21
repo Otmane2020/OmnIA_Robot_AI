@@ -166,7 +166,6 @@ export const ProductsEnrichedTable: React.FC = () => {
           {
             label: 'Enrichir avec IA',
             action: () => handleEnrichWithDeepSeek(),
-            variant: 'primary'
           }
         ]
       );
