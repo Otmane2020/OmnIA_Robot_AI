@@ -56,39 +56,49 @@ function App() {
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      return;
     }
-    // Decora Home - Boutique principale
-    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
-    // Vérifier les revendeurs validés en base de données
+    
+    // Vérifier les revendeurs validés
+    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    const retailer = validatedRetailers.find((r: any) => 
+      r.email === credentials.email && r.password === credentials.password
+    );
+    
+    if (retailer) {
+      console.log('✅ Connexion revendeur validé:', retailer.company_name);
       setIsLoggedIn(true);
+      setIsSuperAdmin(false);
+      return;
     }
-    // Mobilier Design Paris
-    else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
+    
+    // Comptes de démonstration
+    const demoAccounts = [
+      { email: 'demo@decorahome.fr', password: 'demo123', name: 'Decora Home' },
+      { email: 'contact@mobilierdesign.fr', password: 'design123', name: 'Mobilier Design Paris' },
+      { email: 'info@decocontemporain.com', password: 'deco123', name: 'Déco Contemporain' },
+      { email: 'contact@meubleslyon.fr', password: 'lyon123', name: 'Meubles Lyon' }
+    ];
+    
+    const demoAccount = demoAccounts.find(acc => 
+      acc.email === credentials.email && acc.password === credentials.password
+    );
+    
+    if (demoAccount) {
+      console.log('✅ Connexion compte démo:', demoAccount.name);
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
+      return;
     }
-    // Déco Contemporain
-    else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    // Meubles Lyon
-    else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    // Autres boutiques
-    else if (credentials.email === 'admin@mobilierdesign.fr' && credentials.password === 'design123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    else if (credentials.email === 'contact@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
-    }
+    
+    // Identifiants incorrects
+    const availableAccounts = [
+      ...demoAccounts.map(acc => `• ${acc.email} / ${acc.password} (${acc.name})`),
+      '• superadmin@omnia.sale / superadmin2025 (Super Admin)',
+      ...validatedRetailers.map((r: any) => `• ${r.email} / ••••••• (${r.company_name})`)
+    ];
+    
+    alert(`Identifiants incorrects.\n\nComptes disponibles :\n${availableAccounts.join('\n')}`);
   };
 
   const handleLogout = () => {
@@ -107,12 +117,44 @@ function App() {
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
+    // Trouver l'application
+    const application = pendingApplications.find(app => app.id === applicationId);
+    
     // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
       prev.filter(app => app.id !== applicationId)
     );
     
     if (approved) {
+      // NOUVEAU: Créer automatiquement le compte revendeur
+      if (application) {
+        const newRetailer = {
+          id: application.id,
+          email: application.email,
+          password: application.loginCredentials?.password || application.password,
+          company_name: application.companyName,
+          subdomain: application.proposedSubdomain,
+          plan: application.selectedPlan,
+          status: 'active',
+          contact_name: `${application.firstName} ${application.lastName}`,
+          phone: application.phone,
+          address: application.address,
+          city: application.city,
+          postal_code: application.postalCode,
+          siret: application.siret,
+          position: application.position,
+          created_at: new Date().toISOString(),
+          validated_at: new Date().toISOString()
+        };
+        
+        // Sauvegarder dans localStorage pour les connexions
+        const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+        validatedRetailers.push(newRetailer);
+        localStorage.setItem('validated_retailers', JSON.stringify(validatedRetailers));
+        
+        console.log('✅ Compte revendeur créé automatiquement:', newRetailer.email);
+      }
+      
       console.log('📧 Email d\'approbation envoyé');
       console.log('🌐 Sous-domaine créé');
       console.log('🔑 Identifiants de connexion communiqués');
