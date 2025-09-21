@@ -151,7 +151,6 @@ function App() {
 🔑 Ou votre compte revendeur après validation`);
       }
     });
-    }
   };
 
   const handleLogout = () => {
