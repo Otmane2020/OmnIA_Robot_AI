@@ -1580,6 +1580,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderSEOSection = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">SEO & Content</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('keywords')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'keywords' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Mots-clés
+          </button>
+          <button
+            onClick={() => setActiveSubTab('blog')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'blog' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Blog
+          </button>
+          <button
+            onClick={() => setActiveSubTab('performance')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'performance' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Performance
+          </button>
+        </div>
+      </div>
+      
+      {activeSubTab === 'keywords' || !activeSubTab ? renderKeywords() : null}
+      {activeSubTab === 'blog' ? renderBlogManagement() : null}
+      {activeSubTab === 'performance' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Performance SEO</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-400">87/100</div>
+              <div className="text-gray-300">Score SEO</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-400">92/100</div>
+              <div className="text-gray-300">Vitesse site</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-400">✓</div>
+              <div className="text-gray-300">Mobile-friendly</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
   const renderSEO = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -1891,7 +1947,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'ecommerce': return renderECommerce();
       case 'ads': return renderAdsMarketing();
       case 'vision': return renderVisionStudio();
-      case 'seo': return renderSEO();
+      case 'seo': return renderSEOSection();
       case 'omnia': return renderOmnIABot();
       case 'analytics': return renderAnalytics();
       case 'admin': return renderAdmin();
