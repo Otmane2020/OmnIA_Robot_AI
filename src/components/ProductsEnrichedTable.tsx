@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 
 interface EnrichedProduct {
   id: string;
+  handle: string;
   title: string;
   description: string;
   short_description: string;
@@ -33,6 +34,7 @@ interface EnrichedProduct {
   gtin: string;
   mpn: string;
   identifier_exists: boolean;
+  stock_qty: number;
   image_url: string;
   additional_image_links: string[];
   product_url: string;
@@ -215,6 +217,7 @@ export const ProductsEnrichedTable: React.FC = () => {
       // Transformer les produits du catalogue en produits enrichis
       const enrichedProducts = products.map((product: any) => ({
         id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        handle: product.handle || generateHandle(product.name || product.title || ''),
         title: product.name || product.title || 'Produit sans nom',
         description: product.description || '',
         short_description: (product.description || product.title || '').substring(0, 160),
@@ -234,6 +237,7 @@ export const ProductsEnrichedTable: React.FC = () => {
         compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
         currency: 'EUR',
         stock_quantity: parseInt(product.stock) || 0,
+        stock_qty: parseInt(product.stock) || 0,
         availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
         gtin: '',
         mpn: product.sku || '',
