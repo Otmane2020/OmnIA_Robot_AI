@@ -3,7 +3,7 @@ import {
   Users, Building, CheckCircle, X, Eye, Edit, Trash2, Plus,
   Mail, Phone, MapPin, Calendar, FileText, AlertCircle,
   Search, Filter, Download, Upload, Settings, LogOut,
-  User, CreditCard, Globe, BarChart3, Clock, Star, Menu
+  User, CreditCard, Globe, BarChart3, Clock, Star
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -73,7 +73,6 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   const [showCreateRetailerModal, setShowCreateRetailerModal] = useState(false);
   const [selectedKbis, setSelectedKbis] = useState<{ application: Application; kbisFile: File } | null>(null);
   const [showKbisModal, setShowKbisModal] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Charger les revendeurs depuis localStorage
   useEffect(() => {
@@ -233,3 +232,6 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
       address: retailerData.address,
       city: retailerData.city,
       siret: retailerData.siret
+    }
+  }
+}
