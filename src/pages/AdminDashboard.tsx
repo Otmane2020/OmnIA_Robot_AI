@@ -573,8 +573,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Dashboard Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {dashboardCards.map((card, index) => {
+        <h2 className="text-3xl font-bold text-white mb-4">
+          Tableau de bord {currentUser?.company_name || 'OmnIA'}
+        </h2>
+        <p className="text-gray-300">
+          Gestion complète de votre assistant IA - {currentUser?.plan || 'Plan'} 
+        </p>
           const Icon = card.icon;
           return (
             <div
