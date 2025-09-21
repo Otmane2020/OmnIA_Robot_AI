@@ -75,8 +75,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     // Simuler la récupération de l'utilisateur actuel
     // Dans un vrai système, cela viendrait de l'authentification
     return {
-      email: 'benyahya.otmane@gmail.com', // Exemple
-      company_name: 'Entreprise Test'
+      email: 'demo@decorahome.fr', // Exemple
+      company_name: 'Decora Home'
     };
   };
 

@@ -89,17 +89,8 @@ function App() {
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
     }
-    // Autres boutiques
-    else if (credentials.email === 'admin@mobilierdesign.fr' && credentials.password === 'design123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
-    else if (credentials.email === 'contact@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-    }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• benyahya.otmane@gmail.com / Sco010203\n• superadmin@omnia.sale / superadmin2025');
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
     }
   };
 
