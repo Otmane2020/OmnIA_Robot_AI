@@ -148,6 +148,41 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       proposedSubdomain: uniqueSubdomain
     };
     
+    // NOUVEAU: Créer automatiquement le sous-domaine
+    try {
+      const { data: subdomainData, error: subdomainError } = await supabase
+        .from('retailer_subdomains')
+        .insert({
+          subdomain: uniqueSubdomain,
+          dns_status: 'pending',
+          ssl_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (subdomainError) {
+        console.error('❌ Erreur création sous-domaine:', subdomainError);
+      } else {
+        console.log('✅ Sous-domaine créé automatiquement:', uniqueSubdomain);
+        
+        // Simuler activation DNS/SSL (2 secondes)
+        setTimeout(async () => {
+          await supabase
+            .from('retailer_subdomains')
+            .update({
+              dns_status: 'active',
+              ssl_status: 'active',
+              activated_at: new Date().toISOString()
+            })
+            .eq('id', subdomainData.id);
+          
+          console.log('🌐 DNS/SSL activé pour:', uniqueSubdomain);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('❌ Erreur sous-domaine:', error);
+    }
+    
     // NOUVEAU: Sauvegarder la demande dans la base de données
     try {
       const { data: applicationData, error } = await supabase

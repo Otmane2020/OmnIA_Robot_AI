@@ -46,6 +46,7 @@ export const RobotInterface: React.FC = () => {
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingSTTMessages, setPendingSTTMessages] = useState<any[]>([]);
   
   // Robot state
   const [robotState, setRobotState] = useState<RobotState>({
@@ -85,8 +86,30 @@ export const RobotInterface: React.FC = () => {
 
   useEffect(() => {
     handleInitialGreeting();
+    checkForPendingSTTMessages();
   }, []);
 
+  useEffect(() => {
+    // Vérifier les messages STT en attente toutes les 2 secondes
+    const interval = setInterval(checkForPendingSTTMessages, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkForPendingSTTMessages = () => {
+    const pending = JSON.parse(localStorage.getItem('robot_pending_messages') || '[]');
+    if (pending.length > 0) {
+      // Traiter les nouveaux messages STT
+      pending.forEach((msg: any) => {
+        if (!pendingSTTMessages.find(p => p.id === msg.id)) {
+          handleSendMessage(msg.content);
+        }
+      });
+      
+      setPendingSTTMessages(pending);
+      // Vider la queue après traitement
+      localStorage.removeItem('robot_pending_messages');
+    }
+  };
   useEffect(() => {
     if (transcript && !isProcessing) {
       handleSendMessage(transcript);

@@ -107,6 +107,39 @@ function App() {
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
+    if (approved) {
+      // Récupérer la demande
+      const application = pendingApplications.find(app => app.id === applicationId);
+      if (application) {
+        // Créer le compte revendeur validé
+        const validatedRetailer = {
+          id: application.id,
+          email: application.email,
+          password: application.password || `omnia${Date.now().toString().slice(-4)}`,
+          company_name: application.companyName,
+          subdomain: application.proposedSubdomain,
+          plan: application.selectedPlan,
+          status: 'active',
+          validated_at: new Date().toISOString(),
+          first_name: application.firstName,
+          last_name: application.lastName,
+          phone: application.phone,
+          address: application.address,
+          city: application.city,
+          postal_code: application.postalCode,
+          siret: application.siret,
+          position: application.position
+        };
+        
+        // Sauvegarder dans localStorage
+        const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+        existingRetailers.push(validatedRetailer);
+        localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
+        
+        console.log('✅ Revendeur validé et sauvegardé:', validatedRetailer.company_name);
+      }
+    }
+    
     // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
       prev.filter(app => app.id !== applicationId)

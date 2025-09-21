@@ -118,7 +118,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, 
   };
 
   return (
-    <div className={`flex gap-4 md:gap-6 ${message.isUser ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
+    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+      {/* Message du robot */}
+      <div className={`flex gap-4 md:gap-6 ${message.isUser ? 'justify-end' : 'justify-start'}`}>
       {!message.isUser && (
         <div className="flex-shrink-0">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg relative border-2 border-cyan-400/30">
@@ -181,6 +183,67 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, 
             <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-blue-600 font-bold text-sm">U</span>
             </div>
+          </div>
+        </div>
+      )}
+      </div>
+      
+      {/* Produits recommandés - SÉPARÉS du message */}
+      {message.products && message.products.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800">✨ Mes recommandations</h3>
+            <span className="bg-cyan-500/20 text-cyan-700 px-3 py-1 rounded-full text-sm border border-cyan-300">
+              {message.products.length} produit{message.products.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 px-4">
+            {message.products.map((product) => (
+              <div key={product.id} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-4 shadow-lg border border-gray-200 hover:shadow-cyan-500/20 hover:border-cyan-400 transition-all duration-300 hover:scale-105">
+                <div className="w-full h-40 rounded-xl overflow-hidden mb-3 bg-gray-600">
+                  <img 
+                    src={product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg'} 
+                    alt={product.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                    }}
+                  />
+                </div>
+                
+                <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-2">{product.title}</h4>
+                <p className="text-cyan-600 mb-3 font-semibold text-sm">{product.vendor || 'Vendeur'}</p>
+                
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-green-600">{product.price}€</span>
+                    {product.compareAtPrice && product.compareAtPrice > product.price && (
+                      <span className="text-gray-500 line-through text-sm">{product.compareAtPrice}€</span>
+                    )}
+                  </div>
+                  <span className={`text-sm font-medium ${
+                    product.availableForSale ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {product.availableForSale ? '✅ En stock' : '❌ Rupture'}
+                  </span>
+                </div>
+                
+                {onAddToCart && product.availableForSale && (
+                  <button
+                    onClick={() => onAddToCart(product.id, product.variants?.[0]?.id || 'default')}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-2 rounded-xl font-semibold transition-all hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Ajouter au panier
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
