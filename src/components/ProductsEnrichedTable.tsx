@@ -157,19 +157,39 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('products_enriched')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Erreur chargement produits enrichis:', error);
-        showError('Erreur de chargement', 'Impossible de charger le catalogue enrichi.');
-        return;
+      // Charger depuis localStorage d'abord
+      const localEnrichedProducts = localStorage.getItem('enriched_products');
+      if (localEnrichedProducts) {
+        try {
+          const parsedProducts = JSON.parse(localEnrichedProducts);
+          console.log('✅ Catalogue enrichi chargé depuis localStorage:', parsedProducts.length);
+          setProducts(parsedProducts);
+          return;
+        } catch (error) {
+          console.error('Erreur parsing localStorage:', error);
+        }
       }
+      
+      // Fallback vers Supabase
+      try {
+        const { data, error } = await supabase
+          .from('products_enriched')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      console.log('✅ Catalogue enrichi chargé:', data?.length || 0);
-      setProducts(data || []);
+        if (!error && data && data.length > 0) {
+          console.log('✅ Catalogue enrichi chargé depuis Supabase:', data.length);
+          setProducts(data);
+          // Sauvegarder en localStorage pour la prochaine fois
+          localStorage.setItem('enriched_products', JSON.stringify(data));
+        } else {
+          console.log('⚠️ Aucun produit enrichi en base, catalogue vide');
+          setProducts([]);
+        }
+      } catch (error) {
+        console.error('❌ Erreur Supabase:', error);
+        setProducts([]);
+      }
       
     } catch (error) {
       console.error('❌ Erreur:', error);
@@ -273,45 +293,61 @@ export const ProductsEnrichedTable: React.FC = () => {
       const products = JSON.parse(catalogProducts);
       console.log('📦 Produits à enrichir:', products.length);
 
-      // Progression réelle basée sur le traitement
-      let processedCount = 0;
-      const totalProducts = products.length;
+      // Traitement par batch pour éviter les timeouts
+      const batchSize = 5;
+      const enrichedProducts = [];
+      
+      for (let i = 0; i < products.length; i += batchSize) {
+        const batch = products.slice(i, i + batchSize);
+        console.log(`🔄 Traitement batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(products.length/batchSize)}`);
+        
+        // Appeler DeepSeek pour chaque batch
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            products: batch,
+            source: 'catalog',
+            retailer_id: 'demo-retailer-id'
+          }),
+        });
 
-      // Appeler l'enrichissement DeepSeek
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: products,
-          source: 'catalog',
-          retailer_id: 'demo-retailer-id'
-        }),
-      });
-
-      // Simuler progression pendant le traitement
-      const progressInterval = setInterval(() => {
-        processedCount += 1;
-        const progress = Math.min((processedCount / totalProducts) * 100, 100);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.enriched_products) {
+            enrichedProducts.push(...result.enriched_products);
+          }
+          console.log(`✅ Batch ${Math.floor(i/batchSize) + 1} enrichi:`, result.enriched_products?.length || 0);
+        } else {
+          console.error('❌ Erreur batch:', await response.text());
+        }
+        
+        // Mettre à jour la progression
+        const progress = Math.min(((i + batchSize) / products.length) * 100, 100);
         setEnrichmentProgress(progress);
         
-        if (progress >= 100) {
-          clearInterval(progressInterval);
+        // Pause entre les batches
+        if (i + batchSize < products.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-      }, 200);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Enrichissement réussi:', result);
+      }
+      
+      // Sauvegarder les produits enrichis dans products_enriched
+      if (enrichedProducts.length > 0) {
+        console.log('💾 Sauvegarde dans products_enriched:', enrichedProducts.length);
         
-        clearInterval(progressInterval);
-        setEnrichmentProgress(100);
+        // Sauvegarder dans localStorage pour affichage immédiat
+        localStorage.setItem('enriched_products', JSON.stringify(enrichedProducts));
+        
+        // Mettre à jour l'état local
+        setProducts(enrichedProducts);
         
         showSuccess(
           'Enrichissement terminé !', 
-          `${result.enriched_count || products.length} produits enrichis avec DeepSeek IA !`,
+          `${enrichedProducts.length} produits enrichis et sauvegardés avec DeepSeek IA !`,
           [
             {
               label: 'Voir les résultats',
@@ -320,17 +356,11 @@ export const ProductsEnrichedTable: React.FC = () => {
             }
           ]
         );
-
-        // Recharger les produits enrichis
-        await loadEnrichedProducts();
         
         // Configurer automatiquement le cron quotidien
         await handleSetupCron('daily', true);
-        
       } else {
-        clearInterval(progressInterval);
-        const error = await response.json();
-        showError('Enrichissement échoué', error.error || 'Erreur lors de l\'enrichissement.');
+        showError('Enrichissement échoué', 'Aucun produit n\'a pu être enrichi.');
       }
 
     } catch (error) {
@@ -652,22 +682,22 @@ export const ProductsEnrichedTable: React.FC = () => {
                       <div className="space-y-1">
                         {product.material && (
                           <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.material}
+                            🏗️ {product.material}
                           </span>
                         )}
                         {product.color && (
                           <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.color}
+                            🎨 {product.color}
                           </span>
                         )}
                         {product.style && (
                           <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.style}
+                            ✨ {product.style}
                           </span>
                         )}
                         {product.room && (
                           <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.room}
+                            🏠 {product.room}
                           </span>
                         )}
                         {product.dimensions && (
@@ -725,11 +755,11 @@ export const ProductsEnrichedTable: React.FC = () => {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${
-                          product.ai_confidence >= 80 ? 'bg-green-400' :
-                          product.ai_confidence >= 60 ? 'bg-yellow-400' :
+                          (product.ai_confidence * 100) >= 80 ? 'bg-green-400' :
+                          (product.ai_confidence * 100) >= 60 ? 'bg-yellow-400' :
                           'bg-red-400'
                         }`}></div>
-                        <span className="text-white text-sm">{Math.round(product.ai_confidence * 100)}%</span>
+                        <span className="text-white text-sm">{Math.round((product.ai_confidence || 0) * 100)}%</span>
                         <span className={`px-2 py-1 rounded text-xs ${
                           product.enrichment_source === 'deepseek' ? 'bg-purple-500/20 text-purple-300' :
                           product.enrichment_source === 'import' ? 'bg-blue-500/20 text-blue-300' :

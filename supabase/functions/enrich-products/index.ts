@@ -121,14 +121,15 @@ Deno.serve(async (req: Request) => {
         
         const enrichedProduct: EnrichedProduct = {
           id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          handle: product.handle || generateHandle(product.name || product.title || ''),
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
           short_description: (product.description || product.title || '').substring(0, 160),
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          category: enrichedData.category || product.category || 'Mobilier',
+          product_type: enrichedData.product_type || product.category || 'Mobilier',
           subcategory: enrichedData.subcategory || '',
           tags: enrichedData.tags || [],
+          vendor: product.vendor || 'Decora Home',
+          brand: product.vendor || 'Decora Home',
           material: enrichedData.material || '',
           color: enrichedData.color || '',
           style: enrichedData.style || '',
@@ -140,21 +141,23 @@ Deno.serve(async (req: Request) => {
           compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
           currency: 'EUR',
           stock_quantity: parseInt(product.stock) || 0,
+          stock_qty: parseInt(product.stock) || 0,
           availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
           gtin: enrichedData.gtin || '',
           mpn: product.sku || enrichedData.mpn || '',
           identifier_exists: !!(product.sku || enrichedData.gtin),
-          stock_qty: parseInt(product.stock) || 0,
           image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          additional_image_links: enrichedData.additional_images || [],
+          additional_image_links: [],
           product_url: product.product_url || '#',
           canonical_link: product.product_url || '#',
           percent_off: product.compare_at_price && product.price ? 
             Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
+          ai_confidence: (enrichedData.confidence_score || 50) / 100,
           seo_title: enrichedData.seo_title || product.name || product.title || '',
           seo_description: enrichedData.seo_description || (product.description || product.title || '').substring(0, 155),
-          confidence_score: enrichedData.confidence_score || 50,
-          enrichment_source: 'deepseek'
+          enrichment_source: 'deepseek',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
 
         enrichedProducts.push(enrichedProduct);
@@ -203,20 +206,24 @@ Deno.serve(async (req: Request) => {
     if (enrichedProducts.length > 0) {
       console.log('💾 Sauvegarde dans products_enriched...');
       
-      const { data, error } = await supabase
-        .from('products_enriched')
-        .upsert(enrichedProducts, { 
-          onConflict: 'title,vendor',
-          ignoreDuplicates: false 
-        })
-        .select();
+      try {
+        const { data, error } = await supabase
+          .from('products_enriched')
+          .upsert(enrichedProducts, { 
+            onConflict: 'handle',
+            ignoreDuplicates: false 
+          })
+          .select();
 
-      if (error) {
-        console.error('❌ Erreur sauvegarde:', error);
-        throw error;
+        if (error) {
+          console.error('❌ Erreur sauvegarde Supabase:', error);
+          console.log('💾 Sauvegarde en localStorage en fallback...');
+        } else {
+          console.log('✅ Produits enrichis sauvegardés en Supabase:', data?.length || 0);
+        }
+      } catch (dbError) {
+        console.error('❌ Erreur DB, sauvegarde locale:', dbError);
       }
-
-      console.log('✅ Produits enrichis sauvegardés:', data?.length || 0);
     }
 
     const stats = {
@@ -280,12 +287,15 @@ ${productText}
 
 EXTRAIT ces attributs au format JSON exact :
 {
-  "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
-  "subcategory": "sous-catégorie spécifique",
+  "product_type": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
+  "subcategory": "Canapé d'angle|Table basse|Chaise de bureau|Lit double|Commode|Console TV|Miroir",
   "material": "matériau principal",
   "color": "couleur principale", 
   "style": "Moderne|Contemporain|Scandinave|Industriel|Vintage|Classique|Minimaliste",
   "room": "Salon|Chambre|Cuisine|Bureau|Salle à manger|Entrée",
+  "dimensions": "LxlxH en cm si trouvé",
+  "weight": "poids approximatif en kg",
+  "capacity": "capacité (ex: 4 places, 6 personnes)",
   "dimensions": "dimensions si trouvées",
   "weight": "poids approximatif",
   "capacity": "capacité (ex: 4 places, 6 personnes)",
@@ -293,13 +303,12 @@ EXTRAIT ces attributs au format JSON exact :
   "mpn": "référence fabricant",
   "seo_title": "titre optimisé SEO (60 caractères max)",
   "seo_description": "description SEO (155 caractères max)",
-  "additional_images": ["url1", "url2"],
   "tags": ["tag1", "tag2", "tag3"],
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- Utilise UNIQUEMENT les valeurs listées pour category et style
+- Utilise UNIQUEMENT les valeurs listées pour product_type et style
 - seo_title: titre optimisé pour Google avec mots-clés
 - seo_description: description marketing attractive
 - confidence_score: 0-100 basé sur la qualité des informations
@@ -347,13 +356,17 @@ RÉPONSE JSON UNIQUEMENT:`;
         const parsed = JSON.parse(content);
         console.log('✅ DeepSeek extraction réussie:', {
           category: parsed.category,
+          product_type: parsed.product_type,
+          subcategory: parsed.subcategory,
           material: parsed.material,
           color: parsed.color,
+          seo_title: parsed.seo_title?.substring(0, 30),
+          seo_description: parsed.seo_description?.substring(0, 50),
           confidence: parsed.confidence_score
         });
         
         return {
-          category: parsed.category || '',
+          product_type: parsed.product_type || parsed.category || '',
           subcategory: parsed.subcategory || '',
           material: parsed.material || '',
           color: parsed.color || '',
@@ -366,7 +379,6 @@ RÉPONSE JSON UNIQUEMENT:`;
           mpn: parsed.mpn || '',
           seo_title: parsed.seo_title || '',
           seo_description: parsed.seo_description || '',
-          additional_images: parsed.additional_images || [],
           tags: Array.isArray(parsed.tags) ? parsed.tags : [],
           confidence_score: parsed.confidence_score || 50
         };
