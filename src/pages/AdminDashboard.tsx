@@ -3,9 +3,9 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  DollarSign, Plus, X,
- Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
-  Battery, Signal,
+  DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
+  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
+  Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
   Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
@@ -19,6 +19,8 @@ import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
+import { MessagingSystem } from '../components/MessagingSystem';
+import { SpeechToTextInterface } from '../components/SpeechToTextInterface';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 
 interface AdminDashboardProps {
@@ -32,6 +34,15 @@ interface DashboardStats {
   revenue: number;
   visitors: number;
   sessionDuration: string;
+}
+
+interface ConnectedPlatform {
+  id: string;
+  name: string;
+  platform: string;
+  products_count: number;
+  status: string;
+  connected_at: string;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
@@ -84,7 +95,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     visitors: 89,
     sessionDuration: '4m 12s'
   });
-  const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([]);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [blogPosts, setBlogPosts] = useState([
@@ -236,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     // Mettre à jour les stats
     const newStats = {
       ...stats,
-      totalProducts: platformData.products_count || 0
+      products: platformData.products_count || 0
     };
     setStats(newStats);
     localStorage.setItem(getRetailerStorageKey('retailer_stats'), JSON.stringify(newStats));
@@ -907,7 +918,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         description: product.seo_description || product.description || product.title,
         item_group_id: product.handle || product.id,
         link: product.product_url || `https://${currentUser?.company_name?.toLowerCase()}.omnia.sale/products/${product.handle}`,
-        product_type: `Mobilier > ${product.product_type} > ${product.subcategory || product.product_type}`,
+        product_type: `Mobilier &gt; ${product.product_type} &gt; ${product.subcategory || product.product_type}`,
         google_product_category: mapToGoogleCategory(product.product_type, categoryMapping),
         image_link: product.image_url,
         condition: 'new',
@@ -1180,7 +1191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </code>
                   <div className="mt-2 text-xs text-blue-300">
                     <p>Exemple :</p>
-                    <p>CAN001,Canapé,Canapé d'angle,Furniture > Living Room Furniture > Sofas</p>
+                    <p>CAN001,Canapé,Canapé d'angle,Furniture &gt; Living Room Furniture &gt; Sofas</p>
                   </div>
                 </div>
                 
@@ -1301,12 +1312,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             Catalogue
           </button>
           <button
-            onClick={() => setActiveSubTab('products')}
+            onClick={() => setActiveSubTab('enriched')}
             className={`px-4 py-2 rounded-xl transition-all ${
-              activeSubTab === 'products' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+              activeSubTab === 'enriched' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
             }`}
           >
-            Produits
+            Produits Enrichis
           </button>
           <button
             onClick={() => setActiveSubTab('inventory')}
@@ -1316,6 +1327,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           >
             Inventaire
           </button>
+          <button
+            onClick={() => setActiveSubTab('robot')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'robot' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Robot OmnIA
+          </button>
+          <button
+            onClick={() => setActiveSubTab('orders')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'orders' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Commandes
+          </button>
+          <button
+            onClick={() => setActiveSubTab('conversations')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'conversations' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Conversations
+          </button>
+          <button
+            onClick={() => setActiveSubTab('training')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'training' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Entraînement IA
+          </button>
+          <button
+            onClick={() => setActiveSubTab('messages')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'messages' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Messagerie
+          </button>
+          <button
+            onClick={() => setActiveSubTab('stt')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'stt' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Speech-to-Text
+          </button>
+          <button
+            onClick={() => setActiveSubTab('integrations')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'integrations' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Intégrations
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
@@ -1324,13 +1391,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       {activeSubTab === 'catalog' || !activeSubTab ? <CatalogManagement /> : null}
-      {activeSubTab === 'products' ? <ProductsEnrichedTable /> : null}
-      {activeSubTab === 'inventory' ? (
-        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
-          <h3 className="text-lg font-bold text-white mb-4">Gestion Inventaire</h3>
-          <p className="text-gray-300">Module inventaire en développement...</p>
-        </div>
-      ) : null}
+      {activeSubTab === 'enriched' ? <ProductsEnrichedTable /> : null}
+      {activeSubTab === 'inventory' ? renderInventory() : null}
+      {activeSubTab === 'robot' ? <OmniaRobotTab /> : null}
+      {activeSubTab === 'orders' ? renderOrders() : null}
+      {activeSubTab === 'conversations' ? <ConversationHistory /> : null}
+      {activeSubTab === 'training' ? <MLTrainingDashboard /> : null}
+      {activeSubTab === 'messages' ? <MessagingSystem /> : null}
+      {activeSubTab === 'stt' ? <SpeechToTextInterface /> : null}
+      {activeSubTab === 'integrations' ? <EcommerceIntegration onConnected={handlePlatformConnected} /> : null}
     </div>
   );
 
@@ -1605,7 +1674,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <label className="block text-sm text-gray-300 mb-2">Nom de la boutique</label>
                 <input
                   type="text"
-                  defaultValue="Decora Home"
+                  defaultValue={currentUser?.company_name || "Decora Home"}
                   className="w-full bg-slate-600/50 border border-slate-500 rounded-xl px-4 py-2 text-white"
                 />
               </div>
@@ -1613,7 +1682,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <label className="block text-sm text-gray-300 mb-2">Email de contact</label>
                 <input
                   type="email"
-                  defaultValue="contact@decorahome.fr"
+                  defaultValue={currentUser?.email || "contact@decorahome.fr"}
                   className="w-full bg-slate-600/50 border border-slate-500 rounded-xl px-4 py-2 text-white"
                 />
               </div>
@@ -1636,7 +1705,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="space-y-4">
               <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
                 <h4 className="font-semibold text-green-200 mb-2">🌐 Domaine actuel :</h4>
-                <p className="text-green-300 text-sm">decorahome.omnia.sale</p>
+                <p className="text-green-300 text-sm">{currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.omnia.sale</p>
                 <p className="text-green-400 text-xs">✓ SSL actif • ✓ DNS configuré</p>
               </div>
               <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition-all">
@@ -1653,7 +1722,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="space-y-4">
             <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
               <h4 className="font-semibold text-green-200 mb-2">🌐 Domaine principal :</h4>
-              <p className="text-green-300">decorahome.omnia.sale</p>
+              <p className="text-green-300">{currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.omnia.sale</p>
               <p className="text-green-400 text-sm">✓ Actif depuis le 15/12/2024</p>
             </div>
             <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
@@ -1716,32 +1785,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return renderDashboard();
-      case 'catalog': return <CatalogManagement />;
-      case 'enriched': return <ProductsEnrichedTable />;
-      case 'inventory': return renderInventory();
-      case 'robot': return <OmniaRobotTab />;
-      case 'orders': return renderOrders();
-      case 'conversations': return <ConversationHistory />;
-      case 'analytics': return renderAnalytics();
-      case 'marketing': return renderMarketing();
-      case 'google-merchant': return renderGoogleMerchant();
-      case 'training': return <MLTrainingDashboard />;
-      case 'messages': return <MessagingSystem />;
-      case 'stt': return <SpeechToTextInterface />;
-      case 'integrations': return <EcommerceIntegration onPlatformConnected={handlePlatformConnected} />;
-      case 'ecommerce': return renderECommerce();
-      case 'ads': return renderAdsMarketing();
-      case 'vision': return renderVisionStudio();
-      case 'seo': return renderSEO();
-      case 'omnia': return renderOmnIABot();
-      case 'admin': return renderAdmin();
-      default: return renderDashboard();
-    }
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
@@ -1776,7 +1819,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">OmnIA Admin</h1>
-              <p className="text-xs text-cyan-300">Decora Home</p>
+              <p className="text-xs text-cyan-300">{currentUser?.company_name || 'Revendeur'}</p>
             </div>
           </div>
 
@@ -1879,5 +1922,3 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 };
-
-export { AdminDashboard }
