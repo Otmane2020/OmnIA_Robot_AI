@@ -453,6 +453,16 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const categories = [...new Set(products.map(p => p.product_type))].filter(Boolean);
 
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 100);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
