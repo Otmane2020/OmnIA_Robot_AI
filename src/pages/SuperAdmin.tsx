@@ -654,50 +654,50 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Dropdown notifications */}
-        {showNotifications && (
-          <div className="absolute top-20 right-4 w-96 bg-slate-800/95 backdrop-blur-xl rounded-xl border border-slate-600/50 shadow-2xl z-50 max-h-96 overflow-y-auto">
-            <div className="p-4 border-b border-slate-600/50">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-white">Notifications ({unreadCount} non lues)</h3>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* Dropdown notifications */}
+      {showNotifications && (
+        <div className="absolute top-20 right-4 w-96 bg-slate-800/95 backdrop-blur-xl rounded-xl border border-slate-600/50 shadow-2xl z-50 max-h-96 overflow-y-auto">
+          <div className="p-4 border-b border-slate-600/50">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white">Notifications ({unreadCount} non lues)</h3>
+              <button
+                onClick={() => setShowNotifications(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.slice(0, 10).map((notification) => (
-                <div 
-                  key={notification.id}
-                  className={`p-4 border-b border-slate-600/30 hover:bg-slate-700/30 transition-all ${
-                    !notification.read ? 'bg-blue-500/10' : ''
-                  }`}
-                  onClick={() => markNotificationAsRead(notification.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-white text-sm">{notification.title}</h4>
-                      <p className="text-gray-300 text-xs mt-1 line-clamp-2">{notification.message}</p>
-                      <div className="text-xs text-gray-400 mt-2">
-                        {new Date(notification.timestamp).toLocaleDateString('fr-FR')}
-                      </div>
+          </div>
+          
+          <div className="max-h-80 overflow-y-auto">
+            {notifications.slice(0, 10).map((notification) => (
+              <div 
+                key={notification.id}
+                className={`p-4 border-b border-slate-600/30 hover:bg-slate-700/30 transition-all ${
+                  !notification.read ? 'bg-blue-500/10' : ''
+                }`}
+                onClick={() => markNotificationAsRead(notification.id)}
+              >
+                <div className="flex items-start gap-3">
+                  {!notification.read && (
+                    <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-white text-sm">{notification.title}</h4>
+                    <p className="text-gray-300 text-xs mt-1 line-clamp-2">{notification.message}</p>
+                    <div className="text-xs text-gray-400 mt-2">
+                      {new Date(notification.timestamp).toLocaleDateString('fr-FR')}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
