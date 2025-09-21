@@ -6,7 +6,7 @@ import {
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  Loader2, Package, Target, Search, Image, Sparkles, BookOpen, Tag, RefreshCw, Clock, Mail, Mic
+  LayoutDashboard, ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, Zap, RefreshCw, Clock, Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, Tag, DollarSign, Image, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, Loader2, Upload, QrCode, Sparkles, Bot, Play, Pause, RotateCcw, Move, Music, Wifi, Battery, Signal, Monitor, Smartphone, BookOpen, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
