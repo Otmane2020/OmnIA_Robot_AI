@@ -9,6 +9,7 @@ import { ChatMessage } from '../components/ChatMessage';
 import { ProductCard } from '../components/ProductCard';
 import { CartButton } from '../components/CartButton';
 import { RobotAvatar } from '../components/RobotAvatar';
+import { SpeechToTextInterface } from '../components/SpeechToTextInterface';
 import { useWhisperSTT } from '../hooks/useWhisperSTT';
 import { useGoogleTTS } from '../hooks/useGoogleTTS';
 import { ChatMessage as ChatMessageType, Product } from '../types';
@@ -45,6 +46,7 @@ export const RobotInterface: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showSTTPanel, setShowSTTPanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Robot state
@@ -638,10 +640,20 @@ export const RobotInterface: React.FC = () => {
             <button
               onClick={() => setShowSettings(!showSettings)}
               disabled={!isRobotOn}
-              className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+              className="relative group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
               title="Paramètres"
             >
               <Settings className="w-6 h-6 text-white" />
+              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+            </button>
+
+            <button
+              onClick={() => setShowSTTPanel(!showSTTPanel)}
+              disabled={!isRobotOn}
+              className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
+              title="Speech-to-Text"
+            >
+              <MessageSquare className="w-6 h-6 text-white" />
               <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
             </button>
 
@@ -932,6 +944,28 @@ export const RobotInterface: React.FC = () => {
               <p className="text-gray-300">Scannez pour envoyer une photo depuis votre mobile</p>
               <p className="text-cyan-400 text-sm mt-2 font-mono">→ {window.location.origin}/upload</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panneau Speech-to-Text */}
+      {showSTTPanel && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">🎤 Speech-to-Text OmnIA</h3>
+              <button
+                onClick={() => setShowSTTPanel(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <SpeechToTextInterface
+              onSendMessage={handleSendMessage}
+              autoSend={true}
+            />
           </div>
         </div>
       )}

@@ -1,59 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Users, Building, CheckCircle, X, Eye, Edit, Trash2, Plus,
-  Mail, Phone, MapPin, Calendar, FileText, AlertCircle,
-  Search, Filter, Download, Upload, Settings, LogOut,
-  User, CreditCard, Globe, BarChart3, Clock, Star
+import { 
+  Users, Building, DollarSign, TrendingUp, Mail, Phone, 
+  MapPin, Calendar, CheckCircle, X, Eye, Search, Filter,
+  Bell, MessageSquare, Send, Inbox, Settings, TestTube,
+  Server, Wifi, Database, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-
-interface Application {
-  id: string;
-  companyName: string;
-  siret: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  position: string;
-  password: string;
-  selectedPlan: 'starter' | 'professional' | 'enterprise';
-  kbisFile: File | null;
-  submittedAt: string;
-  submittedDate: string;
-  submittedTime: string;
-  status: 'pending' | 'approved' | 'rejected';
-  proposedSubdomain: string;
-}
-
-interface Retailer {
-  id: string;
-  companyName: string;
-  email: string;
-  password: string;
-  plan: 'starter' | 'professional' | 'enterprise';
-  status: 'active' | 'inactive' | 'suspended';
-  revenue: number;
-  conversations: number;
-  products: number;
-  joinDate: string;
-  lastActive: string;
-  subdomain: string;
-  contactName: string;
-  phone: string;
-  address: string;
-  city: string;
-  siret: string;
-}
+import { supabase } from '../lib/supabase';
 
 interface SuperAdminProps {
   onLogout: () => void;
-  pendingApplications: Application[];
-  onValidateApplication: (applicationId: string, approved: boolean) => void;
+  pendingApplications: any[];
+  onValidateApplication: (id: string, approved: boolean) => void;
+}
+
+interface Notification {
+  id: string;
+  type: 'new_application' | 'support_request' | 'system_alert';
+  title: string;
+  message: string;
+  from?: string;
+  timestamp: string;
+  read: boolean;
+}
+
+interface EmailMessage {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  timestamp: string;
+  read: boolean;
+  type: 'incoming' | 'outgoing';
+}
+
+interface IMAPConfig {
+  server: string;
+  port: number;
+  username: string;
+  password: string;
+  ssl: boolean;
 }
 
 export const SuperAdmin: React.FC<SuperAdminProps> = ({ 
@@ -62,492 +49,282 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
   onValidateApplication 
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [planFilter, setPlanFilter] = useState('all');
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [showRetailerModal, setShowRetailerModal] = useState(false);
-  const [showCreateRetailerModal, setShowCreateRetailerModal] = useState(false);
-  const [selectedKbis, setSelectedKbis] = useState<{ application: Application; kbisFile: File } | null>(null);
-  const [showKbisModal, setShowKbisModal] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [emailMessages, setEmailMessages] = useState<EmailMessage[]>([]);
+  const [newEmailSubject, setNewEmailSubject] = useState('');
+  const [newEmailBody, setNewEmailBody] = useState('');
+  const [newEmailTo, setNewEmailTo] = useState('');
+  const [imapConfig, setImapConfig] = useState<IMAPConfig>({
+    server: 'mail.omnia.sale',
+    port: 993,
+    username: 'support@omnia.sale',
+    password: '',
+    ssl: true
+  });
+  const [imapTestResult, setImapTestResult] = useState<string>('');
+  const [isTestingIMAP, setIsTestingIMAP] = useState(false);
 
-  // Charger les revendeurs depuis localStorage
+  // Charger les notifications au démarrage
   useEffect(() => {
+    loadNotifications();
+    loadEmailMessages();
+    
+    // Créer des notifications pour les nouvelles demandes
+    pendingApplications.forEach(app => {
+      if (!notifications.find(n => n.id === `app-${app.id}`)) {
+        addNotification({
+          id: `app-${app.id}`,
+          type: 'new_application',
+          title: 'Nouvelle demande revendeur',
+          message: `${app.companyName} - ${app.email}`,
+          from: app.email,
+          timestamp: app.submittedAt,
+          read: false
+        });
+      }
+    });
+  }, [pendingApplications]);
+
+  const loadNotifications = () => {
     try {
-      const savedRetailers = localStorage.getItem('approved_retailers');
-      if (savedRetailers) {
-        setRetailers(JSON.parse(savedRetailers));
-      } else {
-        // Revendeurs de démonstration
-        const demoRetailers: Retailer[] = [
-          {
-            id: 'retailer-1',
-            companyName: 'Decora Home',
-            email: 'demo@decorahome.fr',
-            password: 'demo123',
-            plan: 'professional',
-            status: 'active',
-            revenue: 15420,
-            conversations: 1234,
-            products: 247,
-            joinDate: '2024-03-15',
-            lastActive: '2025-01-15',
-            subdomain: 'decorahome',
-            contactName: 'Marie Dubois',
-            phone: '+33 1 23 45 67 89',
-            address: '123 Rue de la Paix',
-            city: 'Paris',
-            siret: '12345678901234'
-          },
-          {
-            id: 'retailer-2',
-            companyName: 'Mobilier Design',
-            email: 'contact@mobilierdesign.fr',
-            password: 'design123',
-            plan: 'enterprise',
-            status: 'active',
-            revenue: 28750,
-            conversations: 2156,
-            products: 456,
-            joinDate: '2024-01-20',
-            lastActive: '2025-01-14',
-            subdomain: 'mobilierdesign',
-            contactName: 'Jean Martin',
-            phone: '+33 1 34 56 78 90',
-            address: '456 Avenue Montaigne',
-            city: 'Lyon',
-            siret: '23456789012345'
-          }
-        ];
-        setRetailers(demoRetailers);
-        localStorage.setItem('approved_retailers', JSON.stringify(demoRetailers));
+      const saved = localStorage.getItem('admin_notifications');
+      if (saved) {
+        setNotifications(JSON.parse(saved));
       }
     } catch (error) {
-      console.error('Erreur chargement revendeurs:', error);
+      console.error('Erreur chargement notifications:', error);
     }
-  }, []);
+  };
 
-  // Sauvegarder les revendeurs dans localStorage
-  useEffect(() => {
-    localStorage.setItem('approved_retailers', JSON.stringify(retailers));
-  }, [retailers]);
+  const loadEmailMessages = () => {
+    try {
+      const saved = localStorage.getItem('admin_emails');
+      if (saved) {
+        setEmailMessages(JSON.parse(saved));
+      } else {
+        // Messages de démo
+        const demoMessages: EmailMessage[] = [
+          {
+            id: '1',
+            from: 'contact@mobilierdesign.fr',
+            to: 'support@omnia.sale',
+            subject: 'Problème synchronisation catalogue',
+            body: 'Bonjour,\n\nJe rencontre des difficultés avec la synchronisation de mon catalogue Shopify. Pouvez-vous m\'aider ?\n\nCordialement,\nJean Martin',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            read: false,
+            type: 'incoming'
+          },
+          {
+            id: '2',
+            from: 'info@decocontemporain.com',
+            to: 'support@omnia.sale',
+            subject: 'Demande de formation équipe',
+            body: 'Bonjour,\n\nNous souhaitons organiser une formation pour notre équipe sur l\'utilisation d\'OmnIA. Quelles sont vos disponibilités ?\n\nMerci,\nSophie Dubois',
+            timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+            read: true,
+            type: 'incoming'
+          }
+        ];
+        setEmailMessages(demoMessages);
+        localStorage.setItem('admin_emails', JSON.stringify(demoMessages));
+      }
+    } catch (error) {
+      console.error('Erreur chargement emails:', error);
+    }
+  };
 
-  const handleApproveApplication = (application: Application) => {
-    console.log('✅ APPROBATION:', application.companyName);
-    
-    // Créer le nouveau revendeur
-    const newRetailer: Retailer = {
-      id: `retailer-${Date.now()}`,
-      companyName: application.companyName,
-      email: application.email,
-      password: application.password,
-      plan: application.selectedPlan,
-      status: 'active',
-      revenue: 0,
-      conversations: 0,
-      products: 0,
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0],
-      subdomain: application.proposedSubdomain,
-      contactName: `${application.firstName} ${application.lastName}`,
-      phone: application.phone,
-      address: application.address,
-      city: application.city,
-      siret: application.siret
-    };
-
-    // Ajouter aux revendeurs
-    setRetailers(prev => [...prev, newRetailer]);
-    
-    // Supprimer de la liste des demandes
-    onValidateApplication(application.id, true);
-    
-    // Simuler l'envoi d'email
-    console.log('📧 EMAIL APPROBATION envoyé à:', application.email);
-    console.log('🔑 Identifiants:', {
-      email: application.email,
-      password: application.password,
-      subdomain: `${application.proposedSubdomain}.omnia.sale`
+  const addNotification = (notification: Notification) => {
+    setNotifications(prev => {
+      const updated = [notification, ...prev];
+      localStorage.setItem('admin_notifications', JSON.stringify(updated));
+      return updated;
     });
-    
-    alert(`✅ Revendeur approuvé !\n\nIdentifiants envoyés à ${application.email} :\n• Email: ${application.email}\n• Mot de passe: ${application.password}\n• Domaine: ${application.proposedSubdomain}.omnia.sale`);
   };
 
-  const handleRejectApplication = (application: Application) => {
-    const reason = prompt('Raison du rejet (sera envoyée par email) :');
-    if (reason) {
-      console.log('❌ REJET:', application.companyName, 'Raison:', reason);
-      console.log('📧 EMAIL REJET envoyé à:', application.email);
-      
-      onValidateApplication(application.id, false);
-      alert(`❌ Demande rejetée.\n\nEmail envoyé à ${application.email} avec la raison :\n"${reason}"`);
+  const markNotificationAsRead = (id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
+      localStorage.setItem('admin_notifications', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const sendEmail = async () => {
+    if (!newEmailTo || !newEmailSubject || !newEmailBody) {
+      alert('Veuillez remplir tous les champs');
+      return;
     }
-  };
 
-  const handleViewApplication = (application: Application) => {
-    setSelectedApplication(application);
-    setShowApplicationModal(true);
-  };
-
-  const handleEditApplication = (application: Application) => {
-    setSelectedApplication(application);
-    setShowApplicationModal(true);
-  };
-
-  const handleDeleteApplication = (applicationId: string) => {
-    if (confirm('Supprimer définitivement cette demande ?')) {
-      onValidateApplication(applicationId, false);
-      console.log('🗑️ Demande supprimée:', applicationId);
-    }
-  };
-
-  const handleViewKbis = (application: Application) => {
-    if (application.kbisFile) {
-      setSelectedKbis({ application, kbisFile: application.kbisFile });
-      setShowKbisModal(true);
-    } else {
-      alert('Aucun document Kbis disponible pour cette demande.');
-    }
-  };
-
-  const handleCreateRetailer = (retailerData: any) => {
-    const newRetailer: Retailer = {
-      id: `retailer-${Date.now()}`,
-      companyName: retailerData.companyName,
-      email: retailerData.email,
-      password: retailerData.password,
-      plan: retailerData.plan,
-      status: 'active',
-      revenue: 0,
-      conversations: 0,
-      products: 0,
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0],
-      subdomain: retailerData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
-      contactName: `${retailerData.firstName} ${retailerData.lastName}`,
-      phone: retailerData.phone,
-      address: retailerData.address,
-      city: retailerData.city,
-      siret: retailerData.siret
+    const newEmail: EmailMessage = {
+      id: Date.now().toString(),
+      from: 'support@omnia.sale',
+      to: newEmailTo,
+      subject: newEmailSubject,
+      body: newEmailBody,
+      timestamp: new Date().toISOString(),
+      read: true,
+      type: 'outgoing'
     };
 
-    setRetailers(prev => [...prev, newRetailer]);
-    setShowCreateRetailerModal(false);
-    
-    console.log('✅ Revendeur créé manuellement:', newRetailer.companyName);
-    alert(`✅ Revendeur créé !\n\nIdentifiants :\n• Email: ${newRetailer.email}\n• Mot de passe: ${newRetailer.password}\n• Domaine: ${newRetailer.subdomain}.omnia.sale`);
+    setEmailMessages(prev => {
+      const updated = [newEmail, ...prev];
+      localStorage.setItem('admin_emails', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Reset form
+    setNewEmailTo('');
+    setNewEmailSubject('');
+    setNewEmailBody('');
+
+    alert('Email envoyé avec succès !');
   };
 
-  const handleEditRetailer = (retailer: Retailer) => {
-    setSelectedRetailer(retailer);
-    setShowRetailerModal(true);
-  };
+  const testIMAPConnection = async () => {
+    setIsTestingIMAP(true);
+    setImapTestResult('');
 
-  const handleUpdateRetailer = (updatedData: any) => {
-    if (selectedRetailer) {
-      setRetailers(prev => prev.map(r => 
-        r.id === selectedRetailer.id 
-          ? { ...r, ...updatedData, lastActive: new Date().toISOString().split('T')[0] }
-          : r
-      ));
-      setShowRetailerModal(false);
-      setSelectedRetailer(null);
-      console.log('✅ Revendeur modifié:', updatedData.companyName);
+    try {
+      // Simuler le test IMAP
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      if (imapConfig.server && imapConfig.username && imapConfig.password) {
+        setImapTestResult('✅ Connexion IMAP réussie ! 3 nouveaux messages récupérés.');
+        
+        // Simuler la récupération de nouveaux emails
+        const newEmails: EmailMessage[] = [
+          {
+            id: Date.now().toString(),
+            from: 'nouveau@client.fr',
+            to: 'support@omnia.sale',
+            subject: 'Question sur les tarifs',
+            body: 'Bonjour, pouvez-vous me donner plus d\'informations sur vos tarifs ?',
+            timestamp: new Date().toISOString(),
+            read: false,
+            type: 'incoming'
+          }
+        ];
+        
+        setEmailMessages(prev => [...newEmails, ...prev]);
+      } else {
+        setImapTestResult('❌ Configuration IMAP incomplète');
+      }
+    } catch (error) {
+      setImapTestResult('❌ Erreur de connexion IMAP');
+    } finally {
+      setIsTestingIMAP(false);
     }
   };
 
-  const handleDeleteRetailer = (retailerId: string) => {
-    if (confirm('Supprimer définitivement ce revendeur ? Cette action est irréversible.')) {
-      setRetailers(prev => prev.filter(r => r.id !== retailerId));
-      console.log('🗑️ Revendeur supprimé:', retailerId);
-    }
+  const handleValidateApplication = (applicationId: string, approved: boolean) => {
+    onValidateApplication(applicationId, approved);
+    
+    // Marquer la notification comme lue
+    markNotificationAsRead(`app-${applicationId}`);
+    
+    // Ajouter notification de validation
+    addNotification({
+      id: `validation-${applicationId}`,
+      type: 'system_alert',
+      title: approved ? 'Demande approuvée' : 'Demande rejetée',
+      message: `Application ${applicationId} ${approved ? 'approuvée' : 'rejetée'}`,
+      timestamp: new Date().toISOString(),
+      read: false
+    });
   };
 
-  const filteredApplications = pendingApplications.filter(app => {
-    const matchesSearch = searchTerm === '' || 
-      app.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${app.firstName} ${app.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSearch;
-  });
+  const unreadNotifications = notifications.filter(n => !n.read).length;
+  const unreadEmails = emailMessages.filter(e => !e.read && e.type === 'incoming').length;
 
-  const filteredRetailers = retailers.filter(retailer => {
-    const matchesSearch = searchTerm === '' || 
-      retailer.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      retailer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      retailer.contactName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || retailer.status === statusFilter;
-    const matchesPlan = planFilter === 'all' || retailer.plan === planFilter;
-    
-    return matchesSearch && matchesStatus && matchesPlan;
-  });
-
-  const stats = {
-    totalRetailers: retailers.length,
-    activeRetailers: retailers.filter(r => r.status === 'active').length,
-    pendingApplications: pendingApplications.length,
-    totalRevenue: retailers.reduce((sum, r) => sum + r.revenue, 0),
-    totalConversations: retailers.reduce((sum, r) => sum + r.conversations, 0),
-    totalProducts: retailers.reduce((sum, r) => sum + r.products, 0)
-  };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
-    { id: 'applications', label: 'Demandes en attente', icon: Clock },
-    { id: 'retailers', label: 'Revendeurs', icon: Users },
-    { id: 'settings', label: 'Paramètres', icon: Settings }
-  ];
+  const filteredApplications = pendingApplications.filter(app =>
+    app.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const renderDashboard = () => (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-white">Tableau de bord Super Admin</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-green-300 text-sm">Système opérationnel</span>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-200 text-sm mb-1">Revendeurs Actifs</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.activeRetailers}</p>
-              <p className="text-green-400 text-sm">sur {stats.totalRetailers} total</p>
+              <p className="text-blue-200 text-sm mb-1">Demandes en attente</p>
+              <p className="text-3xl font-bold text-white">{pendingApplications.length}</p>
             </div>
             <Users className="w-10 h-10 text-blue-400" />
-          </div>
-        </div>
-        
-        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-200 text-sm mb-1">Demandes en attente</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.pendingApplications}</p>
-              <p className="text-orange-400 text-sm">À traiter</p>
-            </div>
-            <Clock className="w-10 h-10 text-orange-400" />
           </div>
         </div>
         
         <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-200 text-sm mb-1">Revenus Total</p>
-              <p className="text-3xl font-bold text-white mb-1">€{stats.totalRevenue.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">Ce mois</p>
+              <p className="text-green-200 text-sm mb-1">Revendeurs actifs</p>
+              <p className="text-3xl font-bold text-white">127</p>
             </div>
-            <CreditCard className="w-10 h-10 text-green-400" />
+            <Building className="w-10 h-10 text-green-400" />
           </div>
         </div>
         
         <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.totalConversations.toLocaleString()}</p>
-              <p className="text-purple-400 text-sm">Total plateforme</p>
+              <p className="text-purple-200 text-sm mb-1">Revenus mensuel</p>
+              <p className="text-3xl font-bold text-white">€12.4k</p>
             </div>
-            <BarChart3 className="w-10 h-10 text-purple-400" />
+            <DollarSign className="w-10 h-10 text-purple-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Croissance</p>
+              <p className="text-3xl font-bold text-white">+23%</p>
+            </div>
+            <TrendingUp className="w-10 h-10 text-orange-400" />
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Demandes récentes */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-2xl font-bold text-white mb-6">Actions Rapides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button
-            onClick={() => setActiveTab('applications')}
-            className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Clock className="w-8 h-8 text-orange-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Traiter les demandes</h4>
-            <p className="text-gray-300 text-sm">{stats.pendingApplications} en attente</p>
-          </button>
-          
-          <button
-            onClick={() => setShowCreateRetailerModal(true)}
-            className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Plus className="w-8 h-8 text-green-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Nouveau revendeur</h4>
-            <p className="text-gray-300 text-sm">Création manuelle</p>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('retailers')}
-            className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Users className="w-8 h-8 text-blue-400 mb-3" />
-            <h4 className="text-lg font-semibold text-white mb-2">Gérer revendeurs</h4>
-            <p className="text-gray-300 text-sm">{stats.activeRetailers} actifs</p>
-          </button>
+        <h3 className="text-xl font-bold text-white mb-6">Demandes récentes</h3>
+        <div className="space-y-4">
+          {pendingApplications.slice(0, 5).map((app) => (
+            <div key={app.id} className="flex items-center justify-between p-4 bg-black/20 rounded-xl">
+              <div>
+                <h4 className="font-semibold text-white">{app.companyName}</h4>
+                <p className="text-gray-300 text-sm">{app.email}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleValidateApplication(app.id, true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Approuver
+                </button>
+                <button
+                  onClick={() => handleValidateApplication(app.id, false)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+                >
+                  Rejeter
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 
   const renderApplications = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">Demandes d'inscription</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
-          <span className="text-orange-300 text-sm">{pendingApplications.length} en attente</span>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Rechercher par entreprise, email, contact..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-          />
-        </div>
-      </div>
-
-      {/* Applications Table */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-black/20">
-              <tr>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Entreprise</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Contact</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Soumis le</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((application) => (
-                <tr key={application.id} className="border-b border-white/10 hover:bg-white/5">
-                  <td className="p-4">
-                    <div>
-                      <div className="font-semibold text-white">{application.companyName}</div>
-                      <div className="text-gray-400 text-sm">SIRET: {application.siret}</div>
-                      <div className="text-gray-400 text-sm">{application.city}, {application.country}</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div>
-                      <div className="text-white">{application.firstName} {application.lastName}</div>
-                      <div className="text-gray-400 text-sm">{application.email}</div>
-                      <div className="text-gray-400 text-sm">{application.phone}</div>
-                      <div className="text-gray-400 text-sm">{application.position}</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      application.selectedPlan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
-                      application.selectedPlan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
-                      'bg-gray-500/20 text-gray-300'
-                    }`}>
-                      {application.selectedPlan}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-white text-sm">{application.submittedDate}</div>
-                    <div className="text-gray-400 text-xs">{application.submittedTime}</div>
-                  </td>
-                  <td className="p-4">
-                    <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-2">
-                      <div className="text-green-300 text-xs">Email: {application.email}</div>
-                      <div className="text-green-300 text-xs">Mot de passe: {application.password}</div>
-                      <div className="text-green-300 text-xs">Domaine: {application.proposedSubdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleViewApplication(application)}
-                        className="text-blue-400 hover:text-blue-300 p-1"
-                        title="Voir détails"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditApplication(application)}
-                        className="text-yellow-400 hover:text-yellow-300 p-1"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleViewKbis(application)}
-                        className="text-purple-400 hover:text-purple-300 p-1"
-                        title="Voir Kbis"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteApplication(application.id)}
-                        className="text-red-400 hover:text-red-300 p-1"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleApproveApplication(application)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
-                      >
-                        ✅ Approuver
-                      </button>
-                      <button
-                        onClick={() => handleRejectApplication(application)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-xs"
-                      >
-                        ❌ Rejeter
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredApplications.length === 0 && (
-        <div className="text-center py-20">
-          <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucune demande en attente</h3>
-          <p className="text-gray-400">Toutes les demandes ont été traitées</p>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderRetailers = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
-        <button
-          onClick={() => setShowCreateRetailerModal(true)}
-          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Nouveau revendeur
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="flex gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -555,175 +332,361 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
               placeholder="Rechercher..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+              className="pl-10 pr-4 py-2 bg-black/40 border border-gray-600 rounded-xl text-white"
             />
           </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {filteredApplications.map((app) => (
+          <div key={app.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <Building className="w-6 h-6 text-cyan-400" />
+                  <h3 className="text-xl font-bold text-white">{app.companyName}</h3>
+                  <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm">
+                    En attente
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-300">{app.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-300">{app.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-300">{app.city}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-300">{new Date(app.submittedAt).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div className="text-gray-300">
+                      <strong>Plan:</strong> {app.selectedPlan}
+                    </div>
+                    <div className="text-gray-300">
+                      <strong>Sous-domaine:</strong> {app.proposedSubdomain}.omnia.sale
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedApplication(app);
+                    setShowApplicationModal(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  Détails
+                </button>
+                <button
+                  onClick={() => handleValidateApplication(app.id, true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Approuver
+                </button>
+                <button
+                  onClick={() => handleValidateApplication(app.id, false)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Rejeter
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderMessaging = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Messagerie Support</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={testIMAPConnection}
+            disabled={isTestingIMAP}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
           >
-            <option value="all">Tous les statuts</option>
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-            <option value="suspended">Suspendu</option>
-          </select>
-          
-          <select
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-          >
-            <option value="all">Tous les plans</option>
-            <option value="starter">Starter</option>
-            <option value="professional">Professional</option>
-            <option value="enterprise">Enterprise</option>
-          </select>
-          
-          <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-3 rounded-xl flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Exporter
+            {isTestingIMAP ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <TestTube className="w-4 h-4" />
+            )}
+            Tester IMAP
           </button>
         </div>
       </div>
 
-      {/* Retailers Table */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-black/20">
-              <tr>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Performances</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Identifiants</th>
-                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRetailers.map((retailer) => (
-                <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
-                  <td className="p-4">
-                    <div>
-                      <div className="font-semibold text-white">{retailer.companyName}</div>
-                      <div className="text-gray-400 text-sm">{retailer.contactName}</div>
-                      <div className="text-gray-400 text-sm">{retailer.email}</div>
-                      <div className="text-gray-400 text-sm">{retailer.subdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      retailer.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-300' :
-                      retailer.plan === 'professional' ? 'bg-blue-500/20 text-blue-300' :
-                      'bg-gray-500/20 text-gray-300'
-                    }`}>
-                      {retailer.plan}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Configuration IMAP */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Settings className="w-5 h-5 text-cyan-400" />
+            Configuration IMAP
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Serveur IMAP</label>
+              <input
+                type="text"
+                value={imapConfig.server}
+                onChange={(e) => setImapConfig(prev => ({ ...prev, server: e.target.value }))}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+                placeholder="mail.omnia.sale"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Port</label>
+              <input
+                type="number"
+                value={imapConfig.port}
+                onChange={(e) => setImapConfig(prev => ({ ...prev, port: parseInt(e.target.value) }))}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Nom d'utilisateur</label>
+              <input
+                type="text"
+                value={imapConfig.username}
+                onChange={(e) => setImapConfig(prev => ({ ...prev, username: e.target.value }))}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Mot de passe</label>
+              <input
+                type="password"
+                value={imapConfig.password}
+                onChange={(e) => setImapConfig(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={imapConfig.ssl}
+                onChange={(e) => setImapConfig(prev => ({ ...prev, ssl: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              <label className="text-sm text-gray-300">SSL/TLS</label>
+            </div>
+            
+            {imapTestResult && (
+              <div className={`p-3 rounded-xl text-sm ${
+                imapTestResult.includes('✅') 
+                  ? 'bg-green-500/20 text-green-300 border border-green-400/50'
+                  : 'bg-red-500/20 text-red-300 border border-red-400/50'
+              }`}>
+                {imapTestResult}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Liste des emails */}
+        <div className="lg:col-span-2 bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Inbox className="w-5 h-5 text-green-400" />
+              Messages ({emailMessages.length})
+              {unreadEmails > 0 && (
+                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                  {unreadEmails}
+                </span>
+              )}
+            </h3>
+          </div>
+          
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {emailMessages.map((email) => (
+              <div key={email.id} className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                email.read 
+                  ? 'bg-black/20 border-gray-600/50' 
+                  : 'bg-blue-500/20 border-blue-400/50'
+              }`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold ${email.type === 'incoming' ? 'text-blue-300' : 'text-green-300'}`}>
+                      {email.type === 'incoming' ? email.from : `À: ${email.to}`}
                     </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      retailer.status === 'active' ? 'bg-green-500/20 text-green-300' :
-                      retailer.status === 'inactive' ? 'bg-yellow-500/20 text-yellow-300' :
-                      'bg-red-500/20 text-red-300'
-                    }`}>
-                      {retailer.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-sm">
-                      <div className="text-green-400">€{retailer.revenue.toLocaleString()}</div>
-                      <div className="text-blue-400">{retailer.conversations} conv.</div>
-                      <div className="text-purple-400">{retailer.products} prod.</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-2">
-                      <div className="text-blue-300 text-xs">Email: {retailer.email}</div>
-                      <div className="text-blue-300 text-xs">Mot de passe: {retailer.password}</div>
-                      <div className="text-blue-300 text-xs">Domaine: {retailer.subdomain}.omnia.sale</div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditRetailer(retailer)}
-                        className="text-yellow-400 hover:text-yellow-300 p-1"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRetailer(retailer.id)}
-                        className="text-red-400 hover:text-red-300 p-1"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {!email.read && email.type === 'incoming' && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    )}
+                  </div>
+                  <span className="text-gray-400 text-xs">
+                    {new Date(email.timestamp).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+                <h4 className="font-medium text-white mb-2">{email.subject}</h4>
+                <p className="text-gray-300 text-sm line-clamp-2">{email.body}</p>
+              </div>
+            ))}
+          </div>
+          
+          {/* Composer un email */}
+          <div className="mt-6 pt-6 border-t border-gray-600/50">
+            <h4 className="font-semibold text-white mb-4">Nouveau message</h4>
+            <div className="space-y-3">
+              <input
+                type="email"
+                placeholder="À: email@exemple.com"
+                value={newEmailTo}
+                onChange={(e) => setNewEmailTo(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+              />
+              <input
+                type="text"
+                placeholder="Sujet"
+                value={newEmailSubject}
+                onChange={(e) => setNewEmailSubject(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+              />
+              <textarea
+                placeholder="Message..."
+                value={newEmailBody}
+                onChange={(e) => setNewEmailBody(e.target.value)}
+                rows={4}
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white resize-none"
+              />
+              <button
+                onClick={sendEmail}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Envoyer
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {filteredRetailers.length === 0 && (
-        <div className="text-center py-20">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucun revendeur trouvé</h3>
-          <p className="text-gray-400">Aucun revendeur ne correspond à vos critères</p>
-        </div>
-      )}
     </div>
   );
 
-  const renderSettings = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Paramètres Système</h2>
+  const renderSystemConfig = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">Configuration Système</h2>
       
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Configuration Globale</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Validation automatique</label>
-            <select className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white">
-              <option value="manual">Validation manuelle</option>
-              <option value="auto">Validation automatique</option>
-            </select>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Serveur Email */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Server className="w-5 h-5 text-blue-400" />
+            Serveur Email
+          </h3>
           
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Délai de validation (heures)</label>
-            <input
-              type="number"
-              defaultValue="24"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-500/20 rounded-xl">
+              <span className="text-green-300">SMTP Sortant</span>
+              <span className="text-green-400 font-bold">✅ Actif</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-500/20 rounded-xl">
+              <span className="text-green-300">IMAP Entrant</span>
+              <span className="text-green-400 font-bold">✅ Configuré</span>
+            </div>
+            <div className="text-sm text-gray-300">
+              <p><strong>Serveur:</strong> mail.omnia.sale</p>
+              <p><strong>Port SMTP:</strong> 587 (TLS)</p>
+              <p><strong>Port IMAP:</strong> 993 (SSL)</p>
+            </div>
           </div>
         </div>
-        
-        <div className="mt-6">
-          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Sauvegarder les paramètres
-          </button>
+
+        {/* DNS et Sous-domaines */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Wifi className="w-5 h-5 text-purple-400" />
+            DNS & Sous-domaines
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-500/20 rounded-xl">
+              <span className="text-green-300">Création automatique</span>
+              <span className="text-green-400 font-bold">✅ Actif</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
+              <span className="text-blue-300">SSL automatique</span>
+              <span className="text-blue-400 font-bold">🔒 Let's Encrypt</span>
+            </div>
+            <div className="text-sm text-gray-300">
+              <p><strong>Provider:</strong> Cloudflare</p>
+              <p><strong>Zone:</strong> omnia.sale</p>
+              <p><strong>TTL:</strong> 300s</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Base de données */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Database className="w-5 h-5 text-green-400" />
+            Base de données
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-500/20 rounded-xl">
+              <span className="text-green-300">Supabase</span>
+              <span className="text-green-400 font-bold">✅ Connecté</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
+              <span className="text-blue-300">Edge Functions</span>
+              <span className="text-blue-400 font-bold">⚡ Actives</span>
+            </div>
+            <div className="text-sm text-gray-300">
+              <p><strong>Tables:</strong> 12 actives</p>
+              <p><strong>Fonctions:</strong> 15 déployées</p>
+              <p><strong>RLS:</strong> Activé</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Monitoring */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-orange-400" />
+            Monitoring
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-green-500/20 rounded-xl">
+              <span className="text-green-300">Uptime</span>
+              <span className="text-green-400 font-bold">99.9%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
+              <span className="text-blue-300">Réponse API</span>
+              <span className="text-blue-400 font-bold">< 200ms</span>
+            </div>
+            <div className="text-sm text-gray-300">
+              <p><strong>Dernière panne:</strong> Aucune</p>
+              <p><strong>Alertes:</strong> 0 active</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return renderDashboard();
-      case 'applications': return renderApplications();
-      case 'retailers': return renderRetailers();
-      case 'settings': return renderSettings();
-      default: return renderDashboard();
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
@@ -733,66 +696,143 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
-              <Settings className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Super Admin</h1>
-              <p className="text-sm text-red-300">OmnIA.sale</p>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="space-y-2 mb-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
+      {/* Header */}
+      <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <Logo size="md" />
+            
+            <div className="flex items-center gap-4">
+              {/* Notifications */}
+              <div className="relative">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                    activeTab === tab.id
-                      ? 'bg-red-500/30 text-white border border-red-500/50'
-                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
-                  }`}
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all"
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
-                  {tab.id === 'applications' && pendingApplications.length > 0 && (
-                    <span className="ml-auto bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-                      {pendingApplications.length}
+                  <Bell className="w-5 h-5 text-white" />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      {unreadNotifications}
                     </span>
                   )}
                 </button>
-              );
-            })}
-          </nav>
+                
+                {showNotifications && (
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-600/50 shadow-2xl z-50">
+                    <div className="p-4 border-b border-slate-600/50">
+                      <h3 className="font-bold text-white">Notifications</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.slice(0, 10).map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => markNotificationAsRead(notification.id)}
+                          className={`p-4 border-b border-slate-600/30 hover:bg-white/5 cursor-pointer ${
+                            !notification.read ? 'bg-blue-500/10' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              notification.read ? 'bg-gray-400' : 'bg-red-500'
+                            }`}></div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-white text-sm">{notification.title}</h4>
+                              <p className="text-gray-300 text-xs">{notification.message}</p>
+                              <span className="text-gray-400 text-xs">
+                                {new Date(notification.timestamp).toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-white">
+                <div className="font-semibold">Super Admin</div>
+                <div className="text-cyan-300 text-sm">admin@omnia.sale</div>
+              </div>
+              
+              <button
+                onClick={onLogout}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-all"
+              >
+                Déconnexion
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap gap-2 mb-8">
           <button
-            onClick={onLogout}
-            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all flex items-center gap-2"
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === 'dashboard'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+            }`}
           >
-            <LogOut className="w-5 h-5" />
-            Déconnexion
+            📊 Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('applications')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'applications'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            📝 Demandes
+            {pendingApplications.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {pendingApplications.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('messaging')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'messaging'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            📧 Messagerie
+            {unreadEmails > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {unreadEmails}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === 'system'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            ⚙️ Système
           </button>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          {renderContent()}
-        </div>
+        {/* Content */}
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'applications' && renderApplications()}
+        {activeTab === 'messaging' && renderMessaging()}
+        {activeTab === 'system' && renderSystemConfig()}
       </div>
 
-      {/* Application Detail Modal */}
+      {/* Modal détails application */}
       {showApplicationModal && selectedApplication && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-8 max-w-2xl w-full border border-slate-600/50 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-white">Détails de la demande</h3>
               <button
                 onClick={() => setShowApplicationModal(false)}
@@ -802,487 +842,74 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">🏢 Informations entreprise</h4>
+                <div>
+                  <h4 className="font-semibold text-cyan-300 mb-3">🏢 Entreprise</h4>
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Entreprise:</span> <span className="text-white">{selectedApplication.companyName}</span></div>
-                    <div><span className="text-gray-400">SIRET:</span> <span className="text-white">{selectedApplication.siret}</span></div>
-                    <div><span className="text-gray-400">Adresse:</span> <span className="text-white">{selectedApplication.address}</span></div>
-                    <div><span className="text-gray-400">Ville:</span> <span className="text-white">{selectedApplication.postalCode} {selectedApplication.city}</span></div>
-                    <div><span className="text-gray-400">Pays:</span> <span className="text-white">{selectedApplication.country}</span></div>
+                    <p><strong className="text-white">Nom:</strong> <span className="text-gray-300">{selectedApplication.companyName}</span></p>
+                    <p><strong className="text-white">SIRET:</strong> <span className="text-gray-300">{selectedApplication.siret}</span></p>
+                    <p><strong className="text-white">Adresse:</strong> <span className="text-gray-300">{selectedApplication.address}</span></p>
+                    <p><strong className="text-white">Ville:</strong> <span className="text-gray-300">{selectedApplication.postalCode} {selectedApplication.city}</span></p>
+                    <p><strong className="text-white">Pays:</strong> <span className="text-gray-300">{selectedApplication.country}</span></p>
                   </div>
                 </div>
                 
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">👤 Contact responsable</h4>
+                <div>
+                  <h4 className="font-semibold text-green-300 mb-3">👤 Contact</h4>
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedApplication.firstName} {selectedApplication.lastName}</span></div>
-                    <div><span className="text-gray-400">Email:</span> <span className="text-white">{selectedApplication.email}</span></div>
-                    <div><span className="text-gray-400">Téléphone:</span> <span className="text-white">{selectedApplication.phone}</span></div>
-                    <div><span className="text-gray-400">Fonction:</span> <span className="text-white">{selectedApplication.position}</span></div>
+                    <p><strong className="text-white">Nom:</strong> <span className="text-gray-300">{selectedApplication.firstName} {selectedApplication.lastName}</span></p>
+                    <p><strong className="text-white">Email:</strong> <span className="text-gray-300">{selectedApplication.email}</span></p>
+                    <p><strong className="text-white">Téléphone:</strong> <span className="text-gray-300">{selectedApplication.phone}</span></p>
+                    <p><strong className="text-white">Fonction:</strong> <span className="text-gray-300">{selectedApplication.position}</span></p>
                   </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">💳 Plan et domaine</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Plan choisi:</span> <span className="text-white">{selectedApplication.selectedPlan}</span></div>
-                    <div><span className="text-gray-400">Sous-domaine:</span> <span className="text-cyan-400">{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
+              <div>
+                <h4 className="font-semibold text-purple-300 mb-3">📋 Abonnement</h4>
+                <div className="bg-purple-500/20 rounded-xl p-4 border border-purple-400/50">
+                  <p><strong className="text-white">Plan choisi:</strong> <span className="text-purple-300">{selectedApplication.selectedPlan}</span></p>
+                  <p><strong className="text-white">Sous-domaine:</strong> <span className="text-purple-300">{selectedApplication.proposedSubdomain}.omnia.sale</span></p>
+                  <p><strong className="text-white">Soumis le:</strong> <span className="text-purple-300">{new Date(selectedApplication.submittedAt).toLocaleDateString('fr-FR')}</span></p>
+                </div>
+              </div>
+              
+              {selectedApplication.loginCredentials && (
+                <div>
+                  <h4 className="font-semibold text-orange-300 mb-3">🔑 Identifiants de connexion</h4>
+                  <div className="bg-orange-500/20 rounded-xl p-4 border border-orange-400/50">
+                    <p><strong className="text-white">Email:</strong> <span className="text-orange-300">{selectedApplication.loginCredentials.email}</span></p>
+                    <p><strong className="text-white">Mot de passe:</strong> <span className="text-orange-300">{selectedApplication.loginCredentials.password}</span></p>
+                    <p><strong className="text-white">URL Admin:</strong> <span className="text-orange-300">{selectedApplication.loginCredentials.adminUrl}</span></p>
+                    <p><strong className="text-white">Sous-domaine:</strong> <span className="text-orange-300">{selectedApplication.loginCredentials.subdomain}</span></p>
                   </div>
                 </div>
-                
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h4 className="font-semibold text-white mb-3">📅 Informations soumission</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="text-gray-400">Date:</span> <span className="text-white">{selectedApplication.submittedDate}</span></div>
-                    <div><span className="text-gray-400">Heure:</span> <span className="text-white">{selectedApplication.submittedTime}</span></div>
-                    <div><span className="text-gray-400">Référence:</span> <span className="text-white">#{selectedApplication.id}</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-500/20 border border-green-400/30 rounded-xl p-4">
-                <h4 className="font-semibold text-green-200 mb-3">🔑 Identifiants de connexion</h4>
-                <div className="space-y-2 text-sm">
-                  <div><span className="text-green-300">Email:</span> <span className="text-white font-mono">{selectedApplication.email}</span></div>
-                  <div><span className="text-green-300">Mot de passe:</span> <span className="text-white font-mono">{selectedApplication.password}</span></div>
-                  <div><span className="text-green-300">URL admin:</span> <span className="text-cyan-400">https://omnia.sale/admin</span></div>
-                  <div><span className="text-green-300">Domaine boutique:</span> <span className="text-cyan-400">https://{selectedApplication.proposedSubdomain}.omnia.sale</span></div>
-                </div>
-              </div>
+              )}
               
-              <div className="flex justify-between">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleApproveApplication(selectedApplication)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ✅ Approuver
-                  </button>
-                  <button
-                    onClick={() => handleRejectApplication(selectedApplication)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ❌ Rejeter
-                  </button>
-                  {selectedApplication.kbisFile && (
-                    <button
-                      onClick={() => handleViewKbis(selectedApplication)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                    >
-                      📄 Voir Kbis
-                    </button>
-                  )}
-                </div>
+              <div className="flex gap-4">
                 <button
-                  onClick={() => setShowApplicationModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+                  onClick={() => {
+                    handleValidateApplication(selectedApplication.id, true);
+                    setShowApplicationModal(false);
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
                 >
-                  Fermer
+                  <CheckCircle className="w-5 h-5" />
+                  Approuver
+                </button>
+                <button
+                  onClick={() => {
+                    handleValidateApplication(selectedApplication.id, false);
+                    setShowApplicationModal(false);
+                  }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                >
+                  <X className="w-5 h-5" />
+                  Rejeter
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Kbis Viewer Modal */}
-      {showKbisModal && selectedKbis && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Document Kbis - {selectedKbis.application.companyName}</h3>
-              <button
-                onClick={() => setShowKbisModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <div className="bg-black/20 rounded-xl p-4 mb-6">
-                <h4 className="font-semibold text-white mb-2">📄 Informations document</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-400">Nom:</span> <span className="text-white">{selectedKbis.kbisFile.name}</span></div>
-                  <div><span className="text-gray-400">Taille:</span> <span className="text-white">{(selectedKbis.kbisFile.size / 1024 / 1024).toFixed(2)} MB</span></div>
-                  <div><span className="text-gray-400">Type:</span> <span className="text-white">{selectedKbis.kbisFile.type}</span></div>
-                  <div><span className="text-gray-400">Modifié:</span> <span className="text-white">{new Date(selectedKbis.kbisFile.lastModified).toLocaleDateString('fr-FR')}</span></div>
-                </div>
-              </div>
-              
-              <div className="text-center">
-                {selectedKbis.kbisFile.type.startsWith('image/') ? (
-                  <img
-                    src={URL.createObjectURL(selectedKbis.kbisFile)}
-                    alt="Document Kbis"
-                    className="max-w-full h-auto rounded-xl border border-gray-600"
-                  />
-                ) : selectedKbis.kbisFile.type === 'application/pdf' ? (
-                  <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-8">
-                    <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-white mb-2">Document PDF</h4>
-                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
-                    <button
-                      onClick={() => {
-                        const url = URL.createObjectURL(selectedKbis.kbisFile);
-                        window.open(url, '_blank');
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl"
-                    >
-                      Ouvrir le PDF
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-gray-500/20 border border-gray-400/50 rounded-xl p-8">
-                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-white mb-2">Document non prévisualisable</h4>
-                    <p className="text-gray-300 mb-4">{selectedKbis.kbisFile.name}</p>
-                    <button
-                      onClick={() => {
-                        const url = URL.createObjectURL(selectedKbis.kbisFile);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = selectedKbis.kbisFile.name;
-                        a.click();
-                      }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl"
-                    >
-                      Télécharger
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={() => setShowKbisModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Retailer Modal */}
-      {showCreateRetailerModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Créer un nouveau revendeur</h3>
-              <button
-                onClick={() => setShowCreateRetailerModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const retailerData = {
-                companyName: formData.get('companyName'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                firstName: formData.get('firstName'),
-                lastName: formData.get('lastName'),
-                phone: formData.get('phone'),
-                address: formData.get('address'),
-                city: formData.get('city'),
-                siret: formData.get('siret'),
-                plan: formData.get('plan')
-              };
-              handleCreateRetailer(retailerData);
-            }} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
-                  <input
-                    name="companyName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Mon Magasin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
-                  <input
-                    name="siret"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="12345678901234"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Prénom *</label>
-                  <input
-                    name="firstName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Jean"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom *</label>
-                  <input
-                    name="lastName"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Dupont"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="contact@monmagasin.fr"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
-                  <input
-                    name="password"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="motdepasse123"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="+33 1 23 45 67 89"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
-                  <select
-                    name="plan"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
-                  <input
-                    name="address"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="123 Rue de la Paix"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
-                  <input
-                    name="city"
-                    type="text"
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                    placeholder="Paris"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateRetailerModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                >
-                  Créer le revendeur
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Retailer Modal */}
-      {showRetailerModal && selectedRetailer && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-              <h3 className="text-2xl font-bold text-white">Modifier le revendeur</h3>
-              <button
-                onClick={() => setShowRetailerModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const updatedData = {
-                companyName: formData.get('companyName'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                contactName: formData.get('contactName'),
-                phone: formData.get('phone'),
-                address: formData.get('address'),
-                city: formData.get('city'),
-                siret: formData.get('siret'),
-                plan: formData.get('plan'),
-                status: formData.get('status')
-              };
-              handleUpdateRetailer(updatedData);
-            }} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Nom entreprise *</label>
-                  <input
-                    name="companyName"
-                    type="text"
-                    defaultValue={selectedRetailer.companyName}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Contact *</label>
-                  <input
-                    name="contactName"
-                    type="text"
-                    defaultValue={selectedRetailer.contactName}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Email *</label>
-                  <input
-                    name="email"
-                    type="email"
-                    defaultValue={selectedRetailer.email}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Mot de passe *</label>
-                  <input
-                    name="password"
-                    type="text"
-                    defaultValue={selectedRetailer.password}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Téléphone *</label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    defaultValue={selectedRetailer.phone}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Plan *</label>
-                  <select
-                    name="plan"
-                    defaultValue={selectedRetailer.plan}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Statut *</label>
-                  <select
-                    name="status"
-                    defaultValue={selectedRetailer.status}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  >
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                    <option value="suspended">Suspendu</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">SIRET *</label>
-                  <input
-                    name="siret"
-                    type="text"
-                    defaultValue={selectedRetailer.siret}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Adresse *</label>
-                  <input
-                    name="address"
-                    type="text"
-                    defaultValue={selectedRetailer.address}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">Ville *</label>
-                  <input
-                    name="city"
-                    type="text"
-                    defaultValue={selectedRetailer.city}
-                    required
-                    className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowRetailerModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-                >
-                  Sauvegarder
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

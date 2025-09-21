@@ -329,7 +329,12 @@ export const ProductsEnrichedTable: React.FC = () => {
               <thead className="bg-black/20">
                 <tr>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Catégorie</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Couleur</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Matériau</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Style</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Pièce</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Tags</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Stock</th>
                   <th className="text-left p-4 text-cyan-300 font-semibold">Confiance</th>
@@ -360,26 +365,57 @@ export const ProductsEnrichedTable: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="space-y-1">
-                        {product.material && (
-                          <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.material}
-                          </span>
+                      <span className="text-white text-sm">{product.category || 'Non défini'}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        product.color 
+                          ? 'bg-blue-500/20 text-blue-300' 
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {product.color || 'Non défini'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        product.material 
+                          ? 'bg-green-500/20 text-green-300' 
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {product.material || 'Non défini'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        product.style 
+                          ? 'bg-purple-500/20 text-purple-300' 
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {product.style || 'Non défini'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        product.room 
+                          ? 'bg-orange-500/20 text-orange-300' 
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {product.room || 'Non défini'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {Array.isArray(product.tags) && product.tags.length > 0 ? (
+                          product.tags.slice(0, 3).map((tag, index) => (
+                            <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400 text-xs">Aucun tag</span>
                         )}
-                        {product.color && (
-                          <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.color}
-                          </span>
-                        )}
-                        {product.style && (
-                          <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.style}
-                          </span>
-                        )}
-                        {product.room && (
-                          <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs mr-1">
-                            {product.room}
-                          </span>
+                        {Array.isArray(product.tags) && product.tags.length > 3 && (
+                          <span className="text-gray-400 text-xs">+{product.tags.length - 3}</span>
                         )}
                       </div>
                     </td>

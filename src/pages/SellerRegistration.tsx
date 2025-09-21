@@ -145,7 +145,13 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       status: 'pending_validation',
       subdomain: uniqueSubdomain,
       password: accountPassword,
-      proposedSubdomain: uniqueSubdomain
+      proposedSubdomain: uniqueSubdomain,
+      loginCredentials: {
+        email: formData.email,
+        password: accountPassword,
+        subdomain: `${uniqueSubdomain}.omnia.sale`,
+        adminUrl: 'https://omnia.sale/admin'
+      }
     };
     
     // NOUVEAU: Sauvegarder la demande dans la base de données
@@ -193,6 +199,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       // Mettre à jour l'ID avec celui de la DB
       accountInfo.id = applicationData.id;
       
+      // NOUVEAU: Créer automatiquement le sous-domaine
+      await createSubdomain(uniqueSubdomain, accountInfo);
+      
     } catch (dbError) {
       console.error('❌ Erreur base de données:', dbError);
       // Continuer avec localStorage en fallback
@@ -218,6 +227,48 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       subdomain: uniqueSubdomain,
       email: accountInfo.email
     });
+  };
+
+  const createSubdomain = async (subdomain: string, accountInfo: any) => {
+    try {
+      console.log('🌐 Création automatique sous-domaine:', subdomain);
+      
+      // Sauvegarder le sous-domaine dans la base
+      const { data: subdomainData, error } = await supabase
+        .from('retailer_subdomains')
+        .insert({
+          retailer_id: accountInfo.id,
+          subdomain: subdomain,
+          dns_status: 'pending',
+          ssl_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erreur création sous-domaine:', error);
+        return;
+      }
+
+      console.log('✅ Sous-domaine créé automatiquement:', subdomainData);
+      
+      // Simuler l'activation DNS (en production, intégrer avec votre provider DNS)
+      setTimeout(async () => {
+        await supabase
+          .from('retailer_subdomains')
+          .update({
+            dns_status: 'active',
+            ssl_status: 'active',
+            activated_at: new Date().toISOString()
+          })
+          .eq('id', subdomainData.id);
+        
+        console.log('✅ Sous-domaine activé:', `${subdomain}.omnia.sale`);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('❌ Erreur création sous-domaine:', error);
+    }
   };
 
   const handleInputChange = (field: keyof FormData, value: any) => {
