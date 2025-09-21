@@ -177,10 +177,6 @@ export const ProductsEnrichedTable: React.FC = () => {
       console.error('❌ Erreur import catalogue:', error);
       showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
     }
-    } catch (error) {
-      console.error('❌ Erreur import catalogue:', error);
-      showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
-    }
   };
 
   const handleEnrichWithDeepSeek = async () => {
