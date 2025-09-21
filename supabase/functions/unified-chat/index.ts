@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
     // Étape 2 : réponse IA
     const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
 
-    // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
+    // Étape 3 : conversion (forcer l'affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
       aiResponse.selectedProducts = relevantProducts.slice(0, 2);
       aiResponse.should_show_products = true;

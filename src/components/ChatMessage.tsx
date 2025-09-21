@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, Volume2, Zap } from 'lucide-react';
+import { User, Bot, Volume2, Zap, Play, Pause } from 'lucide-react';
 import { ChatMessage as ChatMessageType } from '../types';
 
 interface ChatMessageProps {
@@ -156,6 +156,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, 
           <div className={`${message.isUser ? 'text-white' : 'text-gray-800'} leading-relaxed`}>
             {formatMessage(message.content)}
           </div>
+          
+          {/* Lecture audio si disponible */}
+          {message.audioUrl && (
+            <div className="mt-3 p-3 bg-gray-100 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-3">
+                <audio 
+                  controls 
+                  src={message.audioUrl}
+                  className="flex-1"
+                  style={{ maxWidth: '200px' }}
+                />
+                <span className="text-xs text-gray-600 font-medium">
+                  🎤 Message vocal
+                </span>
+              </div>
+            </div>
+          )}
           
           {!message.isUser && onSpeak && (
             <button

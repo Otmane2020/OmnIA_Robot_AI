@@ -113,15 +113,15 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
         style={{ transform: getRobotTransform() }}
       >
         {/* Corps principal du robot */}
-        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-white rounded-3xl border-4 border-slate-300 shadow-2xl relative overflow-hidden">
+        <div className={`w-full h-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-3xl border-4 border-cyan-400/50 shadow-2xl relative overflow-hidden ${getGlowEffect()}`}>
           
           {/* Tête du robot */}
-          <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-3/4 h-1/2 bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl border-2 border-slate-500 flex items-center justify-center">
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1/2 bg-gradient-to-br from-white/90 to-white/70 rounded-2xl border-2 border-white/50 flex items-center justify-center">
             
             {/* Yeux animés */}
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+            <div className="absolute top-1 left-1/2 transform -translate-x-1/2 flex gap-2">
               <div 
-                className={`w-2 h-2 rounded-full transition-all duration-150 ${
+                className={`w-3 h-3 rounded-full transition-all duration-150 border-2 border-slate-300 ${
                   mood === 'sleeping' ? 'bg-gray-400' :
                   mood === 'thinking' ? 'bg-yellow-400 animate-pulse' :
                   mood === 'speaking' ? 'bg-green-400 animate-bounce' :
@@ -135,7 +135,7 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
                 }}
               />
               <div 
-                className={`w-2 h-2 rounded-full transition-all duration-150 ${
+                className={`w-3 h-3 rounded-full transition-all duration-150 border-2 border-slate-300 ${
                   mood === 'sleeping' ? 'bg-gray-400' :
                   mood === 'thinking' ? 'bg-yellow-400 animate-pulse' :
                   mood === 'speaking' ? 'bg-green-400 animate-bounce' :
@@ -151,25 +151,19 @@ export const RobotAvatar: React.FC<RobotAvatarProps> = ({
               />
             </div>
 
-            {/* Bouche souriante animée */}
-            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+            {/* Bouche souriante - NOUVELLE VERSION */}
+            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
               <div 
-                className={`robot-mouth-smile transition-all duration-200 ${
-                  mood === 'happy' || mood === 'dancing' ? 'bg-cyan-400' :
-                  mood === 'speaking' ? 'bg-green-400 animate-pulse' :
-                  mood === 'thinking' ? 'bg-yellow-400' :
-                  'bg-cyan-400'
-                } ${isSpeaking ? 'robot-mouth-talking' : ''}`}
+                className={`w-6 h-3 bg-blue-500 rounded-b-full border-b-2 border-blue-600 transition-all duration-200 ${
+                  isSpeaking ? 'animate-bounce' : 
+                  mood === 'happy' || mood === 'dancing' ? 'animate-pulse' : ''
+                }`}
                 style={{
-                  transform: isSpeaking ? `scaleY(${1.2 + mouthAnimation * 0.2})` : 'scaleY(1)',
-                  borderRadius: mood === 'happy' || mood === 'dancing' ? '0 0 50% 50%' : '0 0 25% 25%'
+                  background: mood === 'speaking' ? '#10b981' : 
+                             mood === 'thinking' ? '#f59e0b' :
+                             mood === 'sleeping' ? '#6b7280' : '#3b82f6'
                 }}
               />
-            </div>
-
-            {/* Écran d'affichage */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-4 bg-black rounded border border-slate-400">
-              <div className="w-full h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded animate-pulse opacity-80"></div>
             </div>
           </div>
 
