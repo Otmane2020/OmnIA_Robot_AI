@@ -158,22 +158,33 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
-    // Ajouter heure et date de création
-    const newApplication = {
-      ...applicationData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
-      submittedDate: new Date().toLocaleDateString('fr-FR'),
-      submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending',
-      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
-    };
+    // La demande est déjà formatée dans SellerRegistration
+    const newApplication = applicationData;
     
     setPendingApplications(prev => [...prev, newApplication]);
     
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
     console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
     console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+    
+    // NOUVEAU: Afficher notification dans l'interface Super Admin
+    if (typeof window !== 'undefined') {
+      // Créer une notification visible dans l'interface admin
+      const adminNotification = {
+        id: Date.now().toString(),
+        type: 'new_application',
+        title: '🔔 Nouvelle demande revendeur',
+        message: `${newApplication.companyName} (${newApplication.email}) - Plan ${newApplication.selectedPlan}`,
+        timestamp: new Date().toISOString(),
+        data: newApplication
+      };
+      
+      // Sauvegarder la notification pour l'admin
+      const existingNotifications = JSON.parse(localStorage.getItem('admin_notifications') || '[]');
+      localStorage.setItem('admin_notifications', JSON.stringify([adminNotification, ...existingNotifications]));
+      
+      console.log('🔔 Notification admin créée:', adminNotification);
+    }
   };
 
   return (

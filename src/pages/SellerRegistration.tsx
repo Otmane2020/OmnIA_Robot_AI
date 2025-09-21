@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { supabase } from '../lib/supabase';
+import { useNotifications } from '../components/NotificationSystem';
 
 interface SellerRegistrationProps {
   onSubmit: (data: any) => void;
@@ -39,7 +40,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     address: '',
     postalCode: '',
     city: '',
-    country: '',
+    country: 'France',
     firstName: '',
     lastName: '',
     email: '',
@@ -55,6 +56,9 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccessful, setIsSuccessful] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const { showSuccess, showError, showInfo } = useNotifications();
 
   const plans = [
     {
@@ -78,34 +82,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     }
   ];
 
-  const [showAccountCreation, setShowAccountCreation] = useState(false);
-  const [accountCreationStep, setAccountCreationStep] = useState(0);
-  const [isAccountCreated, setIsAccountCreated] = useState(false);
-  const [createdAccountInfo, setCreatedAccountInfo] = useState<any>(null);
-
-  // Define creationSteps at component level to avoid undefined reference
-  const creationSteps = [
-    { icon: CheckCircle, label: 'Validation demande', duration: 1200 },
-    { icon: FileText, label: 'Vérification Kbis', duration: 1000 },
-    { icon: Globe, label: 'Création sous-domaine unique', duration: 800 },
-    { icon: Mail, label: 'Envoi emails confirmation', duration: 600 }
-  ];
-
-  // Move useEffect outside conditional to maintain hooks order
-  useEffect(() => {
-    if (showAccountCreation) {
-      const timer = setTimeout(() => {
-        if (accountCreationStep < creationSteps.length - 1) {
-          setAccountCreationStep(prev => prev + 1);
-        } else {
-          // Terminer après toutes les étapes
-          setTimeout(handleAccountCreationComplete, 800);
-        }
-      }, creationSteps[accountCreationStep]?.duration || 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [accountCreationStep, showAccountCreation]);
 
   const generateUniqueSubdomain = (companyName: string): string => {
     // Générer un sous-domaine basé sur le nom de la boutique
@@ -120,105 +96,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     return `${cleanName}${suffix}`;
   };
 
-  const sendNotificationEmail = async (type: string, data: any) => {
-    // Simulation d'envoi d'email sans appel API externe
-    console.log('📧 Email simulé envoyé:', {
-      type,
-      to: data.email,
-      company: data.companyName,
-      subdomain: data.subdomain
-    });
-    
-    // Simuler un délai d'envoi
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return true;
-  };
-
-  const handleAccountCreationComplete = async () => {
-    const uniqueSubdomain = generateUniqueSubdomain(formData.companyName);
-    const accountPassword = formData.password || `omnia${Date.now().toString().slice(-4)}`;
-    
-    const accountInfo = {
-      ...formData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
-      status: 'pending_validation',
-      subdomain: uniqueSubdomain,
-      password: accountPassword,
-      proposedSubdomain: uniqueSubdomain
-    };
-    
-    // NOUVEAU: Sauvegarder la demande dans la base de données
-    try {
-      const { data: applicationData, error } = await supabase
-        .from('retailer_applications')
-        .insert({
-          company_name: formData.companyName,
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          postal_code: formData.postalCode,
-          siret: formData.siret,
-          position: formData.position,
-          plan: formData.selectedPlan,
-          proposed_subdomain: uniqueSubdomain,
-          kbis_document_url: formData.kbisFile ? `kbis-${Date.now()}.pdf` : null,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Erreur sauvegarde DB:', error);
-        
-        // Vérifier si c'est un doublon
-        if (error.code === '23505') { // Violation contrainte unique
-          if (error.message.includes('email')) {
-            alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
-            return;
-          }
-          if (error.message.includes('siret')) {
-            alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
-            return;
-          }
-        }
-        throw error;
-      }
-
-      console.log('✅ Demande sauvegardée en base de données:', applicationData);
-      
-      // Mettre à jour l'ID avec celui de la DB
-      accountInfo.id = applicationData.id;
-      
-    } catch (dbError) {
-      console.error('❌ Erreur base de données:', dbError);
-      // Continuer avec localStorage en fallback
-    }
-    
-    setCreatedAccountInfo(accountInfo);
-    setIsAccountCreated(true);
-    
-    // Envoyer emails de notification (simulation)
-    try {
-      await sendNotificationEmail('application_received', accountInfo);
-      await sendNotificationEmail('new_application_admin', accountInfo);
-      console.log('✅ Notifications envoyées avec succès');
-    } catch (error) {
-      console.log('⚠️ Erreur envoi notifications (mode simulation)');
-    }
-    
-    // Sauvegarder la demande
-    onSubmit(accountInfo);
-    
-    console.log('✅ Compte créé:', {
-      company: accountInfo.companyName,
-      subdomain: uniqueSubdomain,
-      email: accountInfo.email
-    });
-  };
 
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -233,6 +110,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (step === 1) {
       if (!formData.companyName.trim()) newErrors.companyName = 'Nom de l\'entreprise requis';
       if (!formData.siret.trim()) newErrors.siret = 'SIRET requis';
+      if (formData.siret.length !== 14) newErrors.siret = 'SIRET doit contenir 14 chiffres';
       if (!formData.address.trim()) newErrors.address = 'Adresse requise';
       if (!formData.postalCode.trim()) newErrors.postalCode = 'Code postal requis';
       if (!formData.city.trim()) newErrors.city = 'Ville requise';
@@ -252,7 +130,6 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     }
 
     if (step === 4) {
-      if (!formData.kbisFile) newErrors.kbisFile = 'Document Kbis requis';
       if (!formData.acceptTerms) newErrors.acceptTerms = 'Acceptation des conditions requise';
     }
 
@@ -270,59 +147,96 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (e) e.preventDefault();
     if (!validateStep(4)) return;
 
-    // Vérifier les doublons avant soumission
-    const existingApplications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
-    const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-    
-    // Vérifier email unique dans les demandes en attente
-    const emailInPending = existingApplications.some((app: any) => 
-      app.email?.toLowerCase() === formData.email.toLowerCase()
-    );
-    
-    // Vérifier email unique dans les revendeurs validés
-    const emailInValidated = existingRetailers.some((retailer: any) => 
-      retailer.email?.toLowerCase() === formData.email.toLowerCase()
-    );
-    
-    // Vérifier SIRET unique dans les demandes en attente
-    const siretInPending = existingApplications.some((app: any) => 
-      app.siret === formData.siret
-    );
-    
-    // Vérifier SIRET unique dans les revendeurs validés
-    const siretInValidated = existingRetailers.some((retailer: any) => 
-      retailer.siret === formData.siret
-    );
-    
-    if (emailInPending || emailInValidated) {
-      alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
-      return;
-    }
-    
-    if (siretInPending || siretInValidated) {
-      alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
-      return;
-    }
 
     setIsSubmitting(true);
+    showInfo('Inscription en cours', 'Validation et création de votre compte...');
     
     try {
-      // Simuler l'envoi de la demande
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const uniqueSubdomain = generateUniqueSubdomain(formData.companyName);
       
-      // Passer à l'écran de création de compte
-      setShowAccountCreation(true);
-      setAccountCreationStep(0);
+      // Créer l'application avec toutes les données
+      const applicationData = {
+        id: Date.now().toString(),
+        ...formData,
+        subdomain: uniqueSubdomain,
+        proposedSubdomain: uniqueSubdomain,
+        submittedAt: new Date().toISOString(),
+        submittedDate: new Date().toLocaleDateString('fr-FR'),
+        submittedTime: new Date().toLocaleTimeString('fr-FR'),
+        status: 'pending'
+      };
+
+      // Vérifier les doublons
+      const existingApplications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
+      const emailExists = existingApplications.some((app: any) => 
+        app.email?.toLowerCase() === formData.email.toLowerCase()
+      );
+      const siretExists = existingApplications.some((app: any) => 
+        app.siret === formData.siret
+      );
+      
+      if (emailExists) {
+        showError('Email déjà utilisé', 'Cet email est déjà enregistré. Utilisez un autre email.');
+        return;
+      }
+      
+      if (siretExists) {
+        showError('SIRET déjà utilisé', 'Ce SIRET est déjà enregistré. Vérifiez votre numéro.');
+        return;
+      }
+      
+      // Sauvegarder la demande localement
+      onSubmit(applicationData);
+      setApplicationId(applicationData.id);
+      
+      // Notifications
+      showSuccess(
+        'Inscription réussie !', 
+        `Votre demande a été envoyée. Vous recevrez une réponse sous 24h.`,
+        [
+          {
+            label: 'Tester OmnIA',
+            action: () => window.open('/chat', '_blank'),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+      // Notification pour l'admin (simulée)
+      console.log('📧 NOTIFICATION ADMIN:', {
+        type: 'new_application',
+        company: applicationData.companyName,
+        email: applicationData.email,
+        plan: applicationData.selectedPlan,
+        subdomain: uniqueSubdomain,
+        message: `🔔 Nouvelle demande revendeur : ${applicationData.companyName} (${applicationData.email}) - Plan ${applicationData.selectedPlan}`
+      });
+      
+      // Simuler l'envoi d'email à l'admin
+      setTimeout(() => {
+        console.log('📧 Email admin envoyé à: admin@omnia.sale');
+        console.log('📋 Détails:', {
+          company: applicationData.companyName,
+          contact: `${applicationData.firstName} ${applicationData.lastName}`,
+          email: applicationData.email,
+          phone: applicationData.phone,
+          plan: applicationData.selectedPlan,
+          subdomain: uniqueSubdomain
+        });
+      }, 500);
+      
+      setIsSuccessful(true);
       
     } catch (error) {
       console.error('Erreur soumission:', error);
+      showError('Erreur d\'inscription', 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Écran de confirmation finale
-  if (isAccountCreated && createdAccountInfo) {
+  // Écran de succès
+  if (isSuccessful) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
         {/* Background Effects */}
@@ -338,136 +252,58 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
           
           <h1 className="text-3xl font-bold text-white mb-4">🎉 Inscription réussie !</h1>
           <p className="text-gray-300 mb-8">
-            Votre demande a été envoyée avec succès. Notre équipe va la valider sous 24h.
+            Votre demande d'inscription a été envoyée avec succès !
           </p>
           
-          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6 mb-8">
-            <h3 className="font-semibold text-green-200 mb-4">📧 Emails envoyés :</h3>
-            <div className="space-y-2 text-green-300 text-sm">
-              <div>✅ Confirmation à {createdAccountInfo.email}</div>
-              <div>✅ Notification admin pour validation</div>
-              <div>✅ Domaine créé : <strong>{createdAccountInfo.subdomain}.omnia.sale</strong></div>
-            </div>
-          </div>
-          
           <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6 mb-8">
-            <h3 className="font-semibold text-blue-200 mb-4">⏱️ Prochaines étapes :</h3>
+            <h3 className="font-semibold text-blue-200 mb-4">📋 Récapitulatif :</h3>
             <div className="space-y-2 text-blue-300 text-sm text-left">
-              <div>1. <strong>Validation (24-48h)</strong> : Examen de votre dossier</div>
-              <div>2. <strong>Email d'approbation</strong> : Réception de vos identifiants</div>
-              <div>3. <strong>Connexion</strong> : Accès à {createdAccountInfo.subdomain}.omnia.sale</div>
-              <div>4. <strong>Configuration</strong> : Import de votre catalogue</div>
-            </div>
-          </div>
-          
-          <button
-            onClick={() => window.location.href = '/'}
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-2xl hover:shadow-cyan-500/40"
-          >
-            Retour à l'accueil
-          </button>
-        </div>
-      </div>
-    );
-  }
-  // Écran de création de compte
-  if (showAccountCreation) {
-    const CurrentIcon = creationSteps[accountCreationStep]?.icon || CheckCircle;
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-        {/* Background Effects */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        </div>
-
-        <div className="relative z-10 bg-white/10 backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full border border-white/20 shadow-2xl text-center">
-          {/* Animation principale */}
-          <div className="mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl relative">
-              <CurrentIcon className="w-10 h-10 text-white" />
-              <div className="absolute inset-0 border-4 border-cyan-400/30 rounded-full animate-ping"></div>
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Traitement de votre demande</h2>
-            <p className="text-cyan-300">{creationSteps[accountCreationStep]?.label || 'Configuration...'}</p>
-          </div>
-
-          {/* Étapes de création */}
-          <div className="space-y-4 mb-8">
-            {creationSteps.map((step, index) => {
-              const StepIcon = step.icon;
-              const isActive = index === accountCreationStep;
-              const isCompleted = index < accountCreationStep;
-              
-              return (
-                <div 
-                  key={index}
-                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                    isCompleted 
-                      ? 'bg-green-500/20 border border-green-400/50' 
-                      : isActive 
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 animate-pulse' 
-                        : 'bg-slate-700/30 border border-slate-600/30 opacity-50'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    isCompleted 
-                      ? 'bg-green-500' 
-                      : isActive 
-                        ? 'bg-cyan-500' 
-                        : 'bg-slate-600'
-                  }`}>
-                    {isCompleted ? (
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    ) : isActive ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <StepIcon className="w-4 h-4 text-white" />
-                    )}
-                  </div>
-                  <span className={`font-medium ${
-                    isActive ? 'text-white' : isCompleted ? 'text-green-300' : 'text-gray-400'
-                  }`}>
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Informations de création */}
-          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-6">
-            <h4 className="font-semibold text-blue-200 mb-2">🏢 Votre futur compte :</h4>
-            <div className="text-blue-300 text-sm space-y-1">
               <div><strong>Entreprise :</strong> {formData.companyName}</div>
+              <div><strong>Contact :</strong> {formData.firstName} {formData.lastName}</div>
               <div><strong>Email :</strong> {formData.email}</div>
               <div><strong>Plan :</strong> {plans.find(p => p.id === formData.selectedPlan)?.name}</div>
               <div><strong>Sous-domaine :</strong> {generateUniqueSubdomain(formData.companyName)}.omnia.sale</div>
             </div>
           </div>
           
-          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4 mb-6">
-            <h4 className="font-semibold text-green-200 mb-2">📧 Notifications automatiques :</h4>
-            <div className="space-y-1 text-green-300 text-sm">
-              <div>• Email de confirmation envoyé</div>
-              <div>• Admin notifié pour validation</div>
-              <div>• Sous-domaine réservé automatiquement</div>
+          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6 mb-8">
+            <h3 className="font-semibold text-green-200 mb-4">📧 Notifications envoyées :</h3>
+            <div className="space-y-2 text-green-300 text-sm">
+              <div>✅ Email de confirmation à {formData.email}</div>
+              <div>✅ Notification admin pour validation</div>
+              <div>✅ Référence : #{applicationId}</div>
             </div>
           </div>
 
-          {accountCreationStep === creationSteps.length - 1 && (
-            <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
-              <div className="flex items-center gap-2 justify-center text-green-300">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-semibold">Compte créé avec succès !</span>
-              </div>
+          <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-6 mb-8">
+            <h3 className="font-semibold text-blue-200 mb-4">⏱️ Prochaines étapes :</h3>
+            <div className="space-y-2 text-blue-300 text-sm text-left">
+              <div>1. <strong>Validation (24-48h)</strong> : Examen de votre dossier</div>
+              <div>2. <strong>Email d'approbation</strong> : Réception de vos identifiants</div>
+              <div>3. <strong>Connexion</strong> : Accès à votre interface admin</div>
+              <div>4. <strong>Configuration</strong> : Import de votre catalogue</div>
             </div>
-          )}
+          </div>
+          
+          <div className="space-y-4">
+            <button
+              onClick={() => window.location.href = '/chat'}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              🤖 Tester OmnIA en attendant
+            </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all"
+            >
+              Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -798,17 +634,17 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             Document Kbis (moins de 3 mois) *
           </label>
           
-          <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4">
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-4">
             <h4 className="font-semibold text-yellow-200 mb-2">⚡ Workflow automatique :</h4>
             <div className="space-y-1 text-yellow-300 text-sm">
+              <div>• Document Kbis optionnel pour inscription</div>
               <div>• Validation admin sous 24h</div>
               <div>• Création automatique sous-domaine unique</div>
               <div>• Envoi identifiants de connexion</div>
-              <div>• Base de données vierge initialisée</div>
             </div>
           </div>
           
-          <div className="border-2 border-dashed border-cyan-500/50 rounded-xl p-6 text-center hover:border-cyan-400/70 transition-colors">
+          <div className="border-2 border-dashed border-cyan-500/50 rounded-xl p-6 text-center hover:border-cyan-400/70 transition-colors mb-4">
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
@@ -831,13 +667,19 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               ) : (
                 <div className="text-cyan-400">
                   <Upload className="w-8 h-8 mx-auto mb-2" />
-                  <p className="font-semibold">Cliquez pour uploader</p>
+                  <p className="font-semibold">Cliquez pour uploader (optionnel)</p>
                   <p className="text-sm text-gray-400">PDF, JPG, PNG (max 10MB)</p>
                 </div>
               )}
             </label>
           </div>
-          {errors.kbisFile && <p className="text-red-400 text-sm mt-1">{errors.kbisFile}</p>}
+          
+          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4 mb-4">
+            <p className="text-green-300 text-sm">
+              ✅ Vous pouvez finaliser votre inscription sans document pour commencer rapidement.
+              Le Kbis pourra être fourni ultérieurement si nécessaire.
+            </p>
+          </div>
         </div>
 
         <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
@@ -863,7 +705,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
               <span>Sous-domaine :</span>
               <span className="font-semibold text-cyan-400">
                 {formData.companyName ? 
-                  `${formData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)}.omnia.sale` : 
+                  `${generateUniqueSubdomain(formData.companyName)}.omnia.sale` : 
                   'votre-boutique.omnia.sale'
                 }
               </span>
