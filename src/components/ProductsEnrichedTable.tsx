@@ -358,13 +358,13 @@ export const ProductsEnrichedTable: React.FC = () => {
         }
         
         // Mettre à jour la progression
-        const progress = Math.round(((i + batchSize) / products.length) * 100);
+        const progress = Math.round(((processedCount) / products.length) * 100);
         setEnrichmentProgress(progress);
-        console.log(`📊 Progression: ${progress}%`);
+        console.log(`📊 Progression: ${progress}% (${processedCount}/${products.length} produits)`);
         
         // Pause entre les batches
         if (i + batchSize < products.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
       

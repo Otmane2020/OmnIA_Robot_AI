@@ -3,9 +3,10 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  Clock, Star, X, ShoppingBag, Search, Zap, Target, PenTool, Image, Plus,
+  Store, TrendingUp, DollarSign, ShoppingCart, Eye, Plus, X,
   Megaphone, DollarSign, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
-  ExternalLink, Mail, Phone, MapPin, Calendar, Filter, RefreshCw, Save, Package, Sparkles
+  Battery, Signal, Globe, Smartphone, Monitor, Tablet, Megaphone,
+  Upload, Download, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -573,12 +574,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Dashboard Cards Grid */}
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Tableau de bord {currentUser?.company_name || 'OmnIA'}
-        </h2>
-        <p className="text-gray-300">
-          Gestion complète de votre assistant IA - {currentUser?.plan || 'Plan'} 
-        </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {dashboardCards.map((card, index) => {
           const Icon = card.icon;
           return (
             <div

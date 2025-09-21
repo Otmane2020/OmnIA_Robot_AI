@@ -853,12 +853,12 @@ export const RobotInterface: React.FC = () => {
                   {isRecording ? (
                     <>
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-red-300 font-semibold">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
+                      <span className="text-red-300 font-semibold">🎤 Écoute active... Parlez maintenant</span>
                     </>
                   ) : isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                      <span className="text-blue-300 font-semibold">🔄 Transcription en cours...</span>
+                      <span className="text-blue-300 font-semibold">🔄 Transcription Whisper en cours...</span>
                     </>
                   ) : isAnalyzingPhoto ? (
                     <>
@@ -866,6 +866,16 @@ export const RobotInterface: React.FC = () => {
                       <span className="text-purple-300 font-semibold">📸 Analyse photo en cours...</span>
                     </>
                   ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Statut détection humaine */}
+            {isDetectingHuman && (
+              <div className="mb-4 p-4 bg-green-500/20 border border-green-400/50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Eye className="w-4 h-4 text-green-400" />
+                  <span className="text-green-300 font-semibold">👁️ Détection humaine active - Showroom surveillé</span>
                 </div>
               </div>
             )}
@@ -921,10 +931,16 @@ export const RobotInterface: React.FC = () => {
               </button>
             </div>
 
-            {/* Erreur vocale */}
+            {/* Erreur vocale avec diagnostic */}
             {sttError && (
               <div className="mt-3 p-3 bg-red-500/20 border border-red-400/50 rounded-xl">
                 <p className="text-red-300">🎤 {sttError}</p>
+                <div className="mt-2 text-xs text-red-400">
+                  <p>💡 Solutions :</p>
+                  <p>• Autorisez l'accès au microphone</p>
+                  <p>• Vérifiez que votre micro fonctionne</p>
+                  <p>• Essayez de recharger la page</p>
+                </div>
               </div>
             )}
           </div>
