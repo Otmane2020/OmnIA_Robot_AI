@@ -5,7 +5,7 @@ import {
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   DollarSign, Plus, X,
  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
-  Battery, Signal, Globe, Smartphone, Monitor, Tablet, Megaphone,
+  Battery, Signal,
   Upload, Download, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
