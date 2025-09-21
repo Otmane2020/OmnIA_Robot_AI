@@ -74,11 +74,11 @@ Deno.serve(async (req: Request) => {
     console.log('🧠 Analyse DeepSeek:', analysisResult);
 
     // ÉTAPE 2: Rechercher dans products_enriched avec les attributs détectés
-    const relevantProducts = await searchEnrichedProducts(analysisResult.attributes, retailer_id);
+    const relevantProducts = await searchEnrichedProducts(analysisResult.attributes);
     console.log('📦 Produits enrichis trouvés:', relevantProducts.length);
 
-    // ÉTAPE 3: Générer réponse conversationnelle adaptée SANS produits dans le texte
-    const aiResponse = await generateConversationalResponse(message, analysisResult, relevantProducts);
+    // ÉTAPE 3: Générer réponse conversationnelle adaptée avec DeepSeek
+    const aiResponse = await generateConversationalResponseWithDeepSeek(message, analysisResult, relevantProducts);
 
     return new Response(JSON.stringify({
       message: aiResponse.message,
@@ -183,6 +183,80 @@ RÉPONSE JSON:`;
   return analyzeIntentBasic(message);
 }
 
+async function generateConversationalResponseWithDeepSeek(message: string, analysis: any, products: any[]) {
+  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+  
+  if (!deepseekApiKey) {
+    return generateFallbackResponse(message, analysis, products);
+  }
+
+  try {
+    const productsContext = products.length > 0 ? 
+      products.map(p => `• ${p.title} - ${p.price}€${p.compareAtPrice ? ` (était ${p.compareAtPrice}€)` : ''} - ${p.productType || 'Mobilier'}`).join('\n') :
+      'Aucun produit en stock correspondant exactement.';
+
+    const prompt = `Tu es OmnIA, robot vendeur expert chez Decora Home. Réponds de manière naturelle et commerciale.
+
+MESSAGE CLIENT: "${message}"
+INTENTION DÉTECTÉE: ${analysis.intent}
+ATTRIBUTS RECHERCHÉS: ${JSON.stringify(analysis.attributes)}
+
+PRODUITS DISPONIBLES EN STOCK:
+${productsContext}
+
+RÈGLES IMPORTANTES:
+- Réponse courte (2-3 phrases max)
+- Ton commercial chaleureux et humain
+- Si produits trouvés → les présenter avec enthousiasme et prix
+- Si aucun produit → proposer alternatives ou conseil
+- Toujours finir par une question engageante
+- Utiliser emojis avec modération
+- Focus sur les bénéfices client
+
+EXEMPLES DE RÉPONSES:
+- "Parfait ! Notre ALYANA beige 799€ est idéal pour votre salon ! Convertible ou fixe ?"
+- "Excellente idée ! Table AUREA travertin 499€ apportera élégance ! Ø100 ou 120cm ?"
+- "Super choix ! Chaise INAYA 99€ design contemporain ! Combien en faut-il ?"
+
+RÉPONSE COMMERCIALE:`;
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${deepseekApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es OmnIA, robot vendeur expert en mobilier chez Decora Home. Réponds de manière naturelle, commerciale et engageante.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+        stream: false
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const aiMessage = data.choices[0]?.message?.content || generateFallbackResponse(message, analysis, products).message;
+      
+      return { message: aiMessage };
+    }
+  } catch (error) {
+    console.log('⚠️ Erreur DeepSeek réponse, fallback');
+  }
+
+  return generateFallbackResponse(message, analysis, products);
+}
+
 function hasSpecificProductMention(message: string): boolean {
   const productKeywords = [
     'canapé', 'sofa', 'table', 'chaise', 'fauteuil', 'lit', 'matelas',
@@ -237,28 +311,27 @@ function analyzeIntentBasic(message: string) {
   return { intent, attributes, confidence: 60 };
 }
 
-async function searchEnrichedProducts(attributes: any, retailer_id: string) {
+async function searchEnrichedProducts(attributes: any) {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       console.log('⚠️ Supabase non configuré, produits fallback');
-      return getRetailerFallbackProducts(attributes, retailer_id);
+      return getDecoraFallbackProducts(attributes);
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // IMPORTANT: Filtrer par revendeur d'abord
+    // Construire la requête avec les attributs
     let query = supabase
       .from('products_enriched')
       .select('*')
-      .gt('stock_qty', 0)
-      .eq('retailer_id', retailer_id); // Filtrage par revendeur
+      .gt('stock_qty', 0);
 
     // Filtres basés sur les attributs DeepSeek
     if (attributes.category) {
-      query = query.or(`product_type.ilike.%${attributes.category}%,title.ilike.%${attributes.category}%`);
+      query = query.ilike('category', `%${attributes.category}%`);
     }
     if (attributes.color) {
       query = query.ilike('color', `%${attributes.color}%`);
@@ -294,17 +367,17 @@ async function searchEnrichedProducts(attributes: any, retailer_id: string) {
 
     if (error) {
       console.error('❌ Erreur requête products_enriched:', error);
-      return getRetailerFallbackProducts(attributes, retailer_id);
+      return getDecoraFallbackProducts(attributes);
     }
 
-    console.log('✅ Produits enrichis trouvés pour', retailer_id, ':', products?.length || 0, 'avec filtres:', attributes);
+    console.log('✅ Produits enrichis trouvés:', products?.length || 0, 'avec filtres:', attributes);
 
     // Transformer au format attendu
     return (products || []).map(product => ({
       id: product.id,
       handle: product.handle || `product-${product.id}`,
       title: product.title,
-      productType: product.product_type,
+      productType: product.category,
       vendor: product.vendor || 'Decora Home',
       tags: Array.isArray(product.tags) ? product.tags : [],
       price: product.price,
@@ -312,7 +385,7 @@ async function searchEnrichedProducts(attributes: any, retailer_id: string) {
       availableForSale: product.stock_qty > 0,
       quantityAvailable: product.stock_qty,
       image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.canonical_link || product.product_url || '#',
+      product_url: product.product_url || '#',
       description: product.description || product.title,
       variants: [{
         id: `${product.id}-default`,
@@ -327,7 +400,7 @@ async function searchEnrichedProducts(attributes: any, retailer_id: string) {
 
   } catch (error) {
     console.error('❌ Erreur recherche enrichie:', error);
-    return getRetailerFallbackProducts(attributes, retailer_id);
+    return getDecoraFallbackProducts(attributes);
   }
 }
 
@@ -339,9 +412,9 @@ async function generateConversationalResponse(message: string, analysis: any, pr
   }
 
   try {
-    // NE PAS inclure les détails produits dans le prompt pour éviter qu'ils apparaissent dans la réponse
-    const hasProducts = products.length > 0;
-    const productCount = products.length;
+    const productsContext = products.length > 0 ? 
+      products.map(p => `• ${p.title} - ${p.price}€${p.compareAtPrice ? ` (était ${p.compareAtPrice}€)` : ''}`).join('\n') :
+      'Aucun produit en stock correspondant exactement.';
 
     const prompt = `Tu es OmnIA, robot vendeur expert chez Decora Home. Réponds de manière naturelle et commerciale.
 
@@ -349,16 +422,16 @@ MESSAGE CLIENT: "${message}"
 INTENTION DÉTECTÉE: ${analysis.intent}
 ATTRIBUTS: ${JSON.stringify(analysis.attributes)}
 
-PRODUITS TROUVÉS: ${hasProducts ? `${productCount} produit(s) correspondant(s)` : 'Aucun produit correspondant'}
+PRODUITS DISPONIBLES:
+${productsContext}
 
 RÈGLES:
-- Réponse courte (1-2 phrases max)
+- Réponse courte (2-3 phrases max)
 - Ton commercial chaleureux
-- Si produits trouvés → dire qu'on a trouvé des produits SANS les détailler (ils s'afficheront séparément)
-- Si aucun produit → proposer alternatives ou poser une question
+- Si produits trouvés → les présenter avec enthousiasme
+- Si aucun produit → proposer alternatives ou conseil
 - Toujours finir par une question engageante
-- NE JAMAIS mentionner les noms, prix ou détails des produits dans ta réponse
-- Les produits s'affichent automatiquement sous ton message
+- Utiliser emojis avec modération
 
 RÉPONSE:`;
 
@@ -373,7 +446,7 @@ RÉPONSE:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es OmnIA, robot vendeur expert en mobilier. Réponds de manière naturelle et commerciale. NE JAMAIS mentionner les détails des produits dans tes réponses.'
+            content: 'Tu es OmnIA, robot vendeur expert en mobilier. Réponds de manière naturelle et commerciale.'
           },
           {
             role: 'user',
@@ -405,7 +478,7 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
   if (products.length === 0) {
     if (analysis.attributes.category) {
       return {
-        message: `Je n'ai pas trouvé de ${analysis.attributes.category} correspondant exactement. Que diriez-vous d'explorer d'autres options ?`
+        message: `Malheureusement, nous n'avons actuellement aucun ${analysis.attributes.category} en stock correspondant exactement à vos critères. Mais restons en contact ! Dès que de nouveaux modèles arrivent, je vous préviens. Que diriez-vous d'explorer nos autres catégories ?`
       };
     }
     return {
@@ -413,57 +486,15 @@ function generateFallbackResponse(message: string, analysis: any, products: any[
     };
   }
 
+  const product = products[0];
+  const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
+  
   return {
-    message: `Parfait ! J'ai trouvé ${products.length} produit${products.length > 1 ? 's' : ''} qui pourrai${products.length > 1 ? 'ent' : 't'} vous intéresser. Lequel vous plaît le plus ?`
+    message: `Excellente demande ! J'ai ${products.length} produit${products.length > 1 ? 's' : ''} qui pourrai${products.length > 1 ? 'ent' : 't'} vous intéresser. ${hasDiscount ? 'Avec des remises attractives !' : ''} Lequel vous plaît le plus ?`
   };
 }
 
-function getRetailerFallbackProducts(attributes: any, retailer_id: string) {
-  // Récupérer les produits du localStorage spécifique au revendeur
-  try {
-    const retailerStorageKey = `enriched_products_${btoa(retailer_id).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8)}`;
-    const retailerProducts = localStorage.getItem(retailerStorageKey);
-    
-    if (retailerProducts) {
-      const products = JSON.parse(retailerProducts);
-      console.log('📦 Produits fallback du revendeur:', products.length);
-      
-      // Filtrer selon les attributs
-      return products.filter((product: any) => {
-        if (attributes.category && !product.product_type?.toLowerCase().includes(attributes.category)) return false;
-        if (attributes.color && !product.color?.toLowerCase().includes(attributes.color)) return false;
-        if (attributes.material && !product.material?.toLowerCase().includes(attributes.material)) return false;
-        return product.stock_quantity > 0;
-      }).slice(0, 3).map((product: any) => ({
-        id: product.id,
-        handle: product.handle || `product-${product.id}`,
-        title: product.title,
-        productType: product.product_type,
-        vendor: product.vendor || 'Boutique',
-        tags: Array.isArray(product.tags) ? product.tags : [],
-        price: product.price,
-        compareAtPrice: product.compare_at_price,
-        availableForSale: product.stock_quantity > 0,
-        quantityAvailable: product.stock_quantity,
-        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        product_url: product.product_url || '#',
-        description: product.description || product.title,
-        variants: [{
-          id: `${product.id}-default`,
-          title: 'Default',
-          price: product.price,
-          compareAtPrice: product.compare_at_price,
-          availableForSale: true,
-          quantityAvailable: product.stock_quantity,
-          selectedOptions: []
-        }]
-      }));
-    }
-  } catch (error) {
-    console.error('❌ Erreur récupération produits revendeur:', error);
-  }
-  
-  // Fallback Decora Home si pas de produits revendeur
+function getDecoraFallbackProducts(attributes: any) {
   const allProducts = [
     {
       id: 'decora-canape-alyana-beige',
