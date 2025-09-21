@@ -4,7 +4,7 @@ export const initWebContainerAuth = () => {
   return Promise.resolve();
 };
 
-export const ensureAuthenticated = async () => {
+export const ensureWebContainerAuth = async () => {
   console.log('WebContainer auth ensured (placeholder)');
   return true;
 };

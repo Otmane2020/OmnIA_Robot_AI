@@ -9,7 +9,6 @@ import { ChatMessage } from '../components/ChatMessage';
 import { ProductCard } from '../components/ProductCard';
 import { CartButton } from '../components/CartButton';
 import { RobotAvatar } from '../components/RobotAvatar';
-import { STTModule } from '../components/STTModule';
 import { useWhisperSTT } from '../hooks/useWhisperSTT';
 import { useGoogleTTS } from '../hooks/useGoogleTTS';
 import { ChatMessage as ChatMessageType, Product } from '../types';
@@ -47,7 +46,6 @@ export const RobotInterface: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [showSTTModule, setShowSTTModule] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Robot state
@@ -123,25 +121,6 @@ export const RobotInterface: React.FC = () => {
     speak(greeting);
     handleRobotDance();
   };
-  const handleSTTTranscript = async (transcript: string, audioUrl: string) => {
-    console.log('🎤 STT Transcript reçu:', transcript);
-    
-    // Créer message utilisateur avec audio
-    const userMessage: ChatMessageType = {
-      id: Date.now().toString(),
-      content: transcript,
-      isUser: true,
-      timestamp: new Date(),
-      audioUrl: audioUrl
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setShowSTTModule(false);
-    
-    // Traiter comme message normal
-    await handleSendMessage(transcript);
-  };
-
 
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim()) return;
@@ -713,17 +692,6 @@ export const RobotInterface: React.FC = () => {
               <Camera className="w-10 h-10 text-white" />
             </button>
 
-            {/* Nouveau bouton STT */}
-            <button
-              onClick={() => setShowSTTModule(!showSTTModule)}
-              disabled={!isRobotOn}
-              className="relative group bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20 disabled:opacity-50"
-              title="Module Speech-to-Text"
-            >
-              <Mic className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
-              <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isRobotOn ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
-            </button>
-
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="relative group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 w-24 h-24 rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 border-2 border-white/20"
@@ -982,38 +950,11 @@ export const RobotInterface: React.FC = () => {
         </div>
       )}
 
-      {/* Module STT */}
-      {showSTTModule && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Mic className="w-6 h-6 text-red-400" />
-                Module Speech-to-Text
-              </h3>
-              <button
-                onClick={() => setShowSTTModule(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <STTModule 
-              onTranscriptReady={handleSTTTranscript}
-              onError={(error) => console.error('STT Error:', error)}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Panneau paramètres */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-8 max-w-md w-full border border-slate-600/50">
             <div className="flex items-center justify-between mb-6">
-                  <li className="hidden lg:list-item">• Module STT Whisper/Deepgram intégré</li>
-                  <li className="hidden lg:list-item">• Historique audio + transcript</li>
               <h3 className="text-xl font-bold text-white">Paramètres Robot</h3>
               <button
                 onClick={() => setShowSettings(false)}
