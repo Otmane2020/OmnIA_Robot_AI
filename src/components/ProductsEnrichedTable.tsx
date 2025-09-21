@@ -784,7 +784,7 @@ export const ProductsEnrichedTable: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-white text-sm line-clamp-2">{product.title}</div>
                             <div className="text-gray-400 text-xs">{product.vendor} • {product.brand}</div>
-                            <div className="text-gray-500 text-xs">{product.category} > {product.subcategory}</div>
+                            <div className="text-gray-500 text-xs">{product.category} {product.subcategory && `› ${product.subcategory}`}</div>
                             {product.handle && (
                               <div className="text-cyan-400 text-xs font-mono">{product.handle}</div>
                             )}
