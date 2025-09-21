@@ -93,6 +93,10 @@ Deno.serve(async (req: Request) => {
       try {
         console.log(`🔍 Enrichissement ${i + 1}/${products.length}: ${product.name?.substring(0, 30)}...`);
         
+        // Simuler progression pour le frontend
+        const progress = Math.round(((i + 1) / products.length) * 90);
+        console.log(`📊 Progression: ${progress}%`);
+        
         const enrichedData = await enrichProductWithDeepSeek(product, deepseekApiKey);
         
         const enrichedProduct: EnrichedProduct = {
