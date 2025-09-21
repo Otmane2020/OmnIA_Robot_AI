@@ -6,7 +6,7 @@ import {
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  Loader2
+  Loader2, Package, Target, Search, Image, Sparkles, BookOpen, Tag, RefreshCw, Clock, Mail, Mic
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -108,6 +108,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { id: 2, name: 'Tables Design', status: 'paused', budget: 300, spent: 156, roas: 3.8 },
     { id: 3, name: 'Mobilier Bureau', status: 'active', budget: 200, spent: 89, roas: 5.1 }
   ]);
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('admin_theme') || 'dark';
+  });
+
+  const themes = [
+    { 
+      id: 'dark', 
+      name: 'Sombre', 
+      icon: '🌙',
+      colors: {
+        bg: 'from-slate-900 via-blue-900 to-purple-900',
+        sidebar: 'bg-slate-800/90',
+        header: 'bg-slate-800/90',
+        card: 'bg-slate-700/50',
+        border: 'border-slate-600/50'
+      }
+    },
+    { 
+      id: 'light', 
+      name: 'Clair', 
+      icon: '☀️',
+      colors: {
+        bg: 'from-gray-50 via-blue-50 to-purple-50',
+        sidebar: 'bg-white/90',
+        header: 'bg-white/90',
+        card: 'bg-white/80',
+        border: 'border-gray-200'
+      }
+    },
+    { 
+      id: 'blue', 
+      name: 'Océan', 
+      icon: '🌊',
+      colors: {
+        bg: 'from-blue-900 via-cyan-900 to-teal-900',
+        sidebar: 'bg-blue-800/90',
+        header: 'bg-blue-800/90',
+        card: 'bg-blue-700/50',
+        border: 'border-blue-600/50'
+      }
+    },
+    { 
+      id: 'purple', 
+      name: 'Violet', 
+      icon: '🔮',
+      colors: {
+        bg: 'from-purple-900 via-indigo-900 to-blue-900',
+        sidebar: 'bg-purple-800/90',
+        header: 'bg-purple-800/90',
+        card: 'bg-purple-700/50',
+        border: 'border-purple-600/50'
+      }
+    },
+    { 
+      id: 'green', 
+      name: 'Nature', 
+      icon: '🌿',
+      colors: {
+        bg: 'from-green-900 via-emerald-900 to-teal-900',
+        sidebar: 'bg-green-800/90',
+        header: 'bg-green-800/90',
+        card: 'bg-green-700/50',
+        border: 'border-green-600/50'
+      }
+    }
+  ];
+
+  const activeTheme = themes.find(t => t.id === currentTheme) || themes[0];
+
+  const handleThemeChange = (themeId: string) => {
+    setCurrentTheme(themeId);
+    localStorage.setItem('admin_theme', themeId);
+    showSuccess('Thème changé', `Thème ${themes.find(t => t.id === themeId)?.name} appliqué !`);
+  };
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
@@ -1800,7 +1874,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
+    <div className={`min-h-screen bg-gradient-to-br ${activeTheme.colors.bg} transition-all duration-500`}>
       <NotificationSystem notifications={notifications} onRemove={removeNotification} />
       
       {/* Background Effects */}
@@ -1811,7 +1885,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       <div className="relative z-10 flex h-screen">
         {/* Sidebar - Design exact de l'image */}
-        <div className="w-64 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+        <div className={`w-64 ${activeTheme.colors.sidebar} backdrop-blur-2xl border-r ${activeTheme.colors.border} p-6 transition-all duration-500`}>
           {/* Header avec logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -1874,7 +1948,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {/* Header - Style exact de l'image */}
-          <div className="bg-slate-800/90 backdrop-blur-xl border-b border-slate-700/50 p-6">
+          <div className={`${activeTheme.colors.header} backdrop-blur-xl border-b ${activeTheme.colors.border} p-6 transition-all duration-500`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -1891,6 +1965,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </div>
               
               <div className="flex items-center gap-4">
+                {/* Theme Selector */}
+                <div className="relative group">
+                  <button className="bg-slate-600/80 hover:bg-slate-700 text-white p-2 rounded-xl transition-all flex items-center gap-2">
+                    <Palette className="w-5 h-5" />
+                    <span className="text-sm">{activeTheme.icon}</span>
+                  </button>
+                  
+                  {/* Theme Dropdown */}
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-xl rounded-xl border border-slate-600/50 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                    <div className="p-3">
+                      <h4 className="text-white font-semibold mb-3 text-sm">🎨 Choisir un thème</h4>
+                      <div className="space-y-2">
+                        {themes.map((theme) => (
+                          <button
+                            key={theme.id}
+                            onClick={() => handleThemeChange(theme.id)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
+                              currentTheme === theme.id
+                                ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                                : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-lg">{theme.icon}</span>
+                            <div>
+                              <div className="font-medium text-sm">{theme.name}</div>
+                              {currentTheme === theme.id && (
+                                <div className="text-cyan-400 text-xs">✓ Actuel</div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 <button
                   onClick={() => window.open('/robot', '_blank')}
                   className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-2 rounded-xl font-semibold transition-all flex items-center gap-2"
