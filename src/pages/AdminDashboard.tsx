@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
-  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
+  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, 
+  Tag, BookOpen, Zap, Loader2, Package, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play, 
+  Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase,
+  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, ExternalLink, DollarSign, Filter, Plus, Eye
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
   LayoutDashboard, ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, Zap, RefreshCw, Clock, Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, Tag, DollarSign, Image, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, Loader2, Upload, QrCode, Sparkles, Bot, Play, Pause, RotateCcw, Move, Music, Wifi, Battery, Signal, Monitor, Smartphone, BookOpen, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase
