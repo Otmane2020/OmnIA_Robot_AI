@@ -1,3 +1,11 @@
+import React, { useState, useEffect } from 'react';
+import { AdminDashboard } from '../pages/AdminDashboard';
+import { AdminMobileDashboard } from '../pages/AdminMobileDashboard';
+
+interface ResponsiveAdminWrapperProps {
+  onLogout: () => void;
+}
+
 export const ResponsiveAdminWrapper: React.FC<ResponsiveAdminWrapperProps> = ({ onLogout }) => {
   const [isMobile, setIsMobile] = useState(false);
 
