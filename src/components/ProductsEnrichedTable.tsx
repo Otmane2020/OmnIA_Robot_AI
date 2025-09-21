@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, MessageSquare,
   Package, Tag, DollarSign, Image, BarChart3, Settings,
   ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
   Brain, Zap, RefreshCw, Loader2, Download, FileText,
