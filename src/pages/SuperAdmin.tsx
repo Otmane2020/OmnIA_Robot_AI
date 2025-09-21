@@ -676,7 +676,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
             </div>
             <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
               <span className="text-blue-300">Réponse API</span>
-              <span className="text-blue-400 font-bold">< 200ms</span>
+              <span className="text-blue-400 font-bold">{"< 200ms"}</span>
             </div>
             <div className="text-sm text-gray-300">
               <p><strong>Dernière panne:</strong> Aucune</p>
