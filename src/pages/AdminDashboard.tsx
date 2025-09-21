@@ -4,7 +4,7 @@ import {
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   DollarSign, Plus, X,
-  Megaphone, DollarSign, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
+ Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
   Battery, Signal, Globe, Smartphone, Monitor, Tablet, Megaphone,
   Upload, Download, Loader2
 } from 'lucide-react';
