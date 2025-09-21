@@ -27,6 +27,7 @@ interface EnrichedProduct {
   id: string;
   title: string;
   description: string;
+  short_description: string;
   vendor: string;
   brand: string;
   category: string;
@@ -37,11 +38,24 @@ interface EnrichedProduct {
   style: string;
   room: string;
   dimensions: string;
+  weight: string;
+  capacity: string;
   price: number;
   compare_at_price?: number;
+  currency: string;
+  stock_quantity: number;
+  availability_status: string;
+  gtin: string;
+  mpn: string;
+  identifier_exists: boolean;
   stock_qty: number;
   image_url: string;
+  additional_image_links: string[];
   product_url: string;
+  canonical_link: string;
+  percent_off: number;
+  seo_title: string;
+  seo_description: string;
   confidence_score: number;
   enrichment_source: string;
 }
@@ -109,6 +123,7 @@ Deno.serve(async (req: Request) => {
           id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           title: product.name || product.title || 'Produit sans nom',
           description: product.description || '',
+          short_description: (product.description || product.title || '').substring(0, 160),
           vendor: product.vendor || 'Decora Home',
           brand: product.vendor || 'Decora Home',
           category: enrichedData.category || product.category || 'Mobilier',
@@ -119,11 +134,25 @@ Deno.serve(async (req: Request) => {
           style: enrichedData.style || '',
           room: enrichedData.room || '',
           dimensions: enrichedData.dimensions || '',
+          weight: enrichedData.weight || '',
+          capacity: enrichedData.capacity || '',
           price: parseFloat(product.price) || 0,
           compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+          currency: 'EUR',
+          stock_quantity: parseInt(product.stock) || 0,
+          availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+          gtin: enrichedData.gtin || '',
+          mpn: product.sku || enrichedData.mpn || '',
+          identifier_exists: !!(product.sku || enrichedData.gtin),
           stock_qty: parseInt(product.stock) || 0,
           image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          additional_image_links: enrichedData.additional_images || [],
           product_url: product.product_url || '#',
+          canonical_link: product.product_url || '#',
+          percent_off: product.compare_at_price && product.price ? 
+            Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
+          seo_title: enrichedData.seo_title || product.name || product.title || '',
+          seo_description: enrichedData.seo_description || (product.description || product.title || '').substring(0, 155),
           confidence_score: enrichedData.confidence_score || 50,
           enrichment_source: 'deepseek'
         };
@@ -258,12 +287,21 @@ EXTRAIT ces attributs au format JSON exact :
   "style": "Moderne|Contemporain|Scandinave|Industriel|Vintage|Classique|Minimaliste",
   "room": "Salon|Chambre|Cuisine|Bureau|Salle à manger|Entrée",
   "dimensions": "dimensions si trouvées",
+  "weight": "poids approximatif",
+  "capacity": "capacité (ex: 4 places, 6 personnes)",
+  "gtin": "code-barres si disponible",
+  "mpn": "référence fabricant",
+  "seo_title": "titre optimisé SEO (60 caractères max)",
+  "seo_description": "description SEO (155 caractères max)",
+  "additional_images": ["url1", "url2"],
   "tags": ["tag1", "tag2", "tag3"],
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
 - Utilise UNIQUEMENT les valeurs listées pour category et style
+- seo_title: titre optimisé pour Google avec mots-clés
+- seo_description: description marketing attractive
 - confidence_score: 0-100 basé sur la qualité des informations
 - Si information manquante, laisser chaîne vide ""
 - Réponse JSON uniquement, aucun texte supplémentaire

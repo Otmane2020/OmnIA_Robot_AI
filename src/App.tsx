@@ -52,6 +52,19 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
+    // Vérifier les revendeurs validés en localStorage
+    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    const validatedRetailer = validatedRetailers.find((retailer: any) => 
+      retailer.email === credentials.email && retailer.password === credentials.password
+    );
+    
+    if (validatedRetailer) {
+      console.log('✅ Connexion revendeur validé:', validatedRetailer.company_name);
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+      return;
+    }
+    
     // Super Admin
     if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
       setIsSuperAdmin(true);
@@ -59,7 +72,6 @@ function App() {
     }
     // Decora Home - Boutique principale
     else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
-    // Vérifier les revendeurs validés en base de données
       setIsLoggedIn(true);
     }
     // Mobilier Design Paris
@@ -87,7 +99,7 @@ function App() {
       setIsLoggedIn(true);
     }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• benyahya.otmane@gmail.com / Sco010203\n• superadmin@omnia.sale / superadmin2025');
     }
   };
 
