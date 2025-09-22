@@ -6,7 +6,7 @@ import {
   Bot, Globe, FileText, Eye, Store, LogOut, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Facebook, Instagram, Calculator, PieChart, Share2
+  Facebook, Instagram, Calculator, PieChart, Share2,
   Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
