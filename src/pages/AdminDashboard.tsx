@@ -6,8 +6,7 @@ import {
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  Mic, Mail, CreditCard, User, LogOut, Zap, Settings,
-  TrendingUp, Globe, Search, Share2, DollarSign, Loader2
+  Loader2, Share2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -847,9 +846,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
                 >
                   <option value="card">Carte bancaire</option>
-                  <option value="transfer">Virement</option>
                   <option value="cash">Espèces</option>
                   <option value="check">Chèque</option>
+                  <option value="transfer">Virement</option>
                 </select>
               </div>
               
@@ -863,15 +862,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <button
                   onClick={() => {
                     const order = {
-                      ...newOrder,
                       id: Date.now().toString(),
-                      created_at: new Date().toISOString(),
-                      source: 'manual'
+                      ...newOrder,
+                      source: 'manual',
+                      created_at: new Date().toISOString()
                     };
                     const updatedOrders = [...orders, order];
                     setOrders(updatedOrders);
                     localStorage.setItem(getRetailerStorageKey('orders'), JSON.stringify(updatedOrders));
-                    setShowCreateOrder(false);
                     setNewOrder({
                       customer_name: '',
                       customer_email: '',
@@ -882,7 +880,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       total: 0,
                       status: 'pending'
                     });
-                    showSuccess('Commande créée', 'Commande manuelle créée avec succès !');
+                    setShowCreateOrder(false);
+                    showSuccess('Commande créée', 'Commande manuelle ajoutée avec succès !');
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl transition-all"
                 >
