@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Megaphone, Target, BarChart3, Mail, ArrowLeft, TrendingUp, Users, Eye, Click } from 'lucide-react';
+import { Megaphone, Target, BarChart3, Mail, ArrowLeft, TrendingUp, Users, Eye, Clock as Click } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 export const MarketingDashboard: React.FC = () => {
