@@ -1,4 +1,20 @@
-const handleValidateApplication = (applicationId: string, approved: boolean) => {
+import React, { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import SellerRegistration from './pages/SellerRegistration';
+import AdminLogin from './pages/AdminLogin';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Support from './pages/Support';
+import Documentation from './pages/Documentation';
+import Guides from './pages/Guides';
+import Press from './pages/Press';
+import Partnerships from './pages/Partnerships';
+
+function App() {
+  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
+
+  const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
     // Récupérer la demande
@@ -76,3 +92,24 @@ const handleValidateApplication = (applicationId: string, approved: boolean) => 
     
     // Supprimer de la liste des demandes en attente
   };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/register" element={<SellerRegistration />} />
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/docs" element={<Documentation />} />
+        <Route path="/guides" element={<Guides />} />
+        <Route path="/press" element={<Press />} />
+        <Route path="/partnerships" element={<Partnerships />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
+}
+
+export default App;
