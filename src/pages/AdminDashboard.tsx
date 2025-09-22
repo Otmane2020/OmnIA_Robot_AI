@@ -132,6 +132,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       } catch (err) {
         console.error("❌ Erreur parsing utilisateur:", err);
         return null;
+      }
+    }
+    return null;
+  });
+  
   const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
 
@@ -194,7 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     icon: Globe,
     subItems: [
       { id: 'merchant-feed', label: 'Flux XML', icon: FileText },
-      { id: 'merchant-guide', label: 'Guide d’importation', icon: Upload }
+      { id: 'merchant-guide', label: 'Guide d'importation', icon: Upload }
     ]
   },
 
@@ -262,7 +267,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     icon: BarChart3, 
     color: 'bg-orange-500',
     subItems: [
-      { id: 'overview', label: 'Vue d’ensemble', icon: BarChart3 },
+      { id: 'overview', label: 'Vue d'ensemble', icon: BarChart3 },
       { id: 'conversations', label: 'Conversations', icon: MessageSquare },
       { id: 'sales', label: 'Ventes', icon: TrendingUp },
       { id: 'reports', label: 'Rapports', icon: FileText }
