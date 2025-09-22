@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  BarChart3, Users, ShoppingCart, MessageSquare, Settings, Calendar,
-  TrendingUp, Upload, Download,
-  Bot, Globe, FileText, Eye, Store, LogOut, Brain,
+  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
+  TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
+  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Facebook, Instagram, Calculator, PieChart, Share2,
+  Battery, Signal, RefreshCw, Tag, BookOpen, Zap, Share2, Link,
+  Facebook, Instagram, Calculator, PieChart,
   Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
@@ -64,158 +64,255 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return null;
   });
 
-  const sidebarItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState('');
+  const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    conversations: 1234,
+    conversions: 42,
+    products: 247,
+    revenue: 15420,
+    visitors: 3456,
+    sessionDuration: '4m 12s'
+  });
 
-  // ----------------- E-COMMERCE -----------------
-  { 
-    id: 'ecommerce', 
-    label: 'E-Commerce', 
-    icon: ShoppingCart, 
-    color: 'bg-green-500',
-    subItems: [
-      { id: 'catalog', label: 'Catalogue', icon: Package },
-      { id: 'products-enriched', label: 'Produits Enrichis', icon: Brain }, // avec Enrichir + Entraînement Auto
-      { id: 'inventory', label: 'Inventaire', icon: Eye },
-      { id: 'orders', label: 'Commandes', icon: ShoppingCart }
-    ]
-  },
-
-  // ----------------- OMNIA BOT -----------------
-  { 
-    id: 'omnia-bot', 
-    label: 'OmnIA Bot', 
-    icon: Bot, 
-    color: 'bg-purple-600',
-    subItems: [
-      { id: 'robot', label: 'Robot OmnIA', icon: Bot },
-      { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-      { id: 'speech-to-text', label: 'Speech-to-Text', icon: Mic }
-    ]
-  },
-
-  // ----------------- ADS & MARKETING -----------------
-  { 
-    id: 'ads', 
-    label: 'Ads & Marketing', 
-    icon: Target, 
-    color: 'bg-blue-500',
-    subItems: [
-      // Google Ads block
+  // États pour les différentes sections
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('orders');
+    return saved ? JSON.parse(saved) : [
       {
-        id: 'google-ads',
-        label: 'Google Ads',
-        icon: Search,
-        subItems: [
-          { id: 'google-ads-analytics', label: 'Analytics', icon: BarChart3 },
-          { id: 'google-ads-integration', label: 'Intégration', icon: Link },
-          { id: 'google-ads-campaigns', label: 'Campagnes publicitaires', icon: Target },
-          { id: 'google-ads-optimization', label: 'Optimisation', icon: Zap }
-        ]
+        id: 'order-001',
+        customer_name: 'Marie Dubois',
+        customer_email: 'marie@email.com',
+        products: ['Canapé ALYANA', 'Table AUREA'],
+        total: 1298,
+        payment_method: 'Carte bancaire',
+        status: 'completed',
+        source: 'omnia_robot',
+        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
       },
-      { id: 'social-media', label: 'Réseaux Sociaux', icon: Megaphone },
-      { id: 'email-marketing', label: 'Email Marketing', icon: Mail },
-      { id: 'budget', label: 'Budget', icon: DollarSign }
-    ]
-  },
+      {
+        id: 'order-002',
+        customer_name: 'Jean Martin',
+        customer_email: 'jean@email.com',
+        products: ['Chaise INAYA x4'],
+        total: 396,
+        payment_method: 'Virement',
+        status: 'pending',
+        source: 'manual',
+        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+  });
 
-  // ----------------- GOOGLE MERCHANT -----------------
-  { 
-    id: 'google-merchant',
-    label: 'Google Merchant',
-    icon: Globe,
-    subItems: [
-      { id: 'merchant-feed', label: 'Flux XML', icon: FileText },
-      { id: 'merchant-guide', label: 'Guide d’importation', icon: Upload }
-    ]
-  },
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_address: '',
+    customer_phone: '',
+    payment_method: 'card',
+    products: [],
+    total: 0,
+    status: 'pending'
+  });
 
-  // ----------------- VISION & STUDIO -----------------
-  { 
-    id: 'vision', 
-    label: 'Vision & Studio', 
-    icon: Eye, 
-    color: 'bg-pink-500',
-    subItems: [
-      { id: 'ar-studio', label: 'AR Studio', icon: Eye },
-      { id: 'photo-studio', label: 'Studio Photo', icon: Image },
-      { id: 'video-studio', label: 'Studio Vidéo', icon: Monitor },
-      { id: 'ai-generator', label: 'Générateur IA', icon: Sparkles }
-    ]
-  },
+  const [adCampaigns, setAdCampaigns] = useState([
+    {
+      id: 'camp-001',
+      name: 'Canapés Hiver 2025',
+      status: 'active',
+      budget: 500,
+      spent: 342,
+      roas: 4.2,
+      impressions: 12500,
+      clicks: 234,
+      conversions: 18
+    },
+    {
+      id: 'camp-002',
+      name: 'Tables Design',
+      status: 'paused',
+      budget: 300,
+      spent: 156,
+      roas: 3.8,
+      impressions: 8900,
+      clicks: 167,
+      conversions: 12
+    }
+  ]);
 
-  // ----------------- SEO -----------------
-  { 
-    id: 'seo', 
-    label: 'SEO', 
-    icon: Search, 
-    color: 'bg-purple-500',
-    subItems: [
-      { id: 'seo-blog', label: 'Blog & Articles', icon: FileText },
-      { id: 'seo-auto-blogging', label: 'Auto Blogging', icon: Calendar },
-      { id: 'seo-backlinks', label: 'Backlinks', icon: Link },
-      { id: 'seo-integration', label: 'Intégration', icon: Share2 },
-      { id: 'seo-optimization', label: 'Optimisation SEO', icon: Zap } // tableau SEO (Image, Title, Description, Alt + push Shopify)
-    ]
-  },
+  const [blogPosts, setBlogPosts] = useState([
+    {
+      id: 'post-001',
+      title: 'Tendances mobilier 2025',
+      status: 'published',
+      views: 1250,
+      date: '2025-01-10',
+      author: 'OmnIA'
+    },
+    {
+      id: 'post-002',
+      title: 'Comment choisir son canapé',
+      status: 'draft',
+      views: 0,
+      date: '2025-01-12',
+      author: 'OmnIA'
+    }
+  ]);
 
-  // ----------------- RÉSEAUX SOCIAUX -----------------
-  { 
-    id: 'social', 
-    label: 'Réseaux Sociaux', 
-    icon: Share2, 
-    color: 'bg-indigo-500',
-    subItems: [
-      { id: 'social-analytics', label: 'Analytics', icon: BarChart3 },
-      { id: 'social-facebook', label: 'Intégration Facebook', icon: Facebook },
-      { id: 'social-instagram', label: 'Intégration Instagram', icon: Instagram },
-      { id: 'social-ads', label: 'Ads Management', icon: Target },
-      { id: 'social-auto-posting', label: 'Auto-posting', icon: Calendar },
-      { id: 'social-catalog', label: 'Catalogue Facebook', icon: Package }
-    ]
-  },
+  // Générer clé de stockage spécifique au revendeur
+  const getRetailerStorageKey = (key: string) => {
+    if (!currentUser?.email) return key;
+    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${key}_${emailHash}`;
+  };
 
-  // ----------------- BUDGETS -----------------
-  { 
-    id: 'budgets',
-    label: 'Budgets',
-    icon: DollarSign,
-    subItems: [
-      { id: 'budget-overview', label: 'Budget', icon: PieChart },
-      { id: 'budget-ads', label: 'Répartition Ads', icon: Calculator },
-      { id: 'budget-roi', label: 'ROI estimé vs réel', icon: TrendingUp }
-    ]
-  },
+  const sidebarItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
 
-  // ----------------- ANALYTICS -----------------
-  { 
-    id: 'analytics', 
-    label: 'Analytics', 
-    icon: BarChart3, 
-    color: 'bg-orange-500',
-    subItems: [
-      { id: 'overview', label: 'Vue d’ensemble', icon: BarChart3 },
-      { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-      { id: 'sales', label: 'Ventes', icon: TrendingUp },
-      { id: 'reports', label: 'Rapports', icon: FileText }
-    ]
-  },
+    // ----------------- E-COMMERCE -----------------
+    { 
+      id: 'ecommerce', 
+      label: 'E-Commerce', 
+      icon: ShoppingCart, 
+      color: 'bg-green-500',
+      subItems: [
+        { id: 'catalog', label: 'Catalogue', icon: Package },
+        { id: 'products-enriched', label: 'Produits Enrichis', icon: Brain },
+        { id: 'inventory', label: 'Inventaire', icon: Eye },
+        { id: 'orders', label: 'Commandes', icon: ShoppingCart },
+        { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+        { id: 'training', label: 'Entraînement IA', icon: Brain },
+        { id: 'messages', label: 'Messagerie', icon: Mail },
+        { id: 'stt', label: 'Speech-to-Text', icon: Mic },
+        { id: 'integrations', label: 'Intégrations', icon: Settings }
+      ]
+    },
 
-  // ----------------- ADMIN -----------------
-  { 
-    id: 'admin', 
-    label: 'Admin', 
-    icon: Settings, 
-    color: 'bg-gray-500',
-    subItems: [
-      { id: 'settings', label: 'Paramètres', icon: Settings },
-      { id: 'users', label: 'Utilisateurs', icon: Users },
-      { id: 'domain', label: 'Domaine', icon: Globe },
-      { id: 'billing', label: 'Facturation', icon: CreditCard },
-      { id: 'messaging', label: 'Messagerie', icon: Mail }
-    ]
-  }
-];
+    // ----------------- ADS & MARKETING -----------------
+    { 
+      id: 'ads', 
+      label: 'Ads & Marketing', 
+      icon: Target, 
+      color: 'bg-blue-500',
+      subItems: [
+        {
+          id: 'google-ads',
+          label: 'Google Ads',
+          icon: Search,
+          subItems: [
+            { id: 'google-ads-analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'google-ads-integration', label: 'Intégration', icon: Link },
+            { id: 'google-ads-campaigns', label: 'Campagnes publicitaires', icon: Target },
+            { id: 'google-ads-optimization', label: 'Optimisation', icon: Zap }
+          ]
+        },
+        { id: 'social-media', label: 'Réseaux Sociaux', icon: Megaphone },
+        { id: 'email-marketing', label: 'Email Marketing', icon: Mail },
+        { id: 'budget', label: 'Budget', icon: DollarSign }
+      ]
+    },
+
+    // ----------------- GOOGLE MERCHANT -----------------
+    { 
+      id: 'google-merchant',
+      label: 'Google Merchant',
+      icon: Globe,
+      color: 'bg-orange-500',
+      subItems: [
+        { id: 'merchant-feed', label: 'Flux XML', icon: FileText },
+        { id: 'merchant-guide', label: 'Guide d\'importation', icon: Upload }
+      ]
+    },
+
+    // ----------------- VISION & STUDIO -----------------
+    { 
+      id: 'vision', 
+      label: 'Vision & Studio', 
+      icon: Eye, 
+      color: 'bg-pink-500',
+      subItems: [
+        { id: 'ar-studio', label: 'AR Studio', icon: Eye },
+        { id: 'photo-studio', label: 'Studio Photo', icon: Image },
+        { id: 'video-studio', label: 'Studio Vidéo', icon: Monitor },
+        { id: 'ai-generator', label: 'Générateur IA', icon: Sparkles }
+      ]
+    },
+
+    // ----------------- SEO -----------------
+    { 
+      id: 'seo', 
+      label: 'SEO', 
+      icon: Search, 
+      color: 'bg-purple-500',
+      subItems: [
+        { id: 'seo-blog', label: 'Blog & Articles', icon: FileText },
+        { id: 'seo-auto-blogging', label: 'Auto Blogging', icon: Calendar },
+        { id: 'seo-backlinks', label: 'Backlinks', icon: Link },
+        { id: 'seo-integration', label: 'Intégration', icon: Share2 },
+        { id: 'seo-optimization', label: 'Optimisation SEO', icon: Zap }
+      ]
+    },
+
+    // ----------------- RÉSEAUX SOCIAUX -----------------
+    { 
+      id: 'social', 
+      label: 'Réseaux Sociaux', 
+      icon: Share2, 
+      color: 'bg-indigo-500',
+      subItems: [
+        { id: 'social-analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'social-facebook', label: 'Intégration Facebook', icon: Facebook },
+        { id: 'social-instagram', label: 'Intégration Instagram', icon: Instagram },
+        { id: 'social-ads', label: 'Ads Management', icon: Target },
+        { id: 'social-auto-posting', label: 'Auto-posting', icon: Calendar },
+        { id: 'social-catalog', label: 'Catalogue Facebook', icon: Package }
+      ]
+    },
+
+    // ----------------- BUDGETS -----------------
+    { 
+      id: 'budgets',
+      label: 'Budgets',
+      icon: DollarSign,
+      color: 'bg-yellow-500',
+      subItems: [
+        { id: 'budget-overview', label: 'Budget', icon: PieChart },
+        { id: 'budget-ads', label: 'Répartition Ads', icon: Calculator },
+        { id: 'budget-roi', label: 'ROI estimé vs réel', icon: TrendingUp }
+      ]
+    },
+
+    // ----------------- ANALYTICS -----------------
+    { 
+      id: 'analytics', 
+      label: 'Analytics', 
+      icon: BarChart3, 
+      color: 'bg-orange-500',
+      subItems: [
+        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+        { id: 'sales', label: 'Ventes', icon: TrendingUp },
+        { id: 'reports', label: 'Rapports', icon: FileText }
+      ]
+    },
+
+    // ----------------- ADMIN -----------------
+    { 
+      id: 'admin', 
+      label: 'Admin', 
+      icon: Settings, 
+      color: 'bg-gray-500',
+      subItems: [
+        { id: 'settings', label: 'Paramètres', icon: Settings },
+        { id: 'users', label: 'Utilisateurs', icon: Users },
+        { id: 'domain', label: 'Domaine', icon: Globe },
+        { id: 'billing', label: 'Facturation', icon: CreditCard },
+        { id: 'messaging', label: 'Messagerie', icon: Mail }
+      ]
+    }
+  ];
 
   const dashboardCards = [
     { title: 'E-Commerce', subtitle: '247 Produits', icon: ShoppingCart, color: 'bg-green-500', stats: '247 Produits' },
@@ -607,7 +704,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </div>
                   <div>
                     <div className="text-white font-medium">Admin Principal</div>
-                    <div className="text-gray-300 text-sm">admin@decorahome.fr</div>
+                    <div className="text-gray-300 text-sm">{currentUser?.email || 'admin@decorahome.fr'}</div>
                   </div>
                 </div>
               </td>
@@ -903,6 +1000,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       total: 0,
                       status: 'pending'
                     });
+                    showSuccess('Commande créée', 'Nouvelle commande manuelle ajoutée avec succès !');
                   }}
                   className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 rounded-xl font-semibold transition-all"
                 >
@@ -1350,14 +1448,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             Inventaire
           </button>
           <button
-            onClick={() => setActiveSubTab('robot')}
-            className={`px-4 py-2 rounded-xl transition-all ${
-              activeSubTab === 'robot' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
-            }`}
-          >
-            Robot OmnIA
-          </button>
-          <button
             onClick={() => setActiveSubTab('orders')}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeSubTab === 'orders' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
@@ -1415,7 +1505,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       {activeSubTab === 'catalog' || !activeSubTab ? <CatalogManagement /> : null}
       {activeSubTab === 'enriched' ? <ProductsEnrichedTable /> : null}
       {activeSubTab === 'inventory' ? renderInventory() : null}
-      {activeSubTab === 'robot' ? <OmniaRobotTab /> : null}
       {activeSubTab === 'orders' ? renderOrders() : null}
       {activeSubTab === 'conversations' ? <ConversationHistory /> : null}
       {activeSubTab === 'training' ? <MLTrainingDashboard /> : null}
@@ -1812,9 +1901,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'dashboard': return renderDashboard();
       case 'ecommerce': return renderECommerce();
       case 'ads': return renderAdsMarketing();
+      case 'google-merchant': return renderGoogleMerchant();
       case 'vision': return renderVisionStudio();
       case 'seo': return renderSEO();
-      case 'omnia': return renderOmnIABot();
+      case 'omnia-bot': return renderOmnIABot();
       case 'analytics': return renderAnalytics();
       case 'admin': return renderAdmin();
       default: return renderDashboard();

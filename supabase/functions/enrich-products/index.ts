@@ -344,30 +344,17 @@ RÉPONSE JSON UNIQUEMENT:`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Erreur DeepSeek API:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        errorBody: errorText
-      });
+      console.error('❌ Erreur DeepSeek API:', response.status, errorText);
       throw new Error(`DeepSeek API error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content?.trim();
     
-    console.log('🔍 DeepSeek raw response:', {
-      full_response: data,
-      content_received: content,
-      content_length: content?.length || 0,
-      choices_count: data.choices?.length || 0
-    });
-    
     if (content) {
       try {
         const parsed = JSON.parse(content);
-        console.log('✅ DeepSeek JSON parsing successful:', {
-          product_name: (product.name || product.title || '').substring(0, 30),
+        console.log('✅ DeepSeek extraction réussie:', {
           category: parsed.category,
           product_type: parsed.product_type,
           subcategory: parsed.subcategory,
@@ -375,8 +362,7 @@ RÉPONSE JSON UNIQUEMENT:`;
           color: parsed.color,
           seo_title: parsed.seo_title?.substring(0, 30),
           seo_description: parsed.seo_description?.substring(0, 50),
-          confidence: parsed.confidence_score,
-          all_fields: Object.keys(parsed)
+          confidence: parsed.confidence_score
         });
         
         return {
@@ -397,41 +383,15 @@ RÉPONSE JSON UNIQUEMENT:`;
           confidence_score: parsed.confidence_score || 50
         };
       } catch (parseError) {
-        console.error('❌ DeepSeek JSON parsing failed:', {
-          error: parseError.message,
-          raw_content: content,
-          content_preview: content?.substring(0, 200),
-          content_type: typeof content,
-          is_string: typeof content === 'string',
-          starts_with: content?.substring(0, 10),
-          ends_with: content?.substring(-10)
-        });
+        console.error('❌ JSON invalide de DeepSeek:', content);
         throw new Error('Réponse JSON invalide de DeepSeek');
       }
     } else {
-      console.error('❌ DeepSeek returned empty content:', {
-        data_structure: data,
-        choices_available: !!data.choices,
-        first_choice: data.choices?.[0],
-        message_available: !!data.choices?.[0]?.message,
-        content_field: data.choices?.[0]?.message?.content
-      });
       throw new Error('Réponse vide de DeepSeek');
     }
 
   } catch (error) {
-    console.error('❌ DeepSeek enrichment error:', {
-      error_message: error.message,
-      error_type: error.constructor.name,
-      product_info: {
-        id: product.id,
-        name: (product.name || product.title || '').substring(0, 50),
-        has_description: !!(product.description),
-        description_length: (product.description || '').length
-      },
-      api_key_configured: !!apiKey,
-      api_key_length: apiKey?.length || 0
-    });
+    console.error('❌ Erreur DeepSeek:', error);
     throw error;
   }
 }
