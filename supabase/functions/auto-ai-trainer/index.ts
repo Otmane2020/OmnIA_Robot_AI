@@ -149,11 +149,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`💾 Saving attributes for product ${productId}:`, {
-      attributes_to_save: attributes,
-      product_id: productId
-    });
-    
     // Update training metadata
     await updateTrainingMetadata(supabase, {
       products_count: processedProducts.length,
@@ -162,18 +157,9 @@ Deno.serve(async (req: Request) => {
       store_id: store_id || 'default'
     });
 
-      console.warn('⚠️ Product not found in database:', {
-        searched_product_id: productId,
-        search_field: 'shopify_id',
-        table: 'products'
-      });
     await updateRobotKnowledge(supabase, processedProducts, source);
 
     console.log('🤖 OmnIA Robot mis à jour avec nouveau catalogue');
-    console.log(`✅ Product found in database:`, {
-      database_product_id: product.id,
-      original_product_id: productId
-    });
 
     return new Response(
       JSON.stringify({
@@ -192,23 +178,11 @@ Deno.serve(async (req: Request) => {
       }),
       {
         headers: {
-      console.error('❌ Database save error for product attributes:', {
-        product_id: productId,
-        database_product_id: product.id,
-        error_message: error.message,
-        error_code: error.code,
-        error_details: error.details,
-        attributes_attempted: attributes
-      });
+          'Content-Type': 'application/json',
           ...corsHeaders,
         },
       }
-    console.log(`✅ Attributes saved successfully:`, {
-      product_id: productId,
-      database_product_id: product.id,
-      saved_attributes: Object.keys(attributes),
-      confidence_score: attributes.confidence_score
-    });
+    );
 
   } catch (error) {
     console.error('❌ Erreur auto-training:', error);
@@ -328,23 +302,8 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
             confidence: extracted.confidence_score || 0,
             all_extracted_fields: Object.keys(extracted),
             has_required_fields: !!(extracted.colors && extracted.materials)
-          
-          console.log(`✅ Attributes extracted for ${(product.title || '').substring(0, 30)}:`, {
-            confidence: attributes.confidence_score,
-            colors_count: attributes.colors?.length || 0,
-            materials_count: attributes.materials?.length || 0,
-            has_style: !!attributes.style,
-            has_room: !!attributes.room
           });
           
-          });
-          console.error(`❌ Product extraction failed:`, {
-            product_id: product.id,
-            product_name: (product.title || product.name || '').substring(0, 30),
-            error_message: error.message,
-            error_type: error.constructor.name,
-            stack_trace: error.stack?.split('\n').slice(0, 3)
-          });
           return {
             ...extracted,
             confidence_score: extracted.confidence_score || 50
@@ -372,8 +331,6 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
         api_key_configured: !!deepseekApiKey,
         api_key_length: deepseekApiKey?.length || 0
       });
-    } else {
-      console.log('⚠️ DeepSeek erreur, fallback basique');
     }
   } catch (error) {
     console.error('❌ DeepSeek auto-trainer error:', {
@@ -561,7 +518,6 @@ async function updateRobotKnowledge(supabase: any, products: any[], source: stri
     });
   } catch (error) {
     console.error('❌ Save attributes function error:', {
-      product_id: productId,
       error_message: error.message,
       error_type: error.constructor.name,
       supabase_configured: !!supabase
