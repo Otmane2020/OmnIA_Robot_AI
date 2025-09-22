@@ -847,9 +847,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
                 >
                   <option value="card">Carte bancaire</option>
-                  <option value="paypal">PayPal</option>
                   <option value="transfer">Virement</option>
                   <option value="cash">Espèces</option>
+                  <option value="check">Chèque</option>
                 </select>
               </div>
               
@@ -871,6 +871,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     const updatedOrders = [...orders, order];
                     setOrders(updatedOrders);
                     localStorage.setItem(getRetailerStorageKey('orders'), JSON.stringify(updatedOrders));
+                    setShowCreateOrder(false);
                     setNewOrder({
                       customer_name: '',
                       customer_email: '',
@@ -881,8 +882,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       total: 0,
                       status: 'pending'
                     });
-                    setShowCreateOrder(false);
-                    showSuccess('Commande créée', 'Commande manuelle ajoutée avec succès !');
+                    showSuccess('Commande créée', 'Commande manuelle créée avec succès !');
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl transition-all"
                 >
