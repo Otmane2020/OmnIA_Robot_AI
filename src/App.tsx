@@ -10,6 +10,8 @@ import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 
 function App() {
+  return (
+    <Routes>
         <Route path="/ecommerce" element={<EcommerceDashboard />} />
         <Route path="/marketing" element={<MarketingDashboard />} />
         <Route path="/vision" element={<VisionStudio />} />
@@ -18,6 +20,7 @@ function App() {
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+    </Routes>
+  );
 }
 export default App;
