@@ -6,8 +6,9 @@ import {
   Bot, Globe, FileText, Eye, Store, LogOut, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  Loader2
+  Facebook, Instagram, Share2, Calculator, PieChart, Database, CheckCircle, 
+  AlertCircle, CreditCard, Receipt, Battery, Signal, RefreshCw, Tag, 
+  BookOpen, Zap, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
