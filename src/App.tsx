@@ -6,7 +6,7 @@ import { AdminLogin } from './pages/AdminLogin';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import Support from './pages/Support';
-import Documentation from './pages/Documentation';
+import { Documentation } from './pages/Documentation';
 import Guides from './pages/Guides';
 import Press from './pages/Press';
 import Partnerships from './pages/Partnerships';
