@@ -11,6 +11,7 @@ import {
   BookOpen, Zap, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { getRetailerStorageKey } from '../utils/storage';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
 import { AITrainingInterface } from '../components/AITrainingInterface';
@@ -128,13 +129,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         const user = JSON.parse(loggedUser);
         console.log('👤 Utilisateur connecté:', user.company_name || user.email);
         return user;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
   const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
 
@@ -302,7 +296,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!currentUser) return;
     
     // Charger les données spécifiques au revendeur connecté
-    const savedPlatforms = localStorage.getItem(getRetailerStorageKey('connected_platforms'));
+    const savedPlatforms = localStorage.getItem(getRetailerStorageKey('connected_platforms', currentUser));
     if (savedPlatforms) {
       try {
         setConnectedPlatforms(JSON.parse(savedPlatforms));
@@ -312,7 +306,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
     
     // Charger les stats spécifiques au revendeur
-    const savedStats = localStorage.getItem(getRetailerStorageKey('retailer_stats'));
+    const savedStats = localStorage.getItem(getRetailerStorageKey('retailer_stats', currentUser));
     if (savedStats) {
       try {
         setStats(JSON.parse(savedStats));
@@ -333,7 +327,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setConnectedPlatforms(updatedPlatforms);
     
     // Sauvegarder pour ce revendeur spécifique
-    localStorage.setItem(getRetailerStorageKey('connected_platforms'), JSON.stringify(updatedPlatforms));
+    localStorage.setItem(getRetailerStorageKey('connected_platforms', currentUser), JSON.stringify(updatedPlatforms));
     
     showSuccess('Plateforme connectée', `${platformData.name} connecté avec succès !`);
     
@@ -343,13 +337,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       products: platformData.products_count || 0
     };
     setStats(newStats);
-    localStorage.setItem(getRetailerStorageKey('retailer_stats'), JSON.stringify(newStats));
+    localStorage.setItem(getRetailerStorageKey('retailer_stats', currentUser), JSON.stringify(newStats));
   };
 
   const handleDisconnectPlatform = (platformId: string) => {
     const updatedPlatforms = connectedPlatforms.filter(p => p.id !== platformId);
     setConnectedPlatforms(updatedPlatforms);
-    localStorage.setItem(getRetailerStorageKey('connected_platforms'), JSON.stringify(updatedPlatforms));
+    localStorage.setItem(getRetailerStorageKey('connected_platforms', currentUser), JSON.stringify(updatedPlatforms));
     showSuccess('Plateforme déconnectée', 'Plateforme supprimée avec succès.');
   };
 
@@ -702,7 +696,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   );
 
   const renderInventory = () => {
-    const products = JSON.parse(localStorage.getItem(getRetailerStorageKey('catalog_products')) || '[]');
+    const products = JSON.parse(localStorage.getItem(getRetailerStorageKey('catalog_products', currentUser)) || '[]');
     
     return (
       <div className="space-y-6">
@@ -962,7 +956,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     };
                     const updatedOrders = [order, ...orders];
                     setOrders(updatedOrders);
-                    localStorage.setItem(getRetailerStorageKey('orders'), JSON.stringify(updatedOrders));
+                    localStorage.setItem(getRetailerStorageKey('orders', currentUser), JSON.stringify(updatedOrders));
                     setShowCreateOrder(false);
                     setNewOrder({
                       customer_name: '',
@@ -989,11 +983,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const renderGoogleMerchant = () => {
     const [googleProducts, setGoogleProducts] = useState(() => {
-      const saved = localStorage.getItem(getRetailerStorageKey('google_merchant_products'));
+      const saved = localStorage.getItem(getRetailerStorageKey('google_merchant_products', currentUser));
       return saved ? JSON.parse(saved) : [];
     });
     const [categoryMapping, setCategoryMapping] = useState(() => {
-      const saved = localStorage.getItem(getRetailerStorageKey('google_category_mapping'));
+      const saved = localStorage.getItem(getRetailerStorageKey('google_category_mapping', currentUser));
       return saved ? JSON.parse(saved) : [];
     });
     const [showMappingImport, setShowMappingImport] = useState(false);
@@ -1003,7 +997,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       setIsGeneratingXML(true);
       
       // Récupérer les produits enrichis
-      const enrichedProducts = JSON.parse(localStorage.getItem(getRetailerStorageKey('enriched_products')) || '[]');
+      const enrichedProducts = JSON.parse(localStorage.getItem(getRetailerStorageKey('enriched_products', currentUser)) || '[]');
       
       const googleFeedProducts = enrichedProducts.map((product: any) => ({
         id: `${currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}-${product.id}`,
@@ -1037,7 +1031,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       }));
       
       setGoogleProducts(googleFeedProducts);
-      localStorage.setItem(getRetailerStorageKey('google_merchant_products'), JSON.stringify(googleFeedProducts));
+      localStorage.setItem(getRetailerStorageKey('google_merchant_products', currentUser), JSON.stringify(googleFeedProducts));
       
       setTimeout(() => {
         setIsGeneratingXML(false);
@@ -1310,7 +1304,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         }).filter(m => m.code);
                         
                         setCategoryMapping(mappings);
-                        localStorage.setItem(getRetailerStorageKey('google_category_mapping'), JSON.stringify(mappings));
+                       localStorage.setItem(getRetailerStorageKey('google_category_mapping', currentUser), JSON.stringify(mappings));
                         setShowMappingImport(false);
                         showSuccess('Mapping importé', `${mappings.length} catégories mappées !`);
                       };
