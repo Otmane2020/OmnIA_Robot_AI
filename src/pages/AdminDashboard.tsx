@@ -199,7 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 : isActive
                   ? 'bg-cyan-500/40 text-cyan-100 border border-cyan-300/50'
                   : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
-          } ${level > 0 ? `ml-${level * 4}` : ''}`}
+          } ${level > 0 ? 'ml-' + (level * 4) : ''}`}
         >
           <div className="flex items-center gap-3">
             <Icon className={\`w-5 h-5 ${level === 0 ? '' : 'w-4 h-4'}`} />
