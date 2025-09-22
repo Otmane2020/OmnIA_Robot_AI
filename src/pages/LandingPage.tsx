@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Bot, Store, Zap, Globe, Users, BarChart3, 
   CheckCircle, ArrowRight, Play, Star, 
-  MessageSquare, ShoppingCart, Palette, Brain,
+  MessageSquare, ShoppingCart, Palette, Brain, Camera, Search, Settings, Megaphone,
   Smartphone, Monitor, Tablet, User
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
@@ -165,6 +165,60 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
           </div>
         </div>
       </header>
+
+      {/* Quick Access Navigation */}
+      <section className="relative z-10 py-8 bg-black/10 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-white mb-4">Accès Rapide aux Modules</h2>
+            <p className="text-gray-300">Explorez les 7 modules OmnIA</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+            <a href="/ecommerce" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Store className="w-8 h-8 text-blue-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">E-Commerce</h3>
+              <p className="text-gray-400 text-xs">Catalogue & Ventes</p>
+            </a>
+            
+            <a href="/marketing" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Megaphone className="w-8 h-8 text-green-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">Marketing</h3>
+              <p className="text-gray-400 text-xs">Ads & Campagnes</p>
+            </a>
+            
+            <a href="/vision" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Camera className="w-8 h-8 text-purple-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">Vision</h3>
+              <p className="text-gray-400 text-xs">IA Visuelle</p>
+            </a>
+            
+            <a href="/seo" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Search className="w-8 h-8 text-orange-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">SEO</h3>
+              <p className="text-gray-400 text-xs">Référencement</p>
+            </a>
+            
+            <a href="/bot" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Bot className="w-8 h-8 text-cyan-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">OmnIA Bot</h3>
+              <p className="text-gray-400 text-xs">Robot IA</p>
+            </a>
+            
+            <a href="/analytics" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <BarChart3 className="w-8 h-8 text-pink-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">Analytics</h3>
+              <p className="text-gray-400 text-xs">Statistiques</p>
+            </a>
+            
+            <a href="/admin" className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 text-center group">
+              <Settings className="w-8 h-8 text-red-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+              <h3 className="text-white font-bold mb-1">Admin</h3>
+              <p className="text-gray-400 text-xs">Gestion</p>
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* Hero Section */}
       <section className="relative z-10 pt-12 sm:pt-20 pb-16 sm:pb-32">
