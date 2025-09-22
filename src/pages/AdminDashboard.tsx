@@ -50,6 +50,76 @@ interface ConnectedPlatform {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
+  // Main navigation state
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState('');
+  
+  // Data state
+  const [stats, setStats] = useState<DashboardStats>({
+    conversations: 1234,
+    conversions: 42,
+    products: 247,
+    revenue: 12500,
+    visitors: 3456,
+    sessionDuration: '4m 12s'
+  });
+  
+  const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
+  
+  // Modal states
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_address: '',
+    customer_phone: '',
+    payment_method: 'card',
+    products: [],
+    total: 0,
+    status: 'pending'
+  });
+  
+  // Mock data
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('orders');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'order-001',
+        customer_name: 'Jean Dupont',
+        customer_email: 'jean@email.com',
+        products: ['Canapé ALYANA', 'Table AUREA'],
+        total: 1298,
+        payment_method: 'Carte bancaire',
+        status: 'completed',
+        source: 'omnia_robot',
+        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'order-002',
+        customer_name: 'Marie Martin',
+        customer_email: 'marie@email.com',
+        products: ['Chaise INAYA x4'],
+        total: 396,
+        payment_method: 'Virement',
+        status: 'pending',
+        source: 'manual',
+        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+  });
+  
+  const [adCampaigns] = useState([
+    { id: '1', name: 'Canapés Modernes', status: 'active', budget: 500, spent: 342, roas: 4.2 },
+    { id: '2', name: 'Tables Design', status: 'active', budget: 300, spent: 198, roas: 3.8 },
+    { id: '3', name: 'Mobilier Bureau', status: 'paused', budget: 200, spent: 156, roas: 2.9 }
+  ]);
+  
+  const [blogPosts] = useState([
+    { id: '1', title: 'Tendances mobilier 2025', status: 'published', views: 1250, date: '2025-01-10' },
+    { id: '2', title: 'Guide aménagement salon', status: 'published', views: 890, date: '2025-01-08' },
+    { id: '3', title: 'Couleurs tendance décoration', status: 'draft', views: 0, date: '2025-01-15' }
+  ]);
+  
   const [currentUser, setCurrentUser] = useState(() => {
     // Récupérer l'utilisateur connecté depuis localStorage
     const loggedUser = localStorage.getItem('current_logged_user');
