@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
-import SellerRegistration from './pages/SellerRegistration';
+import { SellerRegistration } from './pages/SellerRegistration';
 import { AdminLogin } from './pages/AdminLogin';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
