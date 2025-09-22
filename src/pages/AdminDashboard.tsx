@@ -187,7 +187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               setActiveTab(item.id);
             }
           }}
-          className={\`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
             level === 0
               ? isActive
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
