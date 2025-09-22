@@ -129,6 +129,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         const user = JSON.parse(loggedUser);
         console.log('👤 Utilisateur connecté:', user.company_name || user.email);
         return user;
+      } catch (err) {
+        console.error("❌ Erreur parsing utilisateur:", err);
+        return null;
   const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
 
