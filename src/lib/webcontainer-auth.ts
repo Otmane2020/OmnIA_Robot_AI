@@ -8,8 +8,3 @@ export const ensureWebContainerAuth = async () => {
   console.log('WebContainer auth ensured (placeholder)');
   return true;
 };
-
-export const ensureAuthenticated = async () => {
-  console.log('Authentication ensured (placeholder)');
-  return true;
-};
