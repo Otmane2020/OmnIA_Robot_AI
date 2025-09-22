@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  Store, ShoppingCart, Package, TrendingUp, DollarSign, Users, ArrowLeft, Mic, Volume2, Brain,
-  Tag, BookOpen, Zap, Loader2, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play,
-  Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, Send, Briefcase,
-  ChevronDown, ChevronUp, X, Save, CheckCircle, ExternalLink, Filter, Plus, Eye,
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, LayoutDashboard, MessageSquare, Settings, BarChart3, Mail, FileText, AlertCircle
-} from 'lucide-react';
+  Tag, BookOpen, Zap, Loader2, Package, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play,
+  Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase,
+  ChevronDown, ChevronUp, X, Save, CheckCircle, ExternalLink, DollarSign, Filter, Plus, Eye, Megaphone,
+  Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, LayoutDashboard,
+  ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, AlertCircle
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
