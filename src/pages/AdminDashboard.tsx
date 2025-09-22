@@ -7,7 +7,7 @@ import {
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
   Mic, Mail, CreditCard, User, LogOut, Zap, Settings,
-  TrendingUp, Globe, Search, Share2, DollarSign
+  TrendingUp, Globe, Search, Share2, DollarSign, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -815,44 +815,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
                   placeholder="Jean Dupont"
                 />
-    {
-      id: 'omnia-bot',
-      label: 'OmnIA Bot',
-      icon: Bot,
-      subItems: [
-        { id: 'robot', label: 'Robot OmnIA', component: OmniaRobotTab },
-        { id: 'conversations', label: 'Conversations', component: ConversationHistory },
-        { id: 'speech-to-text', label: 'Speech-to-Text', component: SpeechToTextInterface }
-      ]
-    },
-    {
-      id: 'ads-marketing',
-      label: 'Ads & Marketing',
-      icon: TrendingUp,
-      subItems: [
-        { id: 'analytics', label: 'Analytics', component: () => <div className="text-white">Analytics Dashboard</div> },
-        { id: 'marketing', label: 'Marketing', component: () => <div className="text-white">Marketing Tools</div> },
-        { id: 'google-merchant', label: 'Google Merchant', component: () => <div className="text-white">Google Merchant Center</div> },
-        {
-          id: 'google-ads',
-          label: 'Google Ads',
-          subItems: [
-            { id: 'ads-analytics', label: 'Analytics', component: () => <div className="text-white">Google Ads Analytics</div> },
-            { id: 'ads-integration', label: 'Intégration', component: () => <div className="text-white">Google Ads Integration</div> },
-            { id: 'ads-campaigns', label: 'Campagnes publicitaires', component: () => <div className="text-white">Shopping & Performance Max Campaigns</div> },
-            { id: 'ads-optimization', label: 'Optimisation', component: () => <div className="text-white">ROAS, UTM, Tracking & Conversions</div> }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'admin',
-      label: 'Admin',
-      icon: Settings,
-      subItems: [
-        { id: 'messaging', label: 'Messagerie', component: MessagingSystem }
-      ]
-    },
               </div>
               
               <div>
@@ -865,58 +827,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   placeholder="jean@email.com"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Adresse</label>
                 <input
                   type="text"
                   value={newOrder.customer_address}
-    {
-      id: 'google-merchant',
-      label: 'Google Merchant',
-      icon: Globe,
-      component: () => (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-white">Google Merchant Center</h2>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-            <h3 className="text-lg font-bold text-white mb-4">Flux XML Google Shopping</h3>
-            <p className="text-gray-300 mb-4">
-              Générez automatiquement votre flux XML à partir des produits enrichis
-            </p>
-            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-4">
-              <p className="text-blue-300 text-sm">
-                URL du flux : <code className="bg-black/40 px-2 py-1 rounded">https://{currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.omnia.sale/feed/xml/google-shopping.xml</code>
-              </p>
-            </div>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-              Générer le flux XML
-            </button>
-          </div>
-        </div>
-      )
-    },
-    {
-      id: 'seo',
-      label: 'SEO',
-      icon: Search,
-      subItems: [
-        { id: 'blog-articles', label: 'Blog & Articles', component: () => <div className="text-white">Blog Articles Management</div> },
-        { id: 'auto-blogging', label: 'Auto Blogging', component: () => <div className="text-white">Auto Blogging Scheduler</div> },
-        { id: 'backlinks', label: 'Backlinks', component: () => <div className="text-white">Backlinks Tracking</div> },
-        { id: 'seo-integration', label: 'Intégration', component: () => <div className="text-white">WordPress, Shopify, PrestaShop Integration</div> },
-        { id: 'seo-optimization', label: 'Optimisation SEO', component: () => <div className="text-white">SEO Optimization Table</div> }
-      ]
-    },
-    {
-      id: 'social-media',
-      label: 'Réseaux Sociaux',
-      icon: Share2,
-      subItems: [
-        { id: 'social-analytics', label: 'Analytics', component: () => <div className="text-white">Social Media Analytics</div> },
-        { id: 'facebook-integration', label: 'Intégration Facebook', component: () => <div className="text-white">Facebook Integration</div> },
-        { id: 'instagram-integration', label: 'Intégration Instagram', component: () => <div className="text-white">Instagram Integration</div> },
-        { id: 'ads-management', label: 'Ads Management', component: () => <div className="text-white">Social Ads Management</div> },
-        { id: 'auto-posting', label: 'Auto-posting', component: () => <div className="text-white">Auto-posting Configuration</div> },
-        { id: 'facebook-catalog', label: 'Catalogue Facebook', component: () => <div className="text-white">Facebook Catalog Sync</div> }
-      ]
-    },
                   onChange={(e) => setNewOrder(prev => ({ ...prev, customer_address: e.target.value }))}
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
                   placeholder="123 Rue de la Paix, 75001 Paris"
@@ -929,43 +845,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   value={newOrder.payment_method}
                   onChange={(e) => setNewOrder(prev => ({ ...prev, payment_method: e.target.value }))}
                   className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                >
+                  <option value="card">Carte bancaire</option>
+                  <option value="transfer">Virement</option>
+                  <option value="cash">Espèces</option>
+                  <option value="check">Chèque</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowCreateOrder(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => {
+                    const order = {
+                      ...newOrder,
+                      id: Date.now().toString(),
+                      created_at: new Date().toISOString(),
+                      source: 'manual'
+                    };
+                    const updatedOrders = [...orders, order];
                     setOrders(updatedOrders);
-      id: 'budgets',
-      label: 'Budgets',
-      icon: DollarSign,
-      component: () => (
+                    localStorage.setItem(getRetailerStorageKey('orders'), JSON.stringify(updatedOrders));
+                    setShowCreateOrder(false);
+                    setNewOrder({
+                      customer_name: '',
                       customer_email: '',
-          <h2 className="text-2xl font-bold text-white">Gestion des Budgets</h2>
+                      customer_address: '',
                       customer_phone: '',
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-blue-600/20 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">€2,400</div>
-                <div className="text-blue-300 text-sm">Budget Total</div>
-              </div>
-              <div className="bg-green-600/20 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">€1,850</div>
-                <div className="text-green-300 text-sm">Dépensé</div>
-              </div>
-              <div className="bg-purple-600/20 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">3.2x</div>
-                <div className="text-purple-300 text-sm">ROI Moyen</div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <h3 className="text-lg font-bold text-white mb-4">Répartition par plateforme</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Google Ads</span>
-                  <span className="text-white font-bold">€1,200 (50%)</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Meta (Facebook/Instagram)</span>
-                  <span className="text-white font-bold">€800 (33%)</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-300">TikTok Ads</span>
-                  <span className="text-white font-bold">€400 (17%)</span>
-                </div>
+                      payment_method: 'card',
+                      products: [],
+                      total: 0,
+                      status: 'pending'
+                    });
+                    showSuccess('Commande créée', 'Commande manuelle créée avec succès !');
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Créer
+                </button>
               </div>
             </div>
           </div>
@@ -1463,6 +1385,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           >
             Intégrations
           </button>
+          <button
+            onClick={() => setActiveSubTab('google-merchant')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'google-merchant' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Google Merchant
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
@@ -1480,6 +1410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       {activeSubTab === 'messages' ? <MessagingSystem /> : null}
       {activeSubTab === 'stt' ? <SpeechToTextInterface /> : null}
       {activeSubTab === 'integrations' ? <EcommerceIntegration onConnected={handlePlatformConnected} /> : null}
+      {activeSubTab === 'google-merchant' ? renderGoogleMerchant() : null}
     </div>
   );
 
@@ -1876,30 +1807,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       case 'analytics': return renderAnalytics();
       case 'admin': return renderAdmin();
       default: return renderDashboard();
-    },
-    {
-      id: 'subscription',
-      label: 'Abonnement',
-      icon: CreditCard,
-      component: () => (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-white">Gestion Abonnement</h2>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-cyan-400 mb-2">Plan Professional</div>
-              <div className="text-gray-300 mb-4">79€/mois • Renouvelé le 15/02/2025</div>
-              <div className="flex justify-center gap-4">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl">
-                  Modifier le plan
-                </button>
-                <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl">
-                  Historique factures
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
     }
   };
 
