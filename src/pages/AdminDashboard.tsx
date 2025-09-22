@@ -864,8 +864,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     const order = {
                       id: Date.now().toString(),
                       ...newOrder,
-                      source: 'manual',
-                      created_at: new Date().toISOString()
+                      created_at: new Date().toISOString(),
+                      source: 'manual'
                     };
                     const updatedOrders = [...orders, order];
                     setOrders(updatedOrders);
