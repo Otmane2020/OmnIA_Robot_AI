@@ -301,23 +301,16 @@ export const ProductsEnrichedTable: React.FC = () => {
       // Traitement par batch pour éviter les timeouts
       const batchSize = 5;
       const enrichedProducts = [];
-      let processedCount = 0;
       
       for (let i = 0; i < products.length; i += batchSize) {
         const batch = products.slice(i, i + batchSize);
         const batchNumber = Math.floor(i/batchSize) + 1;
         const totalBatches = Math.ceil(products.length/batchSize);
         
-        console.log(`🔄 Processing batch ${batchNumber}/${totalBatches}:`, {
-          batch_size: batch.length,
-          products_in_batch: batch.map(p => (p.name || p.title || '').substring(0, 30)),
-          total_processed_so_far: processedCount
-        });
+        console.log(`🔄 Batch ${batchNumber}/${totalBatches} - ${batch.length} produits`);
         
         // Appeler DeepSeek pour chaque batch
         try {
-          console.log('📡 Calling DeepSeek enrich-products function...');
-          
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
             method: 'POST',
             headers: {
@@ -331,30 +324,15 @@ export const ProductsEnrichedTable: React.FC = () => {
             }),
           });
 
-          console.log('📡 DeepSeek response status:', response.status);
-          
           if (response.ok) {
             const result = await response.json();
-            console.log('✅ DeepSeek batch result:', {
-              batch_number: batchNumber,
-              success: result.success,
-              enriched_count: result.enriched_products?.length || 0,
-              stats: result.stats
-            });
-            
             if (result.enriched_products) {
               enrichedProducts.push(...result.enriched_products);
-              processedCount += result.enriched_products.length;
               console.log(`✅ Batch ${batchNumber} enrichi: ${result.enriched_products.length} produits`);
             }
           } else {
             const errorText = await response.text();
-            console.error(`❌ Batch ${batchNumber} failed:`, {
-              status: response.status,
-              statusText: response.statusText,
-              error_body: errorText,
-              batch_products: batch.map(p => (p.name || p.title || '').substring(0, 20))
-            });
+            console.error(`❌ Erreur batch ${batchNumber}:`, errorText);
             
             // Ajouter les produits sans enrichissement en cas d'erreur
             const basicProducts = batch.map(product => ({
@@ -374,31 +352,18 @@ export const ProductsEnrichedTable: React.FC = () => {
               updated_at: new Date().toISOString()
             }));
             enrichedProducts.push(...basicProducts);
-            processedCount += basicProducts.length;
           }
         } catch (batchError) {
-          console.error(`❌ Network error batch ${batchNumber}:`, {
-            error_message: batchError.message,
-            error_type: batchError.constructor.name,
-            batch_products: batch.map(p => (p.name || p.title || '').substring(0, 20)),
-            supabase_url: import.meta.env.VITE_SUPABASE_URL ? 'configured' : 'missing',
-            supabase_key: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'configured' : 'missing'
-          });
+          console.error(`❌ Erreur réseau batch ${batchNumber}:`, batchError);
         }
         
         // Mettre à jour la progression
         const progress = Math.round(((processedCount) / products.length) * 100);
         setEnrichmentProgress(progress);
-        console.log(`📊 Progress update:`, {
-          percentage: progress,
-          processed: processedCount,
-          total: products.length,
-          remaining: products.length - processedCount
-        });
+        console.log(`📊 Progression: ${progress}% (${processedCount}/${products.length} produits)`);
         
         // Pause entre les batches
         if (i + batchSize < products.length) {
-          console.log('⏸️ Pausing 3s between batches...');
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
