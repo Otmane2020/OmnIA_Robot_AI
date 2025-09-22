@@ -5,6 +5,8 @@ import {
   ChevronDown, ChevronUp, X, Save, CheckCircle, ExternalLink, DollarSign, Filter, Plus, Eye, Megaphone,
   Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, LayoutDashboard,
   ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, AlertCircle
+} from 'lucide-react';
+} from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
