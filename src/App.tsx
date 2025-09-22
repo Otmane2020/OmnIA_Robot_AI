@@ -1,16 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-
-// Import pages
-import LandingPage from './pages/LandingPage';
-import SellerRegistration from './pages/SellerRegistration';
-import AdminLogin from './pages/AdminLogin';
-
-function App() {
-  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
-
-  const handleValidateApplication = (applicationId: string, approved: boolean) => {
+const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
     
     // Récupérer la demande
@@ -88,19 +76,3 @@ function App() {
     
     // Supprimer de la liste des demandes en attente
   };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
-      
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<SellerRegistration />} />
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
-  );
-}
-
-export default App;
