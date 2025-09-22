@@ -27,7 +27,7 @@ interface Analytics {
   conversionRate: number;
 }
 
-const AdminDashboard: React.FC = () => { // Changed to export default
+export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
@@ -338,5 +338,3 @@ const AdminDashboard: React.FC = () => { // Changed to export default
     </div>
   );
 };
-
-export default AdminDashboard; // Export as default
