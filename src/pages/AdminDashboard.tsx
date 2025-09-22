@@ -187,7 +187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               setActiveTab(item.id);
             }
           }}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+          className={\`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
             level === 0
               ? isActive
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
@@ -202,11 +202,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           } ${level > 0 ? 'ml-' + (level * 4) : ''}`}
         >
           <div className="flex items-center gap-3">
-            <Icon className={`w-5 h-5 ${level === 0 ? '' : 'w-4 h-4'}`} />
-            <span className={`font-medium ${level === 0 ? 'text-sm' : 'text-xs'}`}>{item.label}</span>
+            <Icon className={\`w-5 h-5 ${level === 0 ? '' : 'w-4 h-4'}`} />
+            <span className={\`font-medium ${level === 0 ? 'text-sm' : 'text-xs'}`}>{item.label}</span>
           </div>
           {hasSubItems && (
-            <div className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+            <div className={\`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
