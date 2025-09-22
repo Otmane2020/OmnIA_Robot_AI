@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   BarChart3, Users, ShoppingCart, MessageSquare, Settings, Calendar,
   TrendingUp, Upload, Download,
-  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
+  Bot, Globe, FileText, Eye, Store, LogOut, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
