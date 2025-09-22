@@ -4,7 +4,9 @@ import {
   Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase,
   ChevronDown, ChevronUp, X, Save, CheckCircle, ExternalLink, DollarSign, Filter, Plus, Eye, Megaphone,
   Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, LayoutDashboard,
-  ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, AlertCircle
+  ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, AlertCircle,
+  TrendingUp, Database, CreditCard, LogOut, Download
+} from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
@@ -1425,8 +1427,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             onClick={() => setActiveTab('seo')}
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
               activeTab === 'seo'
-                ? `${themes[theme].accent} text-white`
-                : `${themes[theme].text} hover:${themes[theme].hover}`
+                ? `${themes[currentTheme].accent} text-white`
+                : `text-gray-300 hover:bg-white/10 hover:text-white`
             }`}
           >
             <Search className="w-5 h-5" />
@@ -2058,6 +2060,4 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 export default AdminDashboard;
 
-export { AdminDashboard }
-
-export { AdminDashboard }
+export { AdminDashboard };
