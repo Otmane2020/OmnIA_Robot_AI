@@ -1,6 +1,7 @@
+```typescript
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3, Package, Store, Bot, MessageSquare, 
+import {
+  BarChart3, Package, Store, Bot, MessageSquare,
   Settings, LogOut, Users, ShoppingCart, TrendingUp,
   Mail, Mic, Brain, Search, Globe, FileText, Share2,
   DollarSign, Target, Instagram, Facebook, Youtube,
@@ -75,7 +76,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       subItems: [
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'marketing', label: 'Marketing', icon: TrendingUp },
-        { 
+        {
           id: 'google-ads',
           label: 'Google Ads',
           icon: Search,
@@ -163,8 +164,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['ecommerce', 'omnia-bot']);
 
   const toggleMenu = (menuId: string) => {
-    setExpandedMenus(prev => 
-      prev.includes(menuId) 
+    setExpandedMenus(prev =>
+      prev.includes(menuId)
         ? prev.filter(id => id !== menuId)
         : [...prev, menuId]
     );
@@ -187,9 +188,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             }
           }}
           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-            level === 0 
-              ? isActive 
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' 
+            level === 0
+              ? isActive
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
               : level === 1
                 ? isActive
@@ -212,7 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </div>
           )}
         </button>
-        
+
         {hasSubItems && isExpanded && (
           <div className="mt-2 space-y-1">
             {item.subItems.map((subItem: any) => renderMenuItem(subItem, level + 1))}
@@ -247,7 +248,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <MessageSquare className="w-10 h-10 text-blue-400" />
           </div>
         </div>
-        
+
         <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
@@ -258,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <TrendingUp className="w-10 h-10 text-green-400" />
           </div>
         </div>
-        
+
         <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
@@ -269,7 +270,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <Package className="w-10 h-10 text-purple-400" />
           </div>
         </div>
-        
+
         <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
           <div className="flex items-center justify-between">
             <div>
@@ -540,7 +541,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <tr className="border-b border-white/10">
                 <td className="p-4">
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600">
-                    <img 
+                    <img
                       src="https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop"
                       alt="Produit"
                       className="w-full h-full object-cover"
@@ -577,9 +578,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const renderSocialMedia = () => (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-white">Réseaux Sociaux</h2>
-        <p className="text-gray-300">Gestion des campagnes et intégrations sociales</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-white">Réseaux Sociaux</h2>
+          <p className="text-gray-300">Gestion des campagnes et intégrations sociales</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -855,10 +858,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       {/* Notification System */}
-      <NotificationSystem 
-        notifications={notifications} 
-        onRemove={removeNotification} 
+      <NotificationSystem
+        notifications={notifications}
+        onRemove={removeNotification}
       />
     </div>
   );
 };
+```
