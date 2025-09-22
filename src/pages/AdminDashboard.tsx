@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // Ensure this import is correct
 import {
   Home, Package, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText,
   Tag, BookOpen, Zap, Loader2, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play,
@@ -27,7 +27,7 @@ interface Analytics {
   conversionRate: number;
 }
 
-const AdminDashboard: React.FC = () => {
+const AdminDashboard: React.FC = () => { // Changed to export default
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
@@ -339,4 +339,4 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-export default AdminDashboard;
+export default AdminDashboard; // Export as default
