@@ -10,10 +10,6 @@ import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 
 function App() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
         <Route path="/ecommerce" element={<EcommerceDashboard />} />
         <Route path="/marketing" element={<MarketingDashboard />} />
         <Route path="/vision" element={<VisionStudio />} />
@@ -23,8 +19,4 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </div>
-  );
-}
-
 export default App;
