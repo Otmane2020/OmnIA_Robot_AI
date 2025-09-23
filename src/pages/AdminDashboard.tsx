@@ -1,3 +1,29 @@
+import React, { useState, useEffect, Fragment } from 'react';
+import {
+  LayoutDashboard, BarChart3, Bot, MessageSquare, Mic,
+  TrendingUp, Store, DollarSign, CreditCard, Settings,
+  Package, Sparkles, Upload, Globe, ShoppingCart, Users,
+  FileText, BookOpen, Search, Link, Share2, Camera, Send,
+  Target, PieChart, Zap, Menu, X
+} from 'lucide-react';
+import { DashboardStats } from '../components/DashboardStats';
+import { ProductsTable } from '../components/ProductsTable';
+import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
+import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
+import { MessagingSystem } from '../components/MessagingSystem';
+import { getRetailerStorageKey } from '../utils/storage';
+
+interface AdminDashboardProps {
+  onLogout: () => void;
+  retailerId?: string;
+  currentUser?: any;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentUser }) => {
+  const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
+  const [activeSubMenuItem, setActiveSubMenuItem] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   const menuItems = [
     {
       id: 'dashboard',
@@ -11,7 +37,7 @@
       icon: Bot,
       color: 'bg-cyan-500',
       subItems: [
-        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'robot', label: 'Robot OmnIA', icon: Bot },
         { id: 'conversations', label: 'Conversations', icon: MessageSquare },
         { id: 'speech-to-text', label: 'Speech-to-Text', icon: Mic }
       ]
