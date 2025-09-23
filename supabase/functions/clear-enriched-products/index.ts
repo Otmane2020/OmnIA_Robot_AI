@@ -61,14 +61,12 @@ Deno.serve(async (req: Request) => {
       .from('products_enriched')
       .delete();
 
-    // Si retailer_id spécifié et valide, supprimer seulement ses produits
-    // Sinon, supprimer tous les produits enrichis en utilisant une comparaison UUID valide
-    if (retailer_id && retailer_id !== "") {
+    // Si retailer_id spécifié, supprimer seulement ses produits
+    if (retailer_id) {
       deleteQuery = deleteQuery.eq('retailer_id', retailer_id);
     } else {
-      // Supprimer tous les produits enrichis en utilisant une comparaison UUID valide
-      // '00000000-0000-0000-0000-000000000000' est un UUID valide et "minimum"
-      deleteQuery = deleteQuery.gt('id', '00000000-0000-0000-0000-000000000000');
+      // Supprimer tous les produits enrichis
+      deleteQuery = deleteQuery.neq('id', '');
     }
 
     const { data, error, count } = await deleteQuery;
@@ -81,16 +79,14 @@ Deno.serve(async (req: Request) => {
     console.log('✅ Produits enrichis supprimés:', count || 0);
 
     // Aussi nettoyer la table ai_products si spécifié
-    // La colonne 'id' de ai_products est TEXT, donc neq('', '') est OK
-    if (retailer_id && retailer_id !== "") {
+    if (retailer_id) {
       const { error: aiError } = await supabase
         .from('ai_products')
         .delete()
         .eq('store_id', retailer_id);
 
       if (aiError) {
-        // Log warning but don't fail the main operation
-        console.warn('⚠️ Erreur suppression ai_products pour retailer_id:', aiError);
+        console.warn('⚠️ Erreur suppression ai_products:', aiError);
       } else {
         console.log('✅ Produits IA supprimés pour retailer:', retailer_id);
       }
