@@ -305,37 +305,38 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
     if (e) e.preventDefault();
     if (!validateStep(4)) return;
 
-    // Vérifier les doublons avant soumission
+    // NOUVEAU: Vérification complète des doublons email et SIRET
     const existingApplications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
     const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
     
-    // Vérifier email unique dans les demandes en attente
+    // Vérifier email unique dans les demandes en attente ET les revendeurs validés
     const emailInPending = existingApplications.some((app: any) => 
       app.email?.toLowerCase() === formData.email.toLowerCase()
     );
     
-    // Vérifier email unique dans les revendeurs validés
     const emailInValidated = existingRetailers.some((retailer: any) => 
       retailer.email?.toLowerCase() === formData.email.toLowerCase()
     );
     
-    // Vérifier SIRET unique dans les demandes en attente
+    // Vérifier SIRET unique dans les demandes en attente ET les revendeurs validés
     const siretInPending = existingApplications.some((app: any) => 
       app.siret === formData.siret
     );
     
-    // Vérifier SIRET unique dans les revendeurs validés
     const siretInValidated = existingRetailers.some((retailer: any) => 
       retailer.siret === formData.siret
     );
     
+    // NOUVEAU: Messages d'erreur plus précis
     if (emailInPending || emailInValidated) {
-      alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+      const source = emailInPending ? 'en attente de validation' : 'déjà validé';
+      alert(`❌ Erreur : Cet email est déjà utilisé par un compte ${source}.\n\n💡 Si c'est votre compte :\n• Connectez-vous via le bouton "Connexion"\n• Contactez support@omnia.sale si vous avez oublié votre mot de passe`);
       return;
     }
     
     if (siretInPending || siretInValidated) {
-      alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+      const source = siretInPending ? 'en attente de validation' : 'déjà validé';
+      alert(`❌ Erreur : Ce SIRET est déjà enregistré par un compte ${source}.\n\n💡 Vérifiez :\n• Votre numéro SIRET (14 chiffres)\n• Qu'un collègue n'a pas déjà créé un compte\n• Contactez support@omnia.sale si besoin`);
       return;
     }
 

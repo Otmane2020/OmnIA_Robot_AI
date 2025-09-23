@@ -58,7 +58,7 @@ function App() {
       console.log('✅ Utilisateur sauvegardé:', userInfo.email);
     };
     
-    // Vérifier les revendeurs validés en localStorage
+    // NOUVEAU: Vérifier TOUS les revendeurs validés dynamiquement
     const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
     const validatedRetailer = validatedRetailers.find((retailer: any) => 
       retailer.email === credentials.email && retailer.password === credentials.password
@@ -78,37 +78,13 @@ function App() {
       setIsLoggedIn(true);
       saveCurrentUser({ email: credentials.email, company_name: 'Super Admin', plan: 'Admin' });
     }
-    // Decora Home - Boutique principale
-    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Decora Home', plan: 'Professional' });
-    }
-    // Mobilier Design Paris
-    else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Mobilier Design Paris', plan: 'Professional' });
-    }
-    // Déco Contemporain
-    else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Déco Contemporain', plan: 'Enterprise' });
-    }
-    // Meubles Lyon
-    else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Meubles Lyon', plan: 'Starter' });
-    }
-    // Excel Formation
-    else if (credentials.email === 'excelformation20@gmail.com' && credentials.password === 'excel123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Excel Formation', plan: 'Professional' });
-    }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• excelformation20@gmail.com / excel123\n• superadmin@omnia.sale / superadmin2025');
+      // NOUVEAU: Message d'erreur dynamique avec liste des revendeurs validés
+      const retailersList = validatedRetailers.length > 0 
+        ? validatedRetailers.map((r: any) => `• ${r.email} (${r.company_name})`).join('\n')
+        : '• Aucun revendeur validé pour le moment';
+      
+      alert(`❌ Identifiants incorrects.\n\n🏪 Revendeurs validés :\n${retailersList}\n\n👑 Super Admin :\n• superadmin@omnia.sale / superadmin2025\n\n💡 Nouveau revendeur ? Créez un compte via le bouton d'inscription.`);
     }
   };
 
