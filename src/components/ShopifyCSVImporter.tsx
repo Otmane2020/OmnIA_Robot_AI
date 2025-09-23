@@ -421,6 +421,11 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       showInfo('Traitement en cours', 'Conversion des données et import automatique...');
       
       const { data } = await parseFileContent(csvFile);
+      
+      if (!data || data.length === 0) {
+        throw new Error('Aucune donnée trouvée dans le fichier CSV');
+      }
+      
       const products = [];
       let validCount = 0;
       let invalidCount = 0;
@@ -430,6 +435,16 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         
         // Ignorer les lignes sans titre
         if (!title.trim()) {
+          invalidCount++;
+          continue;
+        }
+        
+        // Vérifier que le prix est valide
+        const priceValue = row[fieldMapping['Variant Price']];
+        const price = parseFloat(priceValue?.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        
+        if (price <= 0) {
+          console.warn('⚠️ Produit ignoré - prix invalide:', title, 'prix:', priceValue);
           invalidCount++;
           continue;
         }
@@ -465,18 +480,18 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         product['Variant Inventory Tracker'] = product['Variant Inventory Tracker'] || 'shopify';
         product['Image Position'] = product['Image Position'] || '1';
         
-        // Calculer la remise automatiquement
-        const price = parseFloat(product['Variant Price']) || 0;
+        // Assigner le prix validé
+        product['Variant Price'] = price.toFixed(2);
         const compareAtPrice = parseFloat(product['Variant Compare At Price']) || 0;
         
-        if (price > 0) {
-          // Ajouter le statut depuis le CSV
-          product.Status = row[fieldMapping['Status']] || 'active';
-          products.push(product);
-          validCount++;
-        } else {
-          invalidCount++;
-        }
+        // Ajouter le statut depuis le CSV
+        product.Status = row[fieldMapping['Status']] || 'active';
+        products.push(product);
+        validCount++;
+      }
+      
+      if (validCount === 0) {
+        throw new Error('Aucun produit valide trouvé. Vérifiez que vos colonnes "Title" et "Variant Price" sont correctement mappées et contiennent des données valides.');
       }
       
       setProcessedData(products);
@@ -536,6 +551,11 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
+      
+      if (activeProducts.length === 0) {
+        throw new Error('Aucun produit actif trouvé. Vérifiez que la colonne "Status" contient "active" ou laissez-la vide pour activer par défaut.');
+      }
+      
       localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(activeProducts));
       localStorage.setItem(getRetailerStorageKey('csv_file_data'), JSON.stringify({
         filename: csvFile.name,
@@ -546,6 +566,19 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         mapping: fieldMapping
       }));
       console.log(`✅ Produits CSV sauvegardés pour ${currentUser?.email}:`, activeProducts.length, '/', transformedProducts.length);
+      
+      // Afficher un message de succès immédiat
+      showSuccess(
+        'Import réussi !', 
+        `${activeProducts.length} produits importés dans votre catalogue !`,
+        [
+          {
+            label: 'Voir le catalogue',
+            action: () => window.location.reload(),
+            variant: 'primary'
+          }
+        ]
+      );
       
       // NOUVEAU: Déclencher l'enrichissement et l'entraînement IA automatique après import
       try {
@@ -656,6 +689,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       }
       
     } catch (error) {
+      console.error('❌ Erreur traitement CSV:', error);
       showError('Erreur traitement', error.message || 'Erreur lors du traitement du fichier.');
       setCurrentStep(2); // Retour au mapping en cas d'erreur
     } finally {
