@@ -196,20 +196,31 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       setLoading(true);
       
-      // Charger depuis localStorage spécifique au revendeur
-      const localEnrichedProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
-      if (localEnrichedProducts) {
-        try {
-          const parsedProducts = JSON.parse(localEnrichedProducts);
-          console.log(`✅ Catalogue enrichi chargé depuis localStorage pour ${currentUser?.email}:`, parsedProducts.length);
-          setProducts(parsedProducts);
-        } catch (parseError) {
-          console.error('Erreur parsing localStorage:', parseError);
+      // Charger depuis Supabase products_enriched table
+      const { data: enrichedProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erreur chargement Supabase:', error);
+        // Fallback vers localStorage si Supabase échoue
+        const localEnrichedProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
+        if (localEnrichedProducts) {
+          try {
+            const parsedProducts = JSON.parse(localEnrichedProducts);
+            console.log(`✅ Catalogue enrichi chargé depuis localStorage (fallback):`, parsedProducts.length);
+            setProducts(parsedProducts);
+          } catch (parseError) {
+            console.error('Erreur parsing localStorage:', parseError);
+            setProducts([]);
+          }
+        } else {
           setProducts([]);
         }
       } else {
-        console.log(`📦 Aucun produit enrichi trouvé pour ${currentUser?.email}`);
-        setProducts([]);
+        console.log(`✅ Catalogue enrichi chargé depuis Supabase:`, enrichedProducts?.length || 0);
+        setProducts(enrichedProducts || []);
       }
       
     } catch (error) {
@@ -279,9 +290,6 @@ export const ProductsEnrichedTable: React.FC = () => {
         updated_at: new Date().toISOString()
       }));
 
-      // Sauvegarder les produits enrichis dans localStorage
-      localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedProducts));
-      
       // Mettre à jour l'état local
       setProducts(enrichedProducts);
       
