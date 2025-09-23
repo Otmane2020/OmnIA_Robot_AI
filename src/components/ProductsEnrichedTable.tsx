@@ -258,9 +258,50 @@ export const ProductsEnrichedTable: React.FC = () => {
       const products = JSON.parse(catalogProducts);
       console.log(`📦 Import catalogue pour ${currentUser?.email}:`, products.length);
 
-      showInfo('Import en cours', 'Envoi des produits vers DeepSeek pour enrichissement...');
+      showInfo('Import automatique démarré', 'Import catalogue → Enrichissement IA → Remplissage table enrichie...');
       
-      // Appeler directement la fonction d'enrichissement Supabase
+      // ÉTAPE 1: Sauvegarder les produits dans imported_products
+      console.log('📦 ÉTAPE 1: Sauvegarde dans imported_products...');
+      const saveResponse = await fetch(`${supabaseUrl}/functions/v1/save-imported-products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: products.map(p => ({
+            external_id: p.id || `catalog-${Date.now()}-${Math.random()}`,
+            retailer_id: currentUser?.email || 'demo-retailer-id',
+            name: p.name || p.title,
+            description: p.description || '',
+            price: parseFloat(p.price) || 0,
+            compare_at_price: p.compare_at_price ? parseFloat(p.compare_at_price) : null,
+            category: p.category || 'Mobilier',
+            vendor: p.vendor || 'Decora Home',
+            image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+            product_url: p.product_url || '#',
+            stock: parseInt(p.stock) || 0,
+            source_platform: 'catalog',
+            status: 'active'
+          })),
+          retailer_id: currentUser?.email || 'demo-retailer-id',
+          source: 'catalog_import'
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const saveError = await saveResponse.json();
+        console.error('❌ Erreur sauvegarde imported_products:', saveError);
+        showError('Erreur sauvegarde', 'Impossible de sauvegarder les produits dans la base.');
+        return;
+      }
+
+      const saveResult = await saveResponse.json();
+      console.log('✅ ÉTAPE 1 terminée:', saveResult.saved_count, 'produits sauvegardés');
+      
+      showInfo('Enrichissement IA', 'ÉTAPE 2: Enrichissement avec DeepSeek IA...');
+      
+      // ÉTAPE 2: Enrichir les produits avec DeepSeek IA
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
         method: 'POST',
         headers: {
@@ -269,7 +310,7 @@ export const ProductsEnrichedTable: React.FC = () => {
         },
         body: JSON.stringify({
           products: products,
-          source: 'catalog',
+          source: 'catalog_import',
           retailer_id: currentUser?.email || 'demo-retailer-id'
         }),
       });
@@ -277,35 +318,43 @@ export const ProductsEnrichedTable: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement:', errorText);
-        throw new Error('Erreur lors de l\'enrichissement avec DeepSeek');
+        showError('Erreur enrichissement', 'ÉTAPE 2 échouée: Impossible d\'enrichir avec DeepSeek IA');
+        return;
       }
 
       const result = await response.json();
-      console.log('✅ Enrichissement réussi:', result.stats);
+      console.log('✅ ÉTAPE 2 terminée:', result.stats);
       
-      // Recharger les produits depuis Supabase
+      showInfo('Finalisation', 'ÉTAPE 3: Rechargement du catalogue enrichi...');
+      
+      // ÉTAPE 3: Recharger les produits enrichis depuis Supabase
       await loadEnrichedProducts();
       
       setShowImportModal(false);
       
       showSuccess(
-        'Catalogue importé !', 
-        `${result.stats?.enriched_count || products.length} produits importés et enrichis avec DeepSeek !`,
+        'Import automatique terminé !', 
+        `✅ ${saveResult.saved_count} produits importés\n🤖 ${result.stats?.enriched_count || products.length} produits enrichis IA\n📊 Table enrichie mise à jour !`,
         [
           {
-            label: 'Voir les résultats',
+            label: 'Voir catalogue enrichi',
             action: () => loadEnrichedProducts(),
             variant: 'primary'
+          },
+          {
+            label: 'Tester OmnIA',
+            action: () => window.open('/robot', '_blank'),
+            variant: 'secondary'
           }
         ]
       );
 
-      // Configurer automatiquement le cron quotidien
+      // ÉTAPE 4: Configurer automatiquement le cron quotidien
       await handleSetupCron('daily', true);
 
     } catch (error) {
       console.error('❌ Erreur import catalogue:', error);
-      showError('Erreur d\'import', 'Impossible d\'importer le catalogue.');
+      showError('Erreur import automatique', 'Une erreur est survenue pendant l\'import automatique. Vérifiez la console pour plus de détails.');
     }
   };
 
@@ -942,19 +991,26 @@ export const ProductsEnrichedTable: React.FC = () => {
             
             <div className="space-y-4">
               <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                <h4 className="font-semibold text-blue-200 mb-2">📦 Import depuis le catalogue</h4>
+                <h4 className="font-semibold text-blue-200 mb-2">🚀 Import automatique complet</h4>
                 <p className="text-blue-300 text-sm">
-                  Cette action va importer tous les produits de votre catalogue dans le catalogue enrichi.
+                  Cette action va automatiquement :
                 </p>
+                <ul className="text-blue-300 text-sm mt-2 space-y-1">
+                  <li>• <strong>ÉTAPE 1:</strong> Importer les produits dans imported_products</li>
+                  <li>• <strong>ÉTAPE 2:</strong> Enrichir avec DeepSeek IA (attributs, SEO)</li>
+                  <li>• <strong>ÉTAPE 3:</strong> Remplir la table products_enriched</li>
+                  <li>• <strong>ÉTAPE 4:</strong> Configurer le cron quotidien</li>
+                </ul>
               </div>
               
               <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
-                <h4 className="font-semibold text-green-200 mb-2">🤖 Enrichissement automatique</h4>
+                <h4 className="font-semibold text-green-200 mb-2">🤖 Résultat final</h4>
                 <ul className="text-green-300 text-sm space-y-1">
-                  <li>• Import automatique des produits</li>
-                  <li>• Enrichissement DeepSeek IA automatique</li>
-                  <li>• Configuration cron quotidien automatique</li>
-                  <li>• Génération SEO automatique</li>
+                  <li>• Catalogue enrichi avec attributs IA complets</li>
+                  <li>• SEO optimisé (titres + meta descriptions)</li>
+                  <li>• Attributs extraits (couleurs, matériaux, styles)</li>
+                  <li>• OmnIA entraîné sur votre catalogue</li>
+                  <li>• Synchronisation quotidienne activée</li>
                 </ul>
               </div>
               
@@ -967,9 +1023,9 @@ export const ProductsEnrichedTable: React.FC = () => {
                 </button>
                 <button
                   onClick={handleImportCatalog}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 rounded-xl font-semibold transition-all"
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                 >
-                  Importer & Enrichir
+                  🚀 Lancer Import Automatique
                 </button>
               </div>
             </div>
