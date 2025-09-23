@@ -470,7 +470,68 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       setImportStats(stats);
       setCurrentStep(4);
       
-      // Sauvegarder directement dans localStorage
+      // Préparer les données pour Supabase
+      const transformedProducts = products.map(product => ({
+        external_id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
+        retailer_id: currentUser?.email || 'demo-retailer-id',
+        name: product.Title || 'Produit sans nom',
+        description: product['Body (HTML)'] || '',
+        price: parseFloat(product['Variant Price']) || 0,
+        compare_at_price: product['Variant Compare At Price'] ? parseFloat(product['Variant Compare At Price']) : null,
+        category: product.Type || product['Product Category'] || 'Mobilier',
+        vendor: product.Vendor || 'Decora Home',
+        image_url: product['Image Src'] || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        product_url: product['Product URL'] || '#',
+        stock: parseInt(product['Variant Inventory Qty']) || 0,
+        status: product.Status || 'active',
+        source_platform: 'csv',
+        shopify_data: product,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+      
+      // Sauvegarder dans Supabase au lieu de localStorage
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseKey) {
+          const response = await fetch(`${supabaseUrl}/functions/v1/save-imported-products`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              products: transformedProducts,
+              retailer_id: currentUser?.email || 'demo-retailer-id'
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Erreur sauvegarde Supabase');
+          }
+          
+          const result = await response.json();
+          console.log('✅ Produits sauvegardés dans Supabase:', result);
+        } else {
+          // Fallback: sauvegarder seulement les IDs dans localStorage
+          const productIds = transformedProducts.map(p => p.external_id);
+          localStorage.setItem(getRetailerStorageKey('catalog_product_ids'), JSON.stringify(productIds));
+        }
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde Supabase:', error);
+        // Fallback: sauvegarder seulement les métadonnées dans localStorage
+        const metadata = {
+          count: transformedProducts.length,
+          imported_at: new Date().toISOString(),
+          retailer_id: currentUser?.email || 'demo-retailer-id'
+        };
+        localStorage.setItem(getRetailerStorageKey('catalog_metadata'), JSON.stringify(metadata));
+      }
+      
+      // Ancienne logique localStorage supprimée pour éviter QuotaExceededError
+      /*
       const transformedProducts = products.map(product => ({
         id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
         external_id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
@@ -503,10 +564,10 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }));
-      
-      // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
       localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(activeProducts));
+      */
+      
       localStorage.setItem(getRetailerStorageKey('csv_file_data'), JSON.stringify({
         filename: csvFile.name,
         size: csvFile.size,
@@ -515,7 +576,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         active_products: activeProducts.length,
         mapping: fieldMapping
       }));
-      console.log(`✅ Produits CSV sauvegardés pour ${currentUser?.email}:`, activeProducts.length, '/', transformedProducts.length);
+      console.log(`✅ Produits CSV traités pour ${currentUser?.email}:`, transformedProducts.filter(p => p.status === 'active').length, '/', transformedProducts.length);
       
       // NOUVEAU: Déclencher l'entraînement IA automatique après import
       try {
