@@ -144,6 +144,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
       id: 'settings',
       label: 'Paramètres',
       icon: Settings,
-      color: 'bg-gray-600'
+      color: 'bg-gray-600',
     }
   ];
