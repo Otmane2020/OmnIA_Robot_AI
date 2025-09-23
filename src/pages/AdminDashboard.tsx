@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
-  Brain, LogOut, Loader2, Settings,
-  DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Bot
+  LayoutDashboard, Package, ShoppingCart, Users, Settings, 
+  TrendingUp, MessageSquare, Upload, Download, 
+  Brain, LogOut, Loader2, DollarSign, Plus, X, Target, Search, Mail, Mic, Image, Sparkles, 
+  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, 
+  Bot, BarChart3
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
