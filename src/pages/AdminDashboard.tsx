@@ -5,7 +5,7 @@ import {
   TrendingUp, MessageSquare, Upload, Download, 
   Brain, LogOut, Loader2, DollarSign, Plus, X, Target, Search, Mail, Mic, Image, Sparkles, 
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Bot, BarChart3
+  Bot
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
