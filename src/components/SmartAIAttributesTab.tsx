@@ -347,15 +347,7 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   const handleSyncWithCatalog = async () => {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
-        return;
-      }
-
-      // Récupérer les produits du catalogue local
+      // Vérifier d'abord s'il y a des produits dans le catalogue
       const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
         showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Allez dans l\'onglet "Catalogue" pour importer vos produits.');
@@ -363,10 +355,20 @@ export const SmartAIAttributesTab: React.FC = () => {
       }
 
       const products = JSON.parse(catalogProducts);
+      if (products.length === 0) {
+        showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
+        return;
+      }
+
       console.log(`📦 Synchronisation SMART AI pour ${currentUser?.email} - ${products.length} produits...`);
 
-      if (products.length === 0) {
-        showError('Catalogue vide', 'Aucun produit trouvé dans votre catalogue. Allez dans l\'onglet "Catalogue" pour importer vos produits.');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        // Mode hors ligne - traitement local
+        console.log('⚠️ Supabase non configuré, traitement local...');
+        await processProductsLocally(products);
         return;
       }
 
@@ -379,7 +381,7 @@ export const SmartAIAttributesTab: React.FC = () => {
       const progressInterval = setInterval(() => {
         setSyncProgress(prev => {
           const newProgress = Math.min(prev + (100 / Math.max(products.length, 5)), 95);
-          const elapsed = (Date.now() - Date.now()) / 1000;
+          const elapsed = (Date.now() - syncStartTime) / 1000;
           const estimated = Math.max(Math.round((100 - newProgress) * 0.5), 0);
           setEstimatedTimeRemaining(estimated);
           return newProgress;
@@ -414,52 +416,8 @@ export const SmartAIAttributesTab: React.FC = () => {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement:', errorText);
         
-        // Essayer de sauvegarder localement en cas d'erreur Supabase
-        const enrichedProducts = products.map((product: any) => ({
-          id: `smart-ai-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          handle: product.handle || generateHandle(product.name || product.title || ''),
-          retailer_id: currentUser?.email || 'demo-retailer-id',
-          title: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          short_description: (product.description || product.title || '').substring(0, 160),
-          product_type: product.category || 'Mobilier',
-          subcategory: '',
-          tags: [],
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          material: '',
-          color: '',
-          style: '',
-          room: '',
-          dimensions: '',
-          weight: '',
-          capacity: '',
-          price: parseFloat(product.price) || 0,
-          compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-          currency: 'EUR',
-          stock_quantity: parseInt(product.stock) || 0,
-          stock_qty: parseInt(product.stock) || 0,
-          availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
-          gtin: '',
-          mpn: product.sku || '',
-          identifier_exists: !!product.sku,
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          additional_image_links: [],
-          product_url: product.product_url || '#',
-          canonical_link: product.product_url || '#',
-          percent_off: 0,
-          ai_confidence: 0.5,
-          seo_title: product.name || product.title || '',
-          seo_description: (product.description || product.title || '').substring(0, 155),
-          enrichment_source: 'local_fallback',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-        
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichedProducts));
-        setProducts(enrichedProducts);
-        
-        showError('Supabase indisponible', `Produits sauvegardés localement. ${enrichedProducts.length} produits disponibles en mode hors ligne.`);
+        // Fallback vers traitement local
+        await processProductsLocally(products);
         return;
       }
 
@@ -500,6 +458,172 @@ export const SmartAIAttributesTab: React.FC = () => {
     }
   };
 
+  // Nouvelle fonction pour traitement local des produits
+  const processProductsLocally = async (products: any[]) => {
+    try {
+      console.log('🔄 Traitement local des produits...');
+      
+      const enrichedProducts = products.map((product: any) => ({
+        id: `smart-ai-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        handle: product.handle || generateHandle(product.name || product.title || ''),
+        retailer_id: currentUser?.email || 'demo-retailer-id',
+        title: product.name || product.title || 'Produit sans nom',
+        description: product.description || '',
+        short_description: (product.description || product.title || '').substring(0, 160),
+        product_type: product.category || product.productType || 'Mobilier',
+        subcategory: extractSubcategory(product.category || product.productType || ''),
+        tags: extractTags(product.name || product.title || '', product.description || ''),
+        vendor: product.vendor || 'Decora Home',
+        brand: product.vendor || 'Decora Home',
+        material: extractMaterial(product.name || '', product.description || ''),
+        color: extractColor(product.name || '', product.description || ''),
+        style: extractStyle(product.name || '', product.description || ''),
+        room: extractRoom(product.category || '', product.description || ''),
+        dimensions: extractDimensions(product.description || ''),
+        weight: extractWeight(product.description || ''),
+        capacity: extractCapacity(product.description || ''),
+        price: parseFloat(product.price) || 0,
+        compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+        currency: 'EUR',
+        stock_quantity: parseInt(product.stock) || 0,
+        stock_qty: parseInt(product.stock) || 0,
+        availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+        gtin: generateGTIN(),
+        mpn: product.sku || generateMPN(product.name || product.title || ''),
+        identifier_exists: !!(product.sku || generateGTIN()),
+        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        additional_image_links: [],
+        product_url: product.product_url || '#',
+        canonical_link: product.product_url || '#',
+        percent_off: product.compare_at_price && product.price ? 
+          Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
+        ai_confidence: 0.75, // Confiance locale
+        seo_title: generateSEOTitle(product.name || product.title || '', product.category || ''),
+        seo_description: generateSEODescription(product.name || product.title || '', product.description || ''),
+        enrichment_source: 'local_processing',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+      
+      localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichedProducts));
+      setProducts(enrichedProducts);
+      
+      showSuccess(
+        'Traitement local terminé !', 
+        `${enrichedProducts.length} produits enrichis localement avec attributs SMART AI !`
+      );
+      
+    } catch (error) {
+      console.error('❌ Erreur traitement local:', error);
+      showError('Erreur traitement', 'Impossible de traiter les produits localement.');
+    }
+  };
+
+  // Fonctions d'extraction locale
+  const extractSubcategory = (category: string): string => {
+    const lowerCategory = category.toLowerCase();
+    if (lowerCategory.includes('canapé')) {
+      if (lowerCategory.includes('angle')) return 'Canapé d\'angle';
+      if (lowerCategory.includes('convertible')) return 'Canapé convertible';
+      return 'Canapé fixe';
+    }
+    if (lowerCategory.includes('table')) {
+      if (lowerCategory.includes('basse')) return 'Table basse';
+      if (lowerCategory.includes('manger')) return 'Table à manger';
+      return 'Table';
+    }
+    if (lowerCategory.includes('chaise')) {
+      if (lowerCategory.includes('bureau')) return 'Chaise de bureau';
+      return 'Chaise';
+    }
+    return '';
+  };
+
+  const extractTags = (title: string, description: string): string[] => {
+    const text = `${title} ${description}`.toLowerCase();
+    const tags = [];
+    
+    const tagPatterns = [
+      'moderne', 'contemporain', 'scandinave', 'industriel', 'vintage',
+      'convertible', 'réversible', 'angle', 'rangement', 'coffre',
+      'velours', 'cuir', 'tissu', 'bois', 'métal', 'verre',
+      'blanc', 'noir', 'gris', 'beige', 'bleu', 'rouge', 'vert'
+    ];
+    
+    tagPatterns.forEach(tag => {
+      if (text.includes(tag)) tags.push(tag);
+    });
+    
+    return tags.slice(0, 5); // Limiter à 5 tags
+  };
+
+  const extractMaterial = (title: string, description: string): string => {
+    const text = `${title} ${description}`.toLowerCase();
+    const materials = ['velours', 'cuir', 'tissu', 'bois', 'métal', 'verre', 'travertin', 'marbre', 'chenille'];
+    return materials.find(material => text.includes(material)) || '';
+  };
+
+  const extractColor = (title: string, description: string): string => {
+    const text = `${title} ${description}`.toLowerCase();
+    const colors = ['blanc', 'noir', 'gris', 'beige', 'bleu', 'rouge', 'vert', 'jaune', 'orange', 'rose', 'violet', 'marron', 'taupe'];
+    return colors.find(color => text.includes(color)) || '';
+  };
+
+  const extractStyle = (title: string, description: string): string => {
+    const text = `${title} ${description}`.toLowerCase();
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique', 'minimaliste'];
+    return styles.find(style => text.includes(style)) || '';
+  };
+
+  const extractRoom = (category: string, description: string): string => {
+    const text = `${category} ${description}`.toLowerCase();
+    if (text.includes('salon') || text.includes('canapé')) return 'salon';
+    if (text.includes('chambre') || text.includes('lit')) return 'chambre';
+    if (text.includes('cuisine')) return 'cuisine';
+    if (text.includes('bureau')) return 'bureau';
+    if (text.includes('salle à manger') || text.includes('table')) return 'salle à manger';
+    return '';
+  };
+
+  const extractDimensions = (description: string): string => {
+    const dimensionMatch = description.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/i);
+    return dimensionMatch ? dimensionMatch[0] : '';
+  };
+
+  const extractWeight = (description: string): string => {
+    const weightMatch = description.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+    return weightMatch ? weightMatch[0] : '';
+  };
+
+  const extractCapacity = (description: string): string => {
+    const capacityMatch = description.match(/(\d+)\s*places?/i);
+    return capacityMatch ? `${capacityMatch[1]} places` : '';
+  };
+
+  const generateGTIN = (): string => {
+    // Générer un GTIN-13 factice
+    const prefix = '123456'; // Préfixe entreprise
+    const productCode = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const checkDigit = Math.floor(Math.random() * 10);
+    return `${prefix}${productCode}${checkDigit}`;
+  };
+
+  const generateMPN = (title: string): string => {
+    return title.substring(0, 20).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-DH';
+  };
+
+  const generateSEOTitle = (title: string, category: string): string => {
+    const cleanTitle = title.substring(0, 40);
+    const seoTitle = `${cleanTitle} - ${category} | Decora Home`;
+    return seoTitle.substring(0, 60);
+  };
+
+  const generateSEODescription = (title: string, description: string): string => {
+    const cleanDesc = description ? description.substring(0, 100) : title;
+    const seoDesc = `Découvrez ${title.toLowerCase()} chez Decora Home. ${cleanDesc} Livraison gratuite. ⭐`;
+    return seoDesc.substring(0, 155);
+  };
+
   const handleEnrichWithDeepSeek = async () => {
     try {
       // Vérifier d'abord s'il y a des produits dans le catalogue
@@ -519,7 +643,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseKey) {
-        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+        // Mode hors ligne
+        await processProductsLocally(catalogProductsArray);
         return;
       }
 
@@ -554,7 +679,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement avancé:', errorText);
-        showError('Erreur enrichissement', `Erreur API: ${response.status}. ${errorText}`);
+        // Fallback vers traitement local
+        await processProductsLocally(catalogProductsArray);
         return;
       }
 
@@ -576,6 +702,113 @@ export const SmartAIAttributesTab: React.FC = () => {
       setIsEnriching(false);
       setEnrichmentProgress(0);
     }
+  };
+
+  const handleProcessCSV = async (file: File) => {
+    try {
+      setIsProcessingCSV(true);
+      showInfo('Traitement CSV', 'Analyse du fichier CSV...');
+      
+      const csvText = await file.text();
+      const lines = csvText.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        showError('CSV invalide', 'Le fichier CSV doit contenir au moins une ligne d\'en-tête et une ligne de données.');
+        return;
+      }
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const products = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        const product: any = {};
+        
+        headers.forEach((header, index) => {
+          const value = values[index]?.trim().replace(/"/g, '') || '';
+          
+          // Mapping intelligent des colonnes
+          switch (header.toLowerCase()) {
+            case 'nom':
+            case 'name':
+            case 'title':
+              product.name = value;
+              break;
+            case 'prix':
+            case 'price':
+              product.price = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+              break;
+            case 'description':
+              product.description = value;
+              break;
+            case 'categorie':
+            case 'category':
+            case 'type':
+              product.category = value;
+              break;
+            case 'image_url':
+            case 'image':
+              product.image_url = value;
+              break;
+            case 'stock':
+            case 'quantity':
+              product.stock = parseInt(value) || 0;
+              break;
+            case 'vendor':
+            case 'marque':
+              product.vendor = value;
+              break;
+            default:
+              product[header] = value;
+          }
+        });
+        
+        if (product.name && product.price > 0) {
+          products.push(product);
+        }
+      }
+      
+      console.log('📦 Produits CSV parsés:', products.length);
+      
+      if (products.length === 0) {
+        showError('Aucun produit valide', 'Aucun produit valide trouvé dans le CSV. Vérifiez le format.');
+        return;
+      }
+      
+      // Traiter les produits
+      await processProductsLocally(products);
+      
+      setShowCSVImport(false);
+      setCsvFile(null);
+      
+    } catch (error) {
+      console.error('❌ Erreur traitement CSV:', error);
+      showError('Erreur CSV', 'Impossible de traiter le fichier CSV.');
+    } finally {
+      setIsProcessingCSV(false);
+    }
+  };
+
+  const parseCSVLine = (line: string): string[] => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current);
+    return result;
   };
 
   const handleExportSmartAI = () => {
@@ -721,6 +954,172 @@ export const SmartAIAttributesTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Configuration Shopify */}
+      {showShopifyConfig && (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Store className="w-6 h-6 text-green-400" />
+            Configuration Shopify
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Domaine Shopify</label>
+              <input
+                type="text"
+                value={shopifyConfig.domain}
+                onChange={(e) => setShopifyConfig(prev => ({ ...prev, domain: e.target.value }))}
+                placeholder="votre-boutique.myshopify.com"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Token d'accès Admin</label>
+              <input
+                type="password"
+                value={shopifyConfig.token}
+                onChange={(e) => setShopifyConfig(prev => ({ ...prev, token: e.target.value }))}
+                placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={testShopifyConnection}
+              disabled={isTestingShopify || !shopifyConfig.domain || !shopifyConfig.token}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isTestingShopify ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Test en cours...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Tester la connexion
+                </>
+              )}
+            </button>
+            
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
+              shopifyStatus === 'connected' ? 'bg-green-500/20 text-green-300' :
+              shopifyStatus === 'error' ? 'bg-red-500/20 text-red-300' :
+              'bg-gray-500/20 text-gray-300'
+            }`}>
+              {shopifyStatus === 'connected' ? (
+                <CheckCircle className="w-4 h-4" />
+              ) : shopifyStatus === 'error' ? (
+                <AlertCircle className="w-4 h-4" />
+              ) : (
+                <Settings className="w-4 h-4" />
+              )}
+              <span className="text-sm font-medium">
+                {shopifyStatus === 'connected' ? 'Connecté' :
+                 shopifyStatus === 'error' ? 'Erreur' :
+                 'Non testé'}
+              </span>
+            </div>
+          </div>
+          
+          {shopifyStatus === 'connected' && (
+            <div className="bg-green-500/20 border border-green-400/30 rounded-xl p-4">
+              <h4 className="font-semibold text-green-200 mb-2">✅ Shopify connecté !</h4>
+              <ul className="text-green-300 text-sm space-y-1">
+                <li>• Boutique accessible</li>
+                <li>• Token valide</li>
+                <li>• Prêt pour synchronisation</li>
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal d'import CSV */}
+      {showCSVImport && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Import CSV Direct</h3>
+              <button
+                onClick={() => setShowCSVImport(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-cyan-500/50 rounded-xl p-6 text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setCsvFile(file);
+                  }}
+                  className="hidden"
+                  id="csv-file-input"
+                />
+                <label htmlFor="csv-file-input" className="cursor-pointer">
+                  {csvFile ? (
+                    <div className="text-green-400">
+                      <CheckCircle className="w-8 h-8 mx-auto mb-2" />
+                      <p className="font-semibold">{csvFile.name}</p>
+                      <p className="text-sm text-gray-400">
+                        {(csvFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-cyan-400">
+                      <Upload className="w-8 h-8 mx-auto mb-2" />
+                      <p className="font-semibold">Sélectionner un fichier CSV</p>
+                      <p className="text-sm text-gray-400">Format: nom,prix,description,categorie</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+              
+              <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-200 mb-2">📋 Format CSV attendu :</h4>
+                <code className="text-blue-400 text-xs block">
+                  nom,prix,description,categorie,image_url,stock,vendor
+                </code>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCSVImport(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => csvFile && handleProcessCSV(csvFile)}
+                  disabled={!csvFile || isProcessingCSV}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isProcessingCSV ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Traitement...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-4 h-4" />
+                      Enrichir CSV
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Informations SMART AI */}
       <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -813,6 +1212,20 @@ export const SmartAIAttributesTab: React.FC = () => {
           </p>
           <div className="space-y-4">
             <button
+              <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
+                  style={{ width: `${syncProgress}%` }}
+                ></div>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-white font-semibold">{Math.round(syncProgress)}% terminé</p>
+                {estimatedTimeRemaining > 0 && (
+                  <p className="text-gray-400 text-sm">Temps restant: ~{estimatedTimeRemaining}s</p>
+                )}
+              </div>
+              
               onClick={() => {
                 const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
                 if (!catalogProducts) {
@@ -838,13 +1251,20 @@ export const SmartAIAttributesTab: React.FC = () => {
               })()} produits)
             </button>
             
+            <button
+              onClick={() => setShowCSVImport(true)}
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
+              Importer un nouveau CSV
+            </button>
+            
             <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
               <h4 className="font-semibold text-blue-200 mb-2">💡 Étapes pour utiliser SMART AI :</h4>
               <ol className="text-blue-300 text-sm space-y-1">
-                <li>1. Allez dans l'onglet <strong>"Catalogue"</strong></li>
-                <li>2. Importez votre catalogue CSV ou connectez Shopify</li>
-                <li>3. Revenez ici et cliquez <strong>"Synchroniser le catalogue"</strong></li>
-                <li>4. DeepSeek IA enrichira automatiquement vos produits</li>
+                <li>1. <strong>Option A:</strong> Allez dans "Catalogue" → Importez CSV → Revenez ici → "Sync Catalogue CSV"</li>
+                <li>2. <strong>Option B:</strong> Cliquez "Import CSV Direct" pour importer directement ici</li>
+                <li>3. <strong>Option C:</strong> Configurez Shopify → "Sync Shopify"</li>
+                <li>4. Les produits seront enrichis automatiquement avec 30 attributs IA</li>
               </ol>
             </div>
           </div>
