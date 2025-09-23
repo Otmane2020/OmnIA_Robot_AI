@@ -51,7 +51,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ product, onSav
   });
 
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [variantImages, setVariantImages] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     if (product) {
