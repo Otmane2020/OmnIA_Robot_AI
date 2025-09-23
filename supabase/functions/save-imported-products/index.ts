@@ -10,6 +10,7 @@ interface SaveImportedProductsRequest {
   products: any[];
   retailer_id: string;
   source: string;
+  source: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -21,11 +22,12 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { products, retailer_id, source }: SaveImportedProductsRequest = await req.json();
+    const { products, retailer_id, source = 'csv' }: SaveImportedProductsRequest = await req.json();
     
     console.log('💾 Sauvegarde produits importés:', {
       products_count: products.length,
       retailer_id,
+      source
       source
     });
 
@@ -37,7 +39,13 @@ Deno.serve(async (req: Request) => {
     // Validate and clean products
     const validProducts = products.filter(product => 
       product.name && product.name.trim().length > 0 && product.price > 0
-    );
+    ).map(product => ({
+      ...product,
+      retailer_id: retailer_id, // Assurer que retailer_id est défini
+      source_platform: source,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
 
     console.log(`✅ ${validProducts.length}/${products.length} produits valides`);
 
@@ -53,10 +61,18 @@ Deno.serve(async (req: Request) => {
             'Content-Type': 'application/json', 
             ...corsHeaders,
           },
-          status: 200, // Set status directly in Response object
+          status: 400,
         }
       );
     }
+
+    console.log('🔄 Insertion de', validProducts.length, 'produits dans imported_products...');
+    console.log('📋 Premier produit exemple:', {
+      external_id: validProducts[0].external_id,
+      retailer_id: validProducts[0].retailer_id,
+      name: validProducts[0].name?.substring(0, 30),
+      source_platform: validProducts[0].source_platform
+    });
 
     // Insert products into database
     const { data, error } = await supabase 
@@ -68,8 +84,26 @@ Deno.serve(async (req: Request) => {
       .select();
 
     if (error) {
-      console.error('❌ Supabase upsert error details:', error); // Log the error details
-      console.error('❌ Erreur insertion DB:', error);
+      console.error('❌ Erreur insertion DB détaillée:', insertError);
+      console.error('❌ Code erreur:', insertError.code);
+      console.error('❌ Message:', insertError.message);
+      console.error('❌ Détails:', insertError.details);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Erreur lors de la sauvegarde des produits',
+          details: `${insertError.message} (Code: ${insertError.code})`,
+          supabase_error: insertError
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
       throw error;
     }
 
