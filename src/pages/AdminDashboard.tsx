@@ -199,7 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     icon: Globe,
     subItems: [
       { id: 'merchant-feed', label: 'Flux XML', icon: FileText },
-      { id: 'merchant-guide', label: 'Guide d'importation', icon: Upload }
+      { id: 'merchant-guide', label: 'Guide d\'importation', icon: Upload }
     ]
   },
 
