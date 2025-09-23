@@ -212,7 +212,7 @@ export const CatalogManagement: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            retailer_id: currentUser?.email || 'demo-retailer-id'
+            retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000'
           }),
         });
         
@@ -222,7 +222,7 @@ export const CatalogManagement: React.FC = () => {
           
           // Transformer les données Supabase au format attendu
           const transformedProducts = supabaseProducts.map((p: any) => ({
-            id: p.external_id || `imported-${Date.now()}-${Math.random()}`,
+            id: p.external_id || p.id,
             name: p.name || 'Produit sans nom',
             description: p.description || '',
             price: parseFloat(p.price) || 0,
@@ -236,7 +236,7 @@ export const CatalogManagement: React.FC = () => {
             source_platform: p.source_platform || 'csv',
             sku: p.shopify_data?.['Variant SKU'] || '',
             variants: [{
-              id: `${p.external_id || 'default'}-variant`,
+              id: `${p.external_id}-default`,
               title: 'Default',
               price: parseFloat(p.price) || 0,
               compare_at_price: p.compare_at_price,
@@ -251,11 +251,6 @@ export const CatalogManagement: React.FC = () => {
           console.log('✅ Produits chargés depuis Supabase:', transformedProducts.length);
           setProducts(transformedProducts);
           setFilteredProducts(transformedProducts);
-          
-          // Forcer le rechargement si on vient d'un import
-          if (transformedProducts.length > 0) {
-            console.log('🔄 Catalogue mis à jour avec', transformedProducts.length, 'produits');
-          }
         } else {
           console.log('⚠️ Pas de produits dans Supabase, utilisation des données locales');
           loadProductsFromLocalStorage();
