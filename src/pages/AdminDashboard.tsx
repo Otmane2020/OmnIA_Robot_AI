@@ -267,7 +267,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     icon: BarChart3, 
     color: 'bg-orange-500',
     subItems: [
-      { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+      { id: 'overview', label: "Vue d'ensemble", icon: BarChart3 },
       { id: 'conversations', label: 'Conversations', icon: MessageSquare },
       { id: 'sales', label: 'Ventes', icon: TrendingUp },
       { id: 'reports', label: 'Rapports', icon: FileText }
