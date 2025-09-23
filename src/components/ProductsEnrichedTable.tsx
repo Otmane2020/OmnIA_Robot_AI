@@ -301,6 +301,7 @@ export const ProductsEnrichedTable: React.FC = () => {
       // Traitement par batch pour éviter les timeouts
       const batchSize = 5;
       const enrichedProducts = [];
+      let processedCount = 0;
       
       for (let i = 0; i < products.length; i += batchSize) {
         const batch = products.slice(i, i + batchSize);
@@ -355,7 +356,48 @@ export const ProductsEnrichedTable: React.FC = () => {
           }
         } catch (batchError) {
           console.error(`❌ Erreur réseau batch ${batchNumber}:`, batchError);
+          
+          // Ajouter les produits sans enrichissement en cas d'erreur réseau
+          const basicProducts = batch.map(product => ({
+            id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: product.name || product.title || 'Produit sans nom',
+            description: product.description || '',
+            product_type: product.category || 'Mobilier',
+            subcategory: '',
+            vendor: product.vendor || 'Boutique',
+            brand: product.vendor || 'Boutique',
+            material: '',
+            color: '',
+            style: '',
+            room: '',
+            dimensions: '',
+            weight: '',
+            capacity: '',
+            price: parseFloat(product.price) || 0,
+            compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+            currency: 'EUR',
+            stock_quantity: parseInt(product.stock) || 0,
+            availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+            gtin: '',
+            mpn: product.sku || '',
+            identifier_exists: !!product.sku,
+            image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+            additional_image_links: [],
+            product_url: product.product_url || '#',
+            canonical_link: product.product_url || '#',
+            percent_off: product.compare_at_price && product.price ? 
+              Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100) : 0,
+            ai_confidence: 0,
+            seo_title: product.title || '',
+            seo_description: (product.description || product.title || '').substring(0, 155),
+            enrichment_source: 'basic',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          enrichedProducts.push(...basicProducts);
         }
+        
+        processedCount += batch.length;
         
         // Mettre à jour la progression
         const progress = Math.round(((processedCount) / products.length) * 100);
