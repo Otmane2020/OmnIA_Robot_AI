@@ -210,16 +210,16 @@ Deno.serve(async (req: Request) => {
       
       try {
         // NOUVEAU: Nettoyer les anciens produits du même revendeur pour éviter les doublons
-        if (source === 'csv_import' || source === 'catalog_sync') {
+        if (source === 'csv_import' || source === 'catalog_import' || source === 'catalog_sync') {
           const { error: deleteError } = await supabase
             .from('products_enriched')
             .delete()
-            .eq('retailer_id', retailer_id);
+            .eq('handle', enrichedProducts.map(p => p.handle));
           
           if (deleteError) {
             console.warn('⚠️ Erreur nettoyage anciens produits:', deleteError);
           } else {
-            console.log('🗑️ Anciens produits enrichis supprimés pour synchronisation');
+            console.log('🗑️ Anciens produits enrichis nettoyés pour éviter doublons');
           }
         }
         
@@ -242,6 +242,7 @@ Deno.serve(async (req: Request) => {
           
           if (upsertError) {
             console.error('❌ Erreur upsert Supabase:', upsertError);
+            throw new Error(`Erreur sauvegarde enrichie: ${upsertError.message}`);
           } else {
             console.log('✅ Produits enrichis sauvegardés via upsert:', upsertData?.length || 0);
           }
@@ -250,6 +251,7 @@ Deno.serve(async (req: Request) => {
         }
       } catch (dbError) {
         console.error('❌ Erreur DB, sauvegarde locale:', dbError);
+        throw new Error(`Erreur base de données: ${dbError.message}`);
       }
     }
 
