@@ -68,6 +68,8 @@ Deno.serve(async (req: Request) => {
       // Ensure 'id' is always a valid UUID string before upserting
       .from('imported_products') 
       .upsert(validProducts.map(p => ({ ...p, id: p.id && typeof p.id === 'string' && p.id.length > 0 ? p.id : crypto.randomUUID() })), { 
+      }
+      )
       .from('imported_products')
       .upsert(validProducts, { 
         onConflict: 'retailer_id,external_id,source_platform',
