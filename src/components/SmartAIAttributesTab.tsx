@@ -287,7 +287,7 @@ export const SmartAIAttributesTab: React.FC = () => {
     }
   };
 
-  const handleSyncFromCSV = async () => {
+  const handleSyncFromCSV = () => {
     setShowCSVImport(true);
   };
 
