@@ -90,6 +90,14 @@ Deno.serve(async (req: Request) => {
       
       const batchPromises = batch.map(async (product) => {
         try {
+          console.log(`🔍 Processing product for AI training:`, {
+            product_id: product.id,
+            product_name: (product.title || product.name || '').substring(0, 30),
+            has_description: !!(product.description || product.body_html),
+            description_length: (product.description || product.body_html || '').length,
+            product_type: product.productType || product.product_type || product.category
+          });
+          
           const attributes = await extractAttributesWithAI(product, source);
           return {
             // Standardize product format
@@ -149,7 +157,6 @@ Deno.serve(async (req: Request) => {
       store_id: store_id || 'default'
     });
 
-    // Update OmnIA Robot knowledge base
     await updateRobotKnowledge(supabase, processedProducts, source);
 
     console.log('🤖 OmnIA Robot mis à jour avec nouveau catalogue');
@@ -275,14 +282,26 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
       const data = await response.json();
       const content = data.choices[0]?.message?.content?.trim();
       
+      console.log('🔍 DeepSeek auto-trainer raw response:', {
+        product_name: (product.name || product.title || '').substring(0, 30),
+        response_status: response.status,
+        data_structure: data,
+        content_received: content,
+        content_length: content?.length || 0,
+        choices_available: !!data.choices,
+        first_choice_available: !!data.choices?.[0]
+      });
+      
       if (content) {
         try {
           const extracted = JSON.parse(content);
-          console.log('✅ IA extraction réussie:', {
+          console.log('✅ Auto-trainer extraction successful:', {
             product: product.title?.substring(0, 30),
             colors: extracted.colors?.length || 0,
             materials: extracted.materials?.length || 0,
-            confidence: extracted.confidence_score || 0
+            confidence: extracted.confidence_score || 0,
+            all_extracted_fields: Object.keys(extracted),
+            has_required_fields: !!(extracted.colors && extracted.materials)
           });
           
           return {
@@ -290,14 +309,41 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
             confidence_score: extracted.confidence_score || 50
           };
         } catch (parseError) {
-          console.log('⚠️ JSON invalide, fallback basique pour:', product.title?.substring(0, 30));
+          console.error('❌ Auto-trainer JSON parsing failed:', {
+            product_name: (product.title || '').substring(0, 30),
+            parse_error: parseError.message,
+            raw_content: content,
+            content_preview: content?.substring(0, 200),
+            content_type: typeof content,
+            is_valid_json_start: content?.trim().startsWith('{'),
+            is_valid_json_end: content?.trim().endsWith('}'),
+            content_cleaned: content?.replace(/\n/g, ' ').replace(/\s+/g, ' ')
+          });
         }
       }
     } else {
-      console.log('⚠️ DeepSeek erreur, fallback basique');
+      const errorText = await response.text();
+      console.error('❌ DeepSeek auto-trainer API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error_body: errorText,
+        headers: Object.fromEntries(response.headers.entries()),
+        api_key_configured: !!deepseekApiKey,
+        api_key_length: deepseekApiKey?.length || 0
+      });
     }
   } catch (error) {
-    console.log('⚠️ Erreur DeepSeek, fallback basique:', error);
+    console.error('❌ DeepSeek auto-trainer error:', {
+      error_message: error.message,
+      error_type: error.constructor.name,
+      product_info: {
+        id: product.id,
+        title: (product.title || '').substring(0, 50),
+        has_description: !!(product.description),
+        description_length: (product.description || '').length
+      },
+      api_key_configured: !!deepseekApiKey
+    });
   }
 
   return extractAttributesBasic(product);
@@ -471,7 +517,11 @@ async function updateRobotKnowledge(supabase: any, products: any[], source: stri
       confidence: Math.round(knowledgeUpdate.avg_confidence)
     });
   } catch (error) {
-    console.error('⚠️ Erreur mise à jour base de connaissances:', error);
+    console.error('❌ Save attributes function error:', {
+      error_message: error.message,
+      error_type: error.constructor.name,
+      supabase_configured: !!supabase
+    });
     // Continue without failing the entire process
   }
 }
