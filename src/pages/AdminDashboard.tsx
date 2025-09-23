@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt, Eye,
   LayoutDashboard, Package, ShoppingCart, Settings,
@@ -204,16 +203,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { title: 'Analytics', subtitle: '42% Conv.', icon: BarChart3, color: 'bg-orange-500', stats: '42% Conv.' },
     { title: 'Admin', subtitle: '100% Uptime', icon: Settings, color: 'bg-gray-500', stats: '100% Uptime' }
   ];
-
-  useEffect(() => {
-    // Vérifier les paramètres URL pour définir l'onglet actif
-    const urlParams = new URLSearchParams(location.search);
-    const tabParam = urlParams.get('tab');
-    if (tabParam) {
-      setActiveTab(tabParam);
-      console.log('📍 Onglet défini depuis URL:', tabParam);
-    }
-  }, [location]);
 
   useEffect(() => {
     if (!currentUser) return;

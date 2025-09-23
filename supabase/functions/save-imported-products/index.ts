@@ -49,26 +49,25 @@ Deno.serve(async (req: Request) => {
           details: 'Vérifiez que vos produits ont un nom et un prix'
         }),
         {
+          status: 400,
           headers: {
-            'Content-Type': 'application/json', 
+            'Content-Type': 'application/json',
             ...corsHeaders,
           },
-          status: 200, // Set status directly in Response object
         }
       );
     }
 
     // Insert products into database
-    const { data, error } = await supabase 
+    const { data, error } = await supabase
       .from('imported_products')
-      .upsert(validProducts, {
+      .upsert(validProducts, { 
         onConflict: 'retailer_id,external_id,source_platform',
         ignoreDuplicates: false 
       })
       .select();
 
     if (error) {
-      console.error('❌ Supabase upsert error details:', error); // Log the error details
       console.error('❌ Erreur insertion DB:', error);
       throw error;
     }
