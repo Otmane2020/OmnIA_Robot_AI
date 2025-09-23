@@ -504,8 +504,9 @@ export const SmartAIAttributesTab: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
         return;
-              
       }
 
       setIsEnriching(true);
