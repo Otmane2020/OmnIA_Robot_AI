@@ -56,10 +56,6 @@ export const SmartAIAttributesTab: React.FC = () => {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentProgress, setEnrichmentProgress] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
-  const [syncStartTime, setSyncStartTime] = useState(0);
-  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [syncStats, setSyncStats] = useState<any>(null);
   const [shopifyConfig, setShopifyConfig] = useState({
     domain: '',
@@ -68,9 +64,6 @@ export const SmartAIAttributesTab: React.FC = () => {
   const [isTestingShopify, setIsTestingShopify] = useState(false);
   const [shopifyStatus, setShopifyStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
   const [showShopifyConfig, setShowShopifyConfig] = useState(false);
-  const [showCSVImport, setShowCSVImport] = useState(false);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [isProcessingCSV, setIsProcessingCSV] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     const loggedUser = localStorage.getItem('current_logged_user');
     if (loggedUser) {
@@ -94,7 +87,6 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   useEffect(() => {
     loadSmartAIProducts();
-    loadShopifyConfig();
   }, []);
 
   useEffect(() => {
@@ -122,197 +114,26 @@ export const SmartAIAttributesTab: React.FC = () => {
     setFilteredProducts(filtered);
   };
 
-  const loadShopifyConfig = () => {
-    try {
-      const savedConfig = localStorage.getItem(getRetailerStorageKey('shopify_config'));
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        setShopifyConfig(config);
-        if (config.domain && config.token) {
-          setShopifyStatus('connected');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur chargement config Shopify:', error);
-    }
-  };
-
-  const saveShopifyConfig = () => {
-    try {
-      localStorage.setItem(getRetailerStorageKey('shopify_config'), JSON.stringify(shopifyConfig));
-      showSuccess('Configuration sauvegardée', 'Configuration Shopify sauvegardée avec succès.');
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde config:', error);
-      showError('Erreur sauvegarde', 'Impossible de sauvegarder la configuration.');
-    }
-  };
-
-  const testShopifyConnection = async () => {
-    if (!shopifyConfig.domain || !shopifyConfig.token) {
-      showError('Configuration incomplète', 'Veuillez remplir le domaine et le token Shopify.');
-      return;
-    }
-
-    setIsTestingShopify(true);
-    setShopifyStatus('disconnected');
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase non configuré');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/shopify-admin-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'test_connection',
-          shop_domain: shopifyConfig.domain,
-          access_token: shopifyConfig.token
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setShopifyStatus('connected');
-          showSuccess('Connexion réussie', `Boutique ${result.shop_info?.name || shopifyConfig.domain} connectée !`);
-          saveShopifyConfig();
-        } else {
-          setShopifyStatus('error');
-          showError('Test échoué', result.error || 'Erreur de connexion Shopify.');
-        }
-      } else {
-        setShopifyStatus('error');
-        showError('Erreur API', 'Impossible de tester la connexion Shopify.');
-      }
-    } catch (error) {
-      console.error('❌ Erreur test Shopify:', error);
-      setShopifyStatus('error');
-      showError('Erreur de test', 'Erreur lors du test de connexion.');
-    } finally {
-      setIsTestingShopify(false);
-    }
-  };
-
-  const syncFromShopify = async () => {
-    if (shopifyStatus !== 'connected') {
-      showError('Shopify non connecté', 'Veuillez d\'abord tester et valider la connexion Shopify.');
-      return;
-    }
-
-    try {
-      setShowSyncModal(true);
-      showInfo('Synchronisation Shopify', 'Import des produits depuis Shopify...');
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // Récupérer les produits Shopify
-      const response = await fetch(`${supabaseUrl}/functions/v1/shopify-admin-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'get_products',
-          shop_domain: shopifyConfig.domain,
-          access_token: shopifyConfig.token,
-          limit: 100
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur récupération produits Shopify');
-      }
-
-      const shopifyData = await response.json();
-      if (!shopifyData.success) {
-        throw new Error(shopifyData.error || 'Erreur Shopify API');
-      }
-
-      // Enrichir avec DeepSeek
-      const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: shopifyData.products,
-          source: 'shopify_smart_ai',
-          retailer_id: currentUser?.email || 'demo-retailer-id'
-        }),
-      });
-
-      if (enrichResponse.ok) {
-        const enrichResult = await enrichResponse.json();
-        console.log('✅ Enrichissement Shopify réussi:', enrichResult.stats);
-        
-        // Sauvegarder en localStorage aussi
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichResult.enriched_products || []));
-        
-        await loadSmartAIProducts();
-        setSyncStats(enrichResult.stats);
-        
-        showSuccess(
-          'Synchronisation Shopify terminée !', 
-          `${enrichResult.stats?.enriched_count || shopifyData.products.length} produits Shopify enrichis !`
-        );
-      } else {
-        throw new Error('Erreur enrichissement DeepSeek');
-      }
-
-    } catch (error) {
-      console.error('❌ Erreur sync Shopify:', error);
-      showError('Erreur synchronisation', 'Impossible de synchroniser avec Shopify.');
-    } finally {
-      setShowSyncModal(false);
-    }
-  };
   const loadSmartAIProducts = async () => {
     try {
       setLoading(true);
       
-      // Essayer de charger depuis Supabase d'abord
-      try {
-        const { data: enrichedProducts, error } = await supabase
-          .from('products_enriched')
-          .select('*')
-          .gt('stock_qty', 0)
-          .order('created_at', { ascending: false });
+      // Charger depuis Supabase products_enriched
+      const { data: enrichedProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .gt('stock_qty', 0)
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('❌ Erreur chargement Supabase:', error);
-          throw error;
-        }
-
-        if (enrichedProducts && enrichedProducts.length > 0) {
-          console.log(`✅ Produits SMART AI chargés depuis Supabase:`, enrichedProducts.length);
-          setProducts(enrichedProducts);
-          return;
-        }
-      } catch (supabaseError) {
-        console.log('⚠️ Supabase indisponible, chargement depuis localStorage...');
+      if (error) {
+        console.error('❌ Erreur chargement Supabase:', error);
+        setProducts([]);
+        return;
       }
 
-      // Fallback: charger depuis localStorage
-      const localProducts = localStorage.getItem(getRetailerStorageKey('smart_ai_products'));
-      if (localProducts) {
-        try {
-          const parsedProducts = JSON.parse(localProducts);
-          console.log(`✅ Produits SMART AI chargés depuis localStorage:`, parsedProducts.length);
-          setProducts(parsedProducts);
-        } catch (parseError) {
-          console.error('❌ Erreur parsing localStorage:', parseError);
-          setProducts([]);
-        }
+      if (enrichedProducts && enrichedProducts.length > 0) {
+        console.log(`✅ Produits SMART AI chargés:`, enrichedProducts.length);
+        setProducts(enrichedProducts);
       } else {
         console.log(`📦 Aucun produit SMART AI trouvé`);
         setProducts([]);
@@ -329,18 +150,25 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   const handleSyncWithCatalog = async () => {
     try {
+      // Générer clé de stockage spécifique au revendeur
+      const getRetailerStorageKey = (key: string) => {
+        if (!currentUser?.email) return key;
+        const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+        return `${key}_${emailHash}`;
+      };
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseKey) {
-        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+      if (!supabaseUrl || !supabaseKey || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
+        showError('Configuration manquante', 'Supabase non configuré ou URL invalide. Cliquez sur "Connect to Supabase" en haut à droite et vérifiez que l\'URL commence par https://');
         return;
       }
 
       // Récupérer les produits du catalogue local
       const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Allez dans l\'onglet "Catalogue" pour importer vos produits.');
+        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Importez d\'abord votre catalogue.');
         return;
       }
 
@@ -353,22 +181,6 @@ export const SmartAIAttributesTab: React.FC = () => {
       }
 
       setShowSyncModal(true);
-      setSyncProgress(0);
-      setEstimatedTimeRemaining(Math.max(products.length * 2, 10)); // 2 secondes par produit minimum
-      setSyncStartTime(Date.now());
-      
-      // Démarrer la simulation de progression
-      const progressInterval = setInterval(() => {
-        setSyncProgress(prev => {
-          const newProgress = Math.min(prev + (100 / Math.max(products.length, 5)), 95);
-          const elapsed = (Date.now() - Date.now()) / 1000;
-          const estimated = Math.max(Math.round((100 - newProgress) * 0.5), 0);
-          setEstimatedTimeRemaining(estimated);
-          return newProgress;
-        });
-      }, 1000);
-      
-      setProgressIntervalId(progressInterval);
       showInfo('Synchronisation démarrée', 'Enrichissement des produits avec DeepSeek IA...');
       
       // Appeler la fonction d'enrichissement Supabase
@@ -385,73 +197,15 @@ export const SmartAIAttributesTab: React.FC = () => {
         }),
       });
 
-      // Arrêter la progression simulée
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
-      setSyncProgress(100);
-      setEstimatedTimeRemaining(0);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement:', errorText);
-        
-        // Essayer de sauvegarder localement en cas d'erreur Supabase
-        const enrichedProducts = products.map((product: any) => ({
-          id: `smart-ai-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          handle: product.handle || generateHandle(product.name || product.title || ''),
-          retailer_id: currentUser?.email || 'demo-retailer-id',
-          title: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          short_description: (product.description || product.title || '').substring(0, 160),
-          product_type: product.category || 'Mobilier',
-          subcategory: '',
-          tags: [],
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          material: '',
-          color: '',
-          style: '',
-          room: '',
-          dimensions: '',
-          weight: '',
-          capacity: '',
-          price: parseFloat(product.price) || 0,
-          compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-          currency: 'EUR',
-          stock_quantity: parseInt(product.stock) || 0,
-          stock_qty: parseInt(product.stock) || 0,
-          availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
-          gtin: '',
-          mpn: product.sku || '',
-          identifier_exists: !!product.sku,
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          additional_image_links: [],
-          product_url: product.product_url || '#',
-          canonical_link: product.product_url || '#',
-          percent_off: 0,
-          ai_confidence: 0.5,
-          seo_title: product.name || product.title || '',
-          seo_description: (product.description || product.title || '').substring(0, 155),
-          enrichment_source: 'local_fallback',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-        
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichedProducts));
-        setProducts(enrichedProducts);
-        
-        showError('Supabase indisponible', `Produits sauvegardés localement. ${enrichedProducts.length} produits disponibles en mode hors ligne.`);
+        showError('Erreur enrichissement', `Erreur API: ${response.status}. Vérifiez la configuration Supabase.`);
         return;
       }
 
       const result = await response.json();
       console.log('✅ Enrichissement SMART AI réussi:', result.stats);
-      
-      // Sauvegarder aussi en localStorage pour backup
-      if (result.enriched_products) {
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(result.enriched_products));
-      }
       
       // Recharger les produits depuis Supabase
       await loadSmartAIProducts();
@@ -475,10 +229,6 @@ export const SmartAIAttributesTab: React.FC = () => {
       showError('Erreur de synchronisation', 'Impossible de synchroniser avec le catalogue.');
     } finally {
       setShowSyncModal(false);
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
     }
   };
 
@@ -500,8 +250,9 @@ export const SmartAIAttributesTab: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
+      if (!supabaseUrl || !supabaseKey || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
+        showError('Configuration manquante', 'Supabase non configuré ou URL invalide. Cliquez sur "Connect to Supabase" en haut à droite et vérifiez que l\'URL commence par https://');
         return;
-              
       }
 
       setIsEnriching(true);
@@ -629,42 +380,12 @@ export const SmartAIAttributesTab: React.FC = () => {
         
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => setShowShopifyConfig(!showShopifyConfig)}
-            className={`px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all ${
-              shopifyStatus === 'connected' 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-orange-600 hover:bg-orange-700 text-white'
-            }`}
-          >
-            <Store className="w-5 h-5" />
-            {shopifyStatus === 'connected' ? 'Shopify Connecté' : 'Configurer Shopify'}
-          </button>
-          
-          <button
             onClick={handleSyncWithCatalog}
             className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
           >
             <Database className="w-5 h-5" />
-            Sync Catalogue CSV
+            Synchroniser Catalogue
           </button>
-          
-          <button
-            onClick={handleSyncFromCSV}
-            className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
-          >
-            <Upload className="w-5 h-5" />
-            Import CSV Direct
-          </button>
-          
-          {shopifyStatus === 'connected' && (
-            <button
-              onClick={syncFromShopify}
-              className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
-            >
-              <Store className="w-5 h-5" />
-              Sync Shopify
-            </button>
-          )}
           
           <button
             onClick={handleEnrichWithDeepSeek}
