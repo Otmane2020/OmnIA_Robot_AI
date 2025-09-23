@@ -113,7 +113,13 @@ export const ProductsEnrichedTable: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (supabaseUrl && supabaseKey) {
+      if (!supabaseUrl || !supabaseKey) {
+        console.log('⚠️ Supabase non configuré pour le statut cron');
+        setCronStatus(null);
+        return;
+      }
+
+      try {
         const response = await fetch(`${supabaseUrl}/functions/v1/get-cron-status`, {
           method: 'POST',
           headers: {
@@ -129,10 +135,17 @@ export const ProductsEnrichedTable: React.FC = () => {
           const cronData = await response.json();
           setCronStatus(cronData);
           console.log('✅ Statut cron chargé:', cronData);
+        } else {
+          console.log('⚠️ Erreur chargement statut cron:', response.status);
+          setCronStatus(null);
         }
+      } catch (fetchError) {
+        console.log('⚠️ Erreur réseau statut cron:', fetchError);
+        setCronStatus(null);
       }
     } catch (error) {
       console.error('❌ Erreur chargement statut cron:', error);
+      setCronStatus(null);
     } finally {
       setCronLoading(false);
     }
@@ -143,7 +156,12 @@ export const ProductsEnrichedTable: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (supabaseUrl && supabaseKey) {
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré pour le cron.');
+        return;
+      }
+
+      try {
         const response = await fetch(`${supabaseUrl}/functions/v1/setup-ai-cron`, {
           method: 'POST',
           headers: {
@@ -165,6 +183,8 @@ export const ProductsEnrichedTable: React.FC = () => {
         } else {
           showError('Erreur cron', 'Impossible de configurer le cron d\'enrichissement');
         }
+      } catch (fetchError) {
+        showError('Erreur réseau', 'Impossible de contacter le serveur pour configurer le cron');
       }
     } catch (error) {
       console.error('❌ Erreur configuration cron:', error);
@@ -220,6 +240,15 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const handleImportCatalog = async () => {
     try {
+      // Validate Supabase configuration first
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+        return;
+      }
+
       const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
         showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue dans l\'onglet Catalogue.');
@@ -232,10 +261,10 @@ export const ProductsEnrichedTable: React.FC = () => {
       showInfo('Import en cours', 'Envoi des produits vers DeepSeek pour enrichissement...');
       
       // Appeler directement la fonction d'enrichissement Supabase
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -282,6 +311,15 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const handleEnrichWithDeepSeek = async () => {
     try {
+      // Validate Supabase configuration first
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+        return;
+      }
+
       setIsEnriching(true);
       setEnrichmentProgress(0);
       
@@ -298,10 +336,10 @@ export const ProductsEnrichedTable: React.FC = () => {
       console.log(`📦 Produits à enrichir pour ${currentUser?.email}:`, products.length);
 
       // Appeler la fonction d'enrichissement Supabase
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -349,12 +387,21 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const handleAutoTraining = async () => {
     try {
+      // Validate Supabase configuration first
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+        return;
+      }
+
       showInfo('Entraînement auto', 'Démarrage de l\'entraînement automatique...');
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-ai-trainer`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/auto-ai-trainer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
