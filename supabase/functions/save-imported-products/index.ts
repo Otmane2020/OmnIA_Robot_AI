@@ -60,14 +60,8 @@ Deno.serve(async (req: Request) => {
 
     // Insert products into database
     const { data, error } = await supabase 
-      // Ensure 'id' is always a valid UUID string before upserting
       .from('imported_products')
-      .upsert(validProducts.map(p => ({
-        ...p,
-        id: p.id && typeof p.id === 'string' && p.id.length > 0
-          ? p.id
-          : crypto.randomUUID()
-      })), {
+      .upsert(validProducts, {
         onConflict: 'retailer_id,external_id,source_platform',
         ignoreDuplicates: false 
       })
