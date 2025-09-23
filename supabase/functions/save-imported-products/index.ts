@@ -21,7 +21,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { products, retailer_id, source = 'csv' }: SaveImportedProductsRequest = await req.json();
+    const { products, retailer_id, source }: SaveImportedProductsRequest = await req.json();
     
     console.log('💾 Sauvegarde produits importés:', {
       products_count: products.length,
@@ -37,26 +37,7 @@ Deno.serve(async (req: Request) => {
     // Validate and clean products
     const validProducts = products.filter(product => 
       product.name && product.name.trim().length > 0 && product.price > 0
-    ).map(product => ({
-      external_id: product.external_id || product.id || `product_${Date.now()}_${Math.random()}`,
-      retailer_id: retailer_id,
-      name: product.name,
-      description: product.description || '',
-      price: parseFloat(product.price) || 0,
-      compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : null,
-      category: product.category || '',
-      vendor: product.vendor || '',
-      image_url: product.image_url || '',
-      product_url: product.product_url || '',
-      stock: parseInt(product.stock) || 0,
-      source_platform: source,
-      status: 'active',
-      shopify_data: product.shopify_data || null,
-      inventory_management: product.inventory_management || 'shopify',
-      extracted_attributes: product.extracted_attributes || {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
+    );
 
     console.log(`✅ ${validProducts.length}/${products.length} produits valides`);
 
@@ -72,21 +53,13 @@ Deno.serve(async (req: Request) => {
             'Content-Type': 'application/json', 
             ...corsHeaders,
           },
-          status: 400,
+          status: 200, // Set status directly in Response object
         }
       );
     }
 
-    console.log('🔄 Insertion de', validProducts.length, 'produits dans imported_products...');
-    console.log('📋 Premier produit exemple:', {
-      external_id: validProducts[0].external_id,
-      retailer_id: validProducts[0].retailer_id,
-      name: validProducts[0].name?.substring(0, 30),
-      source_platform: validProducts[0].source_platform
-    });
-
-    // Insert products into database using composite primary key
-    const { data, error: insertError } = await supabase
+    // Insert products into database
+    const { data, error } = await supabase 
       .from('imported_products')
       .upsert(validProducts, {
         onConflict: 'retailer_id,external_id,source_platform',
@@ -94,27 +67,10 @@ Deno.serve(async (req: Request) => {
       })
       .select();
 
-    if (insertError) {
-      console.error('❌ Erreur insertion DB détaillée:', insertError);
-      console.error('❌ Code erreur:', insertError.code);
-      console.error('❌ Message:', insertError.message);
-      console.error('❌ Détails:', insertError.details);
-      
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Erreur lors de la sauvegarde des produits',
-          details: `${insertError.message} (Code: ${insertError.code})`,
-          supabase_error: insertError
-        }),
-        {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
+    if (error) {
+      console.error('❌ Supabase upsert error details:', error); // Log the error details
+      console.error('❌ Erreur insertion DB:', error);
+      throw error;
     }
 
     console.log('✅ Produits sauvegardés:', data?.length || 0);

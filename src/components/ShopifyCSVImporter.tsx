@@ -507,63 +507,16 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             },
             body: JSON.stringify({
               products: transformedProducts,
-              retailer_id: currentUser?.email || 'demo-retailer-id',
-              source: 'csv'
+              retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000'
             }),
           });
           
           if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Erreur détaillée Supabase:', errorData);
-            throw new Error(`Erreur sauvegarde Supabase: ${errorData.details || errorData.error}`);
+            throw new Error('Erreur sauvegarde Supabase');
           }
           
           const result = await response.json();
           console.log('✅ Produits sauvegardés dans Supabase:', result);
-          
-          // NOUVEAU: Déclencher l'enrichissement automatique après sauvegarde réussie
-          if (result.success && result.saved_count > 0) {
-            console.log('🧠 Déclenchement enrichissement DeepSeek automatique...');
-            showInfo('Enrichissement IA', 'Analyse des produits avec DeepSeek en cours...');
-            
-            try {
-              const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  products: transformedProducts,
-                  source: 'csv_import',
-                  retailer_id: currentUser?.email || 'demo-retailer-id'
-                }),
-              });
-              
-              if (enrichResponse.ok) {
-                const enrichResult = await enrichResponse.json();
-                console.log('✅ Enrichissement DeepSeek réussi:', enrichResult.stats);
-                showSuccess(
-                  'Catalogue enrichi !', 
-                  `${enrichResult.stats?.enriched_count || result.saved_count} produits analysés avec DeepSeek IA !`,
-                  [
-                    {
-                      label: 'Voir catalogue enrichi',
-                      action: () => navigate('/admin?tab=enriched'),
-                      variant: 'primary'
-                    }
-                  ]
-                );
-              } else {
-                const enrichError = await enrichResponse.json();
-                console.error('❌ Erreur enrichissement:', enrichError);
-                showInfo('Import terminé', 'Produits importés ! Enrichissement IA en arrière-plan...');
-              }
-            } catch (enrichError) {
-              console.error('❌ Erreur enrichissement:', enrichError);
-              showInfo('Import terminé', 'Produits importés ! Enrichissement IA en arrière-plan...');
-            }
-          }
         } else {
           // Fallback: sauvegarder seulement les IDs dans localStorage
           const productIds = transformedProducts.map(p => p.external_id);
@@ -571,14 +524,13 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         }
       } catch (error) {
         console.error('❌ Erreur sauvegarde Supabase:', error);
-        
-        // Fallback: sauvegarder dans localStorage pour que le catalogue fonctionne
-        const activeProducts = transformedProducts.filter(p => p.status === 'active');
-        localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(activeProducts));
-        console.log('💾 Fallback localStorage:', activeProducts.length, 'produits sauvegardés');
-        
-        showError('Erreur Supabase', 'Produits sauvegardés localement. Vérifiez votre configuration Supabase.');
-        throw error; // Re-throw pour que l'erreur soit visible
+        // Fallback: sauvegarder seulement les métadonnées dans localStorage
+        const metadata = {
+          count: transformedProducts.length,
+          imported_at: new Date().toISOString(),
+          retailer_id: currentUser?.email || 'demo-retailer-id'
+        };
+        localStorage.setItem(getRetailerStorageKey('catalog_metadata'), JSON.stringify(metadata));
       }
       
       // Ancienne logique localStorage supprimée pour éviter QuotaExceededError
