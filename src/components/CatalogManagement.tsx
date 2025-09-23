@@ -486,6 +486,14 @@ export const CatalogManagement: React.FC = () => {
           </button>
           
           <button
+            onClick={handleDeleteAll}
+            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
+            Supprimer catalogue
+          </button>
+          
+          <button
             onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
           >
