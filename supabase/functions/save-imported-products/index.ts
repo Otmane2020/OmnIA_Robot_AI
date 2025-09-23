@@ -59,32 +59,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Insert products into database
-    // Map products to match imported_products table schema
-    const mappedProducts = validProducts.map(product => ({
-      external_id: product.external_id || product.id || `product-${Date.now()}-${Math.random()}`,
-      retailer_id: retailer_id.toString(),
-      name: product.name || product.title,
-      description: product.description || product.body_html || '',
-      price: parseFloat(product.price) || 0,
-      compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : null,
-      category: product.category || product.product_type || '',
-      vendor: product.vendor || '',
-      image_url: product.image_url || product.image_src || '',
-      product_url: product.product_url || product.handle ? `https://example.com/products/${product.handle}` : '',
-      stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0,
-      source_platform: source,
-      status: product.status || 'active',
-      inventory_management: product.inventory_management || 'shopify',
-      extracted_attributes: product.extracted_attributes || {},
-      shopify_data: {
-        ...product,
-        variants: product.variants || []
-      }
-    }));
-
     const { data, error } = await supabase
       .from('imported_products')
-      .upsert(mappedProducts, { 
+      .upsert(validProducts, { 
         onConflict: 'retailer_id,external_id,source_platform',
         ignoreDuplicates: false 
       })
@@ -100,8 +77,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${mappedProducts.length} produits sauvegardés avec succès`,
-        saved_count: mappedProducts.length,
+        message: `${validProducts.length} produits sauvegardés avec succès`,
+        saved_count: validProducts.length,
         products: data || []
       }),
       {
