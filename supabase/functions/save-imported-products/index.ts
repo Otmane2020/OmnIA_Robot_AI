@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
     const validProducts = products.filter(product => 
       product.name && product.name.trim().length > 0 && product.price > 0
     ).map(product => ({
-      external_id: product.external_id || product.id || `product_${Date.now()}_${Math.random()}`,
+      external_id: product.external_id || `product_${Date.now()}_${Math.random().toString().substring(2)}`,
       retailer_id: retailer_id,
       name: product.name,
       description: product.description || '',
