@@ -4,7 +4,7 @@ import {
   Search, Filter, Eye, Edit, Trash2, ExternalLink, 
   Package, Tag, DollarSign, Image, BarChart3, Settings,
   ChevronDown, ChevronUp, X, Save, Upload, Download,
-  Sparkles, Database, Globe, Star, TrendingUp
+  Sparkles, Database, Globe, Star, TrendingUp, Store
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { supabase } from '../lib/supabase';
@@ -45,7 +45,17 @@ interface SmartAIProduct {
   ai_confidence: number;
   created_at: string;
   updated_at: string;
+  seo_title?: string;
+  seo_description?: string;
 }
+
+const generateHandle = (title: string) => {
+  return title.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+};
 
 export const SmartAIAttributesTab: React.FC = () => {
   const [products, setProducts] = useState<SmartAIProduct[]>([]);
@@ -274,12 +284,13 @@ export const SmartAIAttributesTab: React.FC = () => {
       showError('Erreur synchronisation', 'Impossible de synchroniser avec Shopify.');
     } finally {
       setShowSyncModal(false);
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
     }
   };
+
+  const handleSyncFromCSV = async () => {
+    setShowCSVImport(true);
+  };
+
   const loadSmartAIProducts = async () => {
     try {
       setLoading(true);
