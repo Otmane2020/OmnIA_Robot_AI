@@ -116,6 +116,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onShowRegistrat
               <p className="text-xs text-blue-300"><strong>Mobilier Design:</strong> contact@mobilierdesign.fr / design123</p>
               <p className="text-xs text-blue-300"><strong>Déco Contemporain:</strong> info@decocontemporain.com / deco123</p>
               <p className="text-xs text-blue-300"><strong>Meubles Lyon:</strong> contact@meubleslyon.fr / lyon123</p>
+              <p className="text-xs text-blue-300"><strong>Excel Formation:</strong> excelformation20@gmail.com / excel123</p>
               <p className="text-xs text-yellow-300"><strong>Super Admin:</strong> superadmin@omnia.sale / superadmin2025</p>
             </div>
           </div>

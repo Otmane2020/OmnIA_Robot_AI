@@ -101,8 +101,14 @@ function App() {
       setIsLoggedIn(true);
       saveCurrentUser({ email: credentials.email, company_name: 'Meubles Lyon', plan: 'Starter' });
     }
+    // Excel Formation
+    else if (credentials.email === 'excelformation20@gmail.com' && credentials.password === 'excel123') {
+      setIsSuperAdmin(false);
+      setIsLoggedIn(true);
+      saveCurrentUser({ email: credentials.email, company_name: 'Excel Formation', plan: 'Professional' });
+    }
     else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• excelformation20@gmail.com / excel123\n• superadmin@omnia.sale / superadmin2025');
     }
   };
 
