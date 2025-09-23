@@ -1,4 +1,5 @@
-const menuItems = [
+@@ .. @@
+  const menuItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -121,90 +122,3 @@ const menuItems = [
       color: 'bg-gray-600'
     }
   ];
-
-  const renderGoogleMerchant = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Google Merchant Center</h2>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-4">Flux XML Google Shopping</h3>
-        <p className="text-gray-300 mb-4">
-          Générez automatiquement votre flux XML pour Google Merchant Center basé sur vos produits enrichis.
-        </p>
-        
-        <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4 mb-4">
-          <h4 className="font-semibold text-blue-200 mb-2">📊 Champs inclus dans le flux :</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-blue-300">
-            <div>• ID produit</div>
-            <div>• Titre</div>
-            <div>• Description</div>
-            <div>• Catégorie Google</div>
-            <div>• Lien produit</div>
-            <div>• Image principale</div>
-            <div>• Condition</div>
-            <div>• Disponibilité</div>
-            <div>• Prix</div>
-            <div>• Prix barré</div>
-            <div>• MPN</div>
-            <div>• Marque</div>
-            <div>• Lien canonique</div>
-            <div>• Images additionnelles</div>
-            <div>• Dimensions</div>
-            <div>• Matériau</div>
-            <div>• GTIN</div>
-            <div>• Couleur</div>
-            <div>• Quantité</div>
-            <div>• Taille</div>
-          </div>
-        </div>
-        
-        <div className="flex gap-4">
-          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Générer Flux XML
-          </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Télécharger XML
-          </button>
-        </div>
-        
-        <div className="mt-4 p-4 bg-green-500/20 border border-green-400/30 rounded-xl">
-          <p className="text-green-300 text-sm">
-            <strong>URL du flux :</strong> https://{currentUser?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'boutique'}.omnia.sale/feed/xml/google-shopping.xml
-          </p>
-        </div>
-      </div>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-4">Guide d'importation Google Merchant</h3>
-        
-        <div className="space-y-4">
-          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-            <h4 className="font-semibold text-blue-200 mb-2">📋 Étapes d'importation :</h4>
-            <ol className="text-blue-300 text-sm space-y-2">
-              <li>1. <strong>Connectez-vous à Google Merchant Center</strong></li>
-              <li>2. <strong>Produits → Flux</strong> → Ajouter un flux</li>
-              <li>3. <strong>URL du flux :</strong> Copiez l'URL générée ci-dessus</li>
-              <li>4. <strong>Pays/Langue :</strong> France / Français</li>
-              <li>5. <strong>Validation :</strong> Google vérifie automatiquement</li>
-            </ol>
-          </div>
-          
-          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
-            <h4 className="font-semibold text-green-200 mb-2">✅ Avantages :</h4>
-            <ul className="text-green-300 text-sm space-y-1">
-              <li>• Synchronisation automatique quotidienne</li>
-              <li>• Optimisation SEO automatique</li>
-              <li>• Gestion des stocks en temps réel</li>
-              <li>• Conformité Google Shopping</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      
-      <div className="text-center py-20">
-        <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-white mb-2">Configuration en cours</h3>
-        <p className="text-gray-400">Fonctionnalités Google Merchant en développement</p>
-      </div>
-    </div>
-  );
