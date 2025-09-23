@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
-  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
+ Brain, LogOut, Loader2, Settings
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Bot, Brain, LogOut, Loader2, Settings
