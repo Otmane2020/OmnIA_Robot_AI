@@ -249,38 +249,19 @@ export const ProductsEnrichedTable: React.FC = () => {
         return;
       }
 
-      // Récupérer les produits depuis Supabase imported_products
-      const response = await fetch(`${supabaseUrl}/functions/v1/get-imported-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          retailer_id: currentUser?.email || 'demo-retailer-id'
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        showError('Erreur récupération', errorData.error || 'Impossible de récupérer les produits importés');
+      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
+      if (!catalogProducts) {
+        showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue dans l\'onglet Catalogue.');
         return;
       }
-      
-      const result = await response.json();
-      const products = result.products || [];
-      
-      if (products.length === 0) {
-        showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue CSV dans l\'onglet Catalogue.');
-        return;
-      }
-      
-      console.log(`📦 Import catalogue depuis Supabase pour ${currentUser?.email}:`, products.length);
+
+      const products = JSON.parse(catalogProducts);
+      console.log(`📦 Import catalogue pour ${currentUser?.email}:`, products.length);
 
       showInfo('Import en cours', 'Envoi des produits vers DeepSeek pour enrichissement...');
       
       // Appeler directement la fonction d'enrichissement Supabase
-      const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${supabaseKey}`,
@@ -288,19 +269,19 @@ export const ProductsEnrichedTable: React.FC = () => {
         },
         body: JSON.stringify({
           products: products,
-          source: 'catalog_import',
+          source: 'catalog',
           retailer_id: currentUser?.email || 'demo-retailer-id'
         }),
       });
 
-      if (!enrichResponse.ok) {
-        const errorData = await enrichResponse.json();
-        console.error('❌ Erreur enrichissement:', errorData);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur enrichissement:', errorText);
         throw new Error('Erreur lors de l\'enrichissement avec DeepSeek');
       }
 
-      const enrichResult = await enrichResponse.json();
-      console.log('✅ Enrichissement réussi:', enrichResult.stats);
+      const result = await response.json();
+      console.log('✅ Enrichissement réussi:', result.stats);
       
       // Recharger les produits depuis Supabase
       await loadEnrichedProducts();
@@ -309,7 +290,7 @@ export const ProductsEnrichedTable: React.FC = () => {
       
       showSuccess(
         'Catalogue importé !', 
-        `${enrichResult.stats?.enriched_count || products.length} produits importés et enrichis avec DeepSeek !`,
+        `${result.stats?.enriched_count || products.length} produits importés et enrichis avec DeepSeek !`,
         [
           {
             label: 'Voir les résultats',

@@ -190,144 +190,68 @@ export const CatalogManagement: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Charger les produits depuis Supabase au lieu de localStorage
+    // Simuler le chargement des produits
     setTimeout(() => {
       console.log(`📦 Chargement catalogue pour ${currentUser?.email}...`);
       
-      // Charger depuis Supabase
-      loadProductsFromSupabase();
-    }, 100);
-  }, []);
-  
-  const loadProductsFromSupabase = async () => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const savedProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
+      let allProducts: Product[] = [];
       
-      if (supabaseUrl && supabaseKey) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/get-imported-products`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            retailer_id: currentUser?.email || 'demo-retailer-id'
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          const supabaseProducts = result.products || [];
+      if (savedProducts) {
+        try {
+          const parsedSaved = JSON.parse(savedProducts);
+          console.log(`📦 Produits CSV chargés pour ${currentUser?.email}:`, parsedSaved.length);
           
-          // Transformer les données Supabase au format attendu
-          const transformedProducts = supabaseProducts.map((p: any) => ({
-            id: p.external_id || `imported-${Date.now()}-${Math.random()}`,
-            name: p.name || 'Produit sans nom',
-            description: p.description || '',
-            price: parseFloat(p.price) || 0,
-            compare_at_price: p.compare_at_price,
-            category: translateCategory(p.category || 'Mobilier'),
+          // Valider et nettoyer les produits CSV
+          const validSavedProducts = parsedSaved.filter((p: any) => {
+            const isValid = p && p.name && p.price > 0 && p.status === 'active';
+            if (!isValid) {
+              console.warn('⚠️ Produit invalide ignoré:', p);
+            }
+            return isValid;
+          }).map((p: any) => ({
+            // Assurer tous les champs requis
+            id: p.id || `csv-${Date.now()}-${Math.random()}`,
+            name: p.name || p.title || 'Produit sans nom',
+            description: p.description || p.body_html || '',
+            price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
+            compare_at_price: p.compare_at_price || p.variant_compare_at_price,
+            category: p.category || p.productType || p.product_type || 'Mobilier',
             vendor: p.vendor || 'Decora Home',
-            image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+            image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
             product_url: p.product_url || '#',
-            stock: parseInt(p.stock) || 0,
+            stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || 0,
             status: p.status || 'active',
             source_platform: p.source_platform || 'csv',
-            sku: p.shopify_data?.['Variant SKU'] || '',
-            variants: [{
-              id: `${p.external_id || 'default'}-variant`,
+            sku: p.sku || p.variant_sku || '',
+            variants: p.variants || [{
+              id: `${p.id}-default`,
               title: 'Default',
               price: parseFloat(p.price) || 0,
               compare_at_price: p.compare_at_price,
-              stock: parseInt(p.stock) || 0,
-              sku: p.shopify_data?.['Variant SKU'] || '',
-              options: []
+              availableForSale: true,
+              quantityAvailable: parseInt(p.stock) || 0,
+              selectedOptions: []
             }],
             created_at: p.created_at || new Date().toISOString(),
             updated_at: p.updated_at || new Date().toISOString()
           }));
           
-          console.log('✅ Produits chargés depuis Supabase:', transformedProducts.length);
-          setProducts(transformedProducts);
-          setFilteredProducts(transformedProducts);
+          console.log('✅ Produits CSV validés:', validSavedProducts.length);
           
-          // Forcer le rechargement si on vient d'un import
-          if (transformedProducts.length > 0) {
-            console.log('🔄 Catalogue mis à jour avec', transformedProducts.length, 'produits');
-          }
-        } else {
-          console.log('⚠️ Pas de produits dans Supabase, utilisation des données locales');
-          loadProductsFromLocalStorage();
+          // Mettre les produits CSV en premier
+          allProducts = [...validSavedProducts];
+        } catch (error) {
+          console.error('Erreur parsing produits sauvegardés:', error);
         }
-      } else {
-        console.log('⚠️ Supabase non configuré, utilisation des données locales');
-        loadProductsFromLocalStorage();
       }
-    } catch (error) {
-      console.error('❌ Erreur chargement Supabase:', error);
-      loadProductsFromLocalStorage();
-    } finally {
+      
+      console.log(`📦 Total produits pour ${currentUser?.email}:`, allProducts.length);
+      setProducts(allProducts);
+      setFilteredProducts(allProducts);
       setIsLoading(false);
-    }
-  };
-  
-  const loadProductsFromLocalStorage = () => {
-    // Fallback: charger depuis localStorage (données limitées)
-    const savedProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-    let allProducts: Product[] = [];
-    
-    if (savedProducts) {
-      try {
-        const parsedSaved = JSON.parse(savedProducts);
-        console.log(`📦 Produits localStorage chargés pour ${currentUser?.email}:`, parsedSaved.length);
-        
-        // Valider et nettoyer les produits localStorage
-        const validSavedProducts = parsedSaved.filter((p: any) => {
-          const isValid = p && p.name && p.price > 0 && p.status === 'active';
-          if (!isValid) {
-            console.warn('⚠️ Produit invalide ignoré:', p);
-          }
-          return isValid;
-        }).map((p: any) => ({
-          // Assurer tous les champs requis
-          id: p.id || `csv-${Date.now()}-${Math.random()}`,
-          name: p.name || p.title || 'Produit sans nom',
-          description: p.description || p.body_html || '',
-          price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
-          compare_at_price: p.compare_at_price || p.variant_compare_at_price,
-          category: p.category || p.productType || p.product_type || 'Mobilier',
-          vendor: p.vendor || 'Decora Home',
-          image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          product_url: p.product_url || '#',
-          stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || 0,
-          status: p.status || 'active',
-          source_platform: p.source_platform || 'csv',
-          sku: p.sku || p.variant_sku || '',
-          variants: p.variants || [{
-            id: `${p.id}-default`,
-            title: 'Default',
-            price: parseFloat(p.price) || 0,
-            compare_at_price: p.compare_at_price,
-            availableForSale: true,
-            quantityAvailable: parseInt(p.stock) || 0,
-            selectedOptions: []
-          }],
-          created_at: p.created_at || new Date().toISOString(),
-          updated_at: p.updated_at || new Date().toISOString()
-        }));
-        
-        console.log('✅ Produits localStorage validés:', validSavedProducts.length);
-        allProducts = [...validSavedProducts];
-      } catch (error) {
-        console.error('Erreur parsing produits localStorage:', error);
-      }
-    }
-    
-    console.log(`📦 Total produits pour ${currentUser?.email}:`, allProducts.length);
-    setProducts(allProducts);
-    setFilteredProducts(allProducts);
-  };
+    }, 100);
+  }, []);
 
   useEffect(() => {
     // Filtrer les produits
