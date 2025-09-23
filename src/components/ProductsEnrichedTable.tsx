@@ -385,6 +385,57 @@ export const ProductsEnrichedTable: React.FC = () => {
     }
   };
 
+  const handleClearDatabase = async () => {
+    if (!confirm('⚠️ ATTENTION : Cette action va supprimer TOUS les produits enrichis de la base de données.\n\nCette action est IRRÉVERSIBLE.\n\nÊtes-vous sûr de vouloir continuer ?')) {
+      return;
+    }
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        showError('Configuration manquante', 'Supabase non configuré.');
+        return;
+      }
+
+      showInfo('Suppression en cours', 'Vidage de la base de données des produits enrichis...');
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/clear-enriched-products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          retailer_id: null, // Supprimer TOUS les produits enrichis
+          confirm_deletion: true
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur suppression:', errorText);
+        throw new Error('Erreur lors de la suppression');
+      }
+
+      const result = await response.json();
+      console.log('✅ Base de données vidée:', result);
+      
+      // Recharger les produits (devrait être vide maintenant)
+      await loadEnrichedProducts();
+      
+      showSuccess(
+        'Base de données vidée !', 
+        `${result.deleted_count || 0} produits enrichis supprimés. Prêt pour un nouvel import !`
+      );
+
+    } catch (error) {
+      console.error('❌ Erreur vidage base:', error);
+      showError('Erreur de suppression', 'Impossible de vider la base de données.');
+    }
+  };
+
   const handleAutoTraining = async () => {
     try {
       // Validate Supabase configuration first
@@ -452,6 +503,14 @@ export const ProductsEnrichedTable: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleClearDatabase}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <Trash2 className="w-5 h-5" />
+            Vider la base
+          </button>
+          
           <button
             onClick={() => setShowImportModal(true)}
             className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"

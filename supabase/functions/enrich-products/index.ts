@@ -209,17 +209,42 @@ Deno.serve(async (req: Request) => {
       console.log('💾 Sauvegarde dans products_enriched...');
       
       try {
+        // NOUVEAU: Nettoyer les anciens produits du même revendeur pour éviter les doublons
+        if (source === 'csv_import' || source === 'catalog_sync') {
+          const { error: deleteError } = await supabase
+            .from('products_enriched')
+            .delete()
+            .eq('retailer_id', retailer_id);
+          
+          if (deleteError) {
+            console.warn('⚠️ Erreur nettoyage anciens produits:', deleteError);
+          } else {
+            console.log('🗑️ Anciens produits enrichis supprimés pour synchronisation');
+          }
+        }
+        
         const { data, error } = await supabase
           .from('products_enriched')
-          .upsert(enrichedProducts, { 
-            onConflict: 'handle',
-            ignoreDuplicates: false 
-          })
+          .insert(enrichedProducts)
           .select();
 
         if (error) {
           console.error('❌ Erreur sauvegarde Supabase:', error);
-          console.log('💾 Sauvegarde en localStorage en fallback...');
+          
+          // Fallback: essayer upsert si insert échoue
+          const { data: upsertData, error: upsertError } = await supabase
+            .from('products_enriched')
+            .upsert(enrichedProducts, { 
+              onConflict: 'handle',
+              ignoreDuplicates: false 
+            })
+            .select();
+          
+          if (upsertError) {
+            console.error('❌ Erreur upsert Supabase:', upsertError);
+          } else {
+            console.log('✅ Produits enrichis sauvegardés via upsert:', upsertData?.length || 0);
+          }
         } else {
           console.log('✅ Produits enrichis sauvegardés en Supabase:', data?.length || 0);
         }

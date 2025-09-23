@@ -5,7 +5,7 @@ import {
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
+  Package, Settings, Bot, Mail, Brain, LogOut,
   Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
@@ -15,6 +15,7 @@ import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
+import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';

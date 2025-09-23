@@ -254,6 +254,12 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       const { headers, data } = await parseFileContent(file);
       
+      console.log('📄 Fichier parsé:', {
+        headers_count: headers.length,
+        data_rows: data.length,
+        headers: headers.slice(0, 10)
+      });
+      
       setCsvHeaders(headers);
       
       // Auto-mapping intelligent
@@ -288,28 +294,43 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         }
       });
       
+      console.log('🔗 Auto-mapping généré:', autoMapping);
+      
       setFieldMapping(autoMapping);
       
       // Générer aperçu des produits
       const previews = generateProductPreviews(data, autoMapping);
+      console.log('👁️ Aperçus générés:', previews.length);
       setProductPreviews(previews);
       
       setCurrentStep(2);
       showSuccess('Fichier analysé', `${headers.length} colonnes détectées, ${previews.length} produits valides trouvés !`);
       
     } catch (error) {
+      console.error('❌ Erreur analyse fichier:', error);
       showError('Erreur lecture', error.message || 'Impossible de lire le fichier.');
+      setCurrentStep(1);
     } finally {
       setIsLoading(false);
     }
   };
 
   const generateProductPreviews = (data: any[], mapping: { [key: string]: string }): ProductPreview[] => {
-    return data.filter(row => {
+    console.log('🔍 Génération aperçus avec mapping:', mapping);
+    console.log('📊 Données à traiter:', data.length, 'lignes');
+    
+    const validRows = data.filter(row => {
       // Filtrer seulement les produits actifs
       const status = row[mapping['Status']] || 'active';
-      return status.toLowerCase() === 'active';
-    }).map(row => {
+      const hasTitle = row[mapping['Title']] && row[mapping['Title']].trim().length > 0;
+      const hasPrice = row[mapping['Variant Price']] && parseFloat(row[mapping['Variant Price']]?.replace(/[^\d.,]/g, '').replace(',', '.')) > 0;
+      
+      return status.toLowerCase() === 'active' && hasTitle && hasPrice;
+    });
+    
+    console.log('✅ Lignes valides:', validRows.length);
+    
+    return validRows.map(row => {
       const title = row[mapping['Title']] || '';
       const price = parseFloat(row[mapping['Variant Price']]?.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
       const compareAtPrice = row[mapping['Variant Compare At Price']] ? 
@@ -331,7 +352,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         description,
         isValid: title.trim().length > 0 && price > 0
       };
-    }).filter(preview => preview.isValid);
+    });
   };
 
   const calculateDiscount = (price: number, compareAtPrice?: number): number => {
@@ -340,6 +361,8 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
   };
 
   const handleMappingChange = (shopifyField: string, csvColumn: string) => {
+    console.log('🔄 Changement mapping:', shopifyField, '->', csvColumn);
+    
     const newMapping = {
       ...fieldMapping,
       [shopifyField]: csvColumn
@@ -348,10 +371,17 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
     
     // Régénérer l'aperçu avec le nouveau mapping
     if (csvFile) {
-      parseFileContent(csvFile).then(({ data }) => {
-        const previews = generateProductPreviews(data, newMapping);
-        setProductPreviews(previews);
-      });
+      try {
+        parseFileContent(csvFile).then(({ data }) => {
+          const previews = generateProductPreviews(data, newMapping);
+          console.log('🔄 Aperçus régénérés:', previews.length);
+          setProductPreviews(previews);
+        }).catch(error => {
+          console.error('❌ Erreur régénération aperçu:', error);
+        });
+      } catch (error) {
+        console.error('❌ Erreur mapping:', error);
+      }
     }
   };
 
