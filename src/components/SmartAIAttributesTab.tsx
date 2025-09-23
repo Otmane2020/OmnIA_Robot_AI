@@ -56,6 +56,10 @@ export const SmartAIAttributesTab: React.FC = () => {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentProgress, setEnrichmentProgress] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
+  const [syncStartTime, setSyncStartTime] = useState(0);
+  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [syncStats, setSyncStats] = useState<any>(null);
   const [shopifyConfig, setShopifyConfig] = useState({
     domain: '',
@@ -64,6 +68,9 @@ export const SmartAIAttributesTab: React.FC = () => {
   const [isTestingShopify, setIsTestingShopify] = useState(false);
   const [shopifyStatus, setShopifyStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
   const [showShopifyConfig, setShowShopifyConfig] = useState(false);
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isProcessingCSV, setIsProcessingCSV] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     const loggedUser = localStorage.getItem('current_logged_user');
     if (loggedUser) {
@@ -638,7 +645,15 @@ export const SmartAIAttributesTab: React.FC = () => {
             className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
           >
             <Database className="w-5 h-5" />
-            Synchroniser Catalogue
+            Sync Catalogue CSV
+          </button>
+          
+          <button
+            onClick={handleSyncFromCSV}
+            className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
+          >
+            <Upload className="w-5 h-5" />
+            Import CSV Direct
           </button>
           
           {shopifyStatus === 'connected' && (
