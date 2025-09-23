@@ -148,42 +148,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       proposedSubdomain: uniqueSubdomain
     };
     
-    // NOUVEAU: Créer automatiquement le sous-domaine
-    try {
-      const { data: subdomainData, error: subdomainError } = await supabase
-        .from('retailer_subdomains')
-        .insert({
-          subdomain: uniqueSubdomain,
-          dns_status: 'pending',
-          ssl_status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (subdomainError) {
-        console.error('❌ Erreur création sous-domaine:', subdomainError);
-      } else {
-        console.log('✅ Sous-domaine créé automatiquement:', uniqueSubdomain);
-        
-        // Simuler activation DNS/SSL (2 secondes)
-        setTimeout(async () => {
-          await supabase
-            .from('retailer_subdomains')
-            .update({
-              dns_status: 'active',
-              ssl_status: 'active',
-              activated_at: new Date().toISOString()
-            })
-            .eq('id', subdomainData.id);
-          
-          console.log('🌐 DNS/SSL activé pour:', uniqueSubdomain);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('❌ Erreur sous-domaine:', error);
-    }
-    
-    // NOUVEAU: Sauvegarder la demande dans la base de données
+    // Sauvegarder la demande dans la base de données
     try {
       const { data: applicationData, error } = await supabase
         .from('retailer_applications')
@@ -381,7 +346,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <div className="space-y-2 text-green-300 text-sm">
               <div>✅ Confirmation à {createdAccountInfo.email}</div>
               <div>✅ Notification admin pour validation</div>
-              <div>✅ Domaine créé : <strong>{createdAccountInfo.subdomain}.omnia.sale</strong></div>
+              <div>✅ Domaine réservé : <strong>{createdAccountInfo.subdomain}.omnia.sale</strong></div>
             </div>
           </div>
           
@@ -390,7 +355,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <div className="space-y-2 text-blue-300 text-sm text-left">
               <div>1. <strong>Validation (24-48h)</strong> : Examen de votre dossier</div>
               <div>2. <strong>Email d'approbation</strong> : Réception de vos identifiants</div>
-              <div>3. <strong>Connexion</strong> : Accès à {createdAccountInfo.subdomain}.omnia.sale</div>
+              <div>3. <strong>Activation domaine</strong> : Création de {createdAccountInfo.subdomain}.omnia.sale</div>
               <div>4. <strong>Configuration</strong> : Import de votre catalogue</div>
             </div>
           </div>
@@ -487,7 +452,7 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
             <div className="space-y-1 text-green-300 text-sm">
               <div>• Email de confirmation envoyé</div>
               <div>• Admin notifié pour validation</div>
-              <div>• Sous-domaine réservé automatiquement</div>
+              <div>• Sous-domaine proposé : {generateUniqueSubdomain(formData.companyName)}.omnia.sale</div>
             </div>
           </div>
 
