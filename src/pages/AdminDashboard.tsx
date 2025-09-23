@@ -18,7 +18,6 @@ import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
-import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { MessagingSystem } from '../components/MessagingSystem';
 import { SpeechToTextInterface } from '../components/SpeechToTextInterface';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
