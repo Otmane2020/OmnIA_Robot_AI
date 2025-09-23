@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
     });
 
     // Insert products into database
-    const { data, error } = await supabase 
+    const { data, error: insertError } = await supabase
       .from('imported_products')
       .upsert(validProducts, {
         onConflict: 'retailer_id,external_id,source_platform',
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
       })
       .select();
 
-    if (error) {
+    if (insertError) {
       console.error('❌ Erreur insertion DB détaillée:', insertError);
       console.error('❌ Code erreur:', insertError.code);
       console.error('❌ Message:', insertError.message);
@@ -104,7 +104,6 @@ Deno.serve(async (req: Request) => {
           },
         }
       );
-      throw error;
     }
 
     console.log('✅ Produits sauvegardés:', data?.length || 0);
