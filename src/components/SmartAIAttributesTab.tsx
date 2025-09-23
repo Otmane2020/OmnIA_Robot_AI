@@ -1242,11 +1242,10 @@ export const SmartAIAttributesTab: React.FC = () => {
                   return;
                 }
                 handleSyncWithCatalog();
-              }}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Synchroniser le catalogue ({(() => {
-                try {
+            })() || 0} produits)
+            }}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          >
                   const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
                   return catalogProducts ? JSON.parse(catalogProducts).length : 0;
                 } catch {
