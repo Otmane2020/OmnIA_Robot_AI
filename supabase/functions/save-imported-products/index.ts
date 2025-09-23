@@ -42,23 +42,18 @@ Deno.serve(async (req: Request) => {
     console.log(`✅ ${validProducts.length}/${products.length} produits valides`);
 
     if (validProducts.length === 0) {
-      return new Response( 
-        // Return a 200 OK response even if no valid products, but with a message
-        // This prevents the frontend from showing a generic error for empty valid products
+      return new Response(
         JSON.stringify({
           success: false,
           error: 'Aucun produit valide trouvé',
           details: 'Vérifiez que vos produits ont un nom et un prix'
         }),
         {
-          status: 400,
           headers: {
             'Content-Type': 'application/json', 
-            // Change status to 200 for empty valid products to avoid frontend error
-            // The 'success: false' in the JSON body will indicate the outcome
-            status: 200, 
             ...corsHeaders,
           },
+          status: 200, // Set status directly in Response object
         }
       );
     }
@@ -66,18 +61,20 @@ Deno.serve(async (req: Request) => {
     // Insert products into database
     const { data, error } = await supabase 
       // Ensure 'id' is always a valid UUID string before upserting
-      .from('imported_products') 
-      .upsert(validProducts.map(p => ({ ...p, id: p.id && typeof p.id === 'string' && p.id.length > 0 ? p.id : crypto.randomUUID() })), { 
-      }
-      )
       .from('imported_products')
-      .upsert(validProducts, { 
+      .upsert(validProducts.map(p => ({
+        ...p,
+        id: p.id && typeof p.id === 'string' && p.id.length > 0
+          ? p.id
+          : crypto.randomUUID()
+      })), {
         onConflict: 'retailer_id,external_id,source_platform',
         ignoreDuplicates: false 
       })
       .select();
 
     if (error) {
+      console.error('❌ Supabase upsert error details:', error); // Log the error details
       console.error('❌ Erreur insertion DB:', error);
       throw error;
     }
