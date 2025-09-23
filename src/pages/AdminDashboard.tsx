@@ -5,7 +5,7 @@ import {
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Settings, Bot, Brain, LogOut, Loader2
+  Bot, Brain, LogOut, Loader2, Settings
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
