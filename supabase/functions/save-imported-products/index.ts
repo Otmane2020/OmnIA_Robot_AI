@@ -42,7 +42,9 @@ Deno.serve(async (req: Request) => {
     console.log(`✅ ${validProducts.length}/${products.length} produits valides`);
 
     if (validProducts.length === 0) {
-      return new Response(
+      return new Response( 
+        // Return a 200 OK response even if no valid products, but with a message
+        // This prevents the frontend from showing a generic error for empty valid products
         JSON.stringify({
           success: false,
           error: 'Aucun produit valide trouvé',
@@ -51,7 +53,10 @@ Deno.serve(async (req: Request) => {
         {
           status: 400,
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json', 
+            // Change status to 200 for empty valid products to avoid frontend error
+            // The 'success: false' in the JSON body will indicate the outcome
+            status: 200, 
             ...corsHeaders,
           },
         }
@@ -59,7 +64,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Insert products into database
-    const { data, error } = await supabase
+    const { data, error } = await supabase 
+      // Ensure 'id' is always a valid UUID string before upserting
+      .from('imported_products') 
+      .upsert(validProducts.map(p => ({ ...p, id: p.id && typeof p.id === 'string' && p.id.length > 0 ? p.id : crypto.randomUUID() })), { 
       .from('imported_products')
       .upsert(validProducts, { 
         onConflict: 'retailer_id,external_id,source_platform',
