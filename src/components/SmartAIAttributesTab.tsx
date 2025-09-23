@@ -1212,6 +1212,10 @@ export const SmartAIAttributesTab: React.FC = () => {
           </p>
           <div className="space-y-4">
             <button
+              onClick={handleSyncFromCatalog}
+              disabled={isSyncing}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div 
                   className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
