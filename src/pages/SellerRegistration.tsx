@@ -1,4 +1,5 @@
-const handleSubmit = async (e?: React.FormEvent) => {
+export const SellerRegistration = () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
      if (e) e.preventDefault();
      if (!validateStep(4)) return;
 
@@ -56,3 +57,10 @@ const handleSubmit = async (e?: React.FormEvent) => {
       return;
      }
    };
+
+   return (
+     <div>
+       {/* Component JSX content will go here */}
+     </div>
+   );
+ };
