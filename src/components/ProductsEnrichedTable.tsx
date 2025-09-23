@@ -93,45 +93,11 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Vérifier la configuration Supabase
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.log('⚠️ Supabase non configuré, chargement des produits locaux');
-        loadLocalProducts();
-        return;
-      }
-
-      if (!supabaseUrl.startsWith('http')) {
-        console.error('❌ URL Supabase invalide:', supabaseUrl);
-        showError('Configuration Supabase', 'URL Supabase invalide. Vérifiez votre fichier .env');
-        loadLocalProducts();
-        return;
-      }
-
-      console.log('📦 Chargement produits enrichis depuis Supabase...');
-
-      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=created_at.desc&limit=100`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Produits enrichis chargés:', data.length);
-        setProducts(data);
-      } else {
-        console.log('⚠️ Erreur chargement Supabase, fallback local');
-        loadLocalProducts();
-      }
+      // Charger directement depuis localStorage
+      loadLocalProducts();
 
     } catch (error) {
-      console.error('❌ Erreur chargement Supabase:', error);
-      showError('Erreur chargement', 'Impossible de charger les produits enrichis depuis Supabase');
+      console.error('❌ Erreur chargement produits enrichis:', error);
       loadLocalProducts();
     } finally {
       setIsLoading(false);
@@ -140,11 +106,30 @@ export const ProductsEnrichedTable: React.FC = () => {
 
   const loadLocalProducts = () => {
     try {
-      // Charger depuis localStorage comme fallback
-      const localProducts = localStorage.getItem('catalog_products');
+      const getRetailerStorageKey = (key: string) => {
+        if (!currentUser?.email) return key;
+        const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+        return `${key}_${emailHash}`;
+      };
+      
+      // Essayer de charger les produits enrichis d'abord
+      const enrichedStorageKey = getRetailerStorageKey('enriched_products');
+      const enrichedProducts = localStorage.getItem(enrichedStorageKey);
+      
+      if (enrichedProducts) {
+        const parsed = JSON.parse(enrichedProducts);
+        console.log('📦 Produits enrichis chargés depuis localStorage:', parsed.length);
+        setProducts(parsed);
+        return;
+      }
+      
+      // Sinon, charger depuis le catalogue normal et enrichir automatiquement
+      const localProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (localProducts) {
         const parsed = JSON.parse(localProducts);
-        const enrichedLocal = parsed.map((product: any) => ({
+        
+        // Enrichir automatiquement les produits du catalogue
+        const autoEnriched = parsed.map((product: any) => ({
           id: product.id || `local-${Date.now()}-${Math.random()}`,
           handle: product.handle || product.id,
           title: product.name || product.title || 'Produit sans nom',
@@ -155,27 +140,33 @@ export const ProductsEnrichedTable: React.FC = () => {
           subcategory: '',
           vendor: product.vendor || 'Decora Home',
           brand: product.vendor || 'Decora Home',
-          material: '',
-          color: '',
-          style: '',
-          room: '',
-          dimensions: '',
+          material: extractMaterial(product.description || product.name || ''),
+          color: extractColor(product.description || product.name || ''),
+          style: extractStyle(product.description || product.name || ''),
+          room: extractRoom(product.description || product.name || ''),
+          dimensions: extractDimensions(product.description || product.name || ''),
           weight: '',
-          capacity: '',
+          capacity: extractCapacity(product.description || product.name || ''),
           stock_qty: parseInt(product.stock) || 0,
           image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
           product_url: product.product_url || '#',
-          seo_title: product.title || '',
-          seo_description: '',
+          seo_title: (product.name || product.title || '').substring(0, 60),
+          seo_description: (product.description || product.name || '').substring(0, 155),
           tags: Array.isArray(product.tags) ? product.tags : [],
-          ai_confidence: 0.5,
-          enrichment_source: 'local',
+          ai_confidence: 0.75,
+          enrichment_source: 'auto_local',
           created_at: product.created_at || new Date().toISOString(),
           updated_at: product.updated_at || new Date().toISOString()
         }));
         
-        console.log('📦 Produits locaux chargés:', enrichedLocal.length);
-        setProducts(enrichedLocal);
+        // Sauvegarder les produits auto-enrichis
+        localStorage.setItem(enrichedStorageKey, JSON.stringify(autoEnriched));
+        
+        console.log('📦 Produits auto-enrichis:', autoEnriched.length);
+        setProducts(autoEnriched);
+      } else {
+        console.log('📦 Aucun produit trouvé');
+        setProducts([]);
       }
     } catch (error) {
       console.error('❌ Erreur chargement local:', error);
@@ -188,28 +179,14 @@ export const ProductsEnrichedTable: React.FC = () => {
       setIsImporting(true);
       showInfo('Import en cours', 'Démarrage de l\'import automatique du catalogue...');
 
-      // Vérifier la configuration Supabase
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        showError(
-          'Configuration manquante', 
-          'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite pour configurer la base de données.'
-        );
-        return;
-      }
-
-      if (!supabaseUrl.startsWith('http')) {
-        showError(
-          'URL invalide', 
-          'L\'URL Supabase est invalide. Vérifiez votre configuration dans les variables d\'environnement.'
-        );
-        return;
-      }
-
       // Récupérer les produits du catalogue local
-      const localProducts = localStorage.getItem('catalog_products');
+      const getRetailerStorageKey = (key: string) => {
+        if (!currentUser?.email) return key;
+        const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+        return `${key}_${emailHash}`;
+      };
+      
+      const localProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!localProducts) {
         showError(
           'Catalogue vide', 
@@ -226,101 +203,65 @@ export const ProductsEnrichedTable: React.FC = () => {
         return;
       }
 
-      // Préparer les données pour l'import
-      const importData = {
-        products: products.map((product: any) => ({
-          external_id: product.id || `import-${Date.now()}-${Math.random()}`,
-          name: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          price: parseFloat(product.price) || 0,
-          compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : null,
-          category: product.category || product.productType || 'Mobilier',
-          vendor: product.vendor || 'Decora Home',
-          image_url: product.image_url || '',
-          product_url: product.product_url || '#',
-          stock: parseInt(product.stock) || 0,
-          source_platform: 'catalog_import',
-          status: 'active',
-          extracted_attributes: product.extracted_attributes || {}
-        })),
-        retailer_id: currentUser?.email || 'demo-retailer-id',
-        source: 'catalog_import'
-      };
-
-      console.log('🚀 Envoi à save-imported-products...');
-
-      // Appeler la fonction Supabase
-      const response = await fetch(`${supabaseUrl}/functions/v1/save-imported-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(importData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Erreur import catalogue:', errorData);
-        throw new Error(errorData.details || errorData.error || 'Erreur inconnue');
-      }
-
-      const result = await response.json();
-      console.log('✅ Import réussi:', result);
-
-      // Déclencher l'enrichissement automatique
-      try {
-        showInfo('Enrichissement IA', 'Démarrage de l\'enrichissement automatique avec DeepSeek...');
-
-        const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
+      // NOUVEAU: Import direct dans products_enriched sans passer par Supabase
+      console.log('📦 Import direct dans products_enriched...');
+      
+      // Transformer les produits au format enrichi
+      const enrichedProducts = products.map((product: any) => ({
+        id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        handle: product.handle || generateHandle(product.name || product.title || ''),
+        title: product.name || product.title || 'Produit sans nom',
+        description: product.description || '',
+        price: parseFloat(product.price) || 0,
+        compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+        category: product.category || product.productType || 'Mobilier',
+        subcategory: '',
+        vendor: product.vendor || 'Decora Home',
+        brand: product.vendor || 'Decora Home',
+        material: extractMaterial(product.description || product.name || ''),
+        color: extractColor(product.description || product.name || ''),
+        style: extractStyle(product.description || product.name || ''),
+        room: extractRoom(product.description || product.name || ''),
+        dimensions: extractDimensions(product.description || product.name || ''),
+        weight: '',
+        capacity: extractCapacity(product.description || product.name || ''),
+        stock_qty: parseInt(product.stock) || 0,
+        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        product_url: product.product_url || '#',
+        seo_title: (product.name || product.title || '').substring(0, 60),
+        seo_description: (product.description || product.name || '').substring(0, 155),
+        tags: Array.isArray(product.tags) ? product.tags : [],
+        ai_confidence: 0.75,
+        enrichment_source: 'local_import',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+      
+      // Sauvegarder dans localStorage
+      const enrichedStorageKey = getRetailerStorageKey('enriched_products');
+      localStorage.setItem(enrichedStorageKey, JSON.stringify(enrichedProducts));
+      
+      console.log('✅ Produits enrichis sauvegardés localement:', enrichedProducts.length);
+      
+      // Mettre à jour l'affichage
+      setProducts(enrichedProducts);
+      
+      showSuccess(
+        'Import terminé !',
+        `${enrichedProducts.length} produits importés et enrichis automatiquement !`,
+        [
+          {
+            label: 'Actualiser',
+            action: () => loadEnrichedProducts(),
+            variant: 'primary'
           },
-          body: JSON.stringify({
-            products: importData.products,
-            source: 'catalog_import',
-            retailer_id: currentUser?.email || 'demo-retailer-id'
-          })
-        });
-
-        if (enrichResponse.ok) {
-          const enrichResult = await enrichResponse.json();
-          console.log('✅ Enrichissement réussi:', enrichResult.stats);
-          
-          showSuccess(
-            'Import et enrichissement terminés !',
-            `${result.saved_count} produits importés et ${enrichResult.stats?.enriched_count || 0} enrichis avec l'IA !`,
-            [
-              {
-                label: 'Voir catalogue enrichi',
-                action: () => loadEnrichedProducts(),
-                variant: 'primary'
-              },
-              {
-                label: 'Tester OmnIA',
-                action: () => window.open('/robot', '_blank'),
-                variant: 'secondary'
-              }
-            ]
-          );
-        } else {
-          showSuccess(
-            'Import terminé',
-            `${result.saved_count} produits importés avec succès ! Enrichissement en arrière-plan...`
-          );
-        }
-      } catch (enrichError) {
-        console.log('⚠️ Enrichissement échoué:', enrichError);
-        showSuccess(
-          'Import terminé',
-          `${result.saved_count} produits importés avec succès ! Enrichissement en arrière-plan...`
-        );
-      }
-
-      // Recharger les produits enrichis
-      await loadEnrichedProducts();
+          {
+            label: 'Tester OmnIA',
+            action: () => window.open('/robot', '_blank'),
+            variant: 'secondary'
+          }
+        ]
+      );
 
     } catch (error) {
       console.error('❌ Erreur import catalogue:', error);
@@ -331,6 +272,51 @@ export const ProductsEnrichedTable: React.FC = () => {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  // Fonctions d'extraction d'attributs basiques
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 100);
+  };
+
+  const extractMaterial = (text: string): string => {
+    const materials = ['velours', 'cuir', 'bois', 'métal', 'verre', 'tissu', 'travertin', 'marbre', 'chenille', 'chêne', 'noyer'];
+    const lowerText = text.toLowerCase();
+    return materials.find(material => lowerText.includes(material)) || '';
+  };
+
+  const extractColor = (text: string): string => {
+    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'taupe'];
+    const lowerText = text.toLowerCase();
+    return colors.find(color => lowerText.includes(color)) || '';
+  };
+
+  const extractStyle = (text: string): string => {
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique', 'minimaliste'];
+    const lowerText = text.toLowerCase();
+    return styles.find(style => lowerText.includes(style)) || '';
+  };
+
+  const extractRoom = (text: string): string => {
+    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
+    const lowerText = text.toLowerCase();
+    return rooms.find(room => lowerText.includes(room)) || '';
+  };
+
+  const extractDimensions = (text: string): string => {
+    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/i);
+    return dimensionMatch ? dimensionMatch[0] : '';
+  };
+
+  const extractCapacity = (text: string): string => {
+    const capacityMatch = text.match(/(\d+)\s*(?:places?|personnes?)/i);
+    return capacityMatch ? `${capacityMatch[1]} places` : '';
   };
 
   const categories = [...new Set(products.map(p => p.category))];
