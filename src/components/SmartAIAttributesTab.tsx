@@ -87,6 +87,7 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   useEffect(() => {
     loadSmartAIProducts();
+    loadShopifyConfig();
   }, []);
 
   useEffect(() => {
@@ -118,22 +119,39 @@ export const SmartAIAttributesTab: React.FC = () => {
     try {
       setLoading(true);
       
-      // Charger depuis Supabase products_enriched
-      const { data: enrichedProducts, error } = await supabase
-        .from('products_enriched')
-        .select('*')
-        .gt('stock_qty', 0)
-        .order('created_at', { ascending: false });
+      // Essayer de charger depuis Supabase d'abord
+      try {
+        const { data: enrichedProducts, error } = await supabase
+          .from('products_enriched')
+          .select('*')
+          .gt('stock_qty', 0)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Erreur chargement Supabase:', error);
-        setProducts([]);
-        return;
+        if (error) {
+          console.error('❌ Erreur chargement Supabase:', error);
+          throw error;
+        }
+
+        if (enrichedProducts && enrichedProducts.length > 0) {
+          console.log(`✅ Produits SMART AI chargés depuis Supabase:`, enrichedProducts.length);
+          setProducts(enrichedProducts);
+          return;
+        }
+      } catch (supabaseError) {
+        console.log('⚠️ Supabase indisponible, chargement depuis localStorage...');
       }
 
-      if (enrichedProducts && enrichedProducts.length > 0) {
-        console.log(`✅ Produits SMART AI chargés:`, enrichedProducts.length);
-        setProducts(enrichedProducts);
+      // Fallback: charger depuis localStorage
+      const localProducts = localStorage.getItem(getRetailerStorageKey('smart_ai_products'));
+      if (localProducts) {
+        try {
+          const parsedProducts = JSON.parse(localProducts);
+          console.log(`✅ Produits SMART AI chargés depuis localStorage:`, parsedProducts.length);
+          setProducts(parsedProducts);
+        } catch (parseError) {
+          console.error('❌ Erreur parsing localStorage:', parseError);
+          setProducts([]);
+        }
       } else {
         console.log(`📦 Aucun produit SMART AI trouvé`);
         setProducts([]);
@@ -145,6 +163,17 @@ export const SmartAIAttributesTab: React.FC = () => {
       setProducts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadShopifyConfig = () => {
+    const config = localStorage.getItem(getRetailerStorageKey('shopify_config'));
+    if (config) {
+      try {
+        setShopifyConfig(JSON.parse(config));
+      } catch (error) {
+        console.error('Erreur parsing config Shopify:', error);
+      }
     }
   };
 
