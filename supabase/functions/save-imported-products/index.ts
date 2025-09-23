@@ -10,7 +10,6 @@ interface SaveImportedProductsRequest {
   products: any[];
   retailer_id: string;
   source: string;
-  source: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -28,7 +27,6 @@ Deno.serve(async (req: Request) => {
       products_count: products.length,
       retailer_id,
       source
-      source
     });
 
     // Initialize Supabase
@@ -40,9 +38,22 @@ Deno.serve(async (req: Request) => {
     const validProducts = products.filter(product => 
       product.name && product.name.trim().length > 0 && product.price > 0
     ).map(product => ({
-      ...product,
-      retailer_id: retailer_id, // Assurer que retailer_id est défini
+      external_id: product.external_id || product.id || `product_${Date.now()}_${Math.random()}`,
+      retailer_id: retailer_id,
+      name: product.name,
+      description: product.description || '',
+      price: parseFloat(product.price) || 0,
+      compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : null,
+      category: product.category || '',
+      vendor: product.vendor || '',
+      image_url: product.image_url || '',
+      product_url: product.product_url || '',
+      stock: parseInt(product.stock) || 0,
       source_platform: source,
+      status: 'active',
+      shopify_data: product.shopify_data || null,
+      inventory_management: product.inventory_management || 'shopify',
+      extracted_attributes: product.extracted_attributes || {},
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }));
@@ -74,7 +85,7 @@ Deno.serve(async (req: Request) => {
       source_platform: validProducts[0].source_platform
     });
 
-    // Insert products into database
+    // Insert products into database using composite primary key
     const { data, error: insertError } = await supabase
       .from('imported_products')
       .upsert(validProducts, {
