@@ -109,7 +109,7 @@ export const SmartAIAttributesTab: React.FC = () => {
         .from('products_enriched')
         .select('*')
         .gt('stock_qty', 0)
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ Erreur chargement Supabase:', error);
