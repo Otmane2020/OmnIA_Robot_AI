@@ -71,6 +71,13 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   const { showSuccess, showError, showInfo } = useNotifications();
 
+  // Générer clé de stockage spécifique au revendeur
+  const getRetailerStorageKey = (key: string) => {
+    if (!currentUser?.email) return key;
+    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${key}_${emailHash}`;
+  };
+
   useEffect(() => {
     loadSmartAIProducts();
   }, []);
@@ -136,6 +143,13 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   const handleSyncWithCatalog = async () => {
     try {
+      // Générer clé de stockage spécifique au revendeur
+      const getRetailerStorageKey = (key: string) => {
+        if (!currentUser?.email) return key;
+        const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+        return `${key}_${emailHash}`;
+      };
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
@@ -145,14 +159,19 @@ export const SmartAIAttributesTab: React.FC = () => {
       }
 
       // Récupérer les produits du catalogue local
-      const catalogProducts = localStorage.getItem('catalog_products');
+      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
       if (!catalogProducts) {
         showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Importez d\'abord votre catalogue.');
         return;
       }
 
       const products = JSON.parse(catalogProducts);
-      console.log(`📦 Synchronisation SMART AI pour ${products.length} produits...`);
+      console.log(`📦 Synchronisation SMART AI pour ${currentUser?.email} - ${products.length} produits...`);
+
+      if (products.length === 0) {
+        showError('Catalogue vide', 'Aucun produit trouvé dans votre catalogue. Allez dans l\'onglet "Catalogue" pour importer vos produits.');
+        return;
+      }
 
       setShowSyncModal(true);
       showInfo('Synchronisation démarrée', 'Enrichissement des produits avec DeepSeek IA...');
@@ -174,7 +193,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement:', errorText);
-        throw new Error('Erreur lors de l\'enrichissement avec DeepSeek');
+        showError('Erreur enrichissement', `Erreur API: ${response.status}. Vérifiez la configuration Supabase.`);
+        return;
       }
 
       const result = await response.json();
@@ -207,6 +227,19 @@ export const SmartAIAttributesTab: React.FC = () => {
 
   const handleEnrichWithDeepSeek = async () => {
     try {
+      // Vérifier d'abord s'il y a des produits dans le catalogue
+      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
+      if (!catalogProducts) {
+        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Importez d\'abord votre catalogue dans l\'onglet "Catalogue".');
+        return;
+      }
+
+      const catalogProductsArray = JSON.parse(catalogProducts);
+      if (catalogProductsArray.length === 0) {
+        showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
+        return;
+      }
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
@@ -225,19 +258,6 @@ export const SmartAIAttributesTab: React.FC = () => {
         setEnrichmentProgress(prev => Math.min(prev + 10, 90));
       }, 500);
 
-      // Récupérer les produits existants pour ré-enrichissement
-      const { data: existingProducts } = await supabase
-        .from('products_enriched')
-        .select('*')
-        .limit(100);
-
-      if (!existingProducts || existingProducts.length === 0) {
-        clearInterval(progressInterval);
-        showError('Aucun produit', 'Aucun produit à enrichir. Synchronisez d\'abord avec le catalogue.');
-        setIsEnriching(false);
-        return;
-      }
-
       // Appeler la fonction d'enrichissement avancé
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
         method: 'POST',
@@ -246,7 +266,7 @@ export const SmartAIAttributesTab: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          products: existingProducts,
+          products: catalogProductsArray,
           source: 'smart_ai_advanced',
           retailer_id: currentUser?.email || 'demo-retailer-id',
           advanced_enrichment: true
@@ -259,7 +279,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur enrichissement avancé:', errorText);
-        throw new Error('Erreur lors de l\'enrichissement avancé');
+        showError('Erreur enrichissement', `Erreur API: ${response.status}. ${errorText}`);
+        return;
       }
 
       const result = await response.json();
@@ -270,7 +291,7 @@ export const SmartAIAttributesTab: React.FC = () => {
       
       showSuccess(
         'Enrichissement avancé terminé !', 
-        `${result.stats?.enriched_count || existingProducts.length} produits enrichis avec tous les attributs SMART AI !`
+        `${result.stats?.enriched_count || catalogProductsArray.length} produits enrichis avec tous les attributs SMART AI !`
       );
 
     } catch (error) {
@@ -482,14 +503,46 @@ export const SmartAIAttributesTab: React.FC = () => {
           <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Aucun produit SMART AI</h3>
           <p className="text-gray-400 mb-6">
-            Synchronisez votre catalogue pour créer les attributs SMART AI.
+            Synchronisez votre catalogue pour créer les attributs SMART AI.<br/>
+            <span className="text-sm">Assurez-vous d'avoir des produits dans l'onglet "Catalogue" d'abord.</span>
           </p>
-          <button
-            onClick={handleSyncWithCatalog}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-          >
-            Synchroniser le catalogue
-          </button>
+          <div className="space-y-4">
+            <button
+              onClick={() => {
+                const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
+                if (!catalogProducts) {
+                  showError('Catalogue vide', 'Allez d\'abord dans l\'onglet "Catalogue" pour importer vos produits.');
+                  return;
+                }
+                const products = JSON.parse(catalogProducts);
+                if (products.length === 0) {
+                  showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
+                  return;
+                }
+                handleSyncWithCatalog();
+              }}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
+              Synchroniser le catalogue ({(() => {
+                try {
+                  const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
+                  return catalogProducts ? JSON.parse(catalogProducts).length : 0;
+                } catch {
+                  return 0;
+                }
+              })()} produits)
+            </button>
+            
+            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+              <h4 className="font-semibold text-blue-200 mb-2">💡 Étapes pour utiliser SMART AI :</h4>
+              <ol className="text-blue-300 text-sm space-y-1">
+                <li>1. Allez dans l'onglet <strong>"Catalogue"</strong></li>
+                <li>2. Importez votre catalogue CSV ou connectez Shopify</li>
+                <li>3. Revenez ici et cliquez <strong>"Synchroniser le catalogue"</strong></li>
+                <li>4. DeepSeek IA enrichira automatiquement vos produits</li>
+              </ol>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
