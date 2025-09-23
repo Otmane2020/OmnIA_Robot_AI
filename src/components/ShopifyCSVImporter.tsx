@@ -473,7 +473,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       // Préparer les données pour Supabase
       const transformedProducts = products.map(product => ({
         external_id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
-        retailer_id: currentUser?.email || 'demo-retailer-id',
+        retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000',
         name: product.Title || 'Produit sans nom',
         description: product['Body (HTML)'] || '',
         price: parseFloat(product['Variant Price']) || 0,
@@ -504,7 +504,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             },
             body: JSON.stringify({
               products: transformedProducts,
-              retailer_id: currentUser?.email || 'demo-retailer-id'
+              retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000'
             }),
           });
           

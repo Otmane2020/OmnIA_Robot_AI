@@ -212,7 +212,7 @@ export const CatalogManagement: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            retailer_id: currentUser?.email || 'demo-retailer-id'
+            retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000'
           }),
         });
         
