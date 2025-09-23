@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings } from 'lucide-react';
+import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings, Brain } from 'lucide-react';
 import { ShopifyCSVImporter } from './ShopifyCSVImporter';
 import { SmartAIAttributesTab } from './SmartAIAttributesTab';
 
