@@ -1,4 +1,3 @@
-@@ .. @@
   const menuItems = [
     {
       id: 'dashboard',
