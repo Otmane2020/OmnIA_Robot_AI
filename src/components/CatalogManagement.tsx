@@ -933,5 +933,3 @@ export const CatalogManagement: React.FC = () => {
     </div>
   );
 };
-
-export { CatalogManagement }
