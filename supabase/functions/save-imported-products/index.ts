@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
     // Map products to match imported_products table schema
     const mappedProducts = validProducts.map(product => ({
       external_id: product.external_id || product.id || `product-${Date.now()}-${Math.random()}`,
-      retailer_id: retailer_id,
+      retailer_id: retailer_id.toString(),
       name: product.name || product.title,
       description: product.description || product.body_html || '',
       price: parseFloat(product.price) || 0,
