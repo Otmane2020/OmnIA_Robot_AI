@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
       .delete();
 
     // Si retailer_id spécifié, supprimer seulement ses produits
-    if (retailer_id) {
+    if (retailer_id && typeof retailer_id === 'string' && retailer_id.length > 0) {
       deleteQuery = deleteQuery.eq('retailer_id', retailer_id);
     } else {
       // Supprimer tous les produits enrichis
@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
     console.log('✅ Produits enrichis supprimés:', count || 0);
 
     // Aussi nettoyer la table ai_products si spécifié
-    if (retailer_id) {
+    if (retailer_id && typeof retailer_id === 'string' && retailer_id.length > 0) {
       const { error: aiError } = await supabase
         .from('ai_products')
         .delete()
