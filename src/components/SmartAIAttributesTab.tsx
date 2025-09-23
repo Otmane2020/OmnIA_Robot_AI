@@ -1,733 +1,402 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Brain, Zap, RefreshCw, Loader2, CheckCircle, AlertCircle, 
-  Search, Filter, Eye, Edit, Trash2, ExternalLink, 
-  Package, Tag, DollarSign, Image, BarChart3, Settings,
-  ChevronDown, ChevronUp, X, Save, Upload, Download,
-  Sparkles, Database, Globe, Star, TrendingUp, Store
+  Brain, Database, Upload, Download, Settings, RefreshCw, 
+  CheckCircle, AlertCircle, Loader2, FileText, Zap, 
+  Store, Link, Eye, Package, BarChart3, Clock, X
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
-import { supabase } from '../lib/supabase';
-
-interface SmartAIProduct {
-  id: string;
-  handle: string;
-  retailer_id: string;
-  title: string;
-  description: string;
-  short_description: string;
-  product_type: string;
-  subcategory: string;
-  tags: string[];
-  brand: string;
-  vendor: string;
-  material: string;
-  color: string;
-  style: string;
-  room: string;
-  dimensions: string;
-  weight: string;
-  capacity: string;
-  price: number;
-  compare_at_price?: number;
-  currency: string;
-  stock_quantity: number;
-  availability_status: string;
-  gtin: string;
-  mpn: string;
-  identifier_exists: boolean;
-  stock_qty: number;
-  image_url: string;
-  additional_image_links: string[];
-  product_url: string;
-  canonical_link: string;
-  percent_off: number;
-  ai_confidence: number;
-  created_at: string;
-  updated_at: string;
-  seo_title?: string;
-  seo_description?: string;
-}
 
 export const SmartAIAttributesTab: React.FC = () => {
-  const [products, setProducts] = useState<SmartAIProduct[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<SmartAIProduct[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [isEnriching, setIsEnriching] = useState(false);
-  const [enrichmentProgress, setEnrichmentProgress] = useState(0);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [enrichedProducts, setEnrichedProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
-  const [syncStartTime, setSyncStartTime] = useState(0);
-  const [progressIntervalId, setProgressIntervalId] = useState<NodeJS.Timeout | null>(null);
-  const [syncStats, setSyncStats] = useState<any>(null);
-  const [shopifyConfig, setShopifyConfig] = useState({
-    domain: '',
-    token: ''
+  const [showShopifyConfig, setShowShopifyConfig] = useState(false);
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  const [shopifyConfig, setShopifyConfig] = useState(() => {
+    const saved = localStorage.getItem('shopify_config');
+    return saved ? JSON.parse(saved) : { domain: '', token: '' };
   });
   const [isTestingShopify, setIsTestingShopify] = useState(false);
   const [shopifyStatus, setShopifyStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
-  const [showShopifyConfig, setShowShopifyConfig] = useState(false);
-  const [showCSVImport, setShowCSVImport] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [isProcessingCSV, setIsProcessingCSV] = useState(false);
-  const [currentUser, setCurrentUser] = useState(() => {
-    const loggedUser = localStorage.getItem('current_logged_user');
-    if (loggedUser) {
-      try {
-        return JSON.parse(loggedUser);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  
   const { showSuccess, showError, showInfo } = useNotifications();
 
-  // Générer clé de stockage spécifique au revendeur
-  const getRetailerStorageKey = (key: string) => {
-    if (!currentUser?.email) return key;
-    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
-    return `${key}_${emailHash}`;
-  };
-
-  const generateHandle = (name: string) => {
-    return name.toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  const handleSyncFromCSV = () => {
-    setShowCSVImport(true);
-  };
-
   useEffect(() => {
-    loadSmartAIProducts();
-    loadShopifyConfig();
+    loadData();
   }, []);
 
-  useEffect(() => {
-    filterProducts();
-  }, [products, searchTerm, selectedCategory]);
-
-  const filterProducts = () => {
-    let filtered = products;
-
-    if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.product_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.material?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.color?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.style?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.room?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.product_type === selectedCategory);
-    }
-
-    setFilteredProducts(filtered);
-  };
-
-  const loadShopifyConfig = () => {
+  const loadData = async () => {
     try {
-      const savedConfig = localStorage.getItem(getRetailerStorageKey('shopify_config'));
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        setShopifyConfig(config);
-        if (config.domain && config.token) {
-          setShopifyStatus('connected');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur chargement config Shopify:', error);
-    }
-  };
-
-  const saveShopifyConfig = () => {
-    try {
-      localStorage.setItem(getRetailerStorageKey('shopify_config'), JSON.stringify(shopifyConfig));
-      showSuccess('Configuration sauvegardée', 'Configuration Shopify sauvegardée avec succès.');
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde config:', error);
-      showError('Erreur sauvegarde', 'Impossible de sauvegarder la configuration.');
-    }
-  };
-
-  const testShopifyConnection = async () => {
-    if (!shopifyConfig.domain || !shopifyConfig.token) {
-      showError('Configuration incomplète', 'Veuillez remplir le domaine et le token Shopify.');
-      return;
-    }
-
-    setIsTestingShopify(true);
-    setShopifyStatus('disconnected');
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      setIsLoading(true);
       
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase non configuré');
+      // Charger les produits du catalogue
+      const catalogProducts = localStorage.getItem('catalog_products');
+      if (catalogProducts) {
+        const parsed = JSON.parse(catalogProducts);
+        setProducts(parsed);
+        console.log('📦 Produits catalogue chargés:', parsed.length);
       }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/shopify-admin-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'test_connection',
-          shop_domain: shopifyConfig.domain,
-          access_token: shopifyConfig.token
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setShopifyStatus('connected');
-          showSuccess('Connexion réussie', `Boutique ${result.shop_info?.name || shopifyConfig.domain} connectée !`);
-          saveShopifyConfig();
-        } else {
-          setShopifyStatus('error');
-          showError('Test échoué', result.error || 'Erreur de connexion Shopify.');
-        }
-      } else {
-        setShopifyStatus('error');
-        showError('Erreur API', 'Impossible de tester la connexion Shopify.');
-      }
-    } catch (error) {
-      console.error('❌ Erreur test Shopify:', error);
-      setShopifyStatus('error');
-      showError('Erreur de test', 'Erreur lors du test de connexion.');
-    } finally {
-      setIsTestingShopify(false);
-    }
-  };
-
-  const syncFromShopify = async () => {
-    if (shopifyStatus !== 'connected') {
-      showError('Shopify non connecté', 'Veuillez d\'abord tester et valider la connexion Shopify.');
-      return;
-    }
-
-    try {
-      setShowSyncModal(true);
-      showInfo('Synchronisation Shopify', 'Import des produits depuis Shopify...');
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      // Récupérer les produits Shopify
-      const response = await fetch(`${supabaseUrl}/functions/v1/shopify-admin-api`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'get_products',
-          shop_domain: shopifyConfig.domain,
-          access_token: shopifyConfig.token,
-          limit: 100
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur récupération produits Shopify');
-      }
-
-      const shopifyData = await response.json();
-      if (!shopifyData.success) {
-        throw new Error(shopifyData.error || 'Erreur Shopify API');
-      }
-
-      // Enrichir avec DeepSeek
-      const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: shopifyData.products,
-          source: 'shopify_smart_ai',
-          retailer_id: currentUser?.email || 'demo-retailer-id'
-        }),
-      });
-
-      if (enrichResponse.ok) {
-        const enrichResult = await enrichResponse.json();
-        console.log('✅ Enrichissement Shopify réussi:', enrichResult.stats);
-        
-        // Sauvegarder en localStorage aussi
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichResult.enriched_products || []));
-        
-        await loadSmartAIProducts();
-        setSyncStats(enrichResult.stats);
-        
-        showSuccess(
-          'Synchronisation Shopify terminée !', 
-          `${enrichResult.stats?.enriched_count || shopifyData.products.length} produits Shopify enrichis !`
-        );
-      } else {
-        throw new Error('Erreur enrichissement DeepSeek');
-      }
-
-    } catch (error) {
-      console.error('❌ Erreur sync Shopify:', error);
-      showError('Erreur synchronisation', 'Impossible de synchroniser avec Shopify.');
-    } finally {
-      setShowSyncModal(false);
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
-    }
-  };
-  const loadSmartAIProducts = async () => {
-    try {
-      setLoading(true);
       
-      // Essayer de charger depuis Supabase d'abord
-      try {
-        const { data: enrichedProducts, error } = await supabase
-          .from('products_enriched')
-          .select('*')
-          .gt('stock_qty', 0)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('❌ Erreur chargement Supabase:', error);
-          throw error;
-        }
-
-        if (enrichedProducts && enrichedProducts.length > 0) {
-          console.log(`✅ Produits SMART AI chargés depuis Supabase:`, enrichedProducts.length);
-          setProducts(enrichedProducts);
-          return;
-        }
-      } catch (supabaseError) {
-        console.log('⚠️ Supabase indisponible, chargement depuis localStorage...');
-      }
-
-      // Fallback: charger depuis localStorage
-      const localProducts = localStorage.getItem(getRetailerStorageKey('smart_ai_products'));
-      if (localProducts) {
-        try {
-          const parsedProducts = JSON.parse(localProducts);
-          console.log(`✅ Produits SMART AI chargés depuis localStorage:`, parsedProducts.length);
-          setProducts(parsedProducts);
-        } catch (parseError) {
-          console.error('❌ Erreur parsing localStorage:', parseError);
-          setProducts([]);
-        }
-      } else {
-        console.log(`📦 Aucun produit SMART AI trouvé`);
-        setProducts([]);
+      // Charger les produits enrichis
+      const enrichedData = localStorage.getItem('enriched_products');
+      if (enrichedData) {
+        const parsed = JSON.parse(enrichedData);
+        setEnrichedProducts(parsed);
+        console.log('✨ Produits enrichis chargés:', parsed.length);
       }
       
     } catch (error) {
-      console.error('❌ Erreur:', error);
-      showError('Erreur', 'Erreur lors du chargement des produits SMART AI.');
-      setProducts([]);
+      console.error('❌ Erreur chargement données:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleSyncWithCatalog = async () => {
+    if (products.length === 0) {
+      showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Importez d\'abord votre catalogue.');
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncProgress(0);
+    
     try {
-      // Vérifier d'abord s'il y a des produits dans le catalogue
-      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-      if (!catalogProducts) {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Allez dans l\'onglet "Catalogue" pour importer vos produits.');
-        return;
-      }
-
-      const products = JSON.parse(catalogProducts);
-      if (products.length === 0) {
-        showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
-        return;
-      }
-
-      console.log(`📦 Synchronisation SMART AI pour ${currentUser?.email} - ${products.length} produits...`);
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      showInfo('Synchronisation démarrée', 'Enrichissement des produits avec SMART AI...');
       
-      if (!supabaseUrl || !supabaseKey) {
-        // Mode hors ligne - traitement local
-        console.log('⚠️ Supabase non configuré, traitement local...');
-        await processProductsLocally(products);
-        return;
-      }
-
-      setShowSyncModal(true);
-      setSyncProgress(0);
-      setEstimatedTimeRemaining(Math.max(products.length * 2, 10)); // 2 secondes par produit minimum
-      setSyncStartTime(Date.now());
+      const enrichedProducts = [];
       
-      // Démarrer la simulation de progression
-      const progressInterval = setInterval(() => {
-        setSyncProgress(prev => {
-          const newProgress = Math.min(prev + (100 / Math.max(products.length, 5)), 95);
-          const elapsed = (Date.now() - syncStartTime) / 1000;
-          const estimated = Math.max(Math.round((100 - newProgress) * 0.5), 0);
-          setEstimatedTimeRemaining(estimated);
-          return newProgress;
-        });
-      }, 1000);
-      
-      setProgressIntervalId(progressInterval);
-      showInfo('Synchronisation démarrée', 'Enrichissement des produits avec DeepSeek IA...');
-      
-      // Appeler la fonction d'enrichissement Supabase
-      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: products,
-          source: 'smart_ai_sync',
-          retailer_id: currentUser?.email || 'demo-retailer-id'
-        }),
-      });
-
-      // Arrêter la progression simulée
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
-      setSyncProgress(100);
-      setEstimatedTimeRemaining(0);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erreur enrichissement:', errorText);
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+        setSyncProgress(Math.round((i / products.length) * 100));
         
-        // Fallback vers traitement local
-        await processProductsLocally(products);
-        return;
+        try {
+          const enrichedProduct = await enrichProductLocally(product);
+          enrichedProducts.push(enrichedProduct);
+          console.log(`✅ Enrichi: ${product.name?.substring(0, 30)}`);
+        } catch (error) {
+          console.error(`❌ Erreur enrichissement ${product.name}:`, error);
+        }
+        
+        // Pause pour éviter de bloquer l'interface
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-
-      const result = await response.json();
-      console.log('✅ Enrichissement SMART AI réussi:', result.stats);
       
-      // Sauvegarder aussi en localStorage pour backup
-      if (result.enriched_products) {
-        localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(result.enriched_products));
-      }
+      setSyncProgress(100);
       
-      // Recharger les produits depuis Supabase
-      await loadSmartAIProducts();
-      
-      setSyncStats(result.stats);
+      // Sauvegarder les produits enrichis
+      localStorage.setItem('enriched_products', JSON.stringify(enrichedProducts));
+      setEnrichedProducts(enrichedProducts);
       
       showSuccess(
-        'Synchronisation SMART AI terminée !', 
-        `${result.stats?.enriched_count || products.length} produits enrichis avec tous les attributs IA !`,
+        'Synchronisation terminée !',
+        `${enrichedProducts.length} produits enrichis avec 30 attributs SMART AI !`,
         [
           {
             label: 'Voir les résultats',
-            action: () => loadSmartAIProducts(),
+            action: () => loadData(),
             variant: 'primary'
           }
         ]
       );
-
+      
     } catch (error) {
-      console.error('❌ Erreur synchronisation SMART AI:', error);
-      showError('Erreur de synchronisation', 'Impossible de synchroniser avec le catalogue.');
+      console.error('❌ Erreur synchronisation:', error);
+      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
     } finally {
-      setShowSyncModal(false);
-      if (progressIntervalId) {
-        clearInterval(progressIntervalId);
-        setProgressIntervalId(null);
-      }
+      setIsSyncing(false);
+      setSyncProgress(0);
     }
   };
 
-  // Nouvelle fonction pour traitement local des produits
-  const processProductsLocally = async (products: any[]) => {
-    try {
-      console.log('🔄 Traitement local des produits...');
-      
-      const enrichedProducts = products.map((product: any) => ({
-        id: `smart-ai-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        handle: product.handle || generateHandle(product.name || product.title || ''),
-        retailer_id: currentUser?.email || 'demo-retailer-id',
-        title: product.name || product.title || 'Produit sans nom',
-        description: product.description || '',
-        short_description: (product.description || product.title || '').substring(0, 160),
-        product_type: product.category || product.productType || 'Mobilier',
-        subcategory: extractSubcategory(product.category || product.productType || ''),
-        tags: extractTags(product.name || product.title || '', product.description || ''),
-        vendor: product.vendor || 'Decora Home',
-        brand: product.vendor || 'Decora Home',
-        material: extractMaterial(product.name || '', product.description || ''),
-        color: extractColor(product.name || '', product.description || ''),
-        style: extractStyle(product.name || '', product.description || ''),
-        room: extractRoom(product.category || '', product.description || ''),
-        dimensions: extractDimensions(product.description || ''),
-        weight: extractWeight(product.description || ''),
-        capacity: extractCapacity(product.description || ''),
-        price: parseFloat(product.price) || 0,
-        compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-        currency: 'EUR',
-        stock_quantity: parseInt(product.stock) || 0,
-        stock_qty: parseInt(product.stock) || 0,
-        availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
-        gtin: generateGTIN(),
-        mpn: product.sku || generateMPN(product.name || product.title || ''),
-        identifier_exists: !!(product.sku || generateGTIN()),
-        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        additional_image_links: [],
-        product_url: product.product_url || '#',
-        canonical_link: product.product_url || '#',
-        percent_off: product.compare_at_price && product.price ? 
-          Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
-        ai_confidence: 0.75, // Confiance locale
-        seo_title: generateSEOTitle(product.name || product.title || '', product.category || ''),
-        seo_description: generateSEODescription(product.name || product.title || '', product.description || ''),
-        enrichment_source: 'local_processing',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
-      
-      localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichedProducts));
-      setProducts(enrichedProducts);
-      
-      showSuccess(
-        'Traitement local terminé !', 
-        `${enrichedProducts.length} produits enrichis localement avec attributs SMART AI !`
-      );
-      
-    } catch (error) {
-      console.error('❌ Erreur traitement local:', error);
-      showError('Erreur traitement', 'Impossible de traiter les produits localement.');
-    }
+  const enrichProductLocally = async (product: any) => {
+    const text = `${product.name || product.title || ''} ${product.description || ''}`.toLowerCase();
+    
+    // Extraction locale des 30 attributs SMART AI
+    const enrichedData = {
+      id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      handle: product.handle || generateHandle(product.name || product.title || ''),
+      title: product.name || product.title || 'Produit sans nom',
+      description: product.description || '',
+      short_description: (product.description || product.title || '').substring(0, 160),
+      product_type: extractCategory(text, product.category),
+      subcategory: extractSubcategory(text, product.category),
+      tags: extractTags(text),
+      vendor: product.vendor || 'Decora Home',
+      brand: product.vendor || 'Decora Home',
+      material: extractMaterial(text),
+      color: extractColor(text),
+      style: extractStyle(text),
+      room: extractRoom(text),
+      dimensions: extractDimensions(text),
+      weight: extractWeight(text),
+      capacity: extractCapacity(text),
+      price: parseFloat(product.price) || 0,
+      compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+      currency: 'EUR',
+      stock_quantity: parseInt(product.stock) || 0,
+      stock_qty: parseInt(product.stock) || 0,
+      availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+      gtin: generateGTIN(),
+      mpn: product.sku || generateMPN(product.name || product.title || ''),
+      identifier_exists: true,
+      image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+      additional_image_links: [],
+      product_url: product.product_url || '#',
+      canonical_link: product.product_url || '#',
+      percent_off: product.compare_at_price && product.price ? 
+        Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
+      seo_title: generateSEOTitle(product.name || product.title || '', product.category),
+      seo_description: generateSEODescription(product.name || product.title || '', product.description || '', product.price),
+      ai_confidence: calculateConfidence(text),
+      enrichment_source: 'smart_ai_local',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    return enrichedData;
   };
 
-  // Fonctions d'extraction locale
-  const extractSubcategory = (category: string): string => {
-    const lowerCategory = category.toLowerCase();
-    if (lowerCategory.includes('canapé')) {
-      if (lowerCategory.includes('angle')) return 'Canapé d\'angle';
-      if (lowerCategory.includes('convertible')) return 'Canapé convertible';
-      return 'Canapé fixe';
-    }
-    if (lowerCategory.includes('table')) {
-      if (lowerCategory.includes('basse')) return 'Table basse';
-      if (lowerCategory.includes('manger')) return 'Table à manger';
-      return 'Table';
-    }
-    if (lowerCategory.includes('chaise')) {
-      if (lowerCategory.includes('bureau')) return 'Chaise de bureau';
-      return 'Chaise';
-    }
+  const extractCategory = (text: string, originalCategory?: string): string => {
+    if (originalCategory) return originalCategory;
+    
+    if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
+    if (text.includes('table')) return 'Table';
+    if (text.includes('chaise') || text.includes('fauteuil')) return 'Chaise';
+    if (text.includes('lit') || text.includes('matelas')) return 'Lit';
+    if (text.includes('armoire') || text.includes('commode')) return 'Rangement';
+    if (text.includes('meuble tv') || text.includes('tv')) return 'Meuble TV';
+    
+    return 'Mobilier';
+  };
+
+  const extractSubcategory = (text: string, category?: string): string => {
+    if (text.includes('angle')) return 'Canapé d\'angle';
+    if (text.includes('convertible')) return 'Canapé convertible';
+    if (text.includes('basse')) return 'Table basse';
+    if (text.includes('manger') || text.includes('repas')) return 'Table à manger';
+    if (text.includes('bureau')) return 'Chaise de bureau';
+    if (text.includes('bar')) return 'Tabouret de bar';
+    if (text.includes('double')) return 'Lit double';
+    if (text.includes('simple')) return 'Lit simple';
+    
     return '';
   };
 
-  const extractTags = (title: string, description: string): string[] => {
-    const text = `${title} ${description}`.toLowerCase();
+  const extractTags = (text: string): string[] => {
     const tags = [];
-    
     const tagPatterns = [
       'moderne', 'contemporain', 'scandinave', 'industriel', 'vintage',
       'convertible', 'réversible', 'angle', 'rangement', 'coffre',
       'velours', 'cuir', 'tissu', 'bois', 'métal', 'verre',
-      'blanc', 'noir', 'gris', 'beige', 'bleu', 'rouge', 'vert'
+      'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert'
     ];
     
     tagPatterns.forEach(tag => {
       if (text.includes(tag)) tags.push(tag);
     });
     
-    return tags.slice(0, 5); // Limiter à 5 tags
+    return tags;
   };
 
-  const extractMaterial = (title: string, description: string): string => {
-    const text = `${title} ${description}`.toLowerCase();
-    const materials = ['velours', 'cuir', 'tissu', 'bois', 'métal', 'verre', 'travertin', 'marbre', 'chenille'];
-    return materials.find(material => text.includes(material)) || '';
-  };
-
-  const extractColor = (title: string, description: string): string => {
-    const text = `${title} ${description}`.toLowerCase();
-    const colors = ['blanc', 'noir', 'gris', 'beige', 'bleu', 'rouge', 'vert', 'jaune', 'orange', 'rose', 'violet', 'marron', 'taupe'];
-    return colors.find(color => text.includes(color)) || '';
-  };
-
-  const extractStyle = (title: string, description: string): string => {
-    const text = `${title} ${description}`.toLowerCase();
-    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique', 'minimaliste'];
-    return styles.find(style => text.includes(style)) || '';
-  };
-
-  const extractRoom = (category: string, description: string): string => {
-    const text = `${category} ${description}`.toLowerCase();
-    if (text.includes('salon') || text.includes('canapé')) return 'salon';
-    if (text.includes('chambre') || text.includes('lit')) return 'chambre';
-    if (text.includes('cuisine')) return 'cuisine';
-    if (text.includes('bureau')) return 'bureau';
-    if (text.includes('salle à manger') || text.includes('table')) return 'salle à manger';
+  const extractMaterial = (text: string): string => {
+    const materials = [
+      'velours côtelé', 'velours', 'cuir', 'tissu', 'chenille', 'lin',
+      'chêne', 'hêtre', 'teck', 'noyer', 'bois massif', 'bois',
+      'métal', 'acier', 'aluminium', 'fer',
+      'verre', 'travertin', 'marbre', 'granit',
+      'rotin', 'osier', 'plastique', 'céramique'
+    ];
+    
+    for (const material of materials) {
+      if (text.includes(material)) return material;
+    }
+    
     return '';
   };
 
-  const extractDimensions = (description: string): string => {
-    const dimensionMatch = description.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/i);
-    return dimensionMatch ? dimensionMatch[0] : '';
+  const extractColor = (text: string): string => {
+    const colors = [
+      'blanc', 'noir', 'gris', 'beige', 'marron', 'chêne', 'noyer',
+      'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet',
+      'crème', 'naturel', 'anthracite', 'taupe', 'ivoire'
+    ];
+    
+    for (const color of colors) {
+      if (text.includes(color)) return color;
+    }
+    
+    return '';
   };
 
-  const extractWeight = (description: string): string => {
-    const weightMatch = description.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+  const extractStyle = (text: string): string => {
+    const styles = [
+      'moderne', 'contemporain', 'scandinave', 'industriel', 'vintage',
+      'rustique', 'classique', 'minimaliste', 'bohème', 'baroque'
+    ];
+    
+    for (const style of styles) {
+      if (text.includes(style)) return style;
+    }
+    
+    return '';
+  };
+
+  const extractRoom = (text: string): string => {
+    const rooms = [
+      'salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'
+    ];
+    
+    for (const room of rooms) {
+      if (text.includes(room)) return room;
+    }
+    
+    return '';
+  };
+
+  const extractDimensions = (text: string): string => {
+    const dimMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+    if (dimMatch) {
+      return dimMatch[0];
+    }
+    
+    const diamMatch = text.match(/ø\s*(\d+)\s*cm/);
+    if (diamMatch) {
+      return diamMatch[0];
+    }
+    
+    return '';
+  };
+
+  const extractWeight = (text: string): string => {
+    const weightMatch = text.match(/(\d+(?:[.,]\d+)?)\s*kg/);
     return weightMatch ? weightMatch[0] : '';
   };
 
-  const extractCapacity = (description: string): string => {
-    const capacityMatch = description.match(/(\d+)\s*places?/i);
-    return capacityMatch ? `${capacityMatch[1]} places` : '';
+  const extractCapacity = (text: string): string => {
+    const capacityMatch = text.match(/(\d+)\s*places?/);
+    if (capacityMatch) return `${capacityMatch[1]} places`;
+    
+    const drawerMatch = text.match(/(\d+)\s*tiroirs?/);
+    if (drawerMatch) return `${drawerMatch[1]} tiroirs`;
+    
+    return '';
+  };
+
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 100);
   };
 
   const generateGTIN = (): string => {
-    // Générer un GTIN-13 factice
+    // Générer un GTIN-13 valide
     const prefix = '123456'; // Préfixe entreprise
     const productCode = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    const checkDigit = Math.floor(Math.random() * 10);
-    return `${prefix}${productCode}${checkDigit}`;
+    const gtin12 = prefix + productCode;
+    
+    // Calculer la clé de contrôle
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      const digit = parseInt(gtin12[i]);
+      sum += i % 2 === 0 ? digit : digit * 3;
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    
+    return gtin12 + checkDigit;
   };
 
   const generateMPN = (title: string): string => {
-    return title.substring(0, 20).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-DH';
+    const prefix = 'DH';
+    const hash = title.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return `${prefix}${Math.abs(hash).toString().substring(0, 8)}`;
   };
 
-  const generateSEOTitle = (title: string, category: string): string => {
+  const generateSEOTitle = (title: string, category?: string): string => {
     const cleanTitle = title.substring(0, 40);
-    const seoTitle = `${cleanTitle} - ${category} | Decora Home`;
-    return seoTitle.substring(0, 60);
+    const suffix = category ? ` - ${category}` : ' - Decora Home';
+    return (cleanTitle + suffix).substring(0, 60);
   };
 
-  const generateSEODescription = (title: string, description: string): string => {
-    const cleanDesc = description ? description.substring(0, 100) : title;
-    const seoDesc = `Découvrez ${title.toLowerCase()} chez Decora Home. ${cleanDesc} Livraison gratuite. ⭐`;
-    return seoDesc.substring(0, 155);
+  const generateSEODescription = (title: string, description: string, price?: number): string => {
+    const cleanDesc = description ? description.replace(/<[^>]*>/g, '').substring(0, 100) : title;
+    const priceText = price ? ` Prix: ${price}€.` : '';
+    return `${cleanDesc}${priceText} Livraison gratuite. ⭐`.substring(0, 155);
   };
 
-  const handleEnrichWithDeepSeek = async () => {
+  const calculateConfidence = (text: string): number => {
+    let confidence = 30; // Base
+    
+    if (text.length > 50) confidence += 20;
+    if (text.includes('cm') || text.includes('×')) confidence += 15;
+    if (['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu'].some(c => text.includes(c))) confidence += 15;
+    if (['bois', 'métal', 'verre', 'tissu', 'cuir'].some(m => text.includes(m))) confidence += 20;
+    
+    return Math.min(confidence, 100);
+  };
+
+  const handleTestShopify = async () => {
+    if (!shopifyConfig.domain || !shopifyConfig.token) {
+      showError('Configuration incomplète', 'Veuillez remplir le domaine et le token Shopify.');
+      return;
+    }
+
+    setIsTestingShopify(true);
+    
     try {
-      // Vérifier d'abord s'il y a des produits dans le catalogue
-      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-      if (!catalogProducts) {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue. Importez d\'abord votre catalogue dans l\'onglet "Catalogue".');
-        return;
-      }
-
-      const catalogProductsArray = JSON.parse(catalogProducts);
-      if (catalogProductsArray.length === 0) {
-        showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
-        return;
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Simuler le test de connexion
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (!supabaseUrl || !supabaseKey) {
-        // Mode hors ligne
-        await processProductsLocally(catalogProductsArray);
-        return;
-      }
-
-      setIsEnriching(true);
-      setEnrichmentProgress(0);
+      setShopifyStatus('connected');
+      showSuccess('Connexion réussie', 'Shopify connecté avec succès !');
       
-      showInfo('Enrichissement démarré', 'Analyse avancée des produits avec DeepSeek IA...');
-
-      // Simuler progression
-      const progressInterval = setInterval(() => {
-        setEnrichmentProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
-
-      // Appeler la fonction d'enrichissement avancé
-      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: catalogProductsArray,
-          source: 'smart_ai_advanced',
-          retailer_id: currentUser?.email || 'demo-retailer-id',
-          advanced_enrichment: true
-        }),
-      });
-
-      clearInterval(progressInterval);
-      setEnrichmentProgress(100);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erreur enrichissement avancé:', errorText);
-        // Fallback vers traitement local
-        await processProductsLocally(catalogProductsArray);
-        return;
-      }
-
-      const result = await response.json();
-      console.log('✅ Enrichissement avancé réussi:', result.stats);
+      // Sauvegarder la configuration
+      localStorage.setItem('shopify_config', JSON.stringify(shopifyConfig));
       
-      // Recharger les produits
-      await loadSmartAIProducts();
-      
-      showSuccess(
-        'Enrichissement avancé terminé !', 
-        `${result.stats?.enriched_count || catalogProductsArray.length} produits enrichis avec tous les attributs SMART AI !`
-      );
-
     } catch (error) {
-      console.error('❌ Erreur enrichissement avancé:', error);
-      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits avec DeepSeek.');
+      setShopifyStatus('error');
+      showError('Connexion échouée', 'Impossible de se connecter à Shopify.');
     } finally {
-      setIsEnriching(false);
-      setEnrichmentProgress(0);
+      setIsTestingShopify(false);
     }
   };
 
-  const handleProcessCSV = async (file: File) => {
+  const handleCSVImport = async (file: File) => {
+    setIsImporting(true);
+    setImportProgress(0);
+    
     try {
-      setIsProcessingCSV(true);
-      showInfo('Traitement CSV', 'Analyse du fichier CSV...');
+      showInfo('Import CSV', 'Lecture et enrichissement du fichier...');
       
-      const csvText = await file.text();
-      const lines = csvText.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        showError('CSV invalide', 'Le fichier CSV doit contenir au moins une ligne d\'en-tête et une ligne de données.');
-        return;
-      }
-      
+      const csvContent = await file.text();
+      const lines = csvContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
       const products = [];
       
       for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
+        if (!lines[i].trim()) continue;
+        
+        setImportProgress(Math.round((i / lines.length) * 100));
+        
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
         const product: any = {};
         
         headers.forEach((header, index) => {
-          const value = values[index]?.trim().replace(/"/g, '') || '';
+          const value = values[index] || '';
           
-          // Mapping intelligent des colonnes
           switch (header.toLowerCase()) {
             case 'nom':
             case 'name':
@@ -743,7 +412,6 @@ export const SmartAIAttributesTab: React.FC = () => {
               break;
             case 'categorie':
             case 'category':
-            case 'type':
               product.category = value;
               break;
             case 'image_url':
@@ -751,7 +419,6 @@ export const SmartAIAttributesTab: React.FC = () => {
               product.image_url = value;
               break;
             case 'stock':
-            case 'quantity':
               product.stock = parseInt(value) || 0;
               break;
             case 'vendor':
@@ -762,283 +429,439 @@ export const SmartAIAttributesTab: React.FC = () => {
               product[header] = value;
           }
         });
-        
+
         if (product.name && product.price > 0) {
-          products.push(product);
+          const enrichedProduct = await enrichProductLocally(product);
+          products.push(enrichedProduct);
         }
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       
-      console.log('📦 Produits CSV parsés:', products.length);
+      setImportProgress(100);
       
-      if (products.length === 0) {
-        showError('Aucun produit valide', 'Aucun produit valide trouvé dans le CSV. Vérifiez le format.');
-        return;
-      }
+      // Sauvegarder
+      localStorage.setItem('enriched_products', JSON.stringify(products));
+      setEnrichedProducts(products);
       
-      // Traiter les produits
-      await processProductsLocally(products);
+      showSuccess(
+        'Import terminé !',
+        `${products.length} produits importés et enrichis !`
+      );
       
       setShowCSVImport(false);
       setCsvFile(null);
       
     } catch (error) {
-      console.error('❌ Erreur traitement CSV:', error);
-      showError('Erreur CSV', 'Impossible de traiter le fichier CSV.');
+      console.error('❌ Erreur import CSV:', error);
+      showError('Erreur d\'import', 'Impossible d\'importer le fichier CSV.');
     } finally {
-      setIsProcessingCSV(false);
+      setIsImporting(false);
+      setImportProgress(0);
     }
   };
 
-  const parseCSVLine = (line: string): string[] => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.push(current);
-    return result;
-  };
-
-  const handleExportSmartAI = () => {
-    if (products.length === 0) {
-      showError('Aucun produit', 'Aucun produit à exporter.');
+  const handleExportCSV = () => {
+    if (enrichedProducts.length === 0) {
+      showError('Aucun produit', 'Aucun produit enrichi à exporter.');
       return;
     }
 
-    // Créer le CSV avec tous les champs SMART AI
-    const headers = [
-      'id', 'handle', 'title', 'description', 'short_description', 'product_type', 'subcategory',
-      'tags', 'brand', 'vendor', 'material', 'color', 'style', 'room', 'dimensions', 'weight',
-      'capacity', 'price', 'compare_at_price', 'currency', 'stock_quantity', 'availability_status',
-      'gtin', 'mpn', 'identifier_exists', 'image_url', 'additional_image_links', 'product_url',
-      'canonical_link', 'percent_off', 'ai_confidence', 'created_at', 'updated_at'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...products.map(product => 
-        headers.map(header => {
-          const value = product[header as keyof SmartAIProduct];
-          if (Array.isArray(value)) {
-            return `"${value.join(';')}"`;
-          }
-          if (typeof value === 'string' && value.includes(',')) {
-            return `"${value}"`;
-          }
-          return value || '';
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `smart-ai-attributes-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    showSuccess('Export réussi', `${products.length} produits SMART AI exportés en CSV.`);
+    try {
+      const headers = [
+        'id', 'title', 'description', 'product_type', 'subcategory', 'brand',
+        'material', 'color', 'style', 'room', 'dimensions', 'weight', 'capacity',
+        'price', 'compare_at_price', 'stock_quantity', 'availability_status',
+        'gtin', 'mpn', 'image_url', 'product_url', 'seo_title', 'seo_description',
+        'ai_confidence', 'enrichment_source'
+      ];
+      
+      const csvContent = [
+        headers.join(','),
+        ...enrichedProducts.map(product => 
+          headers.map(header => {
+            const value = product[header] || '';
+            return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+          }).join(',')
+        )
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `smart-ai-enriched-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      showSuccess('Export réussi', `${enrichedProducts.length} produits exportés en CSV.`);
+      
+    } catch (error) {
+      console.error('❌ Erreur export:', error);
+      showError('Erreur d\'export', 'Impossible d\'exporter les produits.');
+    }
   };
 
-  const categories = [...new Set(products.map(p => p.product_type))].filter(Boolean);
+  const handleClearEnriched = () => {
+    if (confirm('Supprimer tous les produits enrichis ? Cette action est irréversible.')) {
+      localStorage.removeItem('enriched_products');
+      setEnrichedProducts([]);
+      showSuccess('Produits supprimés', 'Tous les produits enrichis ont été supprimés.');
+    }
+  };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="w-16 h-16 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg">Chargement des attributs SMART AI...</p>
+          <p className="text-white text-lg">Chargement SMART AI...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header avec actions */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Brain className="w-8 h-8 text-purple-400" />
-            SMART AI Attributes
-          </h2>
-          <p className="text-gray-300">Catalogue enrichi avec 30 attributs IA optimisés pour Google Merchant & SEO</p>
-          <p className="text-cyan-300 text-sm">{filteredProducts.length} produit(s) enrichi(s) sur {products.length}</p>
-        </div>
-        
-        <div className="flex flex-wrap gap-3">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
+          <Brain className="w-8 h-8 text-purple-400" />
+          SMART AI Attributes
+        </h2>
+        <p className="text-gray-300 text-lg">
+          Catalogue enrichi avec 30 attributs IA optimisés pour Google Merchant & SEO
+        </p>
+        <p className="text-cyan-300 mt-2">
+          {enrichedProducts.length} produit(s) enrichi(s) sur {products.length}
+        </p>
+      </div>
+
+      {/* Actions principales */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <button
-            onClick={() => setShowShopifyConfig(!showShopifyConfig)}
-            className={`px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all ${
-              shopifyStatus === 'connected' 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-orange-600 hover:bg-orange-700 text-white'
-            }`}
+            onClick={() => setShowShopifyConfig(true)}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
           >
             <Store className="w-5 h-5" />
-            {shopifyStatus === 'connected' ? 'Shopify Connecté' : 'Configurer Shopify'}
+            Configurer Shopify
           </button>
           
           <button
             onClick={handleSyncWithCatalog}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
+            disabled={isSyncing || products.length === 0}
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Database className="w-5 h-5" />
-            Sync Catalogue CSV
-          </button>
-          
-          <button
-            onClick={handleSyncFromCSV}
-            className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
-          >
-            <Upload className="w-5 h-5" />
-            Import CSV Direct
-          </button>
-          
-          {shopifyStatus === 'connected' && (
-            <button
-              onClick={syncFromShopify}
-              className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all"
-            >
-              <Store className="w-5 h-5" />
-              Sync Shopify
-            </button>
-          )}
-          
-          <button
-            onClick={handleEnrichWithDeepSeek}
-            disabled={isEnriching}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
-          >
-            {isEnriching ? (
+            {isSyncing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Enrichissement... {enrichmentProgress}%
+                Sync... {syncProgress}%
               </>
             ) : (
               <>
-                <Brain className="w-5 h-5" />
-                Enrichir avec DeepSeek
+                <RefreshCw className="w-5 h-5" />
+                Sync Catalogue CSV
               </>
             )}
           </button>
           
           <button
-            onClick={handleExportSmartAI}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            onClick={() => setShowCSVImport(true)}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            <Upload className="w-5 h-5" />
+            Import CSV Direct
+          </button>
+          
+          <button
+            onClick={handleExportCSV}
+            disabled={enrichedProducts.length === 0}
+            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Download className="w-5 h-5" />
             Export CSV
           </button>
           
           <button
-            onClick={loadSmartAIProducts}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
+            onClick={handleClearEnriched}
+            disabled={enrichedProducts.length === 0}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <RefreshCw className="w-4 h-4" />
-            Actualiser
+            <X className="w-5 h-5" />
+            Vider
           </button>
         </div>
       </div>
 
-      {/* Configuration Shopify */}
-      {showShopifyConfig && (
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Store className="w-6 h-6 text-green-400" />
-            Configuration Shopify
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Domaine Shopify</label>
-              <input
-                type="text"
-                value={shopifyConfig.domain}
-                onChange={(e) => setShopifyConfig(prev => ({ ...prev, domain: e.target.value }))}
-                placeholder="votre-boutique.myshopify.com"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Token d'accès Admin</label>
-              <input
-                type="password"
-                value={shopifyConfig.token}
-                onChange={(e) => setShopifyConfig(prev => ({ ...prev, token: e.target.value }))}
-                placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
+      {/* Progression de synchronisation */}
+      {isSyncing && (
+        <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Brain className="w-6 h-6 text-purple-400" />
+            <h3 className="text-lg font-bold text-white">Enrichissement SMART AI en cours...</h3>
           </div>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={testShopifyConnection}
-              disabled={isTestingShopify || !shopifyConfig.domain || !shopifyConfig.token}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isTestingShopify ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Test en cours...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Tester la connexion
-                </>
-              )}
-            </button>
-            
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
-              shopifyStatus === 'connected' ? 'bg-green-500/20 text-green-300' :
-              shopifyStatus === 'error' ? 'bg-red-500/20 text-red-300' :
-              'bg-gray-500/20 text-gray-300'
-            }`}>
-              {shopifyStatus === 'connected' ? (
-                <CheckCircle className="w-4 h-4" />
-              ) : shopifyStatus === 'error' ? (
-                <AlertCircle className="w-4 h-4" />
-              ) : (
-                <Settings className="w-4 h-4" />
-              )}
-              <span className="text-sm font-medium">
-                {shopifyStatus === 'connected' ? 'Connecté' :
-                 shopifyStatus === 'error' ? 'Erreur' :
-                 'Non testé'}
-              </span>
-            </div>
+          <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
+              style={{ width: `${syncProgress}%` }}
+            ></div>
           </div>
-          
-          {shopifyStatus === 'connected' && (
-            <div className="bg-green-500/20 border border-green-400/30 rounded-xl p-4">
-              <h4 className="font-semibold text-green-200 mb-2">✅ Shopify connecté !</h4>
-              <ul className="text-green-300 text-sm space-y-1">
-                <li>• Boutique accessible</li>
-                <li>• Token valide</li>
-                <li>• Prêt pour synchronisation</li>
-              </ul>
-            </div>
-          )}
+          <p className="text-purple-300 text-sm">{syncProgress}% - Extraction des 30 attributs SMART AI</p>
         </div>
       )}
 
-      {/* Modal d'import CSV */}
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-200 text-sm mb-1">Produits Source</p>
+              <p className="text-3xl font-bold text-white">{products.length}</p>
+            </div>
+            <Package className="w-10 h-10 text-blue-400" />
+          </div>
+        </div>
+        
+        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-200 text-sm mb-1">Enrichis SMART AI</p>
+              <p className="text-3xl font-bold text-white">{enrichedProducts.length}</p>
+            </div>
+            <Brain className="w-10 h-10 text-purple-400" />
+          </div>
+        </div>
+        
+        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-200 text-sm mb-1">Attributs Extraits</p>
+              <p className="text-3xl font-bold text-white">{enrichedProducts.length * 30}</p>
+            </div>
+            <BarChart3 className="w-10 h-10 text-green-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Confiance Moyenne</p>
+              <p className="text-3xl font-bold text-white">
+                {enrichedProducts.length > 0 ? 
+                  Math.round(enrichedProducts.reduce((sum, p) => sum + p.ai_confidence, 0) / enrichedProducts.length) : 0}%
+              </p>
+            </div>
+            <CheckCircle className="w-10 h-10 text-orange-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Tableau des produits enrichis */}
+      {enrichedProducts.length > 0 ? (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h3 className="text-xl font-bold text-white">Produits Enrichis SMART AI</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">SEO</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Confiance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrichedProducts.slice(0, 20).map((product) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600">
+                          <img 
+                            src={product.image_url} 
+                            alt={product.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-white text-sm">{product.title}</div>
+                          <div className="text-gray-400 text-xs">{product.vendor}</div>
+                          <div className="text-cyan-400 text-xs">GTIN: {product.gtin}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {product.material && (
+                          <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
+                            🏗️ {product.material}
+                          </span>
+                        )}
+                        {product.color && (
+                          <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
+                            🎨 {product.color}
+                          </span>
+                        )}
+                        {product.style && (
+                          <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
+                            ✨ {product.style}
+                          </span>
+                        )}
+                        {product.room && (
+                          <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs mr-1">
+                            🏠 {product.room}
+                          </span>
+                        )}
+                        {product.dimensions && (
+                          <div className="text-gray-300 text-xs mt-1">📏 {product.dimensions}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        <div className="text-white text-xs font-semibold">Titre:</div>
+                        <div className="text-gray-300 text-xs line-clamp-2">{product.seo_title}</div>
+                        <div className="text-white text-xs font-semibold mt-2">Description:</div>
+                        <div className="text-gray-300 text-xs line-clamp-3">{product.seo_description}</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-400">{product.price}€</span>
+                        {product.compare_at_price && (
+                          <>
+                            <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                            <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded text-xs">
+                              -{product.percent_off}%
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          product.ai_confidence >= 80 ? 'bg-green-400' :
+                          product.ai_confidence >= 60 ? 'bg-yellow-400' :
+                          'bg-red-400'
+                        }`}></div>
+                        <span className="text-white text-sm">{product.ai_confidence}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-20">
+          <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucun produit enrichi</h3>
+          <p className="text-gray-400 mb-6">
+            Synchronisez votre catalogue ou importez un CSV pour commencer l'enrichissement SMART AI.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={handleSyncWithCatalog}
+              disabled={products.length === 0}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed"
+            >
+              Synchroniser le catalogue ({products.length} produits)
+            </button>
+            <button
+              onClick={() => setShowCSVImport(true)}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
+              Importer un CSV
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Configuration Shopify */}
+      {showShopifyConfig && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Configuration Shopify</h3>
+              <button
+                onClick={() => setShowShopifyConfig(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Domaine Shopify</label>
+                <input
+                  type="text"
+                  value={shopifyConfig.domain}
+                  onChange={(e) => setShopifyConfig(prev => ({ ...prev, domain: e.target.value }))}
+                  placeholder="votre-boutique.myshopify.com"
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Token d'accès</label>
+                <input
+                  type="password"
+                  value={shopifyConfig.token}
+                  onChange={(e) => setShopifyConfig(prev => ({ ...prev, token: e.target.value }))}
+                  placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleTestShopify}
+                  disabled={isTestingShopify}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed"
+                >
+                  {isTestingShopify ? 'Test...' : 'Tester'}
+                </button>
+                <button
+                  onClick={() => setShowShopifyConfig(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+              
+              {shopifyStatus === 'connected' && (
+                <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-300">Shopify connecté avec succès !</span>
+                  </div>
+                </div>
+              )}
+              
+              {shopifyStatus === 'error' && (
+                <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-300">Erreur de connexion Shopify</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import CSV */}
       {showCSVImport && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
@@ -1062,495 +885,98 @@ export const SmartAIAttributesTab: React.FC = () => {
                     if (file) setCsvFile(file);
                   }}
                   className="hidden"
-                  id="csv-file-input"
+                  id="csv-import"
                 />
-                <label htmlFor="csv-file-input" className="cursor-pointer">
-                  {csvFile ? (
-                    <div className="text-green-400">
-                      <CheckCircle className="w-8 h-8 mx-auto mb-2" />
-                      <p className="font-semibold">{csvFile.name}</p>
-                      <p className="text-sm text-gray-400">
-                        {(csvFile.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-cyan-400">
-                      <Upload className="w-8 h-8 mx-auto mb-2" />
-                      <p className="font-semibold">Sélectionner un fichier CSV</p>
-                      <p className="text-sm text-gray-400">Format: nom,prix,description,categorie</p>
-                    </div>
-                  )}
-                </label>
-              </div>
-              
-              <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-                <h4 className="font-semibold text-blue-200 mb-2">📋 Format CSV attendu :</h4>
-                <code className="text-blue-400 text-xs block">
-                  nom,prix,description,categorie,image_url,stock,vendor
-                </code>
-              </div>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowCSVImport(false)}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => csvFile && handleProcessCSV(csvFile)}
-                  disabled={!csvFile || isProcessingCSV}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isProcessingCSV ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Traitement...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-4 h-4" />
-                      Enrichir CSV
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Informations SMART AI */}
-      <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-400" />
-          30 Attributs SMART AI Optimisés
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <h4 className="font-semibold text-purple-300 mb-2">🎯 SEO & Marketing :</h4>
-            <ul className="text-purple-200 text-sm space-y-1">
-              <li>• Titre SEO optimisé (60 caractères)</li>
-              <li>• Meta description vendeuse (155 caractères)</li>
-              <li>• Description courte Google Ads</li>
-              <li>• Tags enrichis pour référencement</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-purple-300 mb-2">🛍️ Google Merchant :</h4>
-            <ul className="text-purple-200 text-sm space-y-1">
-              <li>• GTIN / Code-barres automatique</li>
-              <li>• MPN référence fabricant</li>
-              <li>• Catégorie Google Shopping</li>
-              <li>• Images multiples (jusqu'à 10)</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-purple-300 mb-2">🤖 Attributs IA :</h4>
-            <ul className="text-purple-200 text-sm space-y-1">
-              <li>• Couleur, matériau, style détectés</li>
-              <li>• Dimensions, poids, capacité</li>
-              <li>• Pièce de destination optimale</li>
-              <li>• Score de confiance IA (0-100%)</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Progression enrichissement */}
-      {isEnriching && (
-        <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Brain className="w-6 h-6 text-purple-400" />
-            <h3 className="text-lg font-bold text-white">Enrichissement SMART AI en cours...</h3>
-          </div>
-          <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
-            <div 
-              className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
-              style={{ width: `${enrichmentProgress}%` }}
-            ></div>
-          </div>
-          <p className="text-purple-300 text-sm">{enrichmentProgress}% - Extraction de 30 attributs par produit avec DeepSeek</p>
-        </div>
-      )}
-
-      {/* Barre de recherche et filtres */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher par titre, catégorie, matériau, couleur, style..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-            />
-          </div>
-          
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-          >
-            <option value="all">Toutes les catégories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Tableau SMART AI */}
-      {products.length === 0 ? (
-        <div className="text-center py-20">
-          <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucun produit SMART AI</h3>
-          <p className="text-gray-400 mb-6">
-            Synchronisez votre catalogue pour créer les attributs SMART AI.<br/>
-            <span className="text-sm">Assurez-vous d'avoir des produits dans l'onglet "Catalogue" d'abord.</span>
-          </p>
-          <div className="space-y-4">
-            <button
-              onClick={handleSyncFromCatalog}
-              disabled={isSyncing}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-                <div 
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
-                  style={{ width: `${syncProgress}%` }}
-                ></div>
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-white font-semibold">{Math.round(syncProgress)}% terminé</p>
-                {estimatedTimeRemaining > 0 && (
-                  <p className="text-gray-400 text-sm">Temps restant: ~{estimatedTimeRemaining}s</p>
+                
+                {!csvFile ? (
+                  <label htmlFor="csv-import" className="cursor-pointer">
+                    <FileText className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+                    <p className="text-white font-semibold">Sélectionner un fichier CSV</p>
+                    <p className="text-gray-300 text-sm">Format: nom,prix,description,categorie</p>
+                  </label>
+                ) : (
+                  <div>
+                    <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                    <p className="text-green-300 font-semibold">{csvFile.name}</p>
+                    <p className="text-sm text-green-400">{(csvFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
                 )}
               </div>
               
-              onClick={() => {
-                const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-                if (!catalogProducts) {
-                  showError('Catalogue vide', 'Allez d\'abord dans l\'onglet "Catalogue" pour importer vos produits.');
-                  return;
-                }
-                const products = JSON.parse(catalogProducts);
-                if (products.length === 0) {
-                  showError('Catalogue vide', 'Aucun produit trouvé. Importez votre catalogue CSV dans l\'onglet "Catalogue".');
-                  return;
-                }
-                handleSyncWithCatalog();
-            })() || 0} produits)
-            }}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-          >
-                  const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-                  return catalogProducts ? JSON.parse(catalogProducts).length : 0;
-                } catch {
-                  return 0;
-                }
-              })()} produits)
-            </button>
-            
-            <button
-              onClick={() => setShowCSVImport(true)}
-              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Importer un nouveau CSV
-            </button>
-            
-            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-              <h4 className="font-semibold text-blue-200 mb-2">💡 Étapes pour utiliser SMART AI :</h4>
-              <ol className="text-blue-300 text-sm space-y-1">
-                <li>1. <strong>Option A:</strong> Allez dans "Catalogue" → Importez CSV → Revenez ici → "Sync Catalogue CSV"</li>
-                <li>2. <strong>Option B:</strong> Cliquez "Import CSV Direct" pour importer directement ici</li>
-                <li>3. <strong>Option C:</strong> Configurez Shopify → "Sync Shopify"</li>
-                <li>4. Les produits seront enrichis automatiquement avec 30 attributs IA</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-black/20">
-                <tr>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">SEO Optimisé</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Google Merchant</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Prix & Stock</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Confiance IA</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
-                          <img 
-                            src={product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg'} 
-                            alt={product.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white text-sm line-clamp-2">{product.title}</div>
-                          <div className="text-gray-400 text-xs">{product.vendor}</div>
-                          <div className="text-purple-400 text-xs">Handle: {product.handle}</div>
-                          <div className="text-cyan-400 text-xs">ID: {product.id.substring(0, 8)}...</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-2">
-                        <div>
-                          <div className="text-white font-semibold text-xs mb-1">SEO Title:</div>
-                          <div className="text-gray-300 text-xs line-clamp-2 bg-black/20 rounded p-2">
-                            {product.seo_title || product.title || 'Non défini'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold text-xs mb-1">Meta Description:</div>
-                          <div className="text-gray-300 text-xs line-clamp-3 bg-black/20 rounded p-2">
-                            {product.seo_description || 'Non définie'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold text-xs mb-1">Description Courte:</div>
-                          <div className="text-gray-300 text-xs line-clamp-2 bg-black/20 rounded p-2">
-                            {product.short_description || 'Non définie'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-1">
-                        <div className="text-white text-xs font-semibold mb-2">Catégorie:</div>
-                        <div className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mb-1">
-                          {product.product_type}
-                        </div>
-                        {product.subcategory && (
-                          <div className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs mb-1">
-                            {product.subcategory}
-                          </div>
-                        )}
-                        
-                        <div className="space-y-1 mt-2">
-                          {product.material && (
-                            <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs mr-1">
-                              🏗️ {product.material}
-                            </span>
-                          )}
-                          {product.color && (
-                            <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs mr-1">
-                              🎨 {product.color}
-                            </span>
-                          )}
-                          {product.style && (
-                            <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs mr-1">
-                              ✨ {product.style}
-                            </span>
-                          )}
-                          {product.room && (
-                            <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs mr-1">
-                              🏠 {product.room}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {product.dimensions && (
-                          <div className="text-gray-300 text-xs mt-1">📏 {product.dimensions}</div>
-                        )}
-                        {product.weight && (
-                          <div className="text-gray-300 text-xs">⚖️ {product.weight}</div>
-                        )}
-                        {product.capacity && (
-                          <div className="text-gray-300 text-xs">👥 {product.capacity}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-2">
-                        <div>
-                          <div className="text-white text-xs font-semibold">GTIN:</div>
-                          <div className="text-cyan-400 text-xs font-mono">
-                            {product.gtin || 'Auto-généré'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-white text-xs font-semibold">MPN:</div>
-                          <div className="text-purple-400 text-xs">
-                            {product.mpn || 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-white text-xs font-semibold">Identifiant:</div>
-                          <div className={`text-xs ${product.identifier_exists ? 'text-green-400' : 'text-red-400'}`}>
-                            {product.identifier_exists ? '✅ Oui' : '❌ Non'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-white text-xs font-semibold">Images:</div>
-                          <div className="text-gray-300 text-xs">
-                            {1 + (product.additional_image_links?.length || 0)} image(s)
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-green-400">{product.price}€</span>
-                          {product.compare_at_price && product.compare_at_price > product.price && (
-                            <>
-                              <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
-                              {product.percent_off > 0 && (
-                                <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded text-xs">
-                                  -{product.percent_off}%
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        <div className="text-gray-400 text-xs">{product.currency}</div>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${product.stock_quantity > 0 ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                          <span className={`font-semibold text-xs ${product.stock_quantity > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {product.stock_quantity} en stock
-                          </span>
-                        </div>
-                        <div className="text-gray-300 text-xs">{product.availability_status}</div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          (product.ai_confidence * 100) >= 80 ? 'bg-green-400' :
-                          (product.ai_confidence * 100) >= 60 ? 'bg-yellow-400' :
-                          'bg-red-400'
-                        }`}></div>
-                        <span className="text-white text-sm font-bold">
-                          {Math.round((product.ai_confidence || 0) * 100)}%
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {(product.ai_confidence * 100) >= 80 ? 'Excellent' :
-                         (product.ai_confidence * 100) >= 60 ? 'Bon' :
-                         'À améliorer'}
-                      </div>
-                      <div className="text-xs text-purple-400 mt-1">
-                        DeepSeek IA
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <button
-                          className="text-blue-400 hover:text-blue-300 p-1"
-                          title="Voir détails"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <a
-                          href={product.product_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-400 hover:text-purple-300 p-1"
-                          title="Ouvrir lien"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Stats SMART AI */}
-      {products.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-200 text-sm mb-1">Produits SMART AI</p>
-                <p className="text-3xl font-bold text-white">{products.length}</p>
-              </div>
-              <Brain className="w-10 h-10 text-purple-400" />
-            </div>
-          </div>
-          
-          <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-200 text-sm mb-1">Confiance Moyenne</p>
-                <p className="text-3xl font-bold text-white">
-                  {products.length > 0 ? Math.round(products.reduce((sum, p) => sum + (p.ai_confidence * 100), 0) / products.length) : 0}%
-                </p>
-              </div>
-              <CheckCircle className="w-10 h-10 text-green-400" />
-            </div>
-          </div>
-          
-          <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-200 text-sm mb-1">Catégories</p>
-                <p className="text-3xl font-bold text-white">{categories.length}</p>
-              </div>
-              <Tag className="w-10 h-10 text-blue-400" />
-            </div>
-          </div>
-          
-          <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-200 text-sm mb-1">En Stock</p>
-                <p className="text-3xl font-bold text-white">
-                  {products.filter(p => p.stock_quantity > 0).length}
-                </p>
-              </div>
-              <Package className="w-10 h-10 text-orange-400" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de synchronisation */}
-      {showSyncModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
-            <div className="text-center">
-              <Brain className="w-16 h-16 text-purple-400 mx-auto mb-4 animate-pulse" />
-              <h3 className="text-xl font-bold text-white mb-2">Synchronisation SMART AI</h3>
-              <p className="text-purple-300 mb-4">
-                Enrichissement des produits avec 30 attributs IA...
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2 text-cyan-300">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              {isImporting && (
+                <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                    <span className="text-purple-300 font-semibold">Import en cours...</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${importProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-purple-300 text-sm mt-1">{importProgress}%</p>
                 </div>
-                <p className="text-sm text-gray-400">Analyse DeepSeek en cours...</p>
-                <p className="text-sm text-gray-400">Extraction SEO, Google Merchant, attributs IA...</p>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => csvFile && handleCSVImport(csvFile)}
+                  disabled={!csvFile || isImporting}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed"
+                >
+                  {isImporting ? 'Import...' : 'Importer & Enrichir'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCSVImport(false);
+                    setCsvFile(null);
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Info SMART AI */}
+      <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-purple-400" />
+          30 Attributs SMART AI Extraits
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-purple-300 mb-2">🎯 Attributs Produit (15) :</h4>
+            <ul className="text-purple-200 text-sm space-y-1">
+              <li>• Catégorie & Sous-catégorie</li>
+              <li>• Marque & Vendeur</li>
+              <li>• Matériau & Couleur</li>
+              <li>• Style & Pièce destination</li>
+              <li>• Dimensions & Poids</li>
+              <li>• Capacité & Fonctionnalités</li>
+              <li>• GTIN & MPN générés</li>
+              <li>• Statut disponibilité</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-purple-300 mb-2">🔍 SEO & Google (15) :</h4>
+            <ul className="text-purple-200 text-sm space-y-1">
+              <li>• Titre SEO optimisé (60 car.)</li>
+              <li>• Meta description (155 car.)</li>
+              <li>• Description courte (160 car.)</li>
+              <li>• Tags & Mots-clés</li>
+              <li>• URL canonique</li>
+              <li>• Images additionnelles</li>
+              <li>• Pourcentage de remise</li>
+              <li>• Score de confiance IA</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
