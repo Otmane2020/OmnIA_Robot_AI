@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, ArrowRight, CheckCircle, AlertCircle, Loader2, MapPin, Link, Eye, Download, BarChart3 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import * as XLSX from 'xlsx';
@@ -140,6 +141,7 @@ const translateCategory = (category: string): string => {
 export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => void }> = ({ onImportComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(() => {
     const loggedUser = localStorage.getItem('current_logged_user');
     if (loggedUser) {
@@ -1048,7 +1050,13 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             Télécharger CSV
           </button>
           <button
-            onClick={() => showSuccess('Terminé !', 'Import réussi ! Votre catalogue est maintenant disponible dans OmnIA.')}
+            onClick={() => {
+              showSuccess('Terminé !', 'Import réussi ! Redirection vers le catalogue...');
+              // Rediriger vers l'onglet Catalogue après 1 seconde
+              setTimeout(() => {
+                navigate('/admin?tab=catalog');
+              }, 1000);
+            }}
             className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
           >
             <CheckCircle className="w-4 h-4" />
