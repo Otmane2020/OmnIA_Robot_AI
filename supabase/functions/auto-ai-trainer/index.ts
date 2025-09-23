@@ -106,7 +106,6 @@ Deno.serve(async (req: Request) => {
             store_id: store_id || 'default',
             extracted_attributes: attributes,
             confidence_score: attributes.confidence_score,
-            last_trained: new Date().toISOString(),
           };
         } catch (error) {
           console.error('❌ Erreur traitement produit:', error);
