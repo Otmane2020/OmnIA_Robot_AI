@@ -11,7 +11,7 @@
       icon: Bot,
       color: 'bg-cyan-500',
       subItems: [
-        { id: 'robot', label: 'Robot OmnIA', icon: Bot },
+        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
         { id: 'conversations', label: 'Conversations', icon: MessageSquare },
         { id: 'speech-to-text', label: 'Speech-to-Text', icon: Mic }
       ]
