@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  LayoutDashboard, Package, ShoppingCart, Users, Settings, 
+  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt, BarChart3,
+  LayoutDashboard, Package, ShoppingCart, Settings,
   TrendingUp, MessageSquare, Upload, Download, 
   Brain, LogOut, Loader2, DollarSign, Plus, X, Target, Search, Mail, Mic, Image, Sparkles, 
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, 
+  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
   Bot, BarChart3
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
