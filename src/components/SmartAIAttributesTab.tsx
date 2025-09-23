@@ -78,9 +78,6 @@ export const SmartAIAttributesTab: React.FC = () => {
   const [isTestingShopify, setIsTestingShopify] = useState(false);
   const [shopifyStatus, setShopifyStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
   const [showShopifyConfig, setShowShopifyConfig] = useState(false);
-  const [showCSVImport, setShowCSVImport] = useState(false);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [isProcessingCSV, setIsProcessingCSV] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     const loggedUser = localStorage.getItem('current_logged_user');
     if (loggedUser) {
@@ -287,8 +284,130 @@ export const SmartAIAttributesTab: React.FC = () => {
     }
   };
 
-  const handleSyncFromCSV = () => {
-    setShowCSVImport(true);
+  const handleSyncFromCSV = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const lines = text.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        const csvProducts = lines.slice(1)
+          .filter(line => line.trim())
+          .map((line, index) => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const product: any = {};
+            headers.forEach((header, i) => {
+              product[header] = values[i] || '';
+            });
+            product.id = product.id || `csv-${Date.now()}-${index}`;
+            return product;
+          });
+
+        if (csvProducts.length === 0) {
+          showError('CSV vide', 'Aucun produit trouvé dans le fichier CSV.');
+          return;
+        }
+
+        console.log(`📦 Import CSV direct - ${csvProducts.length} produits...`);
+        
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        if (!supabaseUrl || !supabaseKey) {
+          // Fallback local
+          const enrichedProducts = csvProducts.map((product: any) => ({
+            id: `smart-ai-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            handle: product.handle || generateHandle(product.name || product.title || ''),
+            retailer_id: currentUser?.email || 'demo-retailer-id',
+            title: product.name || product.title || 'Produit sans nom',
+            description: product.description || '',
+            short_description: (product.description || product.title || '').substring(0, 160),
+            product_type: product.category || 'Mobilier',
+            subcategory: '',
+            tags: [],
+            vendor: product.vendor || 'Decora Home',
+            brand: product.vendor || 'Decora Home',
+            material: '',
+            color: '',
+            style: '',
+            room: '',
+            dimensions: '',
+            weight: '',
+            capacity: '',
+            price: parseFloat(product.price) || 0,
+            compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
+            currency: 'EUR',
+            stock_quantity: parseInt(product.stock) || 0,
+            stock_qty: parseInt(product.stock) || 0,
+            availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
+            gtin: '',
+            mpn: product.sku || '',
+            identifier_exists: !!product.sku,
+            image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+            additional_image_links: [],
+            product_url: product.product_url || '#',
+            canonical_link: product.product_url || '#',
+            percent_off: 0,
+            ai_confidence: 0.5,
+            seo_title: product.name || product.title || '',
+            seo_description: (product.description || product.title || '').substring(0, 155),
+            enrichment_source: 'csv_direct',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(enrichedProducts));
+          setProducts(enrichedProducts);
+          showSuccess('Import CSV réussi', `${enrichedProducts.length} produits importés en mode local.`);
+          return;
+        }
+
+        setShowSyncModal(true);
+        showInfo('Import CSV', 'Enrichissement des produits avec DeepSeek IA...');
+
+        // Enrichir avec DeepSeek
+        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            products: csvProducts,
+            source: 'csv_direct_smart_ai',
+            retailer_id: currentUser?.email || 'demo-retailer-id'
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Enrichissement CSV réussi:', result.stats);
+          
+          localStorage.setItem(getRetailerStorageKey('smart_ai_products'), JSON.stringify(result.enriched_products || []));
+          await loadSmartAIProducts();
+          
+          showSuccess(
+            'Import CSV terminé !', 
+            `${result.stats?.enriched_count || csvProducts.length} produits enrichis !`
+          );
+        } else {
+          throw new Error('Erreur enrichissement');
+        }
+
+      } catch (error) {
+        console.error('❌ Erreur import CSV:', error);
+        showError('Erreur import', 'Impossible d\'importer le fichier CSV.');
+      } finally {
+        setShowSyncModal(false);
+      }
+    };
+    input.click();
   };
 
   const loadSmartAIProducts = async () => {
@@ -717,6 +836,80 @@ export const SmartAIAttributesTab: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Configuration Shopify */}
+      {showShopifyConfig && (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Store className="w-5 h-5 text-green-400" />
+            Configuration Shopify
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white text-sm font-semibold mb-2">Domaine Shopify</label>
+              <input
+                type="text"
+                placeholder="monboutique.myshopify.com"
+                value={shopifyConfig.domain}
+                onChange={(e) => setShopifyConfig(prev => ({ ...prev, domain: e.target.value }))}
+                className="w-full px-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-green-400"
+              />
+            </div>
+            <div>
+              <label className="block text-white text-sm font-semibold mb-2">Token d'accès</label>
+              <input
+                type="password"
+                placeholder="shpat_..."
+                value={shopifyConfig.token}
+                onChange={(e) => setShopifyConfig(prev => ({ ...prev, token: e.target.value }))}
+                className="w-full px-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-green-400"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={testShopifyConnection}
+              disabled={isTestingShopify}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            >
+              {isTestingShopify ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Test en cours...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Tester la connexion
+                </>
+              )}
+            </button>
+            <button
+              onClick={saveShopifyConfig}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            >
+              <Save className="w-4 h-4" />
+              Sauvegarder
+            </button>
+          </div>
+          {shopifyStatus === 'connected' && (
+            <div className="mt-4 p-4 bg-green-500/20 border border-green-400/50 rounded-xl">
+              <p className="text-green-300 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Shopify connecté avec succès !
+              </p>
+            </div>
+          )}
+          {shopifyStatus === 'error' && (
+            <div className="mt-4 p-4 bg-red-500/20 border border-red-400/50 rounded-xl">
+              <p className="text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Erreur de connexion Shopify. Vérifiez vos paramètres.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Informations SMART AI */}
       <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
