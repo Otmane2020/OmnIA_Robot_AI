@@ -34,31 +34,8 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Transform products to match database schema
-    const transformedProducts = products.map((product: any) => ({
-      id: crypto.randomUUID(),
-      external_id: product.external_id || `csv-${Date.now()}-${Math.random()}`,
-      retailer_id: retailer_id,
-      name: product.name,
-      description: product.description || null,
-      price: parseFloat(product.price) || 0,
-      original_price: product.original_price ? parseFloat(product.original_price) : null,
-      category: product.category || null,
-      brand: product.brand || null,
-      sku: product.sku || null,
-      barcode: product.barcode || null,
-      stock_quantity: product.stock_quantity ? parseInt(product.stock_quantity) : null,
-      image_url: product.image_url || null,
-      product_url: product.product_url || null,
-      source_platform: source,
-      is_active: true,
-      metadata: product.metadata || {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
-
     // Validate and clean products
-    const validProducts = transformedProducts.filter(product => 
+    const validProducts = products.filter(product => 
       product.name && product.name.trim().length > 0 && product.price > 0
     );
 
