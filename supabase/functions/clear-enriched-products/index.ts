@@ -61,12 +61,14 @@ Deno.serve(async (req: Request) => {
       .from('products_enriched')
       .delete();
 
-    // Si retailer_id spécifié, supprimer seulement ses produits
-    if (retailer_id && typeof retailer_id === 'string' && retailer_id.length > 0) {
+    // Si retailer_id spécifié et valide, supprimer seulement ses produits
+    // Sinon, supprimer tous les produits enrichis en utilisant une comparaison UUID valide
+    if (retailer_id && retailer_id !== "") {
       deleteQuery = deleteQuery.eq('retailer_id', retailer_id);
     } else {
-      // Supprimer tous les produits enrichis
-      deleteQuery = deleteQuery.neq('id', '');
+      // Supprimer tous les produits enrichis en utilisant une comparaison UUID valide
+      // '00000000-0000-0000-0000-000000000000' est un UUID valide et "minimum"
+      deleteQuery = deleteQuery.gt('id', '00000000-0000-0000-0000-000000000000');
     }
 
     const { data, error, count } = await deleteQuery;
@@ -79,14 +81,16 @@ Deno.serve(async (req: Request) => {
     console.log('✅ Produits enrichis supprimés:', count || 0);
 
     // Aussi nettoyer la table ai_products si spécifié
-    if (retailer_id && typeof retailer_id === 'string' && retailer_id.length > 0) {
+    // La colonne 'id' de ai_products est TEXT, donc neq('', '') est OK
+    if (retailer_id && retailer_id !== "") {
       const { error: aiError } = await supabase
         .from('ai_products')
         .delete()
         .eq('store_id', retailer_id);
 
       if (aiError) {
-        console.warn('⚠️ Erreur suppression ai_products:', aiError);
+        // Log warning but don't fail the main operation
+        console.warn('⚠️ Erreur suppression ai_products pour retailer_id:', aiError);
       } else {
         console.log('✅ Produits IA supprimés pour retailer:', retailer_id);
       }
