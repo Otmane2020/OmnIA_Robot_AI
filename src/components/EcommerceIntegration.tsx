@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings } from 'lucide-react';
 import { ShopifyCSVImporter } from './ShopifyCSVImporter';
+import { SmartAIAttributesTab } from './SmartAIAttributesTab';
 
 interface EcommerceIntegrationProps {
   onConnected: (platformData: any) => void;
 }
 
 export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onConnected }) => {
-  const [activeTab, setActiveTab] = useState('shopify');
+  const [activeTab, setActiveTab] = useState('smart-ai');
   const [isConnecting, setIsConnecting] = useState(false);
 
   const platforms = [
+    {
+      id: 'smart-ai',
+      name: 'SMART AI Attributes',
+      icon: Brain,
+      description: '30 attributs IA optimisés pour Google Merchant & SEO',
+      color: 'from-purple-500 to-pink-600'
+    },
     {
       id: 'shopify',
       name: 'Shopify',
@@ -214,6 +222,7 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
         {activeTab === 'csv' && renderCSVTab()}
         {activeTab === 'xml' && renderXMLTab()}
       </div>
+      {activeTab === 'smart-ai' && <SmartAIAttributesTab />}
     </div>
   );
 };

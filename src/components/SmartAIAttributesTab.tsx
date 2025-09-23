@@ -36,6 +36,7 @@ interface SmartAIProduct {
   gtin: string;
   mpn: string;
   identifier_exists: boolean;
+  stock_qty: number;
   image_url: string;
   additional_image_links: string[];
   product_url: string;

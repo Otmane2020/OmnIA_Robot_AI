@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
         enrichedProducts.push(enrichedProduct);
         successCount++;
         
-        console.log(`✅ Enrichi: ${enrichedData.category} ${enrichedData.color} ${enrichedData.material}`);
+        console.log(`✅ Enrichi: ${enrichedData.product_type} ${enrichedData.color} ${enrichedData.material} (${enrichedData.confidence_score}%)`);
 
         // Pause entre les requêtes pour éviter rate limiting
         if (i < products.length - 1) {
@@ -308,15 +308,16 @@ PRIX: ${product.price || 0}€
 VENDEUR: ${product.vendor || ''}
   `.trim();
 
-  const prompt = `Tu es un expert en mobilier et SEO. Analyse ce produit et extrait TOUS les attributs au format JSON strict.
+  const prompt = `Tu es un expert en mobilier, SEO et Google Merchant. Analyse ce produit et extrait TOUS les 30 attributs SMART AI au format JSON strict.
 
 ${productText}
 
-EXTRAIT OBLIGATOIREMENT ces attributs au format JSON exact :
+EXTRAIT OBLIGATOIREMENT ces 30 attributs SMART AI au format JSON exact :
 {
   "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
   "product_type": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
   "subcategory": "Canapé d'angle|Table basse|Chaise de bureau|Lit double|Commode|Console TV|Miroir",
+  "brand": "marque ou fabricant",
   "material": "matériau principal",
   "color": "couleur principale", 
   "style": "Moderne|Contemporain|Scandinave|Industriel|Vintage|Classique|Minimaliste",
@@ -324,20 +325,34 @@ EXTRAIT OBLIGATOIREMENT ces attributs au format JSON exact :
   "dimensions": "LxlxH en cm si trouvé",
   "weight": "poids approximatif en kg",
   "capacity": "capacité (ex: 4 places, 6 personnes)",
+  "currency": "EUR",
+  "availability_status": "En stock|Rupture|Précommande",
   "gtin": "code-barres si disponible",
   "mpn": "référence fabricant",
+  "identifier_exists": true,
+  "additional_image_links": ["url1", "url2"],
+  "canonical_link": "lien canonique produit",
+  "percent_off": 42,
   "seo_title": "TITRE SEO OPTIMISÉ 60 caractères max avec mots-clés",
   "seo_description": "META DESCRIPTION SEO 155 caractères max attractive et vendeuse",
+  "short_description": "Description courte 160 caractères pour Google Ads",
   "tags": ["tag1", "tag2", "tag3"],
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- category ET product_type: OBLIGATOIRES, utilise les valeurs listées
-- seo_title: OBLIGATOIRE, titre optimisé Google avec mots-clés (ex: "Canapé Moderne 3 Places - Velours Beige - Decora Home")
-- seo_description: OBLIGATOIRE, description vendeuse 155 caractères (ex: "Découvrez notre canapé moderne 3 places en velours beige. Confort optimal, design contemporain. Livraison gratuite. ⭐")
-- confidence_score: 0-100 basé sur la qualité des informations
-- Si information manquante, mettre valeur par défaut logique
+- TOUS LES 30 CHAMPS: Obligatoires pour SMART AI
+- seo_title: Titre optimisé Google 60 caractères max (ex: "Canapé Moderne 3 Places Velours Beige - Decora Home")
+- seo_description: Description vendeuse 155 caractères (ex: "Découvrez notre canapé moderne 3 places en velours beige. Confort optimal, design contemporain. Livraison gratuite. ⭐")
+- short_description: Version courte 160 caractères pour Google Ads
+- gtin: Générer code-barres 13 chiffres si manquant
+- mpn: Référence fabricant ou SKU
+- percent_off: Calculer réduction si compare_at_price
+- identifier_exists: true si GTIN ou MPN présent
+- additional_image_links: URLs images secondaires
+- availability_status: Statut stock en français
+- confidence_score: 0-100 basé sur complétude des 30 attributs
+- Si information manquante, générer valeur logique cohérente
 - Réponse JSON uniquement, aucun texte supplémentaire
 
 RÉPONSE JSON UNIQUEMENT:`;
@@ -391,8 +406,10 @@ RÉPONSE JSON UNIQUEMENT:`;
         });
         
         return {
+          handle: product.handle || generateHandle(product.name || product.title || ''),
           product_type: parsed.product_type || parsed.category || '',
           subcategory: parsed.subcategory || '',
+          brand: parsed.brand || product.vendor || 'Decora Home',
           material: parsed.material || '',
           color: parsed.color || '',
           style: parsed.style || '',
@@ -400,10 +417,18 @@ RÉPONSE JSON UNIQUEMENT:`;
           dimensions: parsed.dimensions || '',
           weight: parsed.weight || '',
           capacity: parsed.capacity || '',
+          currency: parsed.currency || 'EUR',
+          availability_status: parsed.availability_status || (parseInt(product.stock) > 0 ? 'En stock' : 'Rupture'),
           gtin: parsed.gtin || '',
           mpn: parsed.mpn || '',
+          identifier_exists: parsed.identifier_exists || !!(parsed.gtin || parsed.mpn),
+          additional_image_links: Array.isArray(parsed.additional_image_links) ? parsed.additional_image_links : [],
+          canonical_link: parsed.canonical_link || product.product_url || '#',
+          percent_off: parsed.percent_off || (product.compare_at_price && product.price ? 
+            Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0),
           seo_title: parsed.seo_title || '',
           seo_description: parsed.seo_description || '',
+          short_description: parsed.short_description || (product.description || product.title || '').substring(0, 160),
           tags: Array.isArray(parsed.tags) ? parsed.tags : [],
           confidence_score: parsed.confidence_score || 50
         };
