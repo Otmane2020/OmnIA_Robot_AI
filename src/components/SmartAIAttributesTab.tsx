@@ -153,8 +153,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseKey) {
-        showError('Configuration manquante', 'Supabase non configuré. Cliquez sur "Connect to Supabase" en haut à droite.');
+      if (!supabaseUrl || !supabaseKey || (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://'))) {
+        showError('Configuration manquante', 'Supabase non configuré ou URL invalide. Cliquez sur "Connect to Supabase" en haut à droite et vérifiez que l\'URL commence par https://');
         return;
       }
 
@@ -243,9 +243,8 @@ export const SmartAIAttributesTab: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseKey) {
-        showError('Configuration manquante', 'Supabase non configuré.');
         return;
+              
       }
 
       setIsEnriching(true);
