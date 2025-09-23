@@ -472,6 +472,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       // Préparer les données pour Supabase
       const transformedProducts = products.map(product => ({
+        id: crypto.randomUUID(),
         external_id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
         retailer_id: currentUser?.id || '00000000-0000-0000-0000-000000000000',
         name: product.Title || 'Produit sans nom',
