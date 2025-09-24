@@ -764,7 +764,7 @@ export const APITest: React.FC = () => {
               <ul className="text-cyan-200 space-y-1">
                 <li>• ✅ Vert : API fonctionnelle</li>
                 <li>• ❌ Rouge : Erreur de configuration</li>
-                <li>• ⏱️ Temps < 1s : Performance optimale</li>
+                <li>• ⏱️ Temps {"< 1s"} : Performance optimale</li>
                 <li>• 🔄 Testez régulièrement après modifications</li>
               </ul>
             </div>
