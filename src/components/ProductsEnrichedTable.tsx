@@ -52,16 +52,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-          const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
-          
-          // Filter products by retailer_id for data isolation
-          const filteredProducts = Array.isArray(parsedProducts) 
-            ? parsedProducts.filter(product => 
-                !product.retailer_id || product.retailer_id === retailerId
-              )
-            : [];
-          
-          setProducts(filteredProducts);
+  const [isEnriching, setIsEnriching] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
@@ -184,7 +175,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       // Déclencher l'enrichissement automatique
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
       
       if (supabaseUrl && supabaseKey) {
         const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
@@ -212,31 +202,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             
             setProducts(result.enriched_data);
             setFilteredProducts(result.enriched_data);
-          retailer_id: retailerId,
-          retailer_id: retailerId,
-          force_full_enrichment: true,
-          enable_image_analysis: true
-          force_full_enrichment: true,
-          enable_image_analysis: true
             
             showSuccess(
               'Synchronisation terminée',
               `${result.enriched_data.length} produits enrichis automatiquement !`,
               [
                 {
-          const enrichedWithRetailer = result.enriched_data.map(product => ({
-            ...product,
-            retailer_id: retailerId
-          }));
-        // Update enriched products with retailer isolation
-        if (result.enriched_data && result.enriched_data.length > 0) {
-          const enrichedWithRetailer = result.enriched_data.map(product => ({
-            ...product,
-            retailer_id: retailerId
-          }));
-          localStorage.setItem('enrichedProducts', JSON.stringify(enrichedWithRetailer));
-          setProducts(enrichedWithRetailer);
-        }
+                  label: 'Voir les produits',
+                  action: () => console.log('Voir produits enrichis')
+                }
+              ]
             );
           }
         } else {
@@ -1010,6 +985,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                               </button>
                             </div>
                           )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
-}
+};
