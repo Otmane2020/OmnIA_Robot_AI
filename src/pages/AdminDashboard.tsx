@@ -15,6 +15,7 @@ import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
+import { APITest } from '../pages/APITest';
 import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -56,6 +57,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [enrichedRefreshTrigger, setEnrichedRefreshTrigger] = useState(0);
 
   // Fonction pour compter les produits actifs
   function getActiveProductsCount(vendorId?: string): number {
@@ -80,6 +82,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
+    { id: 'api-test', label: 'Test API', icon: Settings },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
     { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
     { id: 'settings', label: 'Paramètres', icon: Settings }
@@ -332,7 +335,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
         </div>
       </div>
 
-      <ProductsEnrichedTable vendorId={currentVendor?.id} />
+      <ProductsEnrichedTable 
+        vendorId={currentVendor?.id} 
+        retailerId={currentVendor?.id}
+        refreshTrigger={enrichedRefreshTrigger}
+      />
     </div>
   );
   
@@ -370,6 +377,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     </div>
   );
 
+  const renderAPITest = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Test des API</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-green-300 text-sm">Tests en temps réel</span>
+        </div>
+      </div>
+      <APITest />
+    </div>
+  );
   const renderHistorique = () => (
     <ConversationHistory />
   );
@@ -522,6 +541,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
       case 'robot': return renderRobot();
+      case 'api-test': return renderAPITest();
       case 'historique': return renderHistorique();
       case 'abonnement': return renderAbonnement();
       case 'settings': return renderSettings();
@@ -567,7 +587,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    // Auto-trigger sync when opening "Catalogue Enrichi" tab
+                    if (tab.id === 'enriched') {
+                      setEnrichedRefreshTrigger(prev => prev + 1);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
                     activeTab === tab.id
                       ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
