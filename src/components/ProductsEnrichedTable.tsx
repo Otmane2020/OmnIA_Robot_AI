@@ -204,7 +204,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
 
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout (2 minutes)
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 300 second timeout (5 minutes)
 
       try {
         // Use direct fetch to Edge Function
