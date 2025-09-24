@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { SuperAdmin } from './pages/SuperAdmin';
 import { SellerRegistration } from './pages/SellerRegistration';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
@@ -16,29 +15,56 @@ import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
+import { ThankYou } from './pages/ThankYou';
+import { SuperAdmin } from './pages/SuperAdmin';
 
 interface Retailer {
   id: string;
-  name: string;
+  company_name: string;
   email: string;
+  subdomain: string;
   plan: 'starter' | 'professional' | 'enterprise';
   status: 'active' | 'inactive' | 'suspended' | 'pending_validation';
-  revenue: number;
-  conversations: number;
-  products: number;
-  joinDate: string;
-  lastActive: string;
+  contact_name: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  siret?: string;
+  position?: string;
   password?: string;
-  applicationData?: any;
+  created_at: string;
+  validated_at?: string;
+}
+
+interface Vendor {
+  id: string;
+  company_name: string;
+  email: string;
+  subdomain: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended' | 'pending_validation';
+  contact_name: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  siret?: string;
+  position?: string;
+  password?: string;
+  created_at: string;
+  validated_at?: string;
 }
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
+  const [currentVendor, setCurrentVendor] = React.useState<Vendor | null>(null);
   const [pendingApplications, setPendingApplications] = React.useState(() => {
     // Charger les demandes depuis localStorage
     try {
-      return JSON.parse(localStorage.getItem('pending_applications') || '[]');
+      const saved = localStorage.getItem('pending_applications');
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -52,64 +78,84 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
-    // Sauvegarder l'utilisateur connecté
-    const saveCurrentUser = (userInfo: any) => {
-      localStorage.setItem('current_logged_user', JSON.stringify(userInfo));
-      console.log('✅ Utilisateur sauvegardé:', userInfo.email);
-    };
-    
-    // Vérifier les revendeurs validés en localStorage
-    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-    const validatedRetailer = validatedRetailers.find((retailer: any) => 
-      retailer.email === credentials.email && retailer.password === credentials.password
-    );
-    
-    if (validatedRetailer) {
-      console.log('✅ Connexion revendeur validé:', validatedRetailer.company_name);
-      saveCurrentUser(validatedRetailer);
-      setIsSuperAdmin(false);
+    // Comptes de démonstration
+    const testVendors = [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        email: 'demo@decorahome.fr',
+        company_name: 'Decora Home',
+        subdomain: 'decorahome',
+        plan: 'professional',
+        status: 'active',
+        contact_name: 'Marie Dubois',
+        created_at: '2024-03-15T10:00:00Z',
+        validated_at: '2024-03-15T12:00:00Z'
+      },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        email: 'contact@mobilierdesign.fr',
+        company_name: 'Mobilier Design',
+        subdomain: 'mobilierdesign',
+        plan: 'enterprise',
+        status: 'active',
+        contact_name: 'Jean Martin',
+        created_at: '2024-04-10T14:30:00Z',
+        validated_at: '2024-04-10T16:00:00Z'
+      },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440003',
+        email: 'info@decocontemporain.com',
+        company_name: 'Déco Contemporain',
+        subdomain: 'decocontemporain',
+        plan: 'starter',
+        status: 'active',
+        contact_name: 'Sophie Laurent',
+        created_at: '2024-05-20T09:00:00Z',
+        validated_at: '2024-05-20T11:30:00Z'
+      },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        email: 'contact@meubleslyon.fr',
+        company_name: 'Meubles Lyon',
+        subdomain: 'meubleslyon',
+        plan: 'enterprise',
+        status: 'active',
+        contact_name: 'Thomas Leroy',
+        created_at: '2024-04-20T16:00:00Z',
+        validated_at: '2024-04-20T18:00:00Z'
+      }
+    ];
+
+    // Super Admin
+    if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
+      console.log('✅ Connexion Super Admin réussie');
+      setIsSuperAdmin(true);
       setIsLoggedIn(true);
+      setCurrentVendor(null);
       return;
     }
     
-    // Super Admin
-    if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
-      setIsSuperAdmin(true);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Super Admin', plan: 'Admin' });
-    }
-    // Decora Home - Boutique principale
-    else if (credentials.email === 'demo@decorahome.fr' && credentials.password === 'demo123') {
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Decora Home', plan: 'Professional' });
-    }
-    // Mobilier Design Paris
-    else if (credentials.email === 'contact@mobilierdesign.fr' && credentials.password === 'design123') {
+    // Vérifier si c'est un vendeur
+    const vendor = testVendors.find(v => v.email === credentials.email);
+    const validPasswords = ['demo123', 'design123', 'deco123', 'lyon123'];
+    
+    if (vendor && validPasswords.includes(credentials.password)) {
+      console.log('✅ Connexion vendeur:', vendor.company_name);
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Mobilier Design Paris', plan: 'Professional' });
+      setCurrentVendor(vendor);
+      return;
     }
-    // Déco Contemporain
-    else if (credentials.email === 'info@decocontemporain.com' && credentials.password === 'deco123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Déco Contemporain', plan: 'Enterprise' });
-    }
-    // Meubles Lyon
-    else if (credentials.email === 'contact@meubleslyon.fr' && credentials.password === 'lyon123') {
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      saveCurrentUser({ email: credentials.email, company_name: 'Meubles Lyon', plan: 'Starter' });
-    }
-    else {
-      alert('Identifiants incorrects.\n\nComptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
-    }
+    
+    // Identifiants incorrects
+    console.log('❌ Identifiants incorrects:', credentials.email);
+    alert('Identifiants incorrects.\n\n🔑 Comptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setIsSuperAdmin(false);
-    localStorage.removeItem('current_logged_user');
+    setCurrentVendor(null);
   };
 
   const handleGetStarted = () => {
@@ -122,39 +168,6 @@ function App() {
 
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
     console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
-    
-    if (approved) {
-      // Récupérer la demande
-      const application = pendingApplications.find(app => app.id === applicationId);
-      if (application) {
-        // Créer le compte revendeur validé
-        const validatedRetailer = {
-          id: application.id,
-          email: application.email,
-          password: application.password || `omnia${Date.now().toString().slice(-4)}`,
-          company_name: application.companyName,
-          subdomain: application.proposedSubdomain,
-          plan: application.selectedPlan,
-          status: 'active',
-          validated_at: new Date().toISOString(),
-          first_name: application.firstName,
-          last_name: application.lastName,
-          phone: application.phone,
-          address: application.address,
-          city: application.city,
-          postal_code: application.postalCode,
-          siret: application.siret,
-          position: application.position
-        };
-        
-        // Sauvegarder dans localStorage
-        const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-        existingRetailers.push(validatedRetailer);
-        localStorage.setItem('validated_retailers', JSON.stringify(existingRetailers));
-        
-        console.log('✅ Revendeur validé et sauvegardé:', validatedRetailer.company_name);
-      }
-    }
     
     // Supprimer de la liste des demandes en attente
     setPendingApplications(prev => 
@@ -172,6 +185,8 @@ function App() {
   };
 
   const handleRegistrationSubmit = (applicationData: any) => {
+    console.log('📝 Réception demande inscription:', applicationData);
+    
     // Ajouter heure et date de création
     const newApplication = {
       ...applicationData,
@@ -188,6 +203,14 @@ function App() {
     console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
     console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
     console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
+    
+    // Rediriger vers une page de confirmation
+    alert(`✅ Inscription envoyée avec succès !\n\n🏢 Entreprise: ${newApplication.companyName}\n📧 Email: ${newApplication.email}\n🌐 Sous-domaine: ${newApplication.proposedSubdomain}.omnia.sale\n\n⏱️ Validation sous 24-48h\nVous recevrez un email de confirmation.`);
+    
+    // Retour à l'accueil après inscription
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 2000);
   };
 
   return (
@@ -200,7 +223,7 @@ function App() {
       } />
       
       <Route path="/chat" element={<ChatInterface />} />
-      <Route path="/chat" element={<RobotInterface />} />
+      <Route path="/robot" element={<RobotInterface />} />
       
       <Route path="/admin" element={
         isLoggedIn ? (
@@ -211,7 +234,10 @@ function App() {
               onValidateApplication={handleValidateApplication}
             />
           ) : (
-            <AdminDashboard onLogout={handleLogout} />
+            <AdminDashboard 
+              onLogout={handleLogout}
+              currentVendor={currentVendor}
+            />
           )
         ) : (
           <AdminLogin 
@@ -235,7 +261,7 @@ function App() {
       <Route path="/guides" element={<Guides />} />
       <Route path="/press" element={<Press />} />
       <Route path="/partnerships" element={<Partnerships />} />
-      <Route path="/robot" element={<RobotInterface />} />
+      <Route path="/upload" element={<UploadPage />} />
     </Routes>
   );
 }

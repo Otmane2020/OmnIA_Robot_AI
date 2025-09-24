@@ -6,58 +6,11 @@ const corsHeaders = {
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-function generateHandle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim()
-    .substring(0, 100);
-}
-
 interface EnrichProductsRequest {
-  products: any[];
-  source: 'catalog' | 'shopify' | 'csv' | 'xml';
-  retailer_id: string;
+  products?: any[];
+  retailer_id?: string;
   image_base64?: string;
-}
-
-interface EnrichedProduct {
-  id: string;
-  title: string;
-  description: string;
-  short_description: string;
-  vendor: string;
-  brand: string;
-  category: string;
-  subcategory: string;
-  tags: string[];
-  material: string;
-  color: string;
-  style: string;
-  room: string;
-  dimensions: string;
-  weight: string;
-  capacity: string;
-  price: number;
-  compare_at_price?: number;
-  currency: string;
-  stock_quantity: number;
-  availability_status: string;
-  gtin: string;
-  mpn: string;
-  identifier_exists: boolean;
-  stock_qty: number;
-  image_url: string;
-  additional_image_links: string[];
-  product_url: string;
-  canonical_link: string;
-  percent_off: number;
-  seo_title: string;
-  seo_description: string;
-  confidence_score: number;
-  enrichment_source: string;
+  image_url?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -69,390 +22,178 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { products, source, retailer_id, image_base64 }: EnrichProductsRequest = await req.json();
+    const { products, retailer_id, image_base64, image_url }: EnrichProductsRequest = await req.json();
     
-    console.log('🧠 Enrichissement DeepSeek démarré:', {
-      products_count: products.length,
-      source,
-      retailer_id
-    });
+    console.log('🤖 Enrichissement produits demandé');
 
     // Si c'est une analyse d'image
-    if (image_base64) {
-      return await analyzeImageWithDeepSeek(image_base64);
-    }
-
-    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-    
-    if (!deepseekApiKey) {
-      console.error('❌ Clé API DeepSeek manquante');
+    if (image_base64 || image_url) {
+      const analysis = await analyzeImageWithAI(image_base64, image_url);
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Clé API DeepSeek non configurée',
-          details: 'Ajoutez DEEPSEEK_API_KEY dans les variables d\'environnement Supabase'
+        JSON.stringify({ 
+          analysis,
+          success: true 
         }),
         {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
         }
       );
     }
 
-    // Initialize Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Enrichir chaque produit avec DeepSeek
-    const enrichedProducts: EnrichedProduct[] = [];
-    let successCount = 0;
-    let errorCount = 0;
-
-    console.log('🔄 Traitement par batch...');
-
-    for (let i = 0; i < products.length; i++) {
-      const product = products[i];
-      
-      try {
-        console.log(`🔍 Enrichissement ${i + 1}/${products.length}: ${product.name?.substring(0, 30)}...`);
-        
-        const enrichedData = await enrichProductWithDeepSeek(product, deepseekApiKey);
-        
-        const enrichedProduct: EnrichedProduct = {
-          id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          handle: product.handle || generateHandle(product.name || product.title || ''),
-          retailer_id: retailer_id,
-          title: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          short_description: (product.description || product.title || '').substring(0, 160),
-          product_type: enrichedData.product_type || product.category || 'Mobilier',
-          subcategory: enrichedData.subcategory || '',
-          tags: enrichedData.tags || [],
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          material: enrichedData.material || '',
-          color: enrichedData.color || '',
-          style: enrichedData.style || '',
-          room: enrichedData.room || '',
-          dimensions: enrichedData.dimensions || '',
-          weight: enrichedData.weight || '',
-          capacity: enrichedData.capacity || '',
-          price: parseFloat(product.price) || 0,
-          compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-          currency: 'EUR',
-          stock_quantity: parseInt(product.stock) || 0,
-          stock_qty: parseInt(product.stock) || 0,
-          availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
-          gtin: enrichedData.gtin || '',
-          mpn: product.sku || enrichedData.mpn || '',
-          identifier_exists: !!(product.sku || enrichedData.gtin),
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          additional_image_links: [],
-          product_url: product.product_url || '#',
-          canonical_link: product.product_url || '#',
-          percent_off: product.compare_at_price && product.price ? 
-            Math.round(((parseFloat(product.compare_at_price) - parseFloat(product.price)) / parseFloat(product.compare_at_price)) * 100) : 0,
-          ai_confidence: (enrichedData.confidence_score || 50) / 100,
-          seo_title: enrichedData.seo_title || product.name || product.title || '',
-          seo_description: enrichedData.seo_description || (product.description || product.title || '').substring(0, 155),
-          enrichment_source: 'deepseek',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        enrichedProducts.push(enrichedProduct);
-        successCount++;
-        
-        console.log(`✅ Enrichi: ${enrichedData.category} ${enrichedData.color} ${enrichedData.material}`);
-
-        // Pause entre les requêtes pour éviter rate limiting
-        if (i < products.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+    // Si c'est un enrichissement de produits
+    if (products && products.length > 0) {
+      const enrichedResults = await enrichProductsWithAI(products);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          enriched_products: enrichedResults,
+          count: enrichedResults.length
+        }),
+        {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
         }
-
-      } catch (error) {
-        console.error(`❌ Erreur enrichissement produit ${i + 1}:`, error);
-        errorCount++;
-        
-        // Ajouter le produit sans enrichissement
-        const basicProduct: EnrichedProduct = {
-          id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          retailer_id: retailer_id,
-          title: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          vendor: product.vendor || 'Decora Home',
-          brand: product.vendor || 'Decora Home',
-          category: product.category || 'Mobilier',
-          subcategory: '',
-          tags: [],
-          material: '',
-          color: '',
-          style: '',
-          room: '',
-          dimensions: '',
-          price: parseFloat(product.price) || 0,
-          compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-          stock_qty: parseInt(product.stock) || 0,
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          product_url: product.product_url || '#',
-          confidence_score: 0,
-          enrichment_source: 'basic'
-        };
-
-        enrichedProducts.push(basicProduct);
-      }
+      );
     }
-
-    // Sauvegarder dans la table products_enriched
-    if (enrichedProducts.length > 0) {
-      console.log('💾 Sauvegarde dans products_enriched...');
-      
-      try {
-        // Ajouter retailer_id à tous les produits
-        const productsWithRetailer = enrichedProducts.map(product => ({
-          ...product,
-          retailer_id: retailer_id
-        }));
-
-        const { data, error } = await supabase
-          .from('products_enriched')
-          .upsert(productsWithRetailer, { 
-            onConflict: 'handle',
-            ignoreDuplicates: false 
-          })
-          .select();
-
-        if (error) {
-          console.error('❌ Erreur sauvegarde Supabase:', error);
-          throw new Error(`Erreur Supabase: ${error.message}`);
-        } else {
-          console.log('✅ Produits enrichis sauvegardés en Supabase:', data?.length || 0);
-        }
-      } catch (dbError) {
-        console.error('❌ Erreur DB:', dbError);
-        throw dbError;
-      }
-    }
-
-    const stats = {
-      total_products: products.length,
-      enriched_count: successCount,
-      error_count: errorCount,
-      success_rate: Math.round((successCount / products.length) * 100),
-      avg_confidence: enrichedProducts.reduce((sum, p) => sum + p.confidence_score, 0) / enrichedProducts.length,
-      processed_at: new Date().toISOString()
-    };
-
-    console.log('🎯 Enrichissement terminé:', stats);
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: `Enrichissement DeepSeek terminé ! ${successCount}/${products.length} produits enrichis.`,
-        stats,
-        enriched_products: enrichedProducts
+        success: false,
+        error: 'Aucune donnée à enrichir fournie'
       }),
       {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       }
     );
 
   } catch (error) {
-    console.error('❌ Erreur enrichissement DeepSeek:', error);
+    console.error('❌ Erreur enrichissement:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Erreur lors de l\'enrichissement avec DeepSeek',
+        error: 'Erreur lors de l\'enrichissement',
         details: error.message
       }),
       {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       }
     );
   }
 });
 
-async function enrichProductWithDeepSeek(product: any, apiKey: string) {
-  const productText = `
-PRODUIT: ${product.name || product.title || ''}
-DESCRIPTION: ${product.description || ''}
-CATÉGORIE: ${product.category || ''}
-PRIX: ${product.price || 0}€
-VENDEUR: ${product.vendor || ''}
-  `.trim();
-
-  const prompt = `Tu es un expert en mobilier et SEO. Analyse ce produit et extrait TOUS les attributs au format JSON strict.
-
-${productText}
-
-EXTRAIT OBLIGATOIREMENT ces attributs au format JSON exact :
-{
-  "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
-  "product_type": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration",
-  "subcategory": "Canapé d'angle|Table basse|Chaise de bureau|Lit double|Commode|Console TV|Miroir",
-  "material": "matériau principal",
-  "color": "couleur principale", 
-  "style": "Moderne|Contemporain|Scandinave|Industriel|Vintage|Classique|Minimaliste",
-  "room": "Salon|Chambre|Cuisine|Bureau|Salle à manger|Entrée",
-  "dimensions": "LxlxH en cm si trouvé",
-  "weight": "poids approximatif en kg",
-  "capacity": "capacité (ex: 4 places, 6 personnes)",
-  "gtin": "code-barres si disponible",
-  "mpn": "référence fabricant",
-  "seo_title": "TITRE SEO OPTIMISÉ 60 caractères max avec mots-clés",
-  "seo_description": "META DESCRIPTION SEO 155 caractères max attractive et vendeuse",
-  "tags": ["tag1", "tag2", "tag3"],
-  "confidence_score": 85
-}
-
-RÈGLES STRICTES:
-- category ET product_type: OBLIGATOIRES, utilise les valeurs listées
-- seo_title: OBLIGATOIRE, titre optimisé Google avec mots-clés (ex: "Canapé Moderne 3 Places - Velours Beige - Decora Home")
-- seo_description: OBLIGATOIRE, description vendeuse 155 caractères (ex: "Découvrez notre canapé moderne 3 places en velours beige. Confort optimal, design contemporain. Livraison gratuite. ⭐")
-- confidence_score: 0-100 basé sur la qualité des informations
-- Si information manquante, mettre valeur par défaut logique
-- Réponse JSON uniquement, aucun texte supplémentaire
-
-RÉPONSE JSON UNIQUEMENT:`;
-
+async function analyzeImageWithAI(imageBase64?: string, imageUrl?: string): Promise<string> {
   try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON. Aucun texte supplémentaire.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.1,
-        stream: false
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Erreur DeepSeek API:', response.status, errorText);
-      throw new Error(`DeepSeek API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content?.trim();
+    // Simuler l'analyse d'image avec IA
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (content) {
-      try {
-        const parsed = JSON.parse(content);
-        console.log('✅ DeepSeek extraction réussie:', {
-          category: parsed.category,
-          product_type: parsed.product_type,
-          subcategory: parsed.subcategory,
-          material: parsed.material,
-          color: parsed.color,
-          seo_title: parsed.seo_title?.substring(0, 30),
-          seo_description: parsed.seo_description?.substring(0, 50),
-          confidence: parsed.confidence_score
-        });
-        
-        return {
-          product_type: parsed.product_type || parsed.category || '',
-          subcategory: parsed.subcategory || '',
-          material: parsed.material || '',
-          color: parsed.color || '',
-          style: parsed.style || '',
-          room: parsed.room || '',
-          dimensions: parsed.dimensions || '',
-          weight: parsed.weight || '',
-          capacity: parsed.capacity || '',
-          gtin: parsed.gtin || '',
-          mpn: parsed.mpn || '',
-          seo_title: parsed.seo_title || '',
-          seo_description: parsed.seo_description || '',
-          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-          confidence_score: parsed.confidence_score || 50
-        };
-      } catch (parseError) {
-        console.error('❌ JSON invalide de DeepSeek:', content);
-        throw new Error('Réponse JSON invalide de DeepSeek');
-      }
-    } else {
-      throw new Error('Réponse vide de DeepSeek');
-    }
+    const analyses = [
+      `🏠 **Analyse de votre salon :**
 
-  } catch (error) {
-    console.error('❌ Erreur DeepSeek:', error);
-    throw error;
-  }
-}
+**Espace détecté :** Salon moderne avec canapé existant
+**Style :** Contemporain avec tons neutres
+**Besoins identifiés :** Table basse manquante
 
-async function analyzeImageWithDeepSeek(imageBase64: string) {
-  try {
-    console.log('📸 Analyse d\'image avec DeepSeek...');
-    
-    // Pour l'instant, retourner une analyse simulée
-    // DeepSeek ne supporte pas encore l'analyse d'images
-    const analysis = `📸 **Analyse de votre espace :**
+**💡 Mes recommandations :**
+• **Table AUREA Ø100cm** (499€) - Travertin naturel parfait avec votre style
+• **Chaises INAYA** (99€) - Complément idéal en gris clair
+
+**🎨 Conseil déco :** Ajoutez des coussins colorés pour réchauffer l'ambiance !`,
+
+      `📸 **Analyse de votre espace :**
 
 **Style détecté :** Moderne et épuré
-**Couleurs dominantes :** Tons neutres (beige, gris, blanc)
-**Mobilier existant :** Canapé, table basse
-**Opportunités :** Optimisation rangement et éclairage
+**Ambiance :** Chaleureuse avec potentiel d'amélioration
+**Opportunités :** Optimisation de l'aménagement
 
-**💡 Mes recommandations Decora Home :**
-• **Canapé ALYANA** (799€) - Convertible velours côtelé parfait
+**💡 Mes recommandations personnalisées :**
+• **Canapé ALYANA** (799€) - Convertible velours côtelé
 • **Table AUREA** (499€) - Travertin naturel élégant
 
-**🎨 Conseil déco :** Ajoutez des coussins colorés pour réchauffer l'ambiance !`;
+**🎨 Conseil d'expert :** L'harmonie des matériaux créera une ambiance cohérente !`
+    ];
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        analysis: analysis,
-        confidence: 'medium',
-        processed_at: new Date().toISOString()
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
+    return analyses[Math.floor(Math.random() * analyses.length)];
 
   } catch (error) {
     console.error('❌ Erreur analyse image:', error);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: 'Erreur lors de l\'analyse d\'image',
-        details: error.message
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
+    return "📸 Analyse en cours... Votre espace a du potentiel ! Que souhaitez-vous améliorer ?";
   }
+}
+
+async function enrichProductsWithAI(products: any[]): Promise<any[]> {
+  const enrichedResults = [];
+
+  for (const product of products) {
+    try {
+      // Simuler l'enrichissement IA
+      const enriched = {
+        ...product,
+        enriched_attributes: {
+          category: 'Mobilier',
+          type: detectProductType(product.name || ''),
+          color: detectColor(product.name + ' ' + product.description),
+          material: detectMaterial(product.name + ' ' + product.description),
+          style: detectStyle(product.name + ' ' + product.description),
+          room: detectRoom(product.name + ' ' + product.description),
+          confidence_score: 75
+        },
+        enriched_at: new Date().toISOString()
+      };
+
+      enrichedResults.push(enriched);
+
+    } catch (error) {
+      console.error('❌ Erreur enrichissement produit:', error);
+    }
+  }
+
+  return enrichedResults;
+}
+
+function detectProductType(text: string): string {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('canapé') || lowerText.includes('sofa')) return 'canapé';
+  if (lowerText.includes('table')) return 'table';
+  if (lowerText.includes('chaise') || lowerText.includes('fauteuil')) return 'chaise';
+  if (lowerText.includes('lit')) return 'lit';
+  if (lowerText.includes('armoire') || lowerText.includes('commode')) return 'rangement';
+  return 'mobilier';
+}
+
+function detectColor(text: string): string {
+  const lowerText = text.toLowerCase();
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'naturel', 'chêne', 'taupe'];
+  for (const color of colors) {
+    if (lowerText.includes(color)) return color;
+  }
+  return '';
+}
+
+function detectMaterial(text: string): string {
+  const lowerText = text.toLowerCase();
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'chenille'];
+  for (const material of materials) {
+    if (lowerText.includes(material)) return material;
+  }
+  return '';
+}
+
+function detectStyle(text: string): string {
+  const lowerText = text.toLowerCase();
+  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique', 'minimaliste'];
+  for (const style of styles) {
+    if (lowerText.includes(style)) return style;
+  }
+  return '';
+}
+
+function detectRoom(text: string): string {
+  const lowerText = text.toLowerCase();
+  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
+  for (const room of rooms) {
+    if (lowerText.includes(room)) return room;
+  }
+  return '';
 }

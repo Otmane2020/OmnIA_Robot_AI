@@ -1,222 +1,162 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3, Users, Package, DollarSign, Calendar, Clock, 
+import {
+  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
-  Bot, Globe, FileText, Eye, Settings, LogOut, Brain,
-  Plus, X, Megaphone, Palette, Monitor, Smartphone, Tablet, 
-  Edit, Trash2, Battery, Signal, Loader2
+  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
+  Clock, Star, X, ShoppingBag
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { CatalogManagement } from '../components/CatalogManagement';
+import { VendorDashboard } from '../components/VendorDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
-import { ConversationHistory } from '../components/ConversationHistory';
 import { AITrainingInterface } from '../components/AITrainingInterface';
-import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
-import { SEOBlogTab } from '../components/SEOBlogTab';
+import { CatalogManagement } from '../components/CatalogManagement';
+import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
+import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
+import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  currentVendor?: {
+    id: string;
+    email: string;
+    company_name: string;
+    subdomain: string;
+    plan: string;
+    status: string;
+    contact_name: string;
+  };
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+interface DashboardStats {
+  conversations: number;
+  conversions: number;
+  products: number;
+  revenue: number;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
+  const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
+  
+  // Si un vendeur est connecté, afficher son dashboard personnalisé
+  if (currentVendor) {
+    return <VendorDashboard vendor={currentVendor} onLogout={onLogout} />;
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [currentUser, setCurrentUser] = useState(() => {
-    const loggedUser = localStorage.getItem('current_logged_user');
-    if (loggedUser) {
-      try {
-        return JSON.parse(loggedUser);
-      } catch {
-        return null;
-      }
-    }
-    return null;
+  const [stats, setStats] = useState<DashboardStats>({
+    conversations: 1234,
+    conversions: 42,
+    products: getActiveProductsCount(),
+    revenue: 2450
   });
-
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalConversations: 0,
-    monthlyRevenue: 0,
-    conversionRate: 0,
-    activeUsers: 0,
-    avgSessionDuration: '0m',
-    topProducts: [],
-    recentActivity: []
-  });
-
-  const [isLoading, setIsLoading] = useState(true);
   const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([]);
-  const { notifications, removeNotification, showSuccess, showError, showInfo } = useNotifications();
+  const [loading, setLoading] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
-  // Générer clé de stockage spécifique au revendeur
-  const getRetailerStorageKey = (key: string) => {
-    if (!currentUser?.email) return key;
-    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
-    return `${key}_${emailHash}`;
-  };
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  // Fonction pour compter les produits actifs
+  function getActiveProductsCount(vendorId?: string): number {
     try {
-      setIsLoading(true);
-      
-      // Charger les données spécifiques au revendeur depuis localStorage
-      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-      const enrichedProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
-      const csvFileData = localStorage.getItem(getRetailerStorageKey('csv_file_data'));
-      const chatHistory = localStorage.getItem('chat_history');
-      
-      let totalProducts = 0;
-      let totalConversations = 0;
-      
-      // Compter les produits
-      if (catalogProducts) {
-        try {
-          const products = JSON.parse(catalogProducts);
-          totalProducts = products.filter((p: any) => p.status === 'active').length;
-        } catch (error) {
-          console.error('Erreur parsing produits:', error);
-        }
+      const storageKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
+      const savedProducts = localStorage.getItem(storageKey);
+      if (savedProducts) {
+        const products = JSON.parse(savedProducts);
+        const activeProducts = products.filter((p: any) => p.status === 'active');
+        return activeProducts.length;
       }
-      
-      // Compter les conversations
-      if (chatHistory) {
-        try {
-          const conversations = JSON.parse(chatHistory);
-          totalConversations = conversations.length;
-        } catch (error) {
-          console.error('Erreur parsing conversations:', error);
-        }
-      }
-      
-      // Calculer les statistiques
-      const conversionRate = totalConversations > 0 ? Math.round((totalProducts / totalConversations) * 100) : 0;
-      const monthlyRevenue = totalProducts * 45; // Estimation basée sur le nombre de produits
-      const activeUsers = Math.floor(totalConversations * 0.7); // Estimation
-      
-      // Charger les plateformes connectées
-      const platforms = [];
-      if (csvFileData) {
-        try {
-          const csvData = JSON.parse(csvFileData);
-          platforms.push({
-            name: `CSV Import (${csvData.filename})`,
-            platform: 'csv',
-            products_count: csvData.active_products || csvData.total_products || 0,
-            status: 'connected',
-            connected_at: csvData.imported_at
-          });
-        } catch (error) {
-          console.error('Erreur parsing CSV data:', error);
-        }
-      }
-      
-      setStats({
-        totalProducts,
-        totalConversations,
-        monthlyRevenue,
-        conversionRate,
-        activeUsers,
-        avgSessionDuration: '3m 45s',
-        topProducts: [
-          { name: 'Canapé ALYANA', views: 156, conversions: 12 },
-          { name: 'Table AUREA', views: 134, conversions: 8 },
-          { name: 'Chaise INAYA', views: 98, conversions: 15 }
-        ],
-        recentActivity: [
-          { type: 'conversation', message: 'Nouvelle conversation client', time: '2 min' },
-          { type: 'product', message: 'Produit ajouté au panier', time: '5 min' },
-          { type: 'training', message: 'IA entraînée automatiquement', time: '1h' }
-        ]
-      });
-      
-      setConnectedPlatforms(platforms);
-      
-      console.log(`📊 Dashboard chargé pour ${currentUser?.email}:`, {
-        produits: totalProducts,
-        conversations: totalConversations,
-        plateformes: platforms.length
-      });
-      
     } catch (error) {
-      console.error('❌ Erreur chargement dashboard:', error);
-      showError('Erreur de chargement', 'Impossible de charger les données du dashboard.');
-    } finally {
-      setIsLoading(false);
+      console.error('Erreur comptage produits:', error);
     }
-  };
+    return 3; // Valeur par défaut Decora Home (3 produits de base)
+  }
+
+  const tabs = [
+    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
+    { id: 'catalogue', label: 'Catalogue', icon: Database },
+    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
+    { id: 'integration', label: 'Intégration', icon: Globe },
+    { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
+    { id: 'robot', label: 'Robot OmnIA', icon: Bot },
+    { id: 'historique', label: 'Historique', icon: MessageSquare },
+    { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
+    { id: 'settings', label: 'Paramètres', icon: Settings }
+  ];
 
   const handlePlatformConnected = (platformData: any) => {
-    setConnectedPlatforms(prev => [...prev, platformData]);
-    showSuccess('Plateforme connectée', `${platformData.name} connecté avec succès !`);
+    console.log('Plateforme connectée:', platformData);
     
-    // Recharger les données du dashboard
-    setTimeout(() => {
-      loadDashboardData();
-    }, 1000);
+    setConnectedPlatforms(prev => [...prev, platformData]);
+    
+    // Sauvegarder les produits dans localStorage avec vendor_id si fournis
+    if (platformData.products && Array.isArray(platformData.products)) {
+      const storageKey = currentVendor ? `vendor_${currentVendor.id}_products` : 'catalog_products';
+      const existingProducts = localStorage.getItem(storageKey);
+      let allProducts = platformData.products;
+      
+      if (existingProducts) {
+        try {
+          const existing = JSON.parse(existingProducts);
+          allProducts = [...existing, ...platformData.products];
+        } catch (error) {
+          console.error('Erreur parsing produits existants:', error);
+        }
+      }
+      
+      localStorage.setItem(storageKey, JSON.stringify(allProducts));
+      console.log('✅ Produits sauvegardés dans localStorage:', allProducts.length);
+    }
+    
+    // Update products count
+    if (platformData.products_count) {
+      setStats(prev => ({
+        ...prev,
+        products: getActiveProductsCount(currentVendor?.id)
+      }));
+    }
+    
+    showSuccess(
+      'Plateforme connectée',
+      `${platformData.name || 'Plateforme'} connectée avec ${platformData.products_count || 0} produits !`,
+      [
+        {
+          label: 'Voir le catalogue',
+          action: () => setActiveTab('catalogue'),
+          variant: 'primary'
+        }
+      ]
+    );
   };
 
   const handleTrainingComplete = (trainingStats: any) => {
-    showSuccess('Entraînement terminé', `${trainingStats.products_processed} produits analysés !`);
-    
-    // Recharger les données
-    setTimeout(() => {
-      loadDashboardData();
-    }, 1000);
+    console.log('Entraînement IA terminé:', trainingStats);
   };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'catalog', label: 'Catalogue', icon: Package },
-    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
-    { id: 'ecommerce', label: 'E-commerce', icon: ShoppingCart },
-    { id: 'conversations', label: 'Conversations', icon: MessageSquare },
-    { id: 'training', label: 'Entraînement IA', icon: Brain },
-    { id: 'ml-dashboard', label: 'ML Dashboard', icon: TrendingUp },
-    { id: 'robot', label: 'Robot OmnIA', icon: Bot },
-    { id: 'seo-blog', label: 'SEO & Blog', icon: FileText }
-  ];
 
   const renderDashboard = () => (
     <div className="space-y-8">
-      {/* Header avec informations utilisateur */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">
-              Bienvenue, {currentUser?.company_name || 'Revendeur'} !
-            </h2>
-            <p className="text-cyan-300 text-lg">
-              Interface Admin OmnIA • Plan {currentUser?.plan || 'Professional'}
-            </p>
-            <div className="flex items-center gap-4 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-300 font-semibold">OmnIA Actif</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-cyan-400 rounded-full"></div>
-                <span className="text-cyan-300">Catalogue Synchronisé</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <span className="text-purple-300">IA Entraînée</span>
-              </div>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Interface Revendeur</h1>
+          <p className="text-gray-300">Gestion de votre assistant IA OmnIA</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <Store className="w-6 h-6 text-white" />
           </div>
-          <div className="text-right">
-            <div className="text-white font-bold text-2xl">{stats.totalProducts}</div>
-            <div className="text-gray-300">Produits actifs</div>
+          <div>
+            <div className="text-white font-bold">Decora Home</div>
+            <div className="text-gray-400 text-sm">Plan Professional</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-300 text-sm">{stats.products} produits actifs</span>
             <button
-              onClick={() => window.open('/chat', '_blank')}
-              className="mt-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-cyan-500/30"
+              onClick={() => setShowQR(!showQR)}
+              className="p-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl text-purple-300 hover:text-white transition-all"
+              title="QR Code boutique"
             >
-              🤖 Tester OmnIA
+              <QrCode className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -228,8 +168,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.totalConversations.toLocaleString()}</p>
-              <p className="text-blue-300 text-sm">Ce mois</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.conversations.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+23% ce mois</p>
             </div>
             <MessageSquare className="w-10 h-10 text-blue-400" />
           </div>
@@ -238,181 +178,326 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-200 text-sm mb-1">Revenus</p>
-              <p className="text-3xl font-bold text-white mb-1">€{stats.monthlyRevenue.toLocaleString()}</p>
-              <p className="text-green-300 text-sm">Estimés</p>
+              <p className="text-green-200 text-sm mb-1">Conversions</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.conversions}%</p>
+              <p className="text-green-400 text-sm">+8% ce mois</p>
             </div>
-            <DollarSign className="w-10 h-10 text-green-400" />
+            <TrendingUp className="w-10 h-10 text-green-400" />
           </div>
         </div>
         
         <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm mb-1">Taux Conversion</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.conversionRate}%</p>
-              <p className="text-purple-300 text-sm">Moyen</p>
+              <p className="text-purple-200 text-sm mb-1">Produits</p>
+              <p className="text-3xl font-bold text-white mb-1">{stats.products}</p>
+              <p className="text-green-400 text-sm">+15% ce mois</p>
             </div>
-            <TrendingUp className="w-10 h-10 text-purple-400" />
+            <Database className="w-10 h-10 text-purple-400" />
           </div>
         </div>
         
         <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-200 text-sm mb-1">Utilisateurs Actifs</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.activeUsers}</p>
-              <p className="text-orange-300 text-sm">Derniers 30j</p>
+              <p className="text-orange-200 text-sm mb-1">Revenus</p>
+              <p className="text-3xl font-bold text-white mb-1">€{stats.revenue.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+12% ce mois</p>
             </div>
-            <Users className="w-10 h-10 text-orange-400" />
+            <Receipt className="w-10 h-10 text-orange-400" />
           </div>
         </div>
       </div>
 
-      {/* Plateformes connectées */}
+      {/* Quick Actions */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Plateformes E-commerce Connectées</h3>
-        
-        {connectedPlatforms.length === 0 ? (
-          <div className="text-center py-8">
-            <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-semibold text-white mb-2">Aucune plateforme connectée</h4>
-            <p className="text-gray-400 mb-6">
-              Connectez votre boutique Shopify ou importez votre catalogue CSV
-            </p>
+        <h2 className="text-2xl font-bold text-white mb-6">Actions Rapides</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <button
+            onClick={() => setActiveTab('integration')}
+            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Upload className="w-8 h-8 text-cyan-400 mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-2">Importer Catalogue</h3>
+            <p className="text-gray-300 text-sm">CSV, Shopify ou XML</p>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('robot')}
+            className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Bot className="w-8 h-8 text-purple-400 mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-2">Configurer OmnIA</h3>
+            <p className="text-gray-300 text-sm">Personnaliser votre robot</p>
+          </button>
+          
+          <button
+            onClick={() => window.open('/robot', '_blank')}
+            className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
+          >
+            <Eye className="w-8 h-8 text-green-400 mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-2">Tester OmnIA</h3>
+            <p className="text-gray-300 text-sm">Voir en action</p>
+          </button>
+        </div>
+      </div>
+
+      {/* Connected Platforms */}
+      {connectedPlatforms.length > 0 && (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <h2 className="text-2xl font-bold text-white mb-6">Plateformes Connectées</h2>
+          <div className="space-y-4">
+            {connectedPlatforms.map((platform, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-green-500/20 rounded-xl border border-green-400/30">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-400" />
+                  <div>
+                    <div className="font-semibold text-white">{platform.name}</div>
+                    <div className="text-sm text-green-300">
+                      {platform.products_count} produits • {platform.platform}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-green-400">
+                  Connecté
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Modal QR Code
+  const renderQRModal = () => (
+    showQR && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white">QR Code Boutique</h3>
             <button
-              onClick={() => setActiveTab('ecommerce')}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+              onClick={() => setShowQR(false)}
+              className="text-gray-400 hover:text-white"
             >
-              Connecter une plateforme
+              ×
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {connectedPlatforms.map((platform, index) => (
-              <div key={index} className="bg-black/20 rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    platform.platform === 'shopify' ? 'bg-green-500/20' :
-                    platform.platform === 'csv' ? 'bg-blue-500/20' :
-                    'bg-purple-500/20'
-                  }`}>
-                    {platform.platform === 'shopify' ? (
-                      <ShoppingCart className="w-6 h-6 text-green-400" />
-                    ) : platform.platform === 'csv' ? (
-                      <FileText className="w-6 h-6 text-blue-400" />
-                    ) : (
-                      <Globe className="w-6 h-6 text-purple-400" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-white">{platform.name}</h4>
-                    <p className="text-gray-400 text-sm">{platform.products_count} produits</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-xs font-medium">
-                    {platform.status}
-                  </span>
-                  <span className="text-gray-400 text-xs">
-                    {new Date(platform.connected_at).toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Produits populaires et activité récente */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Produits populaires */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-          <h3 className="text-xl font-bold text-white mb-6">Produits Populaires</h3>
-          <div className="space-y-4">
-            {stats.topProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-black/20 rounded-xl">
-                <div>
-                  <h4 className="font-semibold text-white">{product.name}</h4>
-                  <p className="text-gray-400 text-sm">{product.views} vues • {product.conversions} conversions</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-cyan-400 font-bold">{Math.round((product.conversions / product.views) * 100)}%</div>
-                  <div className="text-gray-400 text-xs">Taux conversion</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activité récente */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-          <h3 className="text-xl font-bold text-white mb-6">Activité Récente</h3>
-          <div className="space-y-4">
-            {stats.recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center gap-4 p-4 bg-black/20 rounded-xl">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  activity.type === 'conversation' ? 'bg-blue-500/20' :
-                  activity.type === 'product' ? 'bg-green-500/20' :
-                  'bg-purple-500/20'
-                }`}>
-                  {activity.type === 'conversation' ? (
-                    <MessageSquare className="w-5 h-5 text-blue-400" />
-                  ) : activity.type === 'product' ? (
-                    <ShoppingCart className="w-5 h-5 text-green-400" />
-                  ) : (
-                    <Brain className="w-5 h-5 text-purple-400" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-white font-medium">{activity.message}</p>
-                  <p className="text-gray-400 text-sm">Il y a {activity.time}</p>
-                </div>
-              </div>
-            ))}
+          <div className="text-center">
+            <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://omnia.sale/chat')}`}
+                alt="QR Code"
+                className="w-44 h-44 rounded-xl"
+              />
+            </div>
+            <p className="text-gray-300">Scannez pour accéder au chat OmnIA</p>
           </div>
         </div>
       </div>
+    )
+  );
 
-      {/* Actions rapides */}
-      <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-8 border border-cyan-400/30">
-        <h3 className="text-xl font-bold text-white mb-6">Actions Rapides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            onClick={() => setActiveTab('catalog')}
-            className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-4 transition-all text-left"
-          >
-            <Package className="w-8 h-8 text-cyan-400 mb-3" />
-            <h4 className="font-semibold text-white mb-1">Gérer Catalogue</h4>
-            <p className="text-gray-300 text-sm">Ajouter, modifier, supprimer produits</p>
-          </button>
+  const renderCatalogue = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Gestion du Catalogue</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-green-300 text-sm">{stats.products} produits actifs</span>
+        </div>
+      </div>
+
+      <CatalogManagement />
+    </div>
+  );
+
+  const renderEnriched = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-300 text-sm">Enrichissement automatique actif</span>
+        </div>
+      </div>
+
+      <ProductsEnrichedTable />
+    </div>
+  );
+  
+  const renderIntegration = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Intégration E-commerce</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+          <span className="text-blue-300 text-sm">{connectedPlatforms.length} plateforme(s) connectée(s)</span>
+        </div>
+      </div>
+
+      <EcommerceIntegration onConnected={handlePlatformConnected} />
+    </div>
+  );
+
+  const renderMLTraining = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Entraînement IA</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-300 text-sm">Modèle IA actif</span>
+        </div>
+      </div>
+
+      <MLTrainingDashboard />
+    </div>
+  );
+
+  const renderRobot = () => (
+    <div className="space-y-8">
+      <OmniaRobotTab />
+    </div>
+  );
+
+  const renderHistorique = () => (
+    <ConversationHistory />
+  );
+
+  const renderAbonnement = () => (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-white">Abonnement Professional</h2>
+      
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-white">Plan Professional</h3>
+            <p className="text-gray-300">5000 conversations/mois • Produits illimités</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-cyan-400">€79/mois</div>
+            <div className="text-sm text-green-400">Actif</div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-white mb-3">Fonctionnalités incluses :</h4>
+            <ul className="space-y-2 text-gray-300">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                5000 conversations/mois
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                Produits illimités
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                Support prioritaire
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                Domaine personnalisé
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                Analytics avancées
+              </li>
+            </ul>
+          </div>
           
-          <button
-            onClick={() => setActiveTab('training')}
-            className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-4 transition-all text-left"
+          <div>
+            <h4 className="font-semibold text-white mb-3">Utilisation ce mois :</h4>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-300">Conversations</span>
+                  <span className="text-white">{stats.conversations}/5000</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-cyan-500 h-2 rounded-full" 
+                    style={{ width: `${(stats.conversations / 5000) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex gap-4 mt-6">
+          <button 
+            onClick={() => showInfo(
+              'Upgrade Enterprise', 
+              'Contactez notre équipe commerciale pour upgrader vers Enterprise : commercial@omnia.sale ou +33 1 84 88 32 45',
+              [
+                {
+                  label: 'Contacter commercial',
+                  action: () => window.open('mailto:commercial@omnia.sale?subject=Upgrade Enterprise', '_blank'),
+                  variant: 'primary'
+                }
+              ]
+            )}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
           >
-            <Brain className="w-8 h-8 text-purple-400 mb-3" />
-            <h4 className="font-semibold text-white mb-1">Entraîner IA</h4>
-            <p className="text-gray-300 text-sm">Améliorer les réponses OmnIA</p>
+            Upgrade vers Enterprise
           </button>
-          
-          <button
-            onClick={() => window.open('/chat', '_blank')}
-            className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-4 transition-all text-left"
+          <button 
+            onClick={() => showInfo(
+              'Gestion abonnement', 
+              'Accédez au portail client pour gérer votre abonnement, facturation et moyens de paiement.',
+              [
+                {
+                  label: 'Portail client',
+                  action: () => window.open('https://billing.omnia.sale/portal', '_blank'),
+                  variant: 'primary'
+                },
+                {
+                  label: 'Support facturation',
+                  action: () => window.open('mailto:billing@omnia.sale', '_blank'),
+                  variant: 'secondary'
+                }
+              ]
+            )}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
           >
-            <Bot className="w-8 h-8 text-green-400 mb-3" />
-            <h4 className="font-semibold text-white mb-1">Tester OmnIA</h4>
-            <p className="text-gray-300 text-sm">Interface de conversation</p>
+            Gérer l'abonnement
           </button>
-          
-          <button
-            onClick={() => setActiveTab('conversations')}
-            className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-4 transition-all text-left"
-          >
-            <MessageSquare className="w-8 h-8 text-orange-400 mb-3" />
-            <h4 className="font-semibold text-white mb-1">Voir Conversations</h4>
-            <p className="text-gray-300 text-sm">Historique et analytics</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-white">Paramètres</h2>
+      
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Configuration OmnIA</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm text-cyan-300 mb-2">Nom du robot</label>
+            <input
+              type="text"
+              defaultValue="OmnIA"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-cyan-300 mb-2">Personnalité</label>
+            <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white">
+              <option value="commercial">Commercial & Amical</option>
+              <option value="expert">Expert Technique</option>
+              <option value="conseil">Conseiller Déco</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+            Sauvegarder les paramètres
           </button>
         </div>
       </div>
@@ -420,43 +505,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   );
 
   const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <Loader2 className="w-16 h-16 text-cyan-400 animate-spin mx-auto mb-4" />
-            <p className="text-white text-lg">Chargement du dashboard...</p>
-          </div>
-        </div>
-      );
-    }
-
     switch (activeTab) {
-      case 'dashboard':
-        return renderDashboard();
-      case 'catalog':
-        return <CatalogManagement />;
-      case 'enriched':
-        return <ProductsEnrichedTable />;
-      case 'ecommerce':
-        return <EcommerceIntegration onConnected={handlePlatformConnected} />;
-      case 'conversations':
-        return <ConversationHistory />;
-      case 'training':
-        return <AITrainingInterface onTrainingComplete={handleTrainingComplete} />;
-      case 'ml-dashboard':
-        return <MLTrainingDashboard />;
-      case 'robot':
-        return <OmniaRobotTab />;
-      case 'seo-blog':
-        return <SEOBlogTab />;
-      default:
-        return renderDashboard();
+      case 'dashboard': return renderDashboard();
+      case 'catalogue': return renderCatalogue();
+      case 'enriched': return renderEnriched();
+      case 'integration': return renderIntegration();
+      case 'ml-training': return renderMLTraining();
+      case 'robot': return renderRobot();
+      case 'historique': return renderHistorique();
+      case 'abonnement': return renderAbonnement();
+      case 'settings': return renderSettings();
+      default: return renderDashboard();
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
+      <NotificationSystem notifications={notifications} onRemove={removeNotification} />
+      {renderQRModal()}
+      
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-20 left-20 w-72 h-72 bg-cyan-500/30 rounded-full blur-3xl animate-pulse"></div>
@@ -465,19 +532,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       <div className="relative z-10 flex h-screen">
         {/* Sidebar */}
-        <div className="w-80 bg-black/20 backdrop-blur-2xl border-r border-white/10 flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-white/10">
-            <Logo size="md" />
-            <div className="mt-4 p-4 bg-cyan-500/20 rounded-xl border border-cyan-400/30">
-              <div className="text-white font-bold">{currentUser?.company_name || 'Revendeur'}</div>
-              <div className="text-cyan-300 text-sm">{currentUser?.email}</div>
-              <div className="text-cyan-400 text-xs">Plan {currentUser?.plan || 'Professional'}</div>
+        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+          {/* Header avec logo OmnIA */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">OmnIA</h1>
+              <p className="text-sm text-cyan-300">Commercial Mobilier IA</p>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-6 space-y-2">
+          {/* Info magasin */}
+          <div className="bg-slate-700/50 rounded-xl p-4 mb-6">
+            <div className="text-white font-bold">Mon Magasin</div>
+            <div className="text-gray-400 text-sm">Plan Professional</div>
+          </div>
+
+          {/* Navigation Menu */}
+          <nav className="space-y-2 mb-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -486,8 +560,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
                     activeTab === tab.id
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -497,31 +571,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-6 border-t border-white/10">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-red-500/20 hover:text-red-300 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Déconnexion</span>
-            </button>
+          {/* Status OmnIA */}
+          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="w-5 h-5 text-green-400" />
+              <span className="text-green-300 font-semibold">OmnIA Robot</span>
+            </div>
+            <p className="text-green-200 text-sm">Assistant IA actif et opérationnel</p>
           </div>
+          
+          <button
+            onClick={onLogout}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all"
+          >
+            Déconnexion
+          </button>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {renderContent()}
-          </div>
+        <div className="flex-1 overflow-y-auto p-8">
+          {renderContent()}
         </div>
       </div>
-
-      {/* Notification System */}
-      <NotificationSystem 
-        notifications={notifications}
-        onRemove={removeNotification}
-      />
     </div>
   );
 };

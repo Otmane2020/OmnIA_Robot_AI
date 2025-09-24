@@ -140,25 +140,6 @@ const translateCategory = (category: string): string => {
 export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => void }> = ({ onImportComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [currentUser, setCurrentUser] = useState(() => {
-    const loggedUser = localStorage.getItem('current_logged_user');
-    if (loggedUser) {
-      try {
-        return JSON.parse(loggedUser);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  // Générer clé de stockage spécifique au revendeur
-  const getRetailerStorageKey = (key: string) => {
-    if (!currentUser?.email) return key;
-    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
-    return `${key}_${emailHash}`;
-  };
-
   const [savedCsvFile, setSavedCsvFile] = useState<File | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<{ [key: string]: string }>({});
@@ -506,8 +487,8 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
-      localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(activeProducts));
-      localStorage.setItem(getRetailerStorageKey('csv_file_data'), JSON.stringify({
+      localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
+      localStorage.setItem('csv_file_data', JSON.stringify({
         filename: csvFile.name,
         size: csvFile.size,
         imported_at: new Date().toISOString(),
@@ -515,9 +496,9 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         active_products: activeProducts.length,
         mapping: fieldMapping
       }));
-      console.log(`✅ Produits CSV sauvegardés pour ${currentUser?.email}:`, activeProducts.length, '/', transformedProducts.length);
+      console.log('✅ Produits CSV actifs sauvegardés:', activeProducts.length, '/', transformedProducts.length);
       
-      // NOUVEAU: Déclencher l'entraînement IA automatique après import
+      // Déclencher l'entraînement IA automatique après import
       try {
         console.log('🤖 Déclenchement entraînement automatique IA...');
         showInfo('Entraînement IA', 'OmnIA analyse votre catalogue pour optimiser les réponses...');
@@ -526,6 +507,45 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         
         if (supabaseUrl && supabaseKey) {
+          // NOUVEAU: D'abord sauvegarder dans imported_products pour déclencher les triggers
+          const importedProductsData = transformedProducts.map(product => ({
+            external_id: product.id,
+            retailer_id: 'demo-retailer-id',
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            compare_at_price: product.compare_at_price,
+            category: product.category,
+            vendor: product.vendor,
+            image_url: product.image_url,
+            product_url: product.product_url,
+            stock: product.stock,
+            source_platform: 'csv',
+            status: product.status,
+            extracted_attributes: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+          
+          console.log('💾 Sauvegarde dans imported_products pour trigger auto...');
+          const importResponse = await fetch(`${supabaseUrl}/functions/v1/save-imported-products`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              products: importedProductsData,
+              retailer_id: 'demo-retailer-id',
+              source: 'csv'
+            }),
+          });
+          
+          if (importResponse.ok) {
+            console.log('✅ Produits sauvegardés dans imported_products (trigger auto vers enriched)');
+          }
+          
+          // Puis entraînement IA
           const trainingResponse = await fetch(`${supabaseUrl}/functions/v1/auto-ai-trainer`, {
             method: 'POST',
             headers: {
@@ -535,7 +555,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             body: JSON.stringify({
               products: transformedProducts,
               source: 'csv',
-              store_id: currentUser?.email || 'demo-retailer-id',
+              store_id: 'demo-retailer-id',
               trigger_type: 'import'
             }),
           });
@@ -545,17 +565,46 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             console.log('✅ Entraînement IA réussi:', trainingResult.stats);
             showSuccess(
               'IA Entraînée !', 
-              `OmnIA a analysé ${trainingResult.stats?.products_processed || activeProducts.length} produits ! Réponses optimisées.`,
+              `OmnIA a analysé ${trainingResult.stats?.products_processed || activeProducts.length} produits et les a enrichis automatiquement !`,
               [
                 {
                   label: 'Tester OmnIA',
                   action: () => window.open('/robot', '_blank'),
                   variant: 'primary'
+                },
+                {
+                  label: 'Voir catalogue enrichi',
+                  action: () => window.location.href = '/admin#enriched',
+                  variant: 'secondary'
                 }
               ]
             );
             
-            // NOUVEAU: Configurer le cron quotidien automatiquement
+            // Déclencher l'enrichissement automatique
+            try {
+              const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  retailer_id: 'demo-retailer-id',
+                  force_full_enrichment: true,
+                  source_filter: 'csv'
+                }),
+              });
+              
+              if (enrichResponse.ok) {
+                const enrichResult = await enrichResponse.json();
+                console.log('✅ Enrichissement automatique réussi:', enrichResult.stats);
+                showInfo('Catalogue enrichi', `${enrichResult.enriched_products || 0} produits enrichis automatiquement !`);
+              }
+            } catch (enrichError) {
+              console.log('⚠️ Erreur enrichissement automatique:', enrichError);
+            }
+            
+            // Configurer le cron quotidien automatiquement
             try {
               const cronResponse = await fetch(`${supabaseUrl}/functions/v1/setup-ai-cron`, {
                 method: 'POST',

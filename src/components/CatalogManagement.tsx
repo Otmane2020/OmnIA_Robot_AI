@@ -40,25 +40,6 @@ interface ProductVariant {
 export const CatalogManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [currentUser, setCurrentUser] = useState(() => {
-    const loggedUser = localStorage.getItem('current_logged_user');
-    if (loggedUser) {
-      try {
-        return JSON.parse(loggedUser);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  // Générer clé de stockage spécifique au revendeur
-  const getRetailerStorageKey = (key: string) => {
-    if (!currentUser?.email) return key;
-    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
-    return `${key}_${emailHash}`;
-  };
-
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -192,15 +173,15 @@ export const CatalogManagement: React.FC = () => {
   useEffect(() => {
     // Simuler le chargement des produits
     setTimeout(() => {
-      console.log(`📦 Chargement catalogue pour ${currentUser?.email}...`);
+      console.log('📦 Chargement catalogue...');
       
-      const savedProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-      let allProducts: Product[] = [];
+      const savedProducts = localStorage.getItem('catalog_products');
+      let allProducts = [...mockProducts];
       
       if (savedProducts) {
         try {
           const parsedSaved = JSON.parse(savedProducts);
-          console.log(`📦 Produits CSV chargés pour ${currentUser?.email}:`, parsedSaved.length);
+          console.log('📦 Produits CSV chargés:', parsedSaved.length);
           
           // Valider et nettoyer les produits CSV
           const validSavedProducts = parsedSaved.filter((p: any) => {
@@ -240,13 +221,13 @@ export const CatalogManagement: React.FC = () => {
           console.log('✅ Produits CSV validés:', validSavedProducts.length);
           
           // Mettre les produits CSV en premier
-          allProducts = [...validSavedProducts];
+          allProducts = [...validSavedProducts, ...mockProducts];
         } catch (error) {
           console.error('Erreur parsing produits sauvegardés:', error);
         }
       }
       
-      console.log(`📦 Total produits pour ${currentUser?.email}:`, allProducts.length);
+      console.log('📦 Total produits dans catalogue:', allProducts.length);
       setProducts(allProducts);
       setFilteredProducts(allProducts);
       setIsLoading(false);
@@ -307,8 +288,8 @@ export const CatalogManagement: React.FC = () => {
       const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
       setProducts(updatedProducts);
       
-      // Sauvegarder dans localStorage spécifique au revendeur
-      localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(updatedProducts));
+      // Sauvegarder dans localStorage
+      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
       
       setSelectedProducts([]);
       showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
@@ -319,8 +300,8 @@ export const CatalogManagement: React.FC = () => {
     if (confirm('Supprimer TOUS les produits du catalogue ? Cette action est irréversible.')) {
       setProducts([]);
       
-      // Vider localStorage spécifique au revendeur
-      localStorage.removeItem(getRetailerStorageKey('catalog_products'));
+      // Vider localStorage
+      localStorage.removeItem('catalog_products');
       
       setSelectedProducts([]);
       showSuccess('Catalogue vidé', 'Tous les produits ont été supprimés.');
@@ -357,7 +338,7 @@ export const CatalogManagement: React.FC = () => {
     
     // Sauvegarder dans localStorage
     const allProducts = [newProduct, ...products];
-    localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(allProducts));
+    localStorage.setItem('catalog_products', JSON.stringify(allProducts));
     
     setShowAddModal(false);
     showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
@@ -372,7 +353,8 @@ export const CatalogManagement: React.FC = () => {
     setProducts(updatedProducts);
     
     // Sauvegarder dans localStorage
-    localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(updatedProducts));
+    const localProducts = updatedProducts.filter(p => p.source_platform === 'manual' || p.source_platform === 'csv');
+    localStorage.setItem('catalog_products', JSON.stringify(localProducts));
     
     setShowAddModal(false);
     setSelectedProduct(null);

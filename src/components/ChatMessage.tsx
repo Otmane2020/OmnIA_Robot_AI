@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, Volume2, Zap, ShoppingCart } from 'lucide-react';
+import { User, Bot, Volume2, Zap } from 'lucide-react';
 import { ChatMessage as ChatMessageType } from '../types';
 
 interface ChatMessageProps {
@@ -118,9 +118,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, 
   };
 
   return (
-    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
-      {/* Message du robot */}
-      <div className={`flex gap-4 md:gap-6 ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex gap-4 md:gap-6 ${message.isUser ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
       {!message.isUser && (
         <div className="flex-shrink-0">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg relative border-2 border-cyan-400/30">
@@ -183,70 +181,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, 
             <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-blue-600 font-bold text-sm">U</span>
             </div>
-          </div>
-        </div>
-      )}
-      </div>
-      
-      {/* Produits recommandés - SÉPARÉS du message */}
-      {message.products && message.products.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-white">• Produits sélectionnés pour vous :</h3>
-          </div>
-          
-          <div className="space-y-3">
-            {message.products.map((product) => (
-              <div key={product.id} className="bg-slate-700/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-600/50 hover:border-cyan-500/50 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-600 flex-shrink-0">
-                    <img 
-                      src={product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg'} 
-                      alt={product.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-white text-lg mb-1 line-clamp-1">{product.title}</h4>
-                    <p className="text-cyan-400 text-sm mb-2">{product.productType || 'Produit'} • {product.vendor || 'Decora Home'}</p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-cyan-400">{product.price}€</span>
-                        {product.compareAtPrice && product.compareAtPrice > product.price && (
-                          <span className="text-gray-400 line-through text-lg">{product.compareAtPrice}€</span>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        {onAddToCart && product.availableForSale && (
-                          <button
-                            onClick={() => onAddToCart(product.id, product.variants?.[0]?.id || 'default')}
-                            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-4 py-2 rounded-xl font-semibold transition-all hover:scale-105"
-                          >
-                            Ajouter
-                          </button>
-                        )}
-                        <button
-                          onClick={() => window.open(product.product_url || '#', '_blank')}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-all hover:scale-105"
-                        >
-                          Voir
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}
