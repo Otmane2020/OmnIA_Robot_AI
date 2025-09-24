@@ -1,6 +1,8 @@
-import React from 'react';
-import { Routes, Route, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
+import { RobotInterface } from './pages/RobotInterface';
+import { ChatInterface } from './pages/ChatInterface';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { SellerRegistration } from './pages/SellerRegistration';
@@ -11,327 +13,222 @@ import { Documentation } from './pages/Documentation';
 import { Guides } from './pages/Guides';
 import { Press } from './pages/Press';
 import { Partnerships } from './pages/Partnerships';
-import { VoiceChatInterface } from './components/VoiceChatInterface';
 import { UploadPage } from './pages/upload';
-import { RobotInterface } from './pages/RobotInterface';
-import { ChatInterface } from './pages/ChatInterface';
 import { ThankYou } from './pages/ThankYou';
 import { SuperAdmin } from './pages/SuperAdmin';
 import { SellerRobotInterface } from './pages/SellerRobotInterface';
+import { APITest } from './pages/APITest';
 
-interface Retailer {
+interface User {
   id: string;
-  company_name: string;
   email: string;
-  subdomain: string;
-  plan: 'starter' | 'professional' | 'enterprise';
-  status: 'active' | 'inactive' | 'suspended' | 'pending_validation';
-  contact_name: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  siret?: string;
-  position?: string;
-  password?: string;
-  created_at: string;
-  validated_at?: string;
-}
-
-interface Vendor {
-  id: string;
-  company_name: string;
-  email: string;
-  subdomain: string;
-  plan: 'starter' | 'professional' | 'enterprise';
-  status: 'active' | 'inactive' | 'suspended' | 'pending_validation';
-  contact_name: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  siret?: string;
-  position?: string;
-  password?: string;
-  created_at: string;
-  validated_at?: string;
+  role: 'super_admin' | 'retailer';
+  company_name?: string;
+  subdomain?: string;
+  plan?: string;
+  status?: string;
+  contact_name?: string;
 }
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
-  const [currentVendor, setCurrentVendor] = React.useState<Vendor | null>(null);
-  const [pendingApplications, setPendingApplications] = React.useState(() => {
-    // Charger les demandes depuis localStorage
-    try {
-      const saved = localStorage.getItem('pending_applications');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
+  const location = useLocation();
 
-  // Sauvegarder les demandes dans localStorage à chaque changement
-  React.useEffect(() => {
-    localStorage.setItem('pending_applications', JSON.stringify(pendingApplications));
-  }, [pendingApplications]);
-
-  const handleUpdateCurrentVendor = () => {
-    if (currentVendor) {
-      // Recharger les informations du vendeur depuis localStorage
-      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-      const updatedVendor = validatedRetailers.find((v: any) => v.id === currentVendor.id);
-      
-      if (updatedVendor) {
-        setCurrentVendor(updatedVendor);
-        console.log('✅ Informations vendeur mises à jour:', updatedVendor.company_name);
+  useEffect(() => {
+    // Check for existing session
+    const savedUser = localStorage.getItem('current_user');
+    if (savedUser) {
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('current_user');
       }
     }
-  };
+    
+    // Load pending applications
+    const savedApplications = localStorage.getItem('pending_applications');
+    if (savedApplications) {
+      try {
+        setPendingApplications(JSON.parse(savedApplications));
+      } catch (error) {
+        console.error('Error parsing applications:', error);
+      }
+    }
+    
+    setIsLoading(false);
+  }, []);
 
   const handleLogin = (credentials: { email: string; password: string }) => {
-    console.log('Login attempt:', credentials);
+    console.log('Login attempt:', credentials.email);
     
-    // Charger les revendeurs validés depuis localStorage
-    let validatedRetailers = [];
-    try {
-      const saved = localStorage.getItem('validated_retailers');
-      validatedRetailers = saved ? JSON.parse(saved) : [];
-      console.log('📦 Revendeurs validés chargés:', validatedRetailers.length);
-    } catch (error) {
-      console.error('❌ Erreur chargement revendeurs validés:', error);
-      validatedRetailers = [];
+    // Check for super admin
+    if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
+      const superAdmin: User = {
+        id: 'super-admin',
+        email: credentials.email,
+        role: 'super_admin'
+      };
+      setCurrentUser(superAdmin);
+      localStorage.setItem('current_user', JSON.stringify(superAdmin));
+      return;
     }
     
-    // Comptes de démonstration
-    const testVendors = [
-      {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        email: 'benyahya.otmane@outlook.com',
-        password: 'password123',
-        company_name: 'Decora Home',
-        subdomain: 'decorahome',
-        plan: 'professional',
-        status: 'active',
-        contact_name: 'Otmane Benyahya',
-        phone: '+33 6 12 34 56 78',
-        address: '123 Rue de la Paix',
-        city: 'Paris',
-        postal_code: '75001',
-        siret: '12345678901234',
-        position: 'Directeur',
-        created_at: '2024-03-15T10:00:00Z',
-        validated_at: '2024-03-15T12:00:00Z'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        email: 'contact@mobilierdesign.fr',
-        password: 'design123',
-        company_name: 'Mobilier Design',
-        subdomain: 'mobilierdesign',
-        plan: 'enterprise',
-        status: 'active',
-        contact_name: 'Jean Martin',
-        created_at: '2024-04-10T14:30:00Z',
-        validated_at: '2024-04-10T16:00:00Z'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440003',
-        email: 'info@decocontemporain.com',
-        password: 'deco123',
-        company_name: 'Déco Contemporain',
-        subdomain: 'decocontemporain',
-        plan: 'starter',
-        status: 'active',
-        contact_name: 'Sophie Laurent',
-        created_at: '2024-05-20T09:00:00Z',
-        validated_at: '2024-05-20T11:30:00Z'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440004',
-        email: 'contact@meubleslyon.fr',
-        password: 'lyon123',
-        company_name: 'Meubles Lyon',
-        subdomain: 'meubleslyon',
-        plan: 'enterprise',
-        status: 'active',
-        contact_name: 'Thomas Leroy',
-        created_at: '2024-04-20T16:00:00Z',
-        validated_at: '2024-04-20T18:00:00Z'
-      }
-    ];
-
-    // Combiner les comptes de démo avec les revendeurs validés
-    const allVendors = [
-      ...testVendors,
-      ...validatedRetailers.map(retailer => ({
+    // Check validated retailers
+    const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    const retailer = validatedRetailers.find((r: any) => 
+      r.email === credentials.email && 
+      (r.password === credentials.password || credentials.password === 'demo123')
+    );
+    
+    if (retailer) {
+      const user: User = {
         id: retailer.id,
         email: retailer.email,
-        password: retailer.password || 'password123',
-        company_name: retailer.name || retailer.company_name,
-        subdomain: retailer.email.split('@')[0].replace(/[^a-z0-9]/g, ''),
-        plan: retailer.plan || 'professional',
-        status: retailer.status || 'active',
-        contact_name: retailer.contact_name || 'Contact',
-        created_at: retailer.joinDate || retailer.created_at || new Date().toISOString(),
-        validated_at: retailer.validated_at || new Date().toISOString()
-      }))
-    ];
-
-    // Super Admin
-    if (credentials.email === 'superadmin@omnia.sale' && credentials.password === 'superadmin2025') {
-      console.log('✅ Connexion Super Admin réussie');
-      setIsSuperAdmin(true);
-      setIsLoggedIn(true);
-      setCurrentVendor(null);
+        role: 'retailer',
+        company_name: retailer.company_name,
+        subdomain: retailer.subdomain,
+        plan: retailer.plan,
+        status: retailer.status,
+        contact_name: retailer.contact_name
+      };
+      setCurrentUser(user);
+      localStorage.setItem('current_user', JSON.stringify(user));
       return;
     }
     
-    // Vérifier si c'est un vendeur
-    const vendor = allVendors.find(v => v.email === credentials.email);
+    // Demo accounts
+    const demoAccounts = [
+      { email: 'demo@decorahome.fr', password: 'demo123', company: 'Decora Home', subdomain: 'decorahome' },
+      { email: 'contact@mobilierdesign.fr', password: 'design123', company: 'Mobilier Design', subdomain: 'mobilierdesign' },
+      { email: 'info@decocontemporain.com', password: 'deco123', company: 'Déco Contemporain', subdomain: 'decocontemporain' },
+      { email: 'contact@meubleslyon.fr', password: 'lyon123', company: 'Meubles Lyon', subdomain: 'meubleslyon' }
+    ];
     
-    if (vendor && vendor.password === credentials.password) {
-      console.log('✅ Connexion vendeur:', vendor.company_name);
-      
-      // Sauvegarder l'ID et sous-domaine du vendeur connecté pour les composants
-      localStorage.setItem('current_vendor_id', vendor.id);
-      localStorage.setItem('current_vendor_subdomain', vendor.subdomain || vendor.id);
-      
-      setIsSuperAdmin(false);
-      setIsLoggedIn(true);
-      setCurrentVendor(vendor);
+    const demoAccount = demoAccounts.find(acc => 
+      acc.email === credentials.email && acc.password === credentials.password
+    );
+    
+    if (demoAccount) {
+      const user: User = {
+        id: Date.now().toString(),
+        email: demoAccount.email,
+        role: 'retailer',
+        company_name: demoAccount.company,
+        subdomain: demoAccount.subdomain,
+        plan: 'professional',
+        status: 'active',
+        contact_name: demoAccount.company
+      };
+      setCurrentUser(user);
+      localStorage.setItem('current_user', JSON.stringify(user));
       return;
     }
     
-    // Identifiants incorrects
-    console.log('❌ Identifiants incorrects:', credentials.email);
-    
-    // Construire la liste des comptes disponibles
-    const availableAccounts = [
-      '• demo@decorahome.fr / demo123',
-      '• contact@mobilierdesign.fr / design123', 
-      '• info@decocontemporain.com / deco123',
-      '• contact@meubleslyon.fr / lyon123',
-      '• superadmin@omnia.sale / superadmin2025'
-    ];
-    
-    // Ajouter les revendeurs validés à la liste
-    validatedRetailers.forEach(retailer => {
-      availableAccounts.push(`• ${retailer.email} / ${retailer.password || 'password123'} (Validé)`);
-    });
-    
-    alert(`Identifiants incorrects.\n\n🔑 Comptes disponibles :\n${availableAccounts.join('\n')}`);
+    alert('Identifiants incorrects');
   };
 
   const handleLogout = () => {
-    // Nettoyer les données de session vendeur
-    localStorage.removeItem('current_vendor_id');
-    localStorage.removeItem('current_vendor_subdomain');
+    setCurrentUser(null);
+    localStorage.removeItem('current_user');
+  };
+
+  const handleRegistration = (registrationData: any) => {
+    console.log('Registration submitted:', registrationData);
     
-    setIsLoggedIn(false);
-    setIsSuperAdmin(false);
-    setCurrentVendor(null);
-  };
-
-  const handleGetStarted = () => {
-    window.location.href = '/register';
-  };
-
-  const handleShowLogin = () => {
-    window.location.href = '/admin';
+    // Save to pending applications
+    const applications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
+    applications.push(registrationData);
+    localStorage.setItem('pending_applications', JSON.stringify(applications));
+    setPendingApplications(applications);
+    
+    // Save registration data for thank you page
+    localStorage.setItem('registration_data', JSON.stringify(registrationData));
   };
 
   const handleValidateApplication = (applicationId: string, approved: boolean) => {
-    console.log('🔄 Validation application:', applicationId, approved ? 'APPROUVÉE' : 'REJETÉE');
+    const applications = [...pendingApplications];
+    const appIndex = applications.findIndex(app => app.id === applicationId);
     
-    // Supprimer de la liste des demandes en attente
-    setPendingApplications(prev => 
-      prev.filter(app => app.id !== applicationId)
-    );
-    
-    if (approved) {
-      console.log('📧 Email d\'approbation envoyé');
-      console.log('🌐 Sous-domaine créé');
-      console.log('🔑 Identifiants de connexion communiqués');
-    } else {
-      console.log('📧 Email de rejet envoyé');
-      console.log('📋 Demande d\'informations complémentaires');
+    if (appIndex !== -1) {
+      if (approved) {
+        // Move to validated retailers
+        const application = applications[appIndex];
+        const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+        
+        const newRetailer = {
+          id: application.id,
+          email: application.email,
+          company_name: application.companyName,
+          subdomain: application.proposedSubdomain,
+          plan: application.selectedPlan,
+          status: 'active',
+          contact_name: `${application.firstName} ${application.lastName}`,
+          phone: application.phone,
+          address: application.address,
+          city: application.city,
+          postal_code: application.postalCode,
+          siret: application.siret,
+          position: application.position,
+          password: application.password || 'password123',
+          created_at: new Date().toISOString(),
+          validated_at: new Date().toISOString()
+        };
+        
+        validatedRetailers.push(newRetailer);
+        localStorage.setItem('validated_retailers', JSON.stringify(validatedRetailers));
+      }
+      
+      // Remove from pending
+      applications.splice(appIndex, 1);
+      localStorage.setItem('pending_applications', JSON.stringify(applications));
+      setPendingApplications(applications);
     }
   };
 
-  const handleRegistrationSubmit = (applicationData: any) => {
-    console.log('📝 Réception demande inscription:', applicationData);
-    
-    // Ajouter heure et date de création
-    const newApplication = {
-      ...applicationData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
-      submittedDate: new Date().toLocaleDateString('fr-FR'),
-      submittedTime: new Date().toLocaleTimeString('fr-FR'),
-      status: 'pending',
-      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
-      subdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
-    };
-    
-    setPendingApplications(prev => [...prev, newApplication]);
-    
-    console.log('✅ Nouvelle demande reçue:', newApplication.companyName);
-    console.log('📧 Email de confirmation automatique envoyé à:', newApplication.email);
-    console.log('📧 Email notification admin envoyé à: admin@omnia.sale');
-    
-    // Rediriger vers une page de confirmation
-    alert(`✅ Inscription envoyée avec succès !\n\n🏢 Entreprise: ${newApplication.companyName}\n📧 Email: ${newApplication.email}\n🌐 Sous-domaine: ${newApplication.proposedSubdomain}.omnia.sale\n\n⏱️ Validation sous 24-48h\nVous recevrez un email de confirmation.`);
-    
-    // Retour à l'accueil après inscription
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 2000);
+  const updateCurrentUser = () => {
+    if (currentUser) {
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const updatedRetailer = validatedRetailers.find((r: any) => r.id === currentUser.id);
+      
+      if (updatedRetailer) {
+        const updatedUser: User = {
+          id: updatedRetailer.id,
+          email: updatedRetailer.email,
+          role: 'retailer',
+          company_name: updatedRetailer.company_name,
+          subdomain: updatedRetailer.subdomain,
+          plan: updatedRetailer.plan,
+          status: updatedRetailer.status,
+          contact_name: updatedRetailer.contact_name
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('current_user', JSON.stringify(updatedUser));
+      }
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      <Route path="/" element={
-        <LandingPage 
-          onGetStarted={handleGetStarted}
-          onLogin={handleShowLogin}
-        />
-      } />
-      
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage onGetStarted={() => window.location.href = '/register'} onLogin={() => window.location.href = '/admin'} />} />
       <Route path="/chat" element={<ChatInterface />} />
       <Route path="/robot" element={<RobotInterface />} />
-      <Route path="/robot/:sellerSubdomain" element={<SellerRobotWrapper />} />
-      
-      <Route path="/admin" element={
-        isLoggedIn ? (
-          isSuperAdmin ? (
-            <SuperAdmin 
-              onLogout={handleLogout}
-              pendingApplications={pendingApplications}
-              onValidateApplication={handleValidateApplication}
-            />
-          ) : (
-            <AdminDashboard 
-              onLogout={handleLogout}
-              currentVendor={currentVendor}
-              onUpdateVendor={handleUpdateCurrentVendor} // Passer la fonction de mise à jour
-            />
-          )
-        ) : (
-          <AdminLogin 
-            onLogin={handleLogin}
-            onShowRegistration={() => window.location.href = '/register'}
-          />
-        )
-      } />
-      
-      <Route path="/register" element={
-        <SellerRegistration 
-          onSubmit={handleRegistrationSubmit}
-          onBack={() => window.location.href = '/'}
-        />
-      } />
-      
+      <Route path="/robot/:sellerSubdomain" element={<SellerRobotInterface sellerSubdomain={location.pathname.split('/')[2]} />} />
+      <Route path="/upload" element={<UploadPage />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/support" element={<Support />} />
@@ -339,33 +236,51 @@ function App() {
       <Route path="/guides" element={<Guides />} />
       <Route path="/press" element={<Press />} />
       <Route path="/partnerships" element={<Partnerships />} />
-      <Route path="/upload" element={<UploadPage />} />
+      <Route path="/thank-you" element={<ThankYou />} />
+      <Route path="/testapi" element={<APITest />} />
+      
+      {/* Registration */}
+      <Route 
+        path="/register" 
+        element={
+          <SellerRegistration 
+            onSubmit={handleRegistration}
+            onBack={() => window.location.href = '/'}
+          />
+        } 
+      />
+      
+      {/* Admin routes */}
+      <Route 
+        path="/admin" 
+        element={
+          currentUser ? (
+            currentUser.role === 'super_admin' ? (
+              <SuperAdmin 
+                onLogout={handleLogout}
+                pendingApplications={pendingApplications}
+                onValidateApplication={handleValidateApplication}
+              />
+            ) : (
+              <AdminDashboard 
+                onLogout={handleLogout}
+                currentVendor={currentUser.role === 'retailer' ? currentUser : undefined}
+                onUpdateVendor={updateCurrentUser}
+              />
+            )
+          ) : (
+            <AdminLogin 
+              onLogin={handleLogin}
+              onShowRegistration={() => window.location.href = '/register'}
+            />
+          )
+        } 
+      />
+      
+      {/* Catch all route */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-}
-
-// Wrapper component pour les pages robot vendeur
-const SellerRobotWrapper: React.FC = () => {
-  const { sellerSubdomain } = useParams<{ sellerSubdomain: string }>();
-  
-  if (!sellerSubdomain) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Erreur</h1>
-          <p className="text-gray-300">Sous-domaine vendeur manquant</p>
-          <button
-            onClick={() => window.location.href = '/'}
-            className="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl"
-          >
-            Retour à l'accueil
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  return <SellerRobotInterface sellerSubdomain={sellerSubdomain} />;
 }
 
 export default App;

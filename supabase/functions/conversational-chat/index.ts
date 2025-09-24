@@ -1,110 +1,124 @@
-import { useState, useCallback } from "react";
-
-interface ConversationMessage {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
-
-interface ConversationalAIOptions {
-  maxContextLength?: number;
-  temperature?: number;
-  model?: string;
-}
-
-export const useConversationalAI = (options: ConversationalAIOptions = {}) => {
-  const [isThinking, setIsThinking] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const maxContextLength = options.maxContextLength || 10;
-  const temperature = options.temperature || 0.7;
-  const model = options.model || "gpt-4o-mini";
-
-  const sendMessage = useCallback(
-    async (userMessage: string): Promise<string> => {
-      if (!userMessage.trim()) {
-        throw new Error("Message vide");
-      }
-
-      setIsThinking(true);
-      setError(null);
-
-      try {
-        const userMsg: ConversationMessage = {
-          role: "user",
-          content: userMessage,
-          timestamp: new Date(),
-        };
-
-        const contextMessages = [...conversationHistory, userMsg]
-          .slice(-maxContextLength)
-          .map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          }));
-
-        console.log("📡 Envoi au serveur conversational-chat avec", contextMessages.length, "messages");
-
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-        if (!supabaseUrl || !supabaseKey) {
-          throw new Error("Supabase non configuré");
-        }
-
-        const response = await fetch(`${supabaseUrl}/functions/v1/conversational-chat`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: contextMessages,
-            model,
-            temperature,
-            max_tokens: 300,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Erreur ChatGPT API");
-        }
-
-        const result = await response.json();
-        const aiResponse = result.message || "Je n’ai pas pu comprendre votre demande.";
-
-        const assistantMsg: ConversationMessage = {
-          role: "assistant",
-          content: aiResponse,
-          timestamp: new Date(),
-        };
-
-        setConversationHistory((prev) => [...prev, userMsg, assistantMsg]);
-
-        return aiResponse;
-      } catch (err: any) {
-        console.error("❌ Erreur ChatGPT:", err);
-        setError(err.message);
-        throw err;
-      } finally {
-        setIsThinking(false);
-      }
-    },
-    [conversationHistory, maxContextLength, temperature, model]
-  );
-
-  const clearHistory = useCallback(() => {
-    setConversationHistory([]);
-    setError(null);
-  }, []);
-
-  return {
-    isThinking,
-    conversationHistory,
-    error,
-    sendMessage,
-    clearHistory,
-  };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
+
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+interface ChatRequest {
+  messages: ChatMessage[];
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+}
+
+Deno.serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { messages, model = "gpt-4o-mini", temperature = 0.7, max_tokens = 300 }: ChatRequest = await req.json();
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Messages array is required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Get OpenAI API key from environment
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiApiKey) {
+      return new Response(
+        JSON.stringify({ error: "OpenAI API key not configured" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log(`📡 Calling OpenAI API with ${messages.length} messages`);
+
+    // Call OpenAI API
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openaiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature,
+        max_tokens,
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json();
+      console.error("❌ OpenAI API Error:", errorData);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `OpenAI API Error: ${errorData.error?.message || "Unknown error"}` 
+        }),
+        {
+          status: openaiResponse.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const data = await openaiResponse.json();
+    const aiMessage = data.choices?.[0]?.message?.content || "Je n'ai pas pu comprendre votre demande.";
+
+    console.log("✅ OpenAI response received");
+
+    return new Response(
+      JSON.stringify({ 
+        message: aiMessage,
+        usage: data.usage 
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+
+  } catch (error) {
+    console.error("❌ Conversational chat error:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: error.message || "Internal server error" 
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});

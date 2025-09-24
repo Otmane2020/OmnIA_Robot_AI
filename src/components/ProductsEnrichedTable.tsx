@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown, ChevronUp, List, Grid, Download, RefreshCw, Sparkles, Loader2, Package, Edit, Save, X } from 'lucide-react';
+import { 
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Package, Tag, DollarSign, Image, BarChart3, Settings,
+  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
+  Upload, Download, RefreshCw, Brain, Loader2, Zap
+} from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { supabase } from '../lib/supabase';
 
 interface EnrichedProduct {
   id: string;
@@ -30,42 +36,54 @@ interface EnrichedProduct {
   confidence_score: number;
   enriched_at: string;
   enrichment_source: string;
-  retailer_id?: string;
   created_at: string;
 }
 
 interface ProductsEnrichedTableProps {
-  vendorId?: string;
   retailerId?: string;
+  vendorId?: string;
+  refreshTrigger?: number;
 }
 
-export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ vendorId, retailerId }) => {
-  const [products, setProducts] = useState<EnrichedProduct[]>([]);
+// ✅ Déclarer les variables UNE SEULE FOIS en haut du fichier
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ 
+  retailerId, 
+  vendorId,
+  refreshTrigger 
+}) => {
+  const [enrichedProducts, setEnrichedProducts] = useState<EnrichedProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<EnrichedProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedColor, setSelectedColor] = useState('all');
-  const [selectedMaterial, setSelectedMaterial] = useState('all');
-  const [selectedStyle, setSelectedStyle] = useState('all');
+  const [selectedSource, setSelectedSource] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isEnriching, setIsEnriching] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
-  const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
-  
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const { showSuccess, showError, showInfo } = useNotifications();
+
+  const effectiveId = retailerId || vendorId || 'demo-retailer-id';
 
   useEffect(() => {
     loadEnrichedProducts();
-  }, [vendorId, retailerId]);
+  }, [effectiveId]);
+
+  // Auto-sync when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      console.log('🔄 Auto-sync déclenché par refreshTrigger:', refreshTrigger);
+      syncEnrichedProducts();
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
-    // Filtrer les produits
-    let filtered = products;
+    // Filter products
+    let filtered = enrichedProducts;
 
     if (searchTerm) {
       filtered = filtered.filter(product =>
@@ -73,8 +91,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.style.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -83,457 +101,253 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       filtered = filtered.filter(product => product.category === selectedCategory);
     }
 
-    if (selectedColor !== 'all') {
-      filtered = filtered.filter(product => product.color === selectedColor);
-    }
-
-    if (selectedMaterial !== 'all') {
-      filtered = filtered.filter(product => product.material === selectedMaterial);
-    }
-
-    if (selectedStyle !== 'all') {
-      filtered = filtered.filter(product => product.style === selectedStyle);
+    if (selectedSource !== 'all') {
+      filtered = filtered.filter(product => product.enrichment_source === selectedSource);
     }
 
     setFilteredProducts(filtered);
-  }, [products, searchTerm, selectedCategory, selectedColor, selectedMaterial, selectedStyle]);
+  }, [enrichedProducts, searchTerm, selectedCategory, selectedSource]);
 
   const loadEnrichedProducts = async () => {
     try {
       setIsLoading(true);
-      
-      // Charger depuis localStorage spécifique au vendeur
-      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      const savedEnriched = localStorage.getItem(enrichedKey);
-      
-      let enrichedProducts: EnrichedProduct[] = [];
-      
-      if (savedEnriched) {
-        try {
-          const parsed = JSON.parse(savedEnriched);
-          // Filter by retailer_id if specified
-          enrichedProducts = parsed.filter((p: any) => {
-            const hasStock = p.stock_qty > 0;
-            const matchesRetailer = !retailerId || p.retailer_id === retailerId;
-            return hasStock && matchesRetailer;
-          });
-          console.log('✅ [enriched-table] Produits enrichis chargés:', enrichedProducts.length);
-        } catch (error) {
-          console.error('Erreur parsing produits enrichis:', error);
-          enrichedProducts = [];
-        }
-      } else {
-        console.log(`📦 [enriched-table] Aucun produit enrichi trouvé pour ${retailerId || vendorId || 'admin'}`);
-        enrichedProducts = [];
+      console.log('📦 Chargement produits enrichis pour:', effectiveId);
+
+      // ✅ UTILISER les variables déjà déclarées, pas les redéclarer
+      if (!supabaseUrl || !supabaseKey) {
+        console.log('⚠️ Supabase non configuré, chargement depuis localStorage');
+        loadFromLocalStorage();
+        return;
       }
-      
-      setProducts(enrichedProducts);
-      setFilteredProducts(enrichedProducts);
-      
+
+      // Try to load from Supabase first - without retailer_id filter since column doesn't exist
+      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=enriched_at.desc&limit=100`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Produits enrichis chargés depuis Supabase:', data.length);
+        setEnrichedProducts(data);
+        setLastSyncTime(data[0]?.enriched_at || null);
+      } else {
+        console.log('⚠️ Erreur Supabase, fallback localStorage');
+        loadFromLocalStorage();
+      }
+
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
-      showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
+      loadFromLocalStorage();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSyncFromCatalog = async () => {
+  const loadFromLocalStorage = () => {
+    try {
+      // Load from localStorage as fallback
+      const storageKey = `enriched_products_${effectiveId}`;
+      const savedProducts = localStorage.getItem(storageKey);
+      
+      if (savedProducts) {
+        const products = JSON.parse(savedProducts);
+        console.log('📦 Produits enrichis chargés depuis localStorage:', products.length);
+        setEnrichedProducts(products);
+        setLastSyncTime(products[0]?.enriched_at || null);
+      } else {
+        console.log('📦 Aucun produit enrichi trouvé');
+        setEnrichedProducts([]);
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement localStorage:', error);
+      setEnrichedProducts([]);
+    }
+  };
+
+  const syncEnrichedProducts = async () => {
     try {
       setIsSyncing(true);
       setSyncProgress(0);
       
-      showInfo('Synchronisation démarrée', 'Récupération des produits depuis le catalogue...');
+      console.log('🔄 [sync-debug] Début synchronisation pour retailer:', effectiveId);
       
-      // Charger les produits du catalogue principal
-      const catalogKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
-      const savedCatalog = localStorage.getItem(catalogKey);
-      
-      if (!savedCatalog) {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue principal. Importez d\'abord vos produits.');
+      showInfo('Synchronisation démarrée', 'Enrichissement des produits avec IA...');
+
+      // Get products from catalog to enrich
+      const catalogProducts = getCatalogProducts();
+      console.log('📦 [sync-debug] Produits catalogue trouvés:', catalogProducts.length);
+
+      if (catalogProducts.length === 0) {
+        showError('Aucun produit', 'Aucun produit trouvé dans le catalogue à enrichir.');
         return;
       }
-      
-      const catalogProducts = JSON.parse(savedCatalog);
-      const activeProducts = catalogProducts.filter((p: any) => p.status === 'active');
-      
-      console.log('📦 Produits catalogue trouvés:', activeProducts.length);
-      
-      // Simuler la progression
+
+      // Start progress simulation
       const progressInterval = setInterval(() => {
-        setSyncProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
-      
-      // Déclencher l'enrichissement automatique
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (supabaseUrl && supabaseKey) {
+        setSyncProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
+
+      // ✅ UTILISER les variables déjà déclarées
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase non configuré');
+      }
+
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout (2 minutes)
+
+      try {
+        // Use direct fetch to Edge Function
         const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
-            retailer_id: vendorId || 'demo-retailer-id',
+            products: catalogProducts,
+            retailer_id: effectiveId,
             force_full_enrichment: true,
-            vendor_id: vendorId
+            enable_image_analysis: false
           }),
+          signal: controller.signal
         });
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log('✅ Enrichissement automatique réussi:', result);
-          
-          // Récupérer les données enrichies depuis la réponse
-          if (result.enriched_data && Array.isArray(result.enriched_data)) {
-            const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-            localStorage.setItem(enrichedKey, JSON.stringify(result.enriched_data));
-            
-            setProducts(result.enriched_data);
-            setFilteredProducts(result.enriched_data);
-            
-            showSuccess(
-              'Synchronisation terminée',
-              `${result.enriched_data.length} produits enrichis automatiquement !`,
-              [
-                {
-                  label: 'Voir les résultats',
-                  action: () => setViewMode('table'),
-                  variant: 'primary'
-                }
-              ]
-            );
-          }
-        } else {
-          showError('Erreur d\'enrichissement', 'Impossible d\'enrichir automatiquement les produits.');
+
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [sync-debug] Erreur Edge Function:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
-      } else {
-        // Fallback : enrichissement basique local
-        const enrichedProducts = activeProducts.map((product: any) => ({
-          id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-          handle: product.handle || product.id || `handle-${Date.now()}`,
-          title: product.name || product.title || 'Produit sans nom',
-          description: product.description || '',
-          category: detectCategory(product.name || product.title || ''),
-          subcategory: detectSubcategory(product.name || product.title || '', product.description || ''),
-          color: detectColor(product.name + ' ' + product.description),
-          material: detectMaterial(product.name + ' ' + product.description),
-          fabric: detectFabric(product.name + ' ' + product.description),
-          style: detectStyle(product.name + ' ' + product.description),
-          dimensions: extractDimensions(product.description || ''),
-          room: detectRoom(product.name + ' ' + product.description),
-          price: product.price || 0,
-          stock_qty: product.stock || product.quantityAvailable || 0,
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          product_url: product.product_url || '#',
-          tags: Array.isArray(product.tags) ? product.tags : [],
-          seo_title: generateSEOTitle(product.name || product.title || '', product.vendor || 'Boutique'),
-          seo_description: generateSEODescription(product.name || product.title || '', product.description || ''),
-          ad_headline: (product.name || product.title || '').substring(0, 30),
-          ad_description: `${product.name || 'Produit'} ${detectMaterial(product.name + ' ' + product.description)}. Promo !`.substring(0, 90),
-          google_product_category: getGoogleCategory(detectCategory(product.name || product.title || '')),
-          gtin: '',
-          brand: product.vendor || 'Boutique',
-          confidence_score: calculateBasicConfidence(product),
-          enriched_at: new Date().toISOString(),
-          enrichment_source: 'sync_local',
-          created_at: product.created_at || new Date().toISOString()
-        }));
-        
-        const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-        localStorage.setItem(enrichedKey, JSON.stringify(enrichedProducts));
-        
-        setProducts(enrichedProducts);
-        setFilteredProducts(enrichedProducts);
-        
-        showSuccess('Synchronisation terminée', `${enrichedProducts.length} produits synchronisés et enrichis !`);
+
+        const data = await response.json();
+        console.log('✅ [sync-debug] Enrichissement réussi:', data);
+        setSyncProgress(100);
+
+        // Reload enriched products
+        await loadEnrichedProducts();
+
+        showSuccess(
+          'Synchronisation terminée',
+          `${data?.stats?.enriched_products || 0} produits enrichis avec IA !`,
+          [
+            {
+              label: 'Voir les résultats',
+              action: () => setViewMode('table'),
+              variant: 'primary'
+            }
+          ]
+        );
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+        throw fetchError;
       }
+
+    } catch (error: any) {
+      console.error('❌ [sync-debug] Erreur détaillée:', error);
       
-      clearInterval(progressInterval);
-      setSyncProgress(100);
-      
-    } catch (error) {
-      console.error('❌ Erreur synchronisation:', error);
-      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
+      if (error.name === 'AbortError') {
+        showError('Synchronisation annulée', 'La synchronisation a pris trop de temps et a été annulée.');
+      } else {
+        showError(
+          'Erreur de synchronisation', 
+          `${error.message || 'Erreur lors de la synchronisation des produits enrichis.'}\n\nVérifiez:\n• Configuration Supabase\n• Déploiement Edge Function\n• Variables d'environnement`
+        );
+      }
     } finally {
       setIsSyncing(false);
       setSyncProgress(0);
     }
   };
 
-  const handleEnrichAll = async () => {
+  const getCatalogProducts = () => {
     try {
-      setIsEnriching(true);
-      setSyncProgress(0);
+      // Load products from localStorage
+      // Try multiple storage keys to find products
+      const storageKeys = [
+        retailerId ? `seller_${retailerId}_products` : null,
+        vendorId ? `vendor_${vendorId}_products` : null,
+        'catalog_products',
+        `retailer_${effectiveId}_products`,
+        `vendor_${effectiveId}_products`
+      ].filter(Boolean);
       
-      showInfo('Enrichissement démarré', 'Analyse IA de tous les produits...');
-      
-      // Simuler la progression
-      const progressInterval = setInterval(() => {
-        setSyncProgress(prev => Math.min(prev + 15, 90));
-      }, 500);
-      
-      // Déclencher l'enrichissement IA
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (supabaseUrl && supabaseKey) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            retailer_id: vendorId || 'demo-retailer-id',
-            force_full_enrichment: true,
-            vendor_id: vendorId
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          
-          if (result.enriched_data && Array.isArray(result.enriched_data)) {
-            const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-            localStorage.setItem(enrichedKey, JSON.stringify(result.enriched_data));
-            
-            setProducts(result.enriched_data);
-            setFilteredProducts(result.enriched_data);
-          }
-          
-          showSuccess('Enrichissement terminé', `${result.stats?.products_processed || 0} produits enrichis avec IA !`);
-        } else {
-          showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits avec l\'IA.');
-        }
-      }
-      
-      clearInterval(progressInterval);
-      setSyncProgress(100);
-      
-    } catch (error) {
-      console.error('❌ Erreur enrichissement:', error);
-      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
-    } finally {
-      setIsEnriching(false);
-      setSyncProgress(0);
-    }
-  };
-
-  const handleExportCSV = () => {
-    try {
-      const csvHeaders = [
-        'ID', 'Titre', 'Catégorie', 'Sous-catégorie', 'Couleur', 'Matériau', 
-        'Tissu', 'Style', 'Dimensions', 'Pièce', 'Prix', 'Stock', 'Tags',
-        'Titre SEO', 'Description SEO', 'Titre Pub', 'Description Pub',
-        'Catégorie Google', 'Marque', 'Score Confiance', 'Source Enrichissement'
-      ];
-      
-      const csvData = [
-        csvHeaders.join(','),
-        ...filteredProducts.map(product => [
-          product.id,
-          `"${product.title}"`,
-          product.category,
-          product.subcategory,
-          product.color,
-          product.material,
-          product.fabric,
-          product.style,
-          product.dimensions,
-          product.room,
-          product.price,
-          product.stock_qty,
-          `"${product.tags.join(', ')}"`,
-          `"${product.seo_title}"`,
-          `"${product.seo_description}"`,
-          `"${product.ad_headline}"`,
-          `"${product.ad_description}"`,
-          product.google_product_category,
-          product.brand,
-          product.confidence_score,
-          product.enrichment_source
-        ].join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `produits-enrichis-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      showSuccess('Export réussi', `${filteredProducts.length} produits exportés en CSV.`);
-      
-    } catch (error) {
-      console.error('❌ Erreur export CSV:', error);
-      showError('Erreur d\'export', 'Impossible d\'exporter les produits.');
-    }
-  };
-
-  const handleBulkAction = (action: string) => {
-    if (selectedProducts.length === 0) {
-      showError('Aucune sélection', 'Sélectionnez au moins un produit.');
-      return;
-    }
-
-    switch (action) {
-      case 'delete':
-        const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
-        setProducts(updatedProducts);
-        
-        // Sauvegarder dans localStorage
-        const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-        localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
-        
-        setSelectedProducts([]);
-        showSuccess('Suppression réussie', `${selectedProducts.length} produits supprimés.`);
-        break;
-      case 'export':
-        const selectedProductsData = products.filter(p => selectedProducts.includes(p.id));
-        // Logique d'export pour les produits sélectionnés
-        showSuccess('Export réussi', `${selectedProducts.length} produits exportés.`);
-        break;
-    }
-  };
-
-  const handleEditProduct = (product: EnrichedProduct) => {
-    setEditingProduct(product.id);
-    setEditFormData({
-      category: product.category,
-      subcategory: product.subcategory,
-      color: product.color,
-      material: product.material,
-      fabric: product.fabric,
-      style: product.style,
-      dimensions: product.dimensions,
-      room: product.room,
-      price: product.price,
-      stock_qty: product.stock_qty,
-      tags: product.tags,
-      seo_title: product.seo_title,
-      seo_description: product.seo_description,
-      ad_headline: product.ad_headline,
-      ad_description: product.ad_description,
-      google_product_category: product.google_product_category,
-      brand: product.brand
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingProduct) return;
-
-    try {
-      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      const savedProducts = localStorage.getItem(enrichedKey);
-      
-      if (savedProducts) {
-        let parsedData: EnrichedProduct[] = [];
-        try {
-          parsedData = JSON.parse(savedProducts);
-          console.log('📦 Produits enrichis chargés:', parsedData.length);
-        } catch (error) {
-          console.error('Erreur parsing produits enrichis:', error);
-          parsedData = [];
-        }
-      }
-      
-      const updatedProducts = products.map(product =>
-        product.id === editingProduct
-          ? {
-              ...product, 
-              ...editFormData,
-              confidence_score: calculateConfidenceFromData(editFormData),
-              enriched_at: new Date().toISOString(),
-              enrichment_source: 'manual'
+      for (const storageKey of storageKeys) {
+        const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const products = JSON.parse(savedProducts);
+            const activeProducts = products.filter((p: any) => 
+              p.status === 'active' && 
+              (p.stock > 0 || p.quantityAvailable > 0 || p.stock_qty > 0)
+            );
+            if (activeProducts.length > 0) {
+              console.log(`📦 Produits trouvés dans ${storageKey}:`, activeProducts.length);
+              return activeProducts;
             }
-          : product
-      );
+          } catch (parseError) {
+            console.error(`❌ Erreur parsing ${storageKey}:`, parseError);
+          }
+        }
+      }
       
-      setProducts(updatedProducts);
-      setFilteredProducts(updatedProducts.filter(p => 
-        filteredProducts.some(fp => fp.id === p.id)
-      ));
-      
-      // Sauvegarder dans localStorage
-      const localStorageKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      localStorage.setItem(localStorageKey, JSON.stringify(updatedProducts));
-      
-      setEditingProduct(null);
-      setEditFormData({});
-      
-      showSuccess('Produit modifié', 'Les modifications ont été sauvegardées avec succès.');
-      
+      console.log('⚠️ Aucun produit trouvé dans les clés de stockage:', storageKeys);
     } catch (error) {
-      console.error('❌ Erreur sauvegarde modification:', error);
-      showError('Erreur de sauvegarde', 'Impossible de sauvegarder les modifications.');
+      console.error('❌ Erreur chargement catalogue:', error);
+    }
+    return [];
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (confirm('Supprimer ce produit enrichi ?')) {
+      const updatedProducts = enrichedProducts.filter(p => p.id !== productId);
+      setEnrichedProducts(updatedProducts);
+      
+      // Save to localStorage
+      const storageKey = `enriched_products_${effectiveId}`;
+      localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
+      
+      showSuccess('Produit supprimé', 'Le produit enrichi a été supprimé avec succès.');
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingProduct(null);
-    setEditFormData({});
+  const getConfidenceColor = (score: number) => {
+    if (score >= 80) return 'bg-green-500/20 text-green-300';
+    if (score >= 60) return 'bg-yellow-500/20 text-yellow-300';
+    return 'bg-red-500/20 text-red-300';
   };
 
-  const calculateConfidenceFromData = (data: Partial<EnrichedProduct>): number => {
-    let confidence = 30; // Base
-    if (data.category && data.category !== 'Mobilier') confidence += 25;
-    if (data.color) confidence += 20;
-    if (data.material) confidence += 20;
-    if (data.style) confidence += 15;
-    if (data.room) confidence += 10;
-    if (data.dimensions) confidence += 10;
-    return Math.min(confidence, 100);
-  };
-
-  const formatAIAttributes = (product: EnrichedProduct): string => {
-    const attributes = [];
-    
-    if (product.category) attributes.push(`📂 ${product.category}`);
-    if (product.subcategory) attributes.push(`📋 ${product.subcategory}`);
-    if (product.color) attributes.push(`🎨 ${product.color}`);
-    if (product.material) attributes.push(`🏗️ ${product.material}`);
-    if (product.fabric) attributes.push(`🧵 ${product.fabric}`);
-    if (product.style) attributes.push(`✨ ${product.style}`);
-    if (product.dimensions) attributes.push(`📏 ${product.dimensions}`);
-    if (product.room) attributes.push(`🏠 ${product.room}`);
-    
-    return attributes.join(' • ');
-  };
-
-  const toggleProductSelection = (productId: string) => {
-    setSelectedProducts(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
-  };
-
-  const toggleAllSelection = () => {
-    if (selectedProducts.length === filteredProducts.length) {
-      setSelectedProducts([]);
-    } else {
-      setSelectedProducts(filteredProducts.map(p => p.id));
+  const getSourceColor = (source: string) => {
+    switch (source) {
+      case 'text_and_image': return 'bg-purple-500/20 text-purple-300';
+      case 'text_only': return 'bg-blue-500/20 text-blue-300';
+      case 'manual': return 'bg-orange-500/20 text-orange-300';
+      default: return 'bg-gray-500/20 text-gray-300';
     }
   };
 
-  // Obtenir les valeurs uniques pour les filtres
-  const uniqueCategories = [...new Set(products.map(p => p.category))].filter(Boolean);
-  const uniqueColors = [...new Set(products.map(p => p.color))].filter(Boolean);
-  const uniqueMaterials = [...new Set(products.map(p => p.material))].filter(Boolean);
-  const uniqueStyles = [...new Set(products.map(p => p.style))].filter(Boolean);
+  const categories = [...new Set(enrichedProducts.map(p => p.category))];
+  const sources = [...new Set(enrichedProducts.map(p => p.enrichment_source))];
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Chargement des produits enrichis...</p>
+          <p className="text-white text-lg">Chargement du catalogue enrichi...</p>
         </div>
       </div>
     );
@@ -542,682 +356,369 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   return (
     <div className="space-y-6">
       {/* Header avec actions */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Produits Enrichis</h2>
-          <p className="text-gray-400">
-            {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} enrichi{filteredProducts.length > 1 ? 's' : ''} avec IA
+          <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+          <p className="text-gray-300">
+            {filteredProducts.length} produit(s) enrichi(s) sur {enrichedProducts.length}
+            {lastSyncTime && (
+              <span className="ml-2 text-cyan-400">
+                • Dernière sync: {new Date(lastSyncTime).toLocaleDateString('fr-FR')}
+              </span>
+            )}
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <button
-            onClick={handleSyncFromCatalog}
+            onClick={syncEnrichedProducts}
             disabled={isSyncing}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
           >
             {isSyncing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Synchronisation... {syncProgress}%
+                Synchronisation...
               </>
             ) : (
               <>
-                <RefreshCw className="w-4 h-4" />
-                Sync Catalogue
+                <Brain className="w-4 h-4" />
+                Synchroniser avec IA
               </>
             )}
           </button>
           
           <button
-            onClick={handleEnrichAll}
-            disabled={isEnriching || products.length === 0}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white rounded-lg transition-colors flex items-center gap-2"
+            onClick={loadEnrichedProducts}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
           >
-            {isEnriching ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Enrichissement... {syncProgress}%
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Enrichir IA
-              </>
-            )}
+            <RefreshCw className="w-4 h-4" />
+            Actualiser
           </button>
           
           <button
-            onClick={handleExportCSV}
-            disabled={filteredProducts.length === 0}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white rounded-lg transition-colors flex items-center gap-2"
+            onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
           >
-            <Download className="w-4 h-4" />
-            Export CSV
+            <BarChart3 className="w-4 h-4" />
+            {viewMode === 'table' ? 'Vue grille' : 'Vue tableau'}
           </button>
         </div>
       </div>
 
-      {/* Barre de recherche et filtres */}
+      {/* Progress bar during sync */}
+      {isSyncing && (
+        <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Brain className="w-5 h-5 text-purple-400 animate-pulse" />
+            <span className="text-purple-200 font-semibold">Enrichissement IA en cours...</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500" 
+              style={{ width: `${syncProgress}%` }}
+            ></div>
+          </div>
+          <p className="text-purple-300 text-sm mt-2">{syncProgress}% terminé</p>
+        </div>
+      )}
+
+      {/* Search and filters */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom, catégorie, marque..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-black/40 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              />
-            </div>
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par titre, catégorie, couleur, matériau..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+            />
           </div>
           
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Filtres
-              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-            
-            <div className="flex bg-gray-700 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'table' ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === 'grid' ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
+          >
+            <Filter className="w-4 h-4" />
+            Filtres
+            {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
         </div>
 
-        {/* Filtres avancés */}
         {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-white/10">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Catégorie</label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="all">Toutes les catégories</option>
-                {uniqueCategories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Couleur</label>
-              <select
-                value={selectedColor}
-                onChange={(e) => setSelectedColor(e.target.value)}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="all">Toutes les couleurs</option>
-                {uniqueColors.map(color => (
-                  <option key={color} value={color}>{color}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Matériau</label>
-              <select
-                value={selectedMaterial}
-                onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="all">Tous les matériaux</option>
-                {uniqueMaterials.map(material => (
-                  <option key={material} value={material}>{material}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Style</label>
-              <select
-                value={selectedStyle}
-                onChange={(e) => setSelectedStyle(e.target.value)}
-                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="all">Tous les styles</option>
-                {uniqueStyles.map(style => (
-                  <option key={style} value={style}>{style}</option>
-                ))}
-              </select>
+          <div className="mt-6 pt-6 border-t border-gray-600/50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Catégorie</label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="all">Toutes les catégories</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Source d'enrichissement</label>
+                <select
+                  value={selectedSource}
+                  onChange={(e) => setSelectedSource(e.target.value)}
+                  className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="all">Toutes les sources</option>
+                  {sources.map(source => (
+                    <option key={source} value={source}>
+                      {source === 'text_and_image' ? 'Texte + Image' : 
+                       source === 'text_only' ? 'Texte uniquement' : 
+                       source === 'manual' ? 'Manuel' : source}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Actions en lot */}
-      {selectedProducts.length > 0 && (
-        <div className="bg-cyan-600/20 backdrop-blur-xl rounded-2xl p-4 border border-cyan-500/30">
-          <div className="flex items-center justify-between">
-            <span className="text-cyan-300 font-medium">
-              {selectedProducts.length} produit{selectedProducts.length > 1 ? 's' : ''} sélectionné{selectedProducts.length > 1 ? 's' : ''}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleBulkAction('export')}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
-              >
-                Exporter
-              </button>
-              <button
-                onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-              >
-                Supprimer
-              </button>
+      {/* Products table/grid */}
+      {viewMode === 'table' ? (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Produit</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Catégorie</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Prix</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Confiance</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Source</th>
+                  <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((product) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
+                          <img 
+                            src={product.image_url} 
+                            alt={product.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white text-sm line-clamp-2">{product.title}</div>
+                          <div className="text-gray-400 text-xs">{product.brand}</div>
+                          <div className="text-gray-500 text-xs mt-1">
+                            {product.subcategory || 'Sous-catégorie non définie'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-white font-medium">{product.category}</div>
+                      <div className="text-gray-400 text-xs">{product.subcategory}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {product.color && (
+                          <span className="inline-block bg-pink-500/20 text-pink-300 px-2 py-1 rounded-full text-xs mr-1">
+                            {product.color}
+                          </span>
+                        )}
+                        {product.material && (
+                          <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs mr-1">
+                            {product.material}
+                          </span>
+                        )}
+                        {product.style && (
+                          <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs mr-1">
+                            {product.style}
+                          </span>
+                        )}
+                        {product.room && (
+                          <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded-full text-xs mr-1">
+                            {product.room}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className="font-bold text-green-400">{product.price}€</span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getConfidenceColor(product.confidence_score)}`}>
+                        {product.confidence_score}%
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSourceColor(product.enrichment_source)}`}>
+                        {product.enrichment_source === 'text_and_image' ? 'Texte + Image' : 
+                         product.enrichment_source === 'text_only' ? 'Texte' : 
+                         product.enrichment_source}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button
+                          className="text-blue-400 hover:text-blue-300 p-1"
+                          title="Voir détails"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <a
+                          href={product.product_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-400 hover:text-purple-300 p-1"
+                          title="Ouvrir lien externe"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="text-red-400 hover:text-red-300 p-1"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105">
+              <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                <img 
+                  src={product.image_url} 
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                  }}
+                />
+              </div>
+              
+              <h3 className="font-semibold text-white mb-2 line-clamp-2">{product.title}</h3>
+              <p className="text-gray-300 text-sm mb-3">{product.category} • {product.brand}</p>
+              
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${getConfidenceColor(product.confidence_score)}`}>
+                  {product.confidence_score}%
+                </span>
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                {product.color && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">Couleur:</span>
+                    <span className="text-pink-300 text-xs font-medium">{product.color}</span>
+                  </div>
+                )}
+                {product.material && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">Matériau:</span>
+                    <span className="text-green-300 text-xs font-medium">{product.material}</span>
+                  </div>
+                )}
+                {product.style && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">Style:</span>
+                    <span className="text-blue-300 text-xs font-medium">{product.style}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm">
+                  <Eye className="w-3 h-3" />
+                  Voir
+                </button>
+                <a
+                  href={product.product_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Lien
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {filteredProducts.length === 0 && !isLoading && (
+        <div className="text-center py-20">
+          <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Aucun produit enrichi</h3>
+          <p className="text-gray-400 mb-6">
+            {enrichedProducts.length === 0 
+              ? 'Votre catalogue enrichi est vide. Lancez une synchronisation pour enrichir vos produits avec l\'IA.'
+              : 'Aucun produit ne correspond à vos critères de recherche.'}
+          </p>
+          {enrichedProducts.length === 0 && (
+            <button
+              onClick={syncEnrichedProducts}
+              disabled={isSyncing}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed"
+            >
+              {isSyncing ? 'Synchronisation...' : 'Enrichir le catalogue'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Stats summary */}
+      {enrichedProducts.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
+          <h3 className="text-lg font-bold text-white mb-4">📊 Statistiques d'enrichissement</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-400">{enrichedProducts.length}</div>
+              <div className="text-purple-300 text-sm">Produits enrichis</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">
+                {Math.round(enrichedProducts.reduce((sum, p) => sum + p.confidence_score, 0) / enrichedProducts.length)}%
+              </div>
+              <div className="text-green-300 text-sm">Confiance moyenne</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">{categories.length}</div>
+              <div className="text-blue-300 text-sm">Catégories</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-400">
+                {enrichedProducts.filter(p => p.enrichment_source === 'text_and_image').length}
+              </div>
+              <div className="text-orange-300 text-sm">Avec analyse image</div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Contenu principal */}
-      {filteredProducts.length === 0 ? (
-        <div className="text-center py-20">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Aucun produit enrichi</h3>
-          <p className="text-gray-400 mb-6">
-            {products.length === 0 
-              ? "Commencez par synchroniser votre catalogue pour enrichir vos produits."
-              : "Aucun produit ne correspond à vos critères de recherche."
-            }
-          </p>
-          {products.length === 0 && (
-            <button
-              onClick={handleSyncFromCatalog}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
-            >
-              <RefreshCw className="w-5 h-5" />
-              Synchroniser le catalogue
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Vue tableau */}
-          {viewMode === 'table' && (
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-black/20">
-                    <tr>
-                      <th className="px-4 py-4 text-left">
-                        <input
-                          type="checkbox"
-                          checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
-                          onChange={toggleAllSelection}
-                          className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500"
-                        />
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        Produit
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        Attributs IA
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        Prix & Stock
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        SEO & Pub
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        Confiance
-                      </th>
-                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
-                        <td className="px-4 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedProducts.includes(product.id)}
-                            onChange={() => toggleProductSelection(product.id)}
-                            className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500"
-                          />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center">
-                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0 mr-3">
-                              <img
-                                src={product.image_url}
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-white">{product.title}</div>
-                              <div className="text-sm text-gray-400">{product.brand}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          {editingProduct === product.id ? (
-                            <div className="space-y-2 min-w-0">
-                              <input
-                                type="text"
-                                value={editFormData.category || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
-                                placeholder="Catégorie"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.subcategory || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, subcategory: e.target.value }))}
-                                placeholder="Sous-catégorie"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.color || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, color: e.target.value }))}
-                                placeholder="Couleur"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.material || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, material: e.target.value }))}
-                                placeholder="Matériau"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.style || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, style: e.target.value }))}
-                                placeholder="Style"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.dimensions || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, dimensions: e.target.value }))}
-                                placeholder="Dimensions (ex: L:200cm x l:100cm x H:75cm)"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-sm text-white max-w-xs">
-                              {formatAIAttributes(product) || (
-                                <span className="text-gray-400 italic">Aucun attribut détecté</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          {editingProduct === product.id ? (
-                            <div className="space-y-2">
-                              <input
-                                type="number"
-                                value={editFormData.price || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                                placeholder="Prix"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="number"
-                                value={editFormData.stock_qty || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, stock_qty: parseInt(e.target.value) || 0 }))}
-                                placeholder="Stock"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="text-sm font-medium text-green-400">{product.price}€</div>
-                              <div className="text-sm text-gray-400">Stock: {product.stock_qty}</div>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          {editingProduct === product.id ? (
-                            <div className="space-y-2">
-                              <input
-                                type="text"
-                                value={editFormData.seo_title || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, seo_title: e.target.value }))}
-                                placeholder="Titre SEO"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={editFormData.ad_headline || ''}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, ad_headline: e.target.value }))}
-                                placeholder="Titre pub"
-                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
-                              />
-                            </div>
-                          ) : (
-                            <div className="max-w-xs">
-                              <div className="text-xs text-cyan-300 mb-1">SEO: {product.seo_title.substring(0, 30)}...</div>
-                              <div className="text-xs text-purple-300">Pub: {product.ad_headline}</div>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center">
-                            <div className="text-sm font-medium text-white">{product.confidence_score}%</div>
-                            <div className={`ml-2 w-2 h-2 rounded-full ${
-                              product.confidence_score >= 80 ? 'bg-green-400' :
-                              product.confidence_score >= 60 ? 'bg-yellow-400' : 'bg-red-400'
-                            }`}></div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          {editingProduct === product.id ? (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={handleSaveEdit}
-                                className="p-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                                title="Sauvegarder"
-                              >
-                                <Save className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                className="p-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
-                                title="Annuler"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditProduct(product)}
-                                className="text-yellow-400 hover:text-yellow-300 p-1"
-                                title="Modifier"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const updatedProducts = products.filter(p => p.id !== product.id);
-                                  setProducts(updatedProducts);
-                                  const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-                                  localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
-                                  showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
-                                }}
-                                className="text-red-400 hover:text-red-300 p-1"
-                                title="Supprimer"
-                              >
-                                <Package className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Vue grille */}
-          {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105">
-                  <div className="relative">
-                    <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
-                      <img
-                        src={product.image_url}
-                        alt={product.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                        }}
-                      />
-                    </div>
-                    <div className="absolute top-2 left-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.includes(product.id)}
-                        onChange={() => toggleProductSelection(product.id)}
-                        className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500 z-10"
-                      />
-                    </div>
-                    <div className="absolute top-2 right-2">
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        product.confidence_score >= 80 ? 'bg-green-100 text-green-800' :
-                        product.confidence_score >= 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {product.confidence_score}%
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold text-white mb-2 line-clamp-2">{product.title}</h3>
-                    <p className="text-gray-300 text-sm mb-3">{product.brand}</p>
-                    
-                    {/* AI Attributes consolidés */}
-                    <div className="bg-black/20 rounded-xl p-3 mb-3">
-                      <h4 className="text-xs font-semibold text-cyan-300 mb-2">🤖 Attributs IA</h4>
-                      <div className="text-xs text-white space-y-1">
-                        {formatAIAttributes(product) || (
-                          <span className="text-gray-400 italic">Aucun attribut détecté</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {product.color && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
-                          {product.color}
-                        </span>
-                      )}
-                      {product.material && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300">
-                          {product.material}
-                        </span>
-                      )}
-                      {product.style && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300">
-                          {product.style}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-lg font-bold text-green-400">{product.price}€</span>
-                      <span className="text-sm text-gray-400">Stock: {product.stock_qty}</span>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-1"
-                      >
-                        <Edit className="w-3 h-3" />
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => {
-                          const updatedProducts = products.filter(p => p.id !== product.id);
-                          setProducts(updatedProducts);
-                          const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-                          localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
-                          showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
-                        }}
-                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 };
-
-// Helper functions for basic enrichment
-function detectCategory(text: string): string {
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('canapé') || lowerText.includes('sofa')) return 'Canapé';
-  if (lowerText.includes('table')) return 'Table';
-  if (lowerText.includes('chaise') || lowerText.includes('fauteuil')) return 'Chaise';
-  if (lowerText.includes('lit')) return 'Lit';
-  if (lowerText.includes('armoire') || lowerText.includes('commode')) return 'Rangement';
-  return 'Mobilier';
-}
-
-function detectSubcategory(title: string, description: string): string {
-  const text = `${title} ${description}`.toLowerCase();
-  
-  if (text.includes('canapé')) {
-    if (text.includes('angle')) return 'Canapé d\'angle';
-    if (text.includes('convertible')) return 'Canapé convertible';
-    if (text.includes('lit')) return 'Canapé-lit';
-    return 'Canapé fixe';
-  }
-  
-  if (text.includes('table')) {
-    if (text.includes('basse')) return 'Table basse';
-    if (text.includes('manger') || text.includes('repas')) return 'Table à manger';
-    if (text.includes('bureau')) return 'Bureau';
-    if (text.includes('console')) return 'Console';
-    if (text.includes('ronde')) return 'Table ronde';
-    return 'Table rectangulaire';
-  }
-  
-  if (text.includes('chaise')) {
-    if (text.includes('bureau')) return 'Chaise de bureau';
-    if (text.includes('bar')) return 'Tabouret de bar';
-    return 'Chaise de salle à manger';
-  }
-  
-  return '';
-}
-
-function detectColor(text: string): string {
-  const lowerText = text.toLowerCase();
-  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
-  for (const color of colors) {
-    if (lowerText.includes(color)) return color;
-  }
-  return '';
-}
-
-function detectMaterial(text: string): string {
-  const lowerText = text.toLowerCase();
-  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
-  for (const material of materials) {
-    if (lowerText.includes(material)) return material;
-  }
-  return '';
-}
-
-function detectFabric(text: string): string {
-  const lowerText = text.toLowerCase();
-  const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
-  for (const fabric of fabrics) {
-    if (lowerText.includes(fabric)) return fabric;
-  }
-  return '';
-}
-
-function detectStyle(text: string): string {
-  const lowerText = text.toLowerCase();
-  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
-  for (const style of styles) {
-    if (lowerText.includes(style)) return style;
-  }
-  return '';
-}
-
-function detectRoom(text: string): string {
-  const lowerText = text.toLowerCase();
-  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
-  for (const room of rooms) {
-    if (lowerText.includes(room)) return room;
-  }
-  return '';
-}
-
-function extractDimensions(text: string): string {
-  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-  if (dimensionMatch) {
-    const [, length, width, height] = dimensionMatch;
-    if (height) {
-      return `L:${length}cm x l:${width}cm x H:${height}cm`;
-    } else {
-      return `L:${length}cm x l:${width}cm`;
-    }
-  }
-  
-  const diameterMatch = text.match(/(?:ø|diamètre)\s*(\d+)\s*cm/);
-  if (diameterMatch) {
-    return `Ø:${diameterMatch[1]}cm`;
-  }
-  
-  return '';
-}
-
-function generateSEOTitle(productName: string, brand: string): string {
-  return `${productName} - ${brand}`.substring(0, 70);
-}
-
-function generateSEODescription(productName: string, description: string): string {
-  return `${productName}. ${description.substring(0, 100)}. Livraison gratuite.`.substring(0, 155);
-}
-
-function getGoogleCategory(category: string): string {
-  const categoryMap: { [key: string]: string } = {
-    'Canapé': '635',
-    'Table': '443',
-    'Chaise': '436',
-    'Lit': '569',
-    'Rangement': '6552'
-  };
-  return categoryMap[category] || '';
-}
-
-function calculateBasicConfidence(product: any): number {
-  let confidence = 30; // Base
-  if (product.name || product.title) confidence += 20;
-  if (product.description) confidence += 15;
-  if (product.price > 0) confidence += 10;
-  if (product.image_url) confidence += 10;
-  if (product.category || product.productType) confidence += 15;
-  return Math.min(confidence, 100);
-}
-
-export { ProductsEnrichedTable };

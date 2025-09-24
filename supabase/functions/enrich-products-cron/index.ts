@@ -1,589 +1,581 @@
-@@ .. @@
- interface EnrichedAttributes {
-   category: string;
-   subcategory: string;
-   color: string;
-   material: string;
-   fabric: string;
-   style: string;
-   dimensions: string;
-   room: string;
-   tags: string[];
-   seo_title: string;
-   seo_description: string;
-   ad_headline: string;
-   ad_description: string;
-   google_product_category: string;
-   gtin: string;
-   brand: string;
-   confidence_score: number;
- }
- 
- // Cron quotidien pour enrichir automatiquement les nouveaux produits
- Deno.serve(async (req: Request) => {
-   if (req.method === "OPTIONS") {
-     return new Response(null, {
-       status: 200,
-       headers: corsHeaders,
-     });
-   }
- 
-   try {
-     const { retailer_id, force_full_enrichment = false, source_filter, vendor_id }: ProductEnrichmentRequest = await req.json();
-     
--    console.log('🤖 CRON ENRICHISSEMENT: Démarrage...');
--    console.log('⏰ Heure d\'exécution:', new Date().toLocaleString('fr-FR'));
--    console.log('🏪 Vendeur ID:', vendor_id || retailer_id);
-+    console.log('🤖 [enrich-products-cron] CRON ENRICHISSEMENT: Démarrage...');
-+    console.log('⏰ [enrich-products-cron] Heure d\'exécution:', new Date().toLocaleString('fr-FR'));
-+    console.log('🏪 [enrich-products-cron] Vendeur ID:', vendor_id || retailer_id);
- 
-     // Initialize Supabase
--    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
--    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-+    
-+    if (!supabaseUrl || !supabaseKey) {
-+      console.error('❌ [enrich-products-cron] Variables d\'environnement Supabase manquantes');
-+      return new Response(
-+        JSON.stringify({
-+          success: false,
-+          error: 'Configuration Supabase manquante',
-+          details: 'SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY requis'
-+        }),
-+        {
-+          status: 500,
-+          headers: {
-+            'Content-Type': 'application/json',
-+            ...corsHeaders,
-+          },
-+        }
-+      );
-+    }
-+    
-     const supabase = createClient(supabaseUrl, supabaseKey);
- 
-     // 🔍 ÉTAPE 1: Récupérer les produits depuis localStorage (isolation vendeur)
-     const products = await getVendorProductsFromStorage(vendor_id || retailer_id || 'demo-retailer-id');
-     
--    console.log('📦 Produits vendeur trouvés:', products.length);
-+    console.log('📦 [enrich-products-cron] Produits vendeur trouvés:', products.length);
-     
-     if (products.length === 0) {
-       return new Response(
-         JSON.stringify({
-           success: false,
-           message: 'Aucun produit trouvé dans votre catalogue. Importez d\'abord vos produits via l\'onglet Intégration.',
-           stats: { products_processed: 0 }
-         }),
-         {
-           headers: { 'Content-Type': 'application/json', ...corsHeaders }
-         }
-       );
-     }
- 
-     // 🧠 ÉTAPE 2: Enrichir chaque produit avec IA locale
-     const enrichedProducts = [];
-     let successCount = 0;
-     let errorCount = 0;
- 
-     for (const product of products) {
-       try {
--        console.log(`🔄 Enrichissement: ${product.name?.substring(0, 30)}...`);
-+        console.log(`🔄 [enrich-products-cron] Enrichissement: ${product.name?.substring(0, 30)}...`);
-         
-         const enrichedAttributes = await enrichProductWithAI(product);
-         
-         // Créer l'entrée enrichie
-         const enrichedProduct = {
-           id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-           handle: product.id || product.external_id || `handle-${Date.now()}`,
-           title: product.name,
-           description: product.description || '',
-           category: enrichedAttributes.category,
-           subcategory: enrichedAttributes.subcategory,
-           color: enrichedAttributes.color,
-           material: enrichedAttributes.material,
-           fabric: enrichedAttributes.fabric,
-           style: enrichedAttributes.style,
-           dimensions: enrichedAttributes.dimensions,
-           room: enrichedAttributes.room,
-           tags: enrichedAttributes.tags,
-           seo_title: enrichedAttributes.seo_title,
-           seo_description: enrichedAttributes.seo_description,
-           ad_headline: enrichedAttributes.ad_headline,
-           ad_description: enrichedAttributes.ad_description,
-           google_product_category: enrichedAttributes.google_product_category,
-           gtin: enrichedAttributes.gtin,
-           brand: enrichedAttributes.brand,
-           price: product.price,
-           stock_qty: product.stock,
-           image_url: product.image_url,
-           product_url: product.product_url,
-           confidence_score: enrichedAttributes.confidence_score,
-           enriched_at: new Date().toISOString(),
-           enrichment_source: 'cron_auto',
-           created_at: new Date().toISOString()
-         };
- 
-         enrichedProducts.push(enrichedProduct);
-         successCount++;
- 
-       } catch (error) {
--        console.error(`❌ Erreur enrichissement ${product.name}:`, error);
-+        console.error(`❌ [enrich-products-cron] Erreur enrichissement ${product.name}:`, error);
-         errorCount++;
-       }
- 
-       // Pause entre produits pour éviter rate limiting
-       await new Promise(resolve => setTimeout(resolve, 200));
-     }
- 
-     // 💾 ÉTAPE 3: Sauvegarder dans localStorage vendeur
-     if (enrichedProducts.length > 0) {
-       // Sauvegarder dans localStorage spécifique au vendeur
-       const enrichedKey = `vendor_${vendor_id || retailer_id}_enriched_products`;
-       
-       try {
--        localStorage.setItem(enrichedKey, JSON.stringify(enrichedProducts));
--        console.log('✅ Produits enrichis sauvegardés dans localStorage:', enrichedProducts.length);
-+        // Note: localStorage is not available in Deno, this is for client-side
-+        console.log('✅ [enrich-products-cron] Produits enrichis préparés pour localStorage:', enrichedProducts.length);
-       } catch (storageError) {
--        console.error('❌ Erreur sauvegarde localStorage:', storageError);
-+        console.error('❌ [enrich-products-cron] Erreur sauvegarde localStorage:', storageError);
-         // Continue sans faire échouer le processus
-       }
- 
-       // OPTIONNEL: Essayer aussi Supabase si configuré
-       try {
-         const { error: insertError } = await supabase
-           .from('products_enriched')
-           .upsert(enrichedProducts, { 
-             onConflict: 'handle',
-             ignoreDuplicates: false 
-           });
- 
-         if (insertError) {
--          console.warn('⚠️ Erreur Supabase (non bloquant):', insertError);
-+          console.warn('⚠️ [enrich-products-cron] Erreur Supabase (non bloquant):', insertError);
-         } else {
--          console.log('✅ Produits enrichis sauvegardés aussi dans Supabase');
-+          console.log('✅ [enrich-products-cron] Produits enrichis sauvegardés aussi dans Supabase');
-         }
-       } catch (supabaseError) {
--        console.warn('⚠️ Supabase non disponible (non bloquant):', supabaseError);
-+        console.warn('⚠️ [enrich-products-cron] Supabase non disponible (non bloquant):', supabaseError);
-       }
-     }
- 
-     // 📊 ÉTAPE 4: Mettre à jour les statistiques
-     const stats = {
-       products_processed: successCount,
-       products_failed: errorCount,
-       success_rate: successCount / (successCount + errorCount) * 100,
-       execution_time: new Date().toISOString(),
-       trigger_type: 'enrichment_cron',
-       vendor_id: vendor_id || retailer_id,
-       next_run: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-     };
- 
--    console.log('✅ CRON ENRICHISSEMENT TERMINÉ:', stats);
-+    console.log('✅ [enrich-products-cron] CRON ENRICHISSEMENT TERMINÉ:', stats);
- 
-     return new Response(
-       JSON.stringify({
-         success: true,
-         message: `🤖 Enrichissement automatique terminé: ${successCount} produits enrichis`,
-         stats,
--        enriched_products: enrichedProducts.length
-+        enriched_products: enrichedProducts.length,
-+        enriched_data: enrichedProducts // Return enriched data for client-side storage
-       }),
-       {
-         headers: {
-           'Content-Type': 'application/json',
-           ...corsHeaders,
-         },
-       }
-     );
- 
-   } catch (error) {
--    console.error('❌ Erreur cron enrichissement:', error);
-+    console.error('❌ [enrich-products-cron] Erreur cron enrichissement:', error);
-     
-     return new Response(
-       JSON.stringify({
-         success: false,
-         error: 'Erreur lors de l\'enrichissement automatique',
-         details: error.message
-       }),
-       {
-         status: 500,
-         headers: {
-           'Content-Type': 'application/json',
-           ...corsHeaders,
-         },
-       }
-     );
-   }
- });
- 
- // Fonction pour récupérer les produits depuis localStorage
- async function getVendorProductsFromStorage(vendorId: string) {
-   try {
-     // Essayer plusieurs clés de stockage possibles
-     const storageKeys = [
-       `seller_${vendorId}_products`,
-       `vendor_${vendorId}_products`,
-       'catalog_products' // Fallback global
-     ];
-     
-+    console.log('🔍 [enrich-products-cron] Recherche produits dans localStorage...');
-+    
-     for (const key of storageKeys) {
-       try {
--        const savedProducts = localStorage?.getItem(key);
-+        // Note: In Edge Functions, we simulate localStorage access
-+        // In real implementation, this would be handled client-side
-+        console.log(`🔍 [enrich-products-cron] Tentative lecture ${key}...`);
-+        const savedProducts = null; // localStorage not available in Deno
-         if (savedProducts) {
-           const products = JSON.parse(savedProducts);
-           const activeProducts = products.filter((p: any) => 
-             p.status === 'active' && (p.stock > 0 || p.quantityAvailable > 0)
-           );
-           
-           if (activeProducts.length > 0) {
--            console.log(`✅ Produits trouvés dans ${key}:`, activeProducts.length);
-+            console.log(`✅ [enrich-products-cron] Produits trouvés dans ${key}:`, activeProducts.length);
-             return activeProducts;
-           }
-         }
-       } catch (error) {
--        console.warn(`⚠️ Erreur lecture ${key}:`, error);
-+        console.warn(`⚠️ [enrich-products-cron] Erreur lecture ${key}:`, error);
-       }
-     }
-     
--    console.log('⚠️ Aucun produit trouvé dans localStorage');
-+    console.log('⚠️ [enrich-products-cron] Aucun produit trouvé dans localStorage');
-     return [];
-     
-   } catch (error) {
--    console.error('❌ Erreur récupération produits localStorage:', error);
-+    console.error('❌ [enrich-products-cron] Erreur récupération produits localStorage:', error);
-     return [];
-   }
- }
- 
- async function enrichProductWithAI(product: any): Promise<EnrichedAttributes> {
-   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-   
-   if (!deepseekApiKey) {
--    console.log('⚠️ DeepSeek non configuré, enrichissement basique');
-+    console.log('⚠️ [enrich-products-cron] DeepSeek non configuré, enrichissement basique');
-     return enrichProductBasic(product);
-   }
- 
-   try {
-     const productText = `
- PRODUIT: ${product.name || product.title || ''}
- DESCRIPTION: ${product.description || ''}
- CATÉGORIE: ${product.category || ''}
- PRIX: ${product.price || 0}€
-     `.trim();
- 
--    const prompt = `Analyse ce produit mobilier et enrichis-le au format JSON strict :
-+    const prompt = \`Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
- 
- ${productText}
- 
- Enrichis COMPLÈTEMENT ce produit au format JSON :
- {
-   "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration|Éclairage",
-   "subcategory": "Description précise (ex: Canapé d'angle convertible, Table basse en verre)",
-   "color": "blanc|noir|gris|beige|marron|bleu|vert|rouge|jaune|orange|rose|violet|naturel|chêne|noyer|taupe",
-   "material": "bois|métal|verre|tissu|cuir|velours|travertin|marbre|plastique|rotin|chenille",
-   "fabric": "velours|chenille|lin|coton|cuir|tissu|polyester",
-   "style": "moderne|contemporain|scandinave|industriel|vintage|rustique|classique|minimaliste|bohème",
--  "dimensions": "LxlxH en cm",
-+  "dimensions": "L:200cm x l:100cm x H:75cm (format précis avec unités)",
-   "room": "salon|chambre|cuisine|bureau|salle à manger|entrée|terrasse",
-   "tags": ["mot-clé1", "mot-clé2", "fonctionnalité"],
-   "seo_title": "Titre SEO optimisé ≤70 caractères",
-   "seo_description": "Meta description SEO ≤155 caractères",
-   "ad_headline": "Titre publicitaire ≤30 caractères",
-   "ad_description": "Description pub ≤90 caractères",
-   "google_product_category": "ID Google Shopping (635=Canapés, 443=Tables, 436=Chaises)",
-   "gtin": "Code-barres si disponible",
-   "brand": "Marque/Fabricant",
-   "confidence_score": 85
- }
- 
- RÈGLES STRICTES:
- - category: Catégorie principale uniquement
- - subcategory: Description précise du type de produit
-+- dimensions: Format "L:XXXcm x l:XXXcm x H:XXXcm" ou "Ø:XXXcm" pour les rondes
- - tags: 3-5 mots-clés pertinents
- - seo_title: Optimisé pour le référencement, inclure marque
- - seo_description: Inclure bénéfices, livraison, promo si applicable
- - ad_headline: Accrocheur pour Google Ads
- - ad_description: Inclure USP et promo
- - google_product_category: Utiliser les codes Google Shopping officiels
- - confidence_score: 0-100 basé sur la qualité des informations
- 
- RÉPONSE JSON UNIQUEMENT:`;
- 
-     const response = await fetch('https://api.deepseek.com/chat/completions', {
-       method: 'POST',
-       headers: {
-         'Authorization': `Bearer ${deepseekApiKey}`,
-         'Content-Type': 'application/json',
-       },
-       body: JSON.stringify({
-         model: 'deepseek-chat',
-         messages: [
-           {
-             role: 'system',
--            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu enrichis les produits au format JSON strict. Aucun texte supplémentaire.'
-+            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu enrichis COMPLÈTEMENT les produits au format JSON strict avec sous-catégories précises et dimensions formatées. Aucun texte supplémentaire.'
-           },
-           {
-             role: 'user',
-             content: prompt
-           }
-         ],
--        max_tokens: 400,
-+        max_tokens: 500,
-         temperature: 0.1,
-         stream: false
-       }),
-     });
- 
-     if (response.ok) {
-       const data = await response.json();
-       const content = data.choices[0]?.message?.content?.trim();
-       
-       if (content) {
-         try {
-           const enriched = JSON.parse(content);
--          console.log('✅ Enrichissement IA réussi:', {
-+          console.log('✅ [enrich-products-cron] Enrichissement IA réussi:', {
-             product: (product.name || product.title)?.substring(0, 30),
-             category: enriched.category,
-+            subcategory: enriched.subcategory,
-             color: enriched.color,
-             material: enriched.material,
-+            dimensions: enriched.dimensions,
-             confidence: enriched.confidence_score
-           });
-           
-           return {
-             ...enriched,
-             confidence_score: enriched.confidence_score || 50
-           };
-         } catch (parseError) {
--          console.log('⚠️ JSON invalide, enrichissement basique');
-+          console.log('⚠️ [enrich-products-cron] JSON invalide, enrichissement basique');
-         }
-       }
-     }
-   } catch (error) {
--    console.log('⚠️ Erreur DeepSeek, enrichissement basique');
-+    console.log('⚠️ [enrich-products-cron] Erreur DeepSeek, enrichissement basique');
-   }
- 
-   return enrichProductBasic(product);
- }
- 
- function enrichProductBasic(product: any): EnrichedAttributes {
-   const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || product.productType || ''}`.toLowerCase();
-   
-   // Détecter catégorie
-   let category = 'Mobilier';
-   let subcategory = '';
-   
-   if (text.includes('canapé') || text.includes('sofa')) {
-     category = 'Canapé';
--    if (text.includes('angle')) subcategory = 'Canapé d\'angle';
--    else if (text.includes('convertible')) subcategory = 'Canapé convertible';
--    else subcategory = 'Canapé fixe';
-+    if (text.includes('angle')) subcategory = 'Canapé d\'angle';
-+    else if (text.includes('convertible')) subcategory = 'Canapé convertible';
-+    else if (text.includes('lit')) subcategory = 'Canapé-lit';
-+    else if (text.includes('modulaire')) subcategory = 'Canapé modulaire';
-+    else subcategory = 'Canapé fixe';
-   } else if (text.includes('table')) {
-     category = 'Table';
-     if (text.includes('basse')) subcategory = 'Table basse';
--    else if (text.includes('manger')) subcategory = 'Table à manger';
-+    else if (text.includes('manger') || text.includes('repas')) subcategory = 'Table à manger';
-+    else if (text.includes('bureau')) subcategory = 'Bureau';
-+    else if (text.includes('console')) subcategory = 'Console';
-+    else if (text.includes('ronde')) subcategory = 'Table ronde';
-+    else if (text.includes('rectangulaire')) subcategory = 'Table rectangulaire';
-     else subcategory = 'Table';
-   } else if (text.includes('chaise') || text.includes('fauteuil')) {
-     category = 'Chaise';
-     if (text.includes('bureau')) subcategory = 'Chaise de bureau';
-     else if (text.includes('fauteuil')) subcategory = 'Fauteuil';
-+    else if (text.includes('bar')) subcategory = 'Tabouret de bar';
-     else subcategory = 'Chaise de salle à manger';
-+  } else if (text.includes('lit')) {
-+    category = 'Lit';
-+    if (text.includes('simple')) subcategory = 'Lit simple';
-+    else if (text.includes('double')) subcategory = 'Lit double';
-+    else if (text.includes('queen')) subcategory = 'Lit Queen';
-+    else if (text.includes('king')) subcategory = 'Lit King';
-+    else subcategory = 'Lit';
-+  } else if (text.includes('armoire') || text.includes('commode')) {
-+    category = 'Rangement';
-+    if (text.includes('armoire')) subcategory = 'Armoire';
-+    else if (text.includes('commode')) subcategory = 'Commode';
-+    else if (text.includes('bibliothèque')) subcategory = 'Bibliothèque';
-+    else subcategory = 'Meuble de rangement';
-   }
- 
-   // Détecter couleur
-   let color = '';
-   const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
-   for (const c of colors) {
-     if (text.includes(c)) {
-       color = c;
-       break;
-     }
-   }
- 
-   // Détecter matériau
-   let material = '';
-   const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
-   for (const m of materials) {
-     if (text.includes(m)) {
-       material = m;
-       break;
-     }
-   }
- 
-   // Détecter tissu
-   let fabric = '';
-   const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
-   for (const f of fabrics) {
-     if (text.includes(f)) {
-       fabric = f;
-       break;
-     }
-   }
- 
-   // Détecter style
-   let style = '';
-   const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
-   for (const s of styles) {
-     if (text.includes(s)) {
-       style = s;
-       break;
-     }
-   }
- 
-   // Détecter pièce
-   let room = '';
-   const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
-   for (const r of rooms) {
-     if (text.includes(r)) {
-       room = r;
-       break;
-     }
-   }
- 
-   // Générer tags
-   const tags = [];
-   if (color) tags.push(color);
-   if (material) tags.push(material);
-   if (fabric) tags.push(fabric);
-   if (style) tags.push(style);
-   if (text.includes('convertible')) tags.push('convertible');
-   if (text.includes('rangement')) tags.push('rangement');
-   if (text.includes('angle')) tags.push('angle');
- 
-   // Générer contenu SEO
-   const productName = product.name || product.title || 'Produit';
-   const brand = product.vendor || 'Decora Home';
-   
-   const seo_title = `${productName} ${color ? color : ''} - ${brand}`.substring(0, 70);
-   const seo_description = `${productName} ${material ? 'en ' + material : ''} ${color ? color : ''}. ${style ? 'Style ' + style : ''}. Livraison gratuite.`.substring(0, 155);
-   const ad_headline = productName.substring(0, 30);
-   const ad_description = `${productName} ${material ? material : ''}. ${style ? style : ''}. Promo !`.substring(0, 90);
- 
-   // Code Google Shopping basique
-   let google_product_category = '';
-   if (category === 'Canapé') google_product_category = '635';
-   else if (category === 'Table') google_product_category = '443';
-   else if (category === 'Chaise') google_product_category = '436';
- 
--  // Extraire dimensions
--  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
--  const dimensions = dimensionMatch ? dimensionMatch[0] : '';
-+  // Extraire dimensions avec format amélioré
-+  let dimensions = '';
-+  
-+  // Format LxlxH
-+  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-+  if (dimensionMatch) {
-+    const [, length, width, height] = dimensionMatch;
-+    if (height) {
-+      dimensions = `L:${length}cm x l:${width}cm x H:${height}cm`;
-+    } else {
-+      dimensions = `L:${length}cm x l:${width}cm`;
-+    }
-+  } else {
-+    // Format diamètre
-+    const diameterMatch = text.match(/(?:ø|diamètre)\s*(\d+)\s*cm/);
-+    if (diameterMatch) {
-+      dimensions = `Ø:${diameterMatch[1]}cm`;
-+    } else {
-+      // Dimensions séparées
-+      const lengthMatch = text.match(/(?:longueur|long|l)\s*:?\s*(\d+)\s*cm/);
-+      const widthMatch = text.match(/(?:largeur|larg|w)\s*:?\s*(\d+)\s*cm/);
-+      const heightMatch = text.match(/(?:hauteur|haut|h)\s*:?\s*(\d+)\s*cm/);
-+      
-+      const dimParts = [];
-+      if (lengthMatch) dimParts.push(`L:${lengthMatch[1]}cm`);
-+      if (widthMatch) dimParts.push(`l:${widthMatch[1]}cm`);
-+      if (heightMatch) dimParts.push(`H:${heightMatch[1]}cm`);
-+      
-+      if (dimParts.length > 0) {
-+        dimensions = dimParts.join(' x ');
-+      }
-+    }
-+  }
- 
-   // Calculer score de confiance
-   let confidence = 30; // Base
-   if (category !== 'Mobilier') confidence += 25;
-   if (color) confidence += 20;
-   if (material) confidence += 20;
-   if (style) confidence += 15;
-   if (room) confidence += 10;
-   if (dimensions) confidence += 10;
- 
-   return {
-     category,
-     subcategory,
-     color,
-     material,
-     fabric,
-     style,
-     dimensions,
-     room,
-     tags,
-     seo_title,
-     seo_description,
-     ad_headline,
-     ad_description,
-     google_product_category,
-     gtin: '',
-     brand: brand,
-     confidence_score: Math.min(confidence, 100)
-   };
- }
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+interface ProductEnrichmentRequest {
+  products: any[];
+  retailer_id: string;
+  force_full_enrichment?: boolean;
+  source_filter?: string;
+  vendor_id?: string;
+  enable_image_analysis?: boolean;
+}
+
+interface EnrichedAttributes {
+  general_info: {
+    title: string;
+    brand: string;
+    product_type: string;
+    subcategory: string;
+  };
+  technical_specs: {
+    dimensions?: string;
+    seat_height?: string;
+    bed_surface?: string;
+    structure?: string;
+    material: string;
+    color: string;
+    style: string;
+    room: string;
+    capacity?: string;
+  };
+  features: {
+    convertible?: boolean;
+    storage?: boolean;
+    angle_reversible?: boolean;
+    adjustable?: boolean;
+    foldable?: boolean;
+    extendable?: boolean;
+  };
+  seo_marketing: {
+    seo_title: string;
+    seo_description: string;
+    ad_headline: string;
+    ad_description: string;
+    tags: string[];
+    google_product_category: string;
+  };
+  ai_confidence: {
+    overall: number;
+    color: number;
+    style: number;
+    dimensions: number;
+    material: number;
+    category: number;
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  // Handle GET requests for health check
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({ 
+        status: "OK", 
+        message: "Edge Function enrich-products-cron is running",
+        timestamp: new Date().toISOString()
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      }
+    );
+  }
+
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const { 
+      products, 
+      retailer_id, 
+      force_full_enrichment = false, 
+      source_filter, 
+      vendor_id,
+      enable_image_analysis = true
+    }: ProductEnrichmentRequest = await req.json();
+    
+    console.log('🤖 [enrich-products-cron] Enrichissement démarré:', {
+      products_count: products?.length || 0,
+      retailer_id,
+      vendor_id,
+      force_full_enrichment,
+      enable_image_analysis
+    });
+
+    // Validation des produits
+    if (!products || products.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Aucun produit fourni pour enrichissement',
+          stats: { products_processed: 0, enriched_products: 0 }
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+
+    // Initialisation Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Configuration Supabase manquante'
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Filtrage des produits actifs
+    const activeProducts = products.filter(product => 
+      product.status === 'active' && 
+      (product.stock > 0 || product.quantityAvailable > 0 || product.stock_qty > 0)
+    );
+
+    console.log(`📦 Produits actifs à enrichir: ${activeProducts.length}/${products.length}`);
+
+    // Enrichissement des produits
+    const enrichedProducts = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const [index, product] of activeProducts.entries()) {
+      try {
+        console.log(`🔄 [${index + 1}/${activeProducts.length}] Enrichissement: ${product.name?.substring(0, 50)}...`);
+        
+        const enrichedAttributes = await enrichProductWithAI(product, enable_image_analysis);
+        
+        const enrichedProduct = createEnrichedProduct(product, enrichedAttributes, retailer_id || vendor_id);
+        enrichedProducts.push(enrichedProduct);
+        successCount++;
+
+        // Pause anti-rate limiting
+        if (index < activeProducts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+      } catch (error) {
+        console.error(`❌ Erreur enrichissement ${product.name}:`, error);
+        errorCount++;
+      }
+    }
+
+    console.log(`✅ ${successCount}/${activeProducts.length} produits enrichis avec succès`);
+
+    // Sauvegarde dans Supabase
+    if (enrichedProducts.length > 0) {
+      try {
+        const { error: insertError } = await supabase
+          .from('products_enriched')
+          .upsert(enrichedProducts, { 
+            onConflict: 'handle',
+            ignoreDuplicates: false 
+          });
+
+        if (insertError) {
+          console.warn('⚠️ Erreur Supabase (non bloquant):', insertError);
+        } else {
+          console.log('💾 Produits enrichis sauvegardés dans Supabase');
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ Supabase non disponible:', supabaseError);
+      }
+    }
+
+    // Statistiques finales
+    const stats = {
+      products_processed: successCount,
+      products_failed: errorCount,
+      success_rate: Math.round((successCount / activeProducts.length) * 100),
+      execution_time: new Date().toISOString(),
+      retailer_id: retailer_id || vendor_id
+    };
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `Enrichissement terminé: ${successCount} produits enrichis`,
+        stats,
+        enriched_products: enrichedProducts.length
+      }),
+      {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      }
+    );
+
+  } catch (error) {
+    console.error('❌ Erreur globale:', error);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Erreur lors de l\'enrichissement',
+        details: error.message
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      }
+    );
+  }
+});
+
+function createEnrichedProduct(product: any, attributes: EnrichedAttributes, retailerId: string) {
+  return {
+    id: product.id || `enriched-${retailerId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    handle: product.handle || product.id || generateHandle(product.name || product.title),
+    title: attributes.general_info.title,
+    description: product.description || '',
+    
+    category: attributes.general_info.product_type,
+    subcategory: attributes.general_info.subcategory,
+    
+    color: attributes.technical_specs.color,
+    material: attributes.technical_specs.material,
+    fabric: extractFabricFromMaterial(attributes.technical_specs.material),
+    style: attributes.technical_specs.style,
+    dimensions: attributes.technical_specs.dimensions || '',
+    room: attributes.technical_specs.room,
+    
+    price: parseFloat(product.price) || 0,
+    stock_qty: getStockQuantity(product),
+    
+    image_url: product.image_url || product.image || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+    product_url: product.product_url || product.url || '#',
+    
+    tags: attributes.seo_marketing.tags,
+    seo_title: attributes.seo_marketing.seo_title,
+    seo_description: attributes.seo_marketing.seo_description,
+    ad_headline: attributes.seo_marketing.ad_headline,
+    ad_description: attributes.seo_marketing.ad_description,
+    google_product_category: attributes.seo_marketing.google_product_category,
+    gtin: product.gtin || '',
+    brand: attributes.general_info.brand,
+    
+    confidence_score: attributes.ai_confidence.overall,
+    enriched_at: new Date().toISOString(),
+    enrichment_source: attributes.enrichment_source || 'text_only',
+    
+    retailer_id: retailerId,
+    created_at: product.created_at || new Date().toISOString()
+  };
+}
+
+function getStockQuantity(product: any): number {
+  return parseInt(product.stock) || 
+         parseInt(product.quantityAvailable) || 
+         parseInt(product.stock_qty) || 
+         (product.inventory_quantity || 0);
+}
+
+async function enrichProductWithAI(product: any, enableImageAnalysis: boolean): Promise<EnrichedAttributes> {
+  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+  
+  if (!deepseekApiKey) {
+    console.log('⚠️ DeepSeek non configuré, enrichissement basique');
+    return enrichProductBasic(product);
+  }
+
+  try {
+    const productText = `
+PRODUIT: ${product.name || product.title || 'Non spécifié'}
+DESCRIPTION: ${product.description || 'Aucune description'}
+CATÉGORIE: ${product.category || product.productType || 'Non spécifié'}
+PRIX: ${product.price || 0}€
+MARQUE: ${product.vendor || product.brand || 'Non spécifié'}
+TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || 'Aucun tag'}
+    `.trim();
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${deepseekApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: `Tu es un expert en mobilier. Réponds UNIQUEMENT avec du JSON valide sans texte supplémentaire.`
+          },
+          {
+            role: 'user',
+            content: `Analyse ce produit mobilier et enrichis-le au format JSON strict :
+
+${productText}
+
+Format de réponse REQUIS :
+{
+  "general_info": {
+    "title": "string",
+    "brand": "string", 
+    "product_type": "string",
+    "subcategory": "string"
+  },
+  "technical_specs": {
+    "dimensions": "string",
+    "material": "string",
+    "color": "string",
+    "style": "string",
+    "room": "string"
+  },
+  "features": {
+    "convertible": "boolean",
+    "storage": "boolean",
+    "adjustable": "boolean"
+  },
+  "seo_marketing": {
+    "seo_title": "string",
+    "seo_description": "string",
+    "tags": "string[]"
+  },
+  "ai_confidence": {
+    "overall": "number",
+    "color": "number",
+    "style": "number",
+    "material": "number",
+    "category": "number"
+  }
+}`
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.1,
+        stream: false
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API DeepSeek: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('Réponse DeepSeek vide');
+    }
+
+    // Nettoyage du contenu pour extraire le JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('JSON non trouvé dans la réponse');
+    }
+
+    const enriched = JSON.parse(jsonMatch[0]);
+    
+    // Validation des champs requis
+    if (!enriched.general_info || !enriched.technical_specs) {
+      throw new Error('Structure JSON invalide');
+    }
+
+    // Application de l'analyse d'image si demandée
+    if (enableImageAnalysis && product.image_url) {
+      try {
+        const imageAnalysis = await analyzeProductImage(product.image_url, enriched);
+        if (imageAnalysis) {
+          enriched.technical_specs = { ...enriched.technical_specs, ...imageAnalysis };
+          enriched.enrichment_source = 'text_and_image';
+        }
+      } catch (imageError) {
+        console.warn('⚠️ Analyse image échouée:', imageError);
+      }
+    }
+
+    return enriched;
+
+  } catch (error) {
+    console.log('⚠️ Erreur DeepSeek, fallback basique:', error);
+    return enrichProductBasic(product);
+  }
+}
+
+async function analyzeProductImage(imageUrl: string, textAttributes: any) {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiApiKey) return null;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-vision-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analyse cette image de mobilier. Réponds en JSON: {"color": "couleur", "material": "matériau", "style": "style"}`
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageUrl, detail: 'low' }
+              }
+            ]
+          }
+        ],
+        max_tokens: 200
+      }),
+    });
+
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    if (content) {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    }
+
+  } catch (error) {
+    console.warn('⚠️ Erreur analyse image:', error);
+  }
+  
+  return null;
+}
+
+function enrichProductBasic(product: any): EnrichedAttributes {
+  const text = `${product.name || ''} ${product.description || ''}`.toLowerCase();
+  
+  return {
+    general_info: {
+      title: product.name || product.title || 'Produit sans nom',
+      brand: product.vendor || product.brand || 'Marque inconnue',
+      product_type: detectCategory(text),
+      subcategory: detectSubcategory(text)
+    },
+    technical_specs: {
+      material: detectMaterial(text) || 'Non spécifié',
+      color: detectColor(text) || 'Non spécifié',
+      style: detectStyle(text) || 'Contemporain',
+      room: detectRoom(text) || 'Salon',
+      dimensions: extractDimensions(text)
+    },
+    features: {
+      convertible: text.includes('convertible'),
+      storage: text.includes('rangement') || text.includes('storage'),
+      adjustable: text.includes('réglable') || text.includes('ajustable')
+    },
+    seo_marketing: {
+      seo_title: (product.name || 'Produit').substring(0, 60),
+      seo_description: (product.description || 'Description produit').substring(0, 150),
+      ad_headline: (product.name || 'Produit').substring(0, 25),
+      ad_description: (product.description || '').substring(0, 80),
+      tags: generateBasicTags(text),
+      google_product_category: '696'
+    },
+    ai_confidence: {
+      overall: 60,
+      color: 50,
+      style: 55,
+      dimensions: 40,
+      material: 50,
+      category: 70
+    }
+  };
+}
+
+// Fonctions helper améliorées
+function detectCategory(text: string): string {
+  const categories = {
+    'canapé': 'Canapé',
+    'sofa': 'Canapé',
+    'table': 'Table', 
+    'chaise': 'Chaise',
+    'fauteuil': 'Chaise',
+    'lit': 'Lit',
+    'armoire': 'Rangement',
+    'commode': 'Rangement',
+    'meuble tv': 'Meuble TV',
+    'luminaire': 'Éclairage',
+    'lampe': 'Éclairage',
+    'tapis': 'Décoration'
+  };
+  
+  for (const [keyword, category] of Object.entries(categories)) {
+    if (text.includes(keyword)) return category;
+  }
+  return 'Mobilier';
+}
+
+function detectSubcategory(text: string): string {
+  if (text.includes('angle')) return 'Canapé d\'angle';
+  if (text.includes('convertible')) return 'Canapé convertible';
+  if (text.includes('basse')) return 'Table basse';
+  if (text.includes('manger')) return 'Table à manger';
+  return '';
+}
+
+function detectColor(text: string): string {
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge'];
+  return colors.find(color => text.includes(color)) || '';
+}
+
+function detectMaterial(text: string): string {
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'plastic'];
+  return materials.find(material => text.includes(material)) || '';
+}
+
+function detectStyle(text: string): string {
+  const styles = ['moderne', 'scandinave', 'industriel', 'vintage', 'classique'];
+  return styles.find(style => text.includes(style)) || '';
+}
+
+function detectRoom(text: string): string {
+  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger'];
+  return rooms.find(room => text.includes(room)) || '';
+}
+
+function extractDimensions(text: string): string {
+  const match = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+  return match ? `L:${match[1]}cm × l:${match[2]}cm` + (match[3] ? ` × H:${match[3]}cm` : '') : '';
+}
+
+function extractFabricFromMaterial(material: string): string {
+  const fabrics = ['velours', 'tissu', 'cuir'];
+  return fabrics.find(fabric => material.includes(fabric)) || '';
+}
+
+function generateBasicTags(text: string): string[] {
+  const tags = new Set<string>();
+  
+  // Ajouter catégorie
+  const category = detectCategory(text);
+  if (category !== 'Mobilier') tags.add(category.toLowerCase());
+  
+  // Ajouter matériau et couleur
+  const material = detectMaterial(text);
+  const color = detectColor(text);
+  if (material) tags.add(material);
+  if (color) tags.add(color);
+  
+  // Tags supplémentaires
+  if (text.includes('design')) tags.add('design');
+  if (text.includes('moderne')) tags.add('moderne');
+  
+  return Array.from(tags).slice(0, 5);
+}
+
+function generateHandle(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Supprimer accents
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .substring(0, 100);
+}
