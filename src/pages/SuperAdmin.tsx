@@ -438,7 +438,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
           <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">{application.companyName}</h3>
+                <h3 className="text-xl font-bold text-white mb-2">{application.companyName || application.company_name}</h3>
                 <div className="space-y-1">
                   <p className="text-gray-300 flex items-center gap-2">
                     📧 {application.email}
@@ -447,7 +447,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                     📞 {application.phone}
                   </p>
                   <p className="text-gray-300 flex items-center gap-2">
-                    🏢 {application.address}, {application.city}
+                    🏢 {application.address}, {application.city || application.postal_code}
                   </p>
                   <p className="text-gray-300 flex items-center gap-2">
                     🌐 {application.country}
@@ -465,8 +465,8 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                   <p>⏱️ Il y a {Math.floor((Date.now() - new Date(application.submittedAt || Date.now()).getTime()) / (1000 * 60 * 60))}h</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(application.plan)}`}>
-                {application.plan}
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(application.plan || application.selectedPlan)}`}>
+                {application.plan || application.selectedPlan || 'N/A'}
               </span>
             </div>
 
