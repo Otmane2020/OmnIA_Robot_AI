@@ -111,7 +111,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   const loadEnrichedProducts = async () => {
     try {
       setIsLoading(true);
-      console.log('📦 Chargement produits enrichis pour:', effectiveId);
+      console.log('📦 Chargement produits enrichis pour retailer:', effectiveId);
 
       // ✅ UTILISER les variables déjà déclarées, pas les redéclarer
       if (!supabaseUrl || !supabaseKey) {
@@ -120,22 +120,23 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
         return;
       }
 
-      // Try to load from Supabase first - without retailer_id filter since column doesn't exist
-      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=enriched_at.desc&limit=100`, {
+      // Load from Supabase with retailer_id filter for proper isolation
+      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&retailer_id=eq.${effectiveId}&order=enriched_at.desc&limit=100`, {
         headers: {
           'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
+          enable_image_analysis: false,
+          vendor_id: vendorId
           'Content-Type': 'application/json'
         }
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Produits enrichis chargés depuis Supabase:', data.length);
+        console.log('✅ Produits enrichis chargés depuis Supabase pour retailer:', data.length);
         setEnrichedProducts(data);
         setLastSyncTime(data[0]?.enriched_at || null);
       } else {
-        console.log('⚠️ Erreur Supabase, fallback localStorage');
+        console.log('⚠️ Erreur Supabase, fallback localStorage:', response.status);
         loadFromLocalStorage();
       }
 
@@ -369,7 +370,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        // Save to localStorage with retailer isolation
           <button
             onClick={syncEnrichedProducts}
             disabled={isSyncing}
@@ -535,28 +536,43 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
                       <div className="space-y-1">
                         {product.color && (
                           <span className="inline-block bg-pink-500/20 text-pink-300 px-2 py-1 rounded-full text-xs mr-1">
-                            {product.color}
+                            🎨 {product.color}
                           </span>
                         )}
                         {product.material && (
                           <span className="inline-block bg-green-500/20 text-green-300 px-2 py-1 rounded-full text-xs mr-1">
-                            {product.material}
+                            🏗️ {product.material}
                           </span>
                         )}
                         {product.style && (
                           <span className="inline-block bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs mr-1">
-                            {product.style}
+                            ✨ {product.style}
                           </span>
                         )}
                         {product.room && (
                           <span className="inline-block bg-orange-500/20 text-orange-300 px-2 py-1 rounded-full text-xs mr-1">
-                            {product.room}
+                            🏠 {product.room}
+                          </span>
+                        )}
+                        {product.dimensions && (
+                          <span className="inline-block bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full text-xs mr-1">
+                            📏 {product.dimensions}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className="font-bold text-green-400">{product.price}€</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-400">{product.price}€</span>
+                        {product.compare_at_price && product.compare_at_price > product.price && (
+                          <>
+                            <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                            <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                              -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getConfidenceColor(product.confidence_score)}`}>
@@ -623,6 +639,14 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
               
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <>
+                    <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                    <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                      -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
+                    </span>
+                  </>
+                )}
                 <span className={`px-2 py-1 rounded-full text-xs ${getConfidenceColor(product.confidence_score)}`}>
                   {product.confidence_score}%
                 </span>
@@ -645,6 +669,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-gray-400 text-xs">Style:</span>
                     <span className="text-blue-300 text-xs font-medium">{product.style}</span>
+                  </div>
+                )}
+                {product.dimensions && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">Dimensions:</span>
+                    <span className="text-purple-300 text-xs font-medium">{product.dimensions}</span>
                   </div>
                 )}
               </div>

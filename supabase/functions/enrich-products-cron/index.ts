@@ -241,6 +241,7 @@ function createEnrichedProduct(product: any, attributes: EnrichedAttributes, ret
     room: attributes.technical_specs.room,
     
     price: parseFloat(product.price) || 0,
+    compare_at_price: parseFloat(product.compare_at_price) || null,
     stock_qty: getStockQuantity(product),
     
     image_url: product.image_url || product.image || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
@@ -259,6 +260,7 @@ function createEnrichedProduct(product: any, attributes: EnrichedAttributes, ret
     enriched_at: new Date().toISOString(),
     enrichment_source: attributes.enrichment_source || 'text_only',
     
+    // CRITICAL: Add retailer_id for proper isolation
     retailer_id: retailerId,
     created_at: product.created_at || new Date().toISOString()
   };

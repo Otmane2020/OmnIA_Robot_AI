@@ -81,6 +81,7 @@ Deno.serve(async (req: Request) => {
     const cleanedProducts = validProducts.map(product => ({
       ...product,
       id: undefined, // Exclude id to let database auto-generate UUID
+      retailer_id: retailer_id, // Ensure retailer_id is set
       extracted_attributes: product.extracted_attributes || {},
       created_at: product.created_at || new Date().toISOString(),
       updated_at: product.updated_at || new Date().toISOString()
