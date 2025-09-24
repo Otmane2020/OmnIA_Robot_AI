@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings } from 'lucide-react';
 import { ShopifyCSVImporter } from './ShopifyCSVImporter';
 
