@@ -17,6 +17,7 @@ import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
 import { ThankYou } from './pages/ThankYou';
 import { SuperAdmin } from './pages/SuperAdmin';
+import { SellerRobotInterface } from './pages/SellerRobotInterface';
 
 interface Retailer {
   id: string;
@@ -270,6 +271,7 @@ function App() {
       
       <Route path="/chat" element={<ChatInterface />} />
       <Route path="/robot" element={<RobotInterface />} />
+      <Route path="/robot/:sellerSubdomain" element={<SellerRobotWrapper />} />
       
       <Route path="/admin" element={
         isLoggedIn ? (
@@ -310,6 +312,30 @@ function App() {
       <Route path="/upload" element={<UploadPage />} />
     </Routes>
   );
+}
+
+// Wrapper component pour les pages robot vendeur
+const SellerRobotWrapper: React.FC = () => {
+  const { sellerSubdomain } = useParams<{ sellerSubdomain: string }>();
+  
+  if (!sellerSubdomain) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Erreur</h1>
+          <p className="text-gray-300">Sous-domaine vendeur manquant</p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl"
+          >
+            Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return <SellerRobotInterface sellerSubdomain={sellerSubdomain} />;
 }
 
 export default App;
