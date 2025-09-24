@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Store, Users, TrendingUp, MessageSquare, Database, Bot, Settings, LogOut } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { CatalogManagement } from './CatalogManagement';
 import { ProductsEnrichedTable } from './ProductsEnrichedTable';
 import { ConversationHistory } from './ConversationHistory';
 import { VendorSubdomainManager } from './VendorSubdomainManager';
 import { OmniaRobotTab } from './OmniaRobotTab';
+import { SellerSubscriptionManager } from './SellerSubscriptionManager';
 import { useNotifications } from './NotificationSystem';
 
 interface VendorDashboardProps {
@@ -44,6 +46,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({ vendor, onLogo
     { id: 'conversations', label: 'Conversations', icon: MessageSquare },
     { id: 'subdomains', label: 'Sous-domaines', icon: Store },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
+    { id: 'subscription', label: 'Abonnement', icon: CreditCard },
     { id: 'settings', label: 'Paramètres', icon: Settings }
   ];
 
@@ -186,6 +189,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({ vendor, onLogo
       case 'conversations': return <ConversationHistory vendorId={vendor.id} />;
       case 'subdomains': return <VendorSubdomainManager vendorId={vendor.id} companyName={vendor.company_name} />;
       case 'robot': return <OmniaRobotTab vendorId={vendor.id} />;
+      case 'subscription': return <SellerSubscriptionManager seller={vendor} onUpdate={loadVendorStats} />;
       case 'settings': return renderSettings();
       default: return renderDashboard();
     }

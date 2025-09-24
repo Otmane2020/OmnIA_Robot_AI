@@ -171,34 +171,38 @@ export const CatalogManagement: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Simuler le chargement des produits
-    setTimeout(() => {
-      console.log('📦 Chargement catalogue...');
+    loadCatalogProducts();
+  }, []);
+
+  const loadCatalogProducts = async () => {
+    try {
+      setIsLoading(true);
+      console.log('📦 Chargement catalogue admin...');
       
+      // Charger uniquement les produits du catalogue global (admin)
       const savedProducts = localStorage.getItem('catalog_products');
-      let allProducts = [...mockProducts];
+      let allProducts: Product[] = [];
       
       if (savedProducts) {
         try {
           const parsedSaved = JSON.parse(savedProducts);
-          console.log('📦 Produits CSV chargés:', parsedSaved.length);
+          console.log('📦 Produits catalogue chargés:', parsedSaved.length);
           
-          // Valider et nettoyer les produits CSV
-          const validSavedProducts = parsedSaved.filter((p: any) => {
-            const isValid = p && p.name && p.price > 0 && p.status === 'active';
+          // Valider et nettoyer les produits
+          allProducts = parsedSaved.filter((p: any) => {
+            const isValid = p && p.name && p.price > 0;
             if (!isValid) {
               console.warn('⚠️ Produit invalide ignoré:', p);
             }
             return isValid;
           }).map((p: any) => ({
-            // Assurer tous les champs requis
-            id: p.id || `csv-${Date.now()}-${Math.random()}`,
+            id: p.id || `catalog-${Date.now()}-${Math.random()}`,
             name: p.name || p.title || 'Produit sans nom',
             description: p.description || p.body_html || '',
             price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
             compare_at_price: p.compare_at_price || p.variant_compare_at_price,
             category: p.category || p.productType || p.product_type || 'Mobilier',
-            vendor: p.vendor || 'Decora Home',
+            vendor: p.vendor || 'Boutique',
             image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
             product_url: p.product_url || '#',
             stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || 0,
@@ -209,7 +213,7 @@ export const CatalogManagement: React.FC = () => {
               id: `${p.id}-default`,
               title: 'Default',
               price: parseFloat(p.price) || 0,
-              compare_at_price: p.compare_at_price,
+              compareAtPrice: p.compare_at_price,
               availableForSale: true,
               quantityAvailable: parseInt(p.stock) || 0,
               selectedOptions: []
@@ -218,21 +222,26 @@ export const CatalogManagement: React.FC = () => {
             updated_at: p.updated_at || new Date().toISOString()
           }));
           
-          console.log('✅ Produits CSV validés:', validSavedProducts.length);
-          
-          // Mettre les produits CSV en premier
-          allProducts = [...validSavedProducts, ...mockProducts];
+          console.log('✅ Produits catalogue validés:', allProducts.length);
         } catch (error) {
-          console.error('Erreur parsing produits sauvegardés:', error);
+          console.error('Erreur parsing produits catalogue:', error);
+          allProducts = [];
         }
+      } else {
+        console.log('📦 Catalogue admin vide');
+        allProducts = [];
       }
       
-      console.log('📦 Total produits dans catalogue:', allProducts.length);
       setProducts(allProducts);
       setFilteredProducts(allProducts);
+      
+    } catch (error) {
+      console.error('❌ Erreur chargement catalogue:', error);
+      showError('Erreur de chargement', 'Impossible de charger le catalogue.');
+    } finally {
       setIsLoading(false);
-    }, 100);
-  }, []);
+    }
+  };
 
   useEffect(() => {
     // Filtrer les produits

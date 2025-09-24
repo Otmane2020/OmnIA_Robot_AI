@@ -371,15 +371,15 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     showInfo('Synchronisation', 'Synchronisation du catalogue vers les produits enrichis...');
     
     try {
-      // Charger les produits du catalogue normal ET imported_products
-      const savedProducts = localStorage.getItem('catalog_products');
-      let allProducts = [];
+      // Charger les produits du vendeur spécifique
+      const savedProducts = localStorage.getItem(`seller_${vendorId}_products`);
+      let vendorProducts = [];
       
       if (savedProducts) {
         try {
           const catalogProducts = JSON.parse(savedProducts);
-          allProducts = [...allProducts, ...catalogProducts];
-          console.log('📦 Produits du catalogue chargés:', catalogProducts.length);
+          vendorProducts = [...vendorProducts, ...catalogProducts];
+          console.log('📦 Produits du vendeur chargés:', catalogProducts.length);
         } catch (error) {
           console.error('Erreur parsing catalogue:', error);
         }
@@ -434,13 +434,17 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       }
       
       // Fallback: enrichissement local
-      if (allProducts.length > 0) {
-        const newEnrichedProducts = allProducts.map((product: any) => enrichProduct(product));
+      if (vendorProducts.length > 0) {
+        const newEnrichedProducts = vendorProducts.map((product: any) => enrichProduct(product));
         
         setProducts(newEnrichedProducts);
+        
+        // Sauvegarder les produits enrichis spécifiques au vendeur
+        localStorage.setItem(`seller_${vendorId}_enriched_products`, JSON.stringify(newEnrichedProducts));
+        
         showSuccess('Synchronisation locale', `${newEnrichedProducts.length} produits enrichis localement !`);
       } else {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue principal.');
+        showError('Catalogue vide', 'Aucun produit trouvé dans votre catalogue. Importez d\'abord vos produits.');
       }
     } catch (error) {
       console.error('❌ Erreur synchronisation:', error);
