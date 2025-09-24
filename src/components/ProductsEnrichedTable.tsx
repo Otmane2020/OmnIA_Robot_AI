@@ -45,6 +45,10 @@ interface ProductsEnrichedTableProps {
   refreshTrigger?: number;
 }
 
+// ✅ Déclarer les variables UNE SEULE FOIS en haut du fichier
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ 
   retailerId, 
   vendorId,
@@ -109,9 +113,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       setIsLoading(true);
       console.log('📦 Chargement produits enrichis pour:', effectiveId);
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
+      // ✅ UTILISER les variables déjà déclarées, pas les redéclarer
       if (!supabaseUrl || !supabaseKey) {
         console.log('⚠️ Supabase non configuré, chargement depuis localStorage');
         loadFromLocalStorage();
@@ -186,9 +188,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
 
       setSyncProgress(20);
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
+      // ✅ UTILISER les variables déjà déclarées
       if (!supabaseUrl || !supabaseKey) {
         throw new Error('Supabase non configuré');
       }
