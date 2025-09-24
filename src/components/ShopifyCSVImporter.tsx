@@ -488,31 +488,8 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
       
-      // Sauvegarder dans TOUS les emplacements pour assurer la compatibilité
-      try {
-        // 1. Catalogue global
-        localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
-        console.log('✅ Produits sauvegardés dans catalog_products:', activeProducts.length);
-        
-        // 2. Vendor-specific storage
-        const currentVendor = JSON.parse(localStorage.getItem('current_user') || '{}');
-        if (currentVendor.id) {
-          localStorage.setItem(`vendor_${currentVendor.id}_products`, JSON.stringify(activeProducts));
-          localStorage.setItem(`seller_${currentVendor.id}_products`, JSON.stringify(activeProducts));
-          localStorage.setItem(`retailer_${currentVendor.id}_products`, JSON.stringify(activeProducts));
-          console.log('✅ Produits sauvegardés pour vendor:', currentVendor.id);
-        }
-        
-        // 3. Fallback pour demo
-        localStorage.setItem('vendor_demo-retailer-id_products', JSON.stringify(activeProducts));
-        localStorage.setItem('seller_demo-retailer-id_products', JSON.stringify(activeProducts));
-        localStorage.setItem('retailer_demo-retailer-id_products', JSON.stringify(activeProducts));
-        
-        console.log('✅ Tous les produits CSV sauvegardés avec succès');
-      } catch (storageError) {
-        console.error('❌ Erreur sauvegarde localStorage:', storageError);
-        throw new Error('Impossible de sauvegarder les produits importés');
-      }
+      // Sauvegarder seulement les métadonnées d'import (pas les produits complets)
+      console.log('✅ Produits traités:', activeProducts.length, 'actifs sur', transformedProducts.length, 'total');
       
       localStorage.setItem('csv_file_data', JSON.stringify({
         filename: csvFile.name,
@@ -522,7 +499,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         active_products: activeProducts.length,
         mapping: fieldMapping
       }));
-      console.log('✅ Produits CSV actifs sauvegardés:', activeProducts.length, '/', transformedProducts.length);
+      console.log('✅ Métadonnées CSV sauvegardées');
       
       // Déclencher l'entraînement IA automatique après import
       try {
