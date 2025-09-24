@@ -186,52 +186,75 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
         return;
       }
 
-      setSyncProgress(20);
+      // Start progress simulation
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 1000);
 
       // ✅ UTILISER les variables déjà déclarées
       if (!supabaseUrl || !supabaseKey) {
         throw new Error('Supabase non configuré');
       }
 
-      // Use direct fetch to Edge Function
-      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          products: catalogProducts,
-          retailer_id: effectiveId,
-          force_full_enrichment: true,
-          enable_image_analysis: false
-        }),
-      });
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ [sync-debug] Erreur Edge Function:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      try {
+        // Use direct fetch to Edge Function
+        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            products: catalogProducts,
+            retailer_id: effectiveId,
+            force_full_enrichment: true,
+            enable_image_analysis: false
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [sync-debug] Erreur Edge Function:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ [sync-debug] Enrichissement réussi:', data);
+        setSyncProgress(100);
+
+        // Reload enriched products
+        await loadEnrichedProducts();
+
+        showSuccess(
+          'Synchronisation terminée',
+          `${data?.stats?.enriched_products || 0} produits enrichis avec IA !`,
+          [
+            {
+              label: 'Voir les résultats',
+              action: () => setViewMode('table'),
+              variant: 'primary'
+            }
+          ]
+        );
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+        throw fetchError;
       }
-
-      const data = await response.json();
-      console.log('✅ [sync-debug] Enrichissement réussi:', data);
-      setSyncProgress(100);
-
-      // Reload enriched products
-      await loadEnrichedProducts();
-
-      showSuccess(
-        'Synchronisation terminée',
-        `${data?.stats?.enriched_products || 0} produits enrichis avec IA !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => setViewMode('table'),
-            variant: 'primary'
-          }
-        ]
-      );
 
     } catch (error: any) {
       console.error('❌ [sync-debug] Erreur détaillée:', error);
