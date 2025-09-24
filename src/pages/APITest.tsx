@@ -75,12 +75,70 @@ export const APITest: React.FC = () => {
     }
   };
 
+  const testEnrichFunction = async () => {
+    setLoading(prev => ({ ...prev, enrich: true }));
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Configuration Supabase manquante');
+      }
+
+      console.log('🔍 Test Edge Function:', `${supabaseUrl}/functions/v1/enrich-products-cron`);
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          products: [
+            {
+              id: 'test-product',
+              name: 'Produit Test',
+              description: 'Description test pour vérifier l\'enrichissement IA',
+              price: 299,
+              category: 'Test',
+              vendor: 'Test Vendor',
+              image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+              product_url: '#test',
+              stock: 10,
+              status: 'active'
+            }
+          ],
+          retailer_id: 'test-retailer',
+          enable_image_analysis: false
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      setTestResults(prev => ({
+        ...prev,
+        enrich: { success: true, data }
+      }));
+    } catch (err: any) {
+      setTestResults(prev => ({
+        ...prev,
+        enrich: { error: err.message }
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, enrich: false }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">API Test Dashboard</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Supabase Test */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Supabase</h2>
@@ -137,6 +195,25 @@ export const APITest: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Edge Function Test */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Edge Function</h2>
+            <button
+              onClick={testEnrichFunction}
+              disabled={loading.enrich}
+              className="w-full bg-orange-600 text-white py-2 px-4 rounded hover:bg-orange-700 disabled:opacity-50"
+            >
+              {loading.enrich ? 'Testing...' : 'Test Enrich'}
+            </button>
+            {testResults.enrich && (
+              <div className="mt-4 p-3 rounded bg-gray-50">
+                <pre className="text-sm overflow-auto">
+                  {JSON.stringify(testResults.enrich, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Environment Variables */}
@@ -159,6 +236,34 @@ export const APITest: React.FC = () => {
               <span className="font-medium">OpenAI API Key:</span>
               <span className={`ml-2 ${import.meta.env.VITE_OPENAI_API_KEY ? 'text-green-600' : 'text-red-600'}`}>
                 {import.meta.env.VITE_OPENAI_API_KEY ? '✓ Configured' : '✗ Missing'}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium">DeepSeek API Key:</span>
+              <span className={`ml-2 ${import.meta.env.VITE_DEEPSEEK_API_KEY ? 'text-green-600' : 'text-red-600'}`}>
+                {import.meta.env.VITE_DEEPSEEK_API_KEY ? '✓ Configured' : '✗ Missing'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* URL Test */}
+        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Edge Function URLs</h2>
+          <div className="space-y-2 text-sm">
+            <div>
+              <span className="font-medium">Base URL:</span>
+              <span className="ml-2 font-mono text-blue-600">
+                {import.meta.env.VITE_SUPABASE_URL || 'Non configuré'}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium">Enrich Function:</span>
+              <span className="ml-2 font-mono text-blue-600">
+                {import.meta.env.VITE_SUPABASE_URL ? 
+                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products-cron` : 
+                  'URL non disponible'
+                }
               </span>
             </div>
           </div>
