@@ -1215,3 +1215,5 @@ function calculateBasicConfidence(product: any): number {
   if (product.category || product.productType) confidence += 15;
   return Math.min(confidence, 100);
 }
+
+export { ProductsEnrichedTable }
