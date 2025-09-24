@@ -488,15 +488,30 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
       
-      // Save to catalog_products for global catalog
-      localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
-      
-      // ALSO save to vendor-specific storage if we have a vendor context
-      const currentVendor = JSON.parse(localStorage.getItem('current_user') || '{}');
-      if (currentVendor.id) {
-        localStorage.setItem(`vendor_${currentVendor.id}_products`, JSON.stringify(activeProducts));
-        localStorage.setItem(`seller_${currentVendor.id}_products`, JSON.stringify(activeProducts));
-        console.log('✅ Produits sauvegardés pour vendor:', currentVendor.id);
+      // Sauvegarder dans TOUS les emplacements pour assurer la compatibilité
+      try {
+        // 1. Catalogue global
+        localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
+        console.log('✅ Produits sauvegardés dans catalog_products:', activeProducts.length);
+        
+        // 2. Vendor-specific storage
+        const currentVendor = JSON.parse(localStorage.getItem('current_user') || '{}');
+        if (currentVendor.id) {
+          localStorage.setItem(`vendor_${currentVendor.id}_products`, JSON.stringify(activeProducts));
+          localStorage.setItem(`seller_${currentVendor.id}_products`, JSON.stringify(activeProducts));
+          localStorage.setItem(`retailer_${currentVendor.id}_products`, JSON.stringify(activeProducts));
+          console.log('✅ Produits sauvegardés pour vendor:', currentVendor.id);
+        }
+        
+        // 3. Fallback pour demo
+        localStorage.setItem('vendor_demo-retailer-id_products', JSON.stringify(activeProducts));
+        localStorage.setItem('seller_demo-retailer-id_products', JSON.stringify(activeProducts));
+        localStorage.setItem('retailer_demo-retailer-id_products', JSON.stringify(activeProducts));
+        
+        console.log('✅ Tous les produits CSV sauvegardés avec succès');
+      } catch (storageError) {
+        console.error('❌ Erreur sauvegarde localStorage:', storageError);
+        throw new Error('Impossible de sauvegarder les produits importés');
       }
       
       localStorage.setItem('csv_file_data', JSON.stringify({
@@ -650,12 +665,13 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       // Notifier le parent
       if (onImportComplete) {
         onImportComplete({
-          name: `${csvFile.name} (${activeProducts.length} produits actifs)`,
+          name: `Import CSV: ${csvFile.name}`,
           platform: 'csv',
           products_count: activeProducts.length,
           status: 'connected',
           products: activeProducts,
-          imported_at: new Date().toISOString()
+          imported_at: new Date().toISOString(),
+          message: `${activeProducts.length} produits CSV importés avec succès !`
         });
       }
       

@@ -179,59 +179,72 @@ export const CatalogManagement: React.FC = () => {
       setIsLoading(true);
       console.log('📦 Chargement catalogue admin...');
       
-      // Charger uniquement les produits du catalogue global (admin)
-      const savedProducts = localStorage.getItem('catalog_products');
+      // Charger les produits depuis TOUS les emplacements possibles
+      const storageKeys = [
+        'catalog_products',
+        'vendor_demo-retailer-id_products',
+        'seller_demo-retailer-id_products',
+        'retailer_demo-retailer-id_products'
+      ];
+      
       let allProducts: Product[] = [];
       
-      if (savedProducts) {
-        try {
-          const parsedSaved = JSON.parse(savedProducts);
-          console.log('📦 Produits catalogue chargés:', parsedSaved.length);
-          
-          // Valider et nettoyer les produits
-          allProducts = parsedSaved.filter((p: any) => {
-            const isValid = p && p.name && p.price > 0;
-            if (!isValid) {
-              console.warn('⚠️ Produit invalide ignoré:', p);
-            }
-            return isValid;
-          }).map((p: any) => ({
-            id: p.id || `catalog-${Date.now()}-${Math.random()}`,
-            name: p.name || p.title || 'Produit sans nom',
-            description: p.description || p.body_html || '',
-            price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
-            compare_at_price: p.compare_at_price || p.variant_compare_at_price,
-            category: p.category || p.productType || p.product_type || 'Mobilier',
-            vendor: p.vendor || 'Boutique',
-            image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-            product_url: p.product_url || '#',
-            stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || 0,
-            status: p.status || 'active',
-            source_platform: p.source_platform || 'csv',
-            sku: p.sku || p.variant_sku || '',
-            variants: p.variants || [{
-              id: `${p.id}-default`,
-              title: 'Default',
-              price: parseFloat(p.price) || 0,
-              compareAtPrice: p.compare_at_price,
-              availableForSale: true,
-              quantityAvailable: parseInt(p.stock) || 0,
-              selectedOptions: []
-            }],
-            created_at: p.created_at || new Date().toISOString(),
-            updated_at: p.updated_at || new Date().toISOString()
-          }));
-          
-          console.log('✅ Produits catalogue validés:', allProducts.length);
-        } catch (error) {
-          console.error('Erreur parsing produits catalogue:', error);
-          allProducts = [];
+      // Essayer chaque clé de stockage
+      for (const storageKey of storageKeys) {
+        const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const parsedSaved = JSON.parse(savedProducts);
+            console.log(`📦 Produits trouvés dans ${storageKey}:`, parsedSaved.length);
+            
+            // Valider et nettoyer les produits
+            const validProducts = parsedSaved.filter((p: any) => {
+              const isValid = p && (p.name || p.title) && (p.price > 0 || p.variant_price > 0);
+              if (!isValid) {
+                console.warn('⚠️ Produit invalide ignoré:', p);
+              }
+              return isValid;
+            }).map((p: any) => ({
+              id: p.id || `catalog-${Date.now()}-${Math.random()}`,
+              name: p.name || p.title || 'Produit sans nom',
+              description: p.description || p.body_html || '',
+              price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
+              compare_at_price: p.compare_at_price || p.variant_compare_at_price,
+              category: p.category || p.productType || p.product_type || 'Mobilier',
+              vendor: p.vendor || 'Boutique',
+              image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+              product_url: p.product_url || '#',
+              stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || parseInt(p.quantityAvailable) || 0,
+              status: p.status || 'active',
+              source_platform: p.source_platform || 'csv',
+              sku: p.sku || p.variant_sku || '',
+              variants: p.variants || [{
+                id: `${p.id}-default`,
+                title: 'Default',
+                price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
+                compareAtPrice: p.compare_at_price || p.variant_compare_at_price,
+                availableForSale: true,
+                quantityAvailable: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || parseInt(p.quantityAvailable) || 0,
+                selectedOptions: []
+              }],
+              created_at: p.created_at || new Date().toISOString(),
+              updated_at: p.updated_at || new Date().toISOString()
+            }));
+            
+            allProducts = [...allProducts, ...validProducts];
+            console.log(`✅ Produits validés depuis ${storageKey}:`, validProducts.length);
+          } catch (error) {
+            console.error(`❌ Erreur parsing ${storageKey}:`, error);
+          }
         }
-      } else {
-        console.log('📦 Catalogue admin vide');
-        allProducts = [];
       }
       
+      // Supprimer les doublons par ID
+      const uniqueProducts = allProducts.filter((product, index, self) => 
+        index === self.findIndex(p => p.id === product.id)
+      );
+      
+      console.log('✅ Produits uniques chargés:', uniqueProducts.length);
       setProducts(allProducts);
       setFilteredProducts(allProducts);
       
