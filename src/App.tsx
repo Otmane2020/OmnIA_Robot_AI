@@ -78,11 +78,23 @@ function App() {
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
+    // Charger les revendeurs validés depuis localStorage
+    let validatedRetailers = [];
+    try {
+      const saved = localStorage.getItem('validated_retailers');
+      validatedRetailers = saved ? JSON.parse(saved) : [];
+      console.log('📦 Revendeurs validés chargés:', validatedRetailers.length);
+    } catch (error) {
+      console.error('❌ Erreur chargement revendeurs validés:', error);
+      validatedRetailers = [];
+    }
+    
     // Comptes de démonstration
     const testVendors = [
       {
         id: '550e8400-e29b-41d4-a716-446655440001',
         email: 'demo@decorahome.fr',
+        password: 'demo123',
         company_name: 'Decora Home',
         subdomain: 'decorahome',
         plan: 'professional',
@@ -94,6 +106,7 @@ function App() {
       {
         id: '550e8400-e29b-41d4-a716-446655440002',
         email: 'contact@mobilierdesign.fr',
+        password: 'design123',
         company_name: 'Mobilier Design',
         subdomain: 'mobilierdesign',
         plan: 'enterprise',
@@ -105,6 +118,7 @@ function App() {
       {
         id: '550e8400-e29b-41d4-a716-446655440003',
         email: 'info@decocontemporain.com',
+        password: 'deco123',
         company_name: 'Déco Contemporain',
         subdomain: 'decocontemporain',
         plan: 'starter',
@@ -116,6 +130,7 @@ function App() {
       {
         id: '550e8400-e29b-41d4-a716-446655440004',
         email: 'contact@meubleslyon.fr',
+        password: 'lyon123',
         company_name: 'Meubles Lyon',
         subdomain: 'meubleslyon',
         plan: 'enterprise',
@@ -124,6 +139,23 @@ function App() {
         created_at: '2024-04-20T16:00:00Z',
         validated_at: '2024-04-20T18:00:00Z'
       }
+    ];
+
+    // Combiner les comptes de démo avec les revendeurs validés
+    const allVendors = [
+      ...testVendors,
+      ...validatedRetailers.map(retailer => ({
+        id: retailer.id,
+        email: retailer.email,
+        password: retailer.password || 'password123',
+        company_name: retailer.name || retailer.company_name,
+        subdomain: retailer.email.split('@')[0].replace(/[^a-z0-9]/g, ''),
+        plan: retailer.plan || 'professional',
+        status: retailer.status || 'active',
+        contact_name: retailer.contact_name || 'Contact',
+        created_at: retailer.joinDate || retailer.created_at || new Date().toISOString(),
+        validated_at: retailer.validated_at || new Date().toISOString()
+      }))
     ];
 
     // Super Admin
@@ -136,10 +168,9 @@ function App() {
     }
     
     // Vérifier si c'est un vendeur
-    const vendor = testVendors.find(v => v.email === credentials.email);
-    const validPasswords = ['demo123', 'design123', 'deco123', 'lyon123'];
+    const vendor = allVendors.find(v => v.email === credentials.email);
     
-    if (vendor && validPasswords.includes(credentials.password)) {
+    if (vendor && vendor.password === credentials.password) {
       console.log('✅ Connexion vendeur:', vendor.company_name);
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
@@ -149,7 +180,22 @@ function App() {
     
     // Identifiants incorrects
     console.log('❌ Identifiants incorrects:', credentials.email);
-    alert('Identifiants incorrects.\n\n🔑 Comptes disponibles :\n• demo@decorahome.fr / demo123\n• contact@mobilierdesign.fr / design123\n• info@decocontemporain.com / deco123\n• contact@meubleslyon.fr / lyon123\n• superadmin@omnia.sale / superadmin2025');
+    
+    // Construire la liste des comptes disponibles
+    const availableAccounts = [
+      '• demo@decorahome.fr / demo123',
+      '• contact@mobilierdesign.fr / design123', 
+      '• info@decocontemporain.com / deco123',
+      '• contact@meubleslyon.fr / lyon123',
+      '• superadmin@omnia.sale / superadmin2025'
+    ];
+    
+    // Ajouter les revendeurs validés à la liste
+    validatedRetailers.forEach(retailer => {
+      availableAccounts.push(`• ${retailer.email} / ${retailer.password || 'password123'} (Validé)`);
+    });
+    
+    alert(`Identifiants incorrects.\n\n🔑 Comptes disponibles :\n${availableAccounts.join('\n')}`);
   };
 
   const handleLogout = () => {

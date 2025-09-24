@@ -26,6 +26,7 @@ interface Retailer {
   products: number;
   joinDate: string;
   lastActive: string;
+  password?: string;
 }
 
 export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplications, onValidateApplication }) => {
@@ -112,6 +113,8 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
   ];
 
   const getPlanColor = (plan: string) => {
+    if (!plan) return 'bg-gray-500/20 text-gray-300';
+    
     switch (plan) {
       case 'starter': return 'bg-gray-500/20 text-gray-300';
       case 'professional': return 'bg-cyan-500/20 text-cyan-300';
@@ -135,6 +138,9 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
       console.log(`🌐 Sous-domaine créé: ${application.proposedSubdomain}`);
       console.log(`📧 Email d'approbation simulé pour: ${application.email}`);
       
+      // Générer un mot de passe par défaut si non fourni
+      const defaultPassword = application.password || 'password123';
+      
       // Créer le nouveau revendeur
       const newRetailer: Retailer = {
         id: Date.now().toString(),
@@ -146,14 +152,24 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
         conversations: 0,
         products: 0,
         joinDate: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
+        password: defaultPassword
       };
       
       setRetailers(prev => [...prev, newRetailer]);
       
+      // Sauvegarder les revendeurs validés dans localStorage pour la connexion
+      const updatedRetailers = [...retailers, newRetailer];
+      try {
+        localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
+        console.log('✅ Revendeur sauvegardé pour connexion:', application.email);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde revendeur:', error);
+      }
+      
       showSuccess(
         'Demande approuvée',
-        `${application.companyName} a été approuvé ! Sous-domaine ${application.proposedSubdomain}.omnia.sale créé. Identifiants: ${application.email} / ${application.password || 'motdepasse123'}`,
+        `${application.companyName} a été approuvé ! Sous-domaine ${application.proposedSubdomain}.omnia.sale créé. Identifiants: ${application.email} / ${defaultPassword}`,
         [
           {
             label: 'Voir les revendeurs',
