@@ -307,14 +307,26 @@ export const CatalogManagement: React.FC = () => {
     if (selectedProducts.length === 0) return;
     
     if (confirm(`Supprimer ${selectedProducts.length} produit(s) sélectionné(s) ?`)) {
-      const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
-      setProducts(updatedProducts);
+      try {
+        const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
       
-      // Sauvegarder dans localStorage
-      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+        // Sauvegarder dans localStorage avec gestion d'erreur
+        try {
+          localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+          console.log('✅ Produits supprimés et sauvegardés');
+        } catch (storageError) {
+          console.error('❌ Erreur sauvegarde après suppression:', storageError);
+          showError('Erreur de sauvegarde', 'Produits supprimés temporairement mais changements non persistés.');
+        }
       
-      setSelectedProducts([]);
-      showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
+        setSelectedProducts([]);
+        showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
+      } catch (error) {
+        console.error('❌ Erreur suppression produits:', error);
+        showError('Erreur de suppression', 'Impossible de supprimer les produits sélectionnés.');
+      }
     }
   };
 
@@ -348,8 +360,25 @@ export const CatalogManagement: React.FC = () => {
 
   const handleDeleteProduct = (productId: string) => {
     if (confirm('Supprimer ce produit ?')) {
-      setProducts(prev => prev.filter(p => p.id !== productId));
-      showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
+      try {
+        const updatedProducts = products.filter(p => p.id !== productId);
+        setProducts(updatedProducts);
+        setFilteredProducts(updatedProducts);
+        
+        // Sauvegarder dans localStorage
+        try {
+          localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+          console.log('✅ Produit supprimé et sauvegardé');
+        } catch (storageError) {
+          console.error('❌ Erreur sauvegarde après suppression:', storageError);
+          showError('Erreur de sauvegarde', 'Produit supprimé temporairement mais changement non persisté.');
+        }
+        
+        showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
+      } catch (error) {
+        console.error('❌ Erreur suppression produit:', error);
+        showError('Erreur de suppression', 'Impossible de supprimer le produit.');
+      }
     }
   };
 
@@ -362,42 +391,96 @@ export const CatalogManagement: React.FC = () => {
       updated_at: new Date().toISOString()
     };
     
-    const updatedProducts = [newProduct, ...products];
-    setProducts(updatedProducts);
-    
-    // Sauvegarder dans localStorage
     try {
-      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
-      console.log('✅ Produit ajouté et sauvegardé:', newProduct.name);
+      const updatedProducts = [newProduct, ...products];
+      setProducts(updatedProducts);
+      setFilteredProducts(updatedProducts);
+    
+      // Sauvegarder dans localStorage avec gestion d'erreur améliorée
+      try {
+        const dataToSave = JSON.stringify(updatedProducts);
+        localStorage.setItem('catalog_products', dataToSave);
+        console.log('✅ Produit ajouté et sauvegardé:', newProduct.name);
+        
+        // Vérifier que la sauvegarde a bien fonctionné
+        const savedData = localStorage.getItem('catalog_products');
+        if (!savedData) {
+          throw new Error('Sauvegarde échouée - données non trouvées après sauvegarde');
+        }
+        
+        showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
+      } catch (storageError) {
+        console.error('❌ Erreur sauvegarde localStorage:', storageError);
+        
+        // Si localStorage plein, essayer de nettoyer d'abord
+        if (storageError.name === 'QuotaExceededError') {
+          try {
+            // Nettoyer les anciennes données
+            const keysToClean = ['csv_file_data', 'last_csv_filename', 'last_csv_size'];
+            keysToClean.forEach(key => localStorage.removeItem(key));
+            
+            // Réessayer la sauvegarde
+            localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+            console.log('✅ Produit sauvegardé après nettoyage localStorage');
+            showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
+          } catch (retryError) {
+            console.error('❌ Échec sauvegarde même après nettoyage:', retryError);
+            showError('Erreur de sauvegarde', 'Espace de stockage insuffisant. Produit ajouté temporairement mais non persisté.');
+          }
+        } else {
+          showError('Erreur de sauvegarde', 'Impossible de sauvegarder le produit en local.');
+        }
+      }
     } catch (error) {
-      console.error('❌ Erreur sauvegarde localStorage:', error);
-      showError('Erreur de sauvegarde', 'Impossible de sauvegarder le produit en local.');
+      console.error('❌ Erreur ajout produit:', error);
+      showError('Erreur d\'ajout', 'Impossible d\'ajouter le produit au catalogue.');
     }
     
     setShowAddModal(false);
-    showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
   };
 
   const handleUpdateProduct = (productData: any) => {
-    const updatedProducts = products.map(p => 
-      p.id === selectedProduct?.id 
-        ? { ...p, ...productData, updated_at: new Date().toISOString() }
-        : p
-    );
-    setProducts(updatedProducts);
-    
-    // Sauvegarder dans localStorage
     try {
-      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
-      console.log('✅ Produit modifié et sauvegardé:', selectedProduct?.name);
+      const updatedProducts = products.map(p => 
+        p.id === selectedProduct?.id 
+          ? { ...p, ...productData, updated_at: new Date().toISOString() }
+          : p
+      );
+      setProducts(updatedProducts);
+      setFilteredProducts(updatedProducts);
+    
+      // Sauvegarder dans localStorage avec gestion d'erreur améliorée
+      try {
+        const dataToSave = JSON.stringify(updatedProducts);
+        localStorage.setItem('catalog_products', dataToSave);
+        console.log('✅ Produit modifié et sauvegardé:', selectedProduct?.name);
+        
+        showSuccess('Produit modifié', 'Le produit a été modifié avec succès.');
+      } catch (storageError) {
+        console.error('❌ Erreur sauvegarde localStorage:', storageError);
+        
+        if (storageError.name === 'QuotaExceededError') {
+          try {
+            // Nettoyer et réessayer
+            const keysToClean = ['csv_file_data', 'last_csv_filename', 'last_csv_size'];
+            keysToClean.forEach(key => localStorage.removeItem(key));
+            localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+            console.log('✅ Produit sauvegardé après nettoyage');
+            showSuccess('Produit modifié', 'Le produit a été modifié avec succès.');
+          } catch (retryError) {
+            showError('Erreur de sauvegarde', 'Modifications appliquées temporairement mais non persistées.');
+          }
+        } else {
+          showError('Erreur de sauvegarde', 'Impossible de sauvegarder les modifications.');
+        }
+      }
     } catch (error) {
-      console.error('❌ Erreur sauvegarde localStorage:', error);
-      showError('Erreur de sauvegarde', 'Impossible de sauvegarder les modifications.');
+      console.error('❌ Erreur modification produit:', error);
+      showError('Erreur de modification', 'Impossible de modifier le produit.');
     }
     
     setShowAddModal(false);
     setSelectedProduct(null);
-    showSuccess('Produit modifié', 'Le produit a été modifié avec succès.');
   };
 
   const getStatusColor = (status: string) => {
