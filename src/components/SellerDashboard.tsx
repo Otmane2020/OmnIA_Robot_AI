@@ -7,6 +7,7 @@ import { SellerCatalogManagement } from './SellerCatalogManagement';
 import { SellerConversationHistory } from './SellerConversationHistory';
 import { SellerAnalytics } from './SellerAnalytics';
 import { SellerSettings } from './SellerSettings';
+import { SellerSubscriptionManager } from './SellerSubscriptionManager';
 import { NotificationSystem, useNotifications } from './NotificationSystem';
 
 interface Seller {
