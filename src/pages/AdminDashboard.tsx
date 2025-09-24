@@ -6,7 +6,7 @@ import {
   Clock, Star, X, ShoppingBag
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { VendorDashboard } from '../components/VendorDashboard';
+import { SellerDashboard } from '../components/SellerDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
@@ -19,6 +19,7 @@ import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  onUpdateVendor?: () => void;
   currentVendor?: {
     id: string;
     email: string;
@@ -37,12 +38,12 @@ interface DashboardStats {
   revenue: number;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor, onUpdateVendor }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
   // Si un vendeur est connecté, afficher son dashboard personnalisé
   if (currentVendor) {
-    return <VendorDashboard vendor={currentVendor} onLogout={onLogout} />;
+    return <SellerDashboard seller={currentVendor} onLogout={onLogout} onUpdate={onUpdateVendor || (() => {})} />;
   }
 
   const [activeTab, setActiveTab] = useState('dashboard');

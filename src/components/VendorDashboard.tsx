@@ -189,7 +189,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({ vendor, onLogo
       case 'conversations': return <ConversationHistory vendorId={vendor.id} />;
       case 'subdomains': return <VendorSubdomainManager vendorId={vendor.id} companyName={vendor.company_name} />;
       case 'robot': return <OmniaRobotTab vendorId={vendor.id} />;
-      case 'subscription': return <SellerSubscriptionManager seller={vendor} onUpdate={loadVendorStats} />;
+      case 'subscription': return <SellerSubscriptionManager seller={vendor} onUpdate={onUpdate} />;
       case 'settings': return renderSettings();
       default: return renderDashboard();
     }

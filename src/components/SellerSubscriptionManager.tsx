@@ -224,19 +224,38 @@ export const SellerSubscriptionManager: React.FC<SellerSubscriptionManagerProps>
       // Simuler le downgrade
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Programmer le downgrade pour la fin de période
-      const downgradePlan = {
-        seller_id: seller.id,
-        new_plan: newPlan,
-        effective_date: usage?.next_billing_date,
-        scheduled_at: new Date().toISOString()
-      };
-      localStorage.setItem(`seller_${seller.id}_scheduled_downgrade`, JSON.stringify(downgradePlan));
-      
-      showInfo(
-        'Downgrade programmé',
-        `Votre plan sera rétrogradé vers ${newPlanData?.name} le ${new Date(usage?.next_billing_date || Date.now()).toLocaleDateString('fr-FR')}. Vous conservez vos fonctionnalités actuelles jusqu'à cette date.`
+      // Mettre à jour immédiatement le plan du vendeur
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const updatedRetailers = validatedRetailers.map((retailer: any) => 
+        retailer.id === seller.id ? { ...retailer, plan: newPlan } : retailer
       );
+      localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
+      
+      // Mettre à jour l'utilisation avec les nouvelles limites
+      const newPlanData = plans.find(p => p.id === newPlan);
+      if (newPlanData && usage) {
+        const updatedUsage = {
+          ...usage,
+          conversations_limit: newPlanData.conversations_limit || usage.conversations_limit,
+          products_limit: newPlanData.products_limit
+        };
+        setUsage(updatedUsage);
+        localStorage.setItem(`seller_${seller.id}_usage`, JSON.stringify(updatedUsage));
+      }
+      
+      showSuccess(
+        'Downgrade réussi',
+        `Votre plan a été rétrogradé vers ${newPlanData?.name}. Les nouvelles limites sont appliquées immédiatement.`,
+        [
+          {
+            label: 'Voir les changements',
+            action: () => showInfo('Plan modifié', `Plan ${newPlanData?.name} activé avec succès !`),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+      onUpdate();
       
     } catch (error) {
       showError('Erreur de downgrade', 'Impossible de programmer la rétrogradation.');

@@ -117,60 +117,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   };
 
   const generateMockEnrichedProducts = (): EnrichedProduct[] => {
-    // Charger les produits du catalogue normal
-    const savedProducts = localStorage.getItem('catalog_products');
-    let baseProducts = [];
-    
-    if (savedProducts) {
-      try {
-        baseProducts = JSON.parse(savedProducts);
-      } catch (error) {
-        console.error('Erreur parsing produits sauvegardés:', error);
-      }
-    }
-    
-    // Produits de base Decora Home
-    const decoraProducts = [
-      {
-        id: 'decora-canape-alyana-beige',
-        name: 'Canapé ALYANA convertible - Beige',
-        description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-        price: 799,
-        category: 'Canapé',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-        product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-        stock: 100
-      },
-      {
-        id: 'decora-table-aurea-100',
-        name: 'Table AUREA Ø100cm - Travertin',
-        description: 'Table ronde en travertin naturel avec pieds métal noir',
-        price: 499,
-        category: 'Table',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-        product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-        stock: 50
-      },
-      {
-        id: 'decora-chaise-inaya-gris',
-        name: 'Chaise INAYA - Gris chenille',
-        description: 'Chaise en tissu chenille avec pieds métal noir',
-        price: 99,
-        category: 'Chaise',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-        product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-        stock: 96
-      }
-    ];
-    
-    // Combiner produits de base + produits importés
-    const allProducts = [...decoraProducts, ...baseProducts];
-    
-    // Enrichir automatiquement chaque produit
-    return allProducts.map(product => enrichProduct(product));
+    // NOUVEAU: Retourner un tableau vide pour les nouveaux vendeurs
+    console.log('📦 Nouveau vendeur - aucun produit enrichi');
+    return [];
   };
 
   const enrichProduct = (product: any): EnrichedProduct => {

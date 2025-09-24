@@ -32,6 +32,7 @@ interface Seller {
 interface SellerDashboardProps {
   seller: Seller;
   onLogout: () => void;
+  onUpdate: () => void;
 }
 
 interface SellerStats {
@@ -43,7 +44,7 @@ interface SellerStats {
   cart_additions: number;
 }
 
-export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogout }) => {
+export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogout, onUpdate }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<SellerStats>({
     conversations: 0,
@@ -215,7 +216,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
             className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Eye className="w-8 h-8 text-green-400 mb-3" />
-            <h3 className="text-lg font-semibold text-white mb-2">Tester Mon Robot</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Tester OmnIA Robot</h3>
             <p className="text-gray-300 text-sm">/robot/{seller.subdomain || seller.id}</p>
           </button>
         </div>
@@ -280,8 +281,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;
       case 'robot': return renderRobotConfig();
-      case 'subscription': return <SellerSubscriptionManager seller={seller} onUpdate={loadSellerStats} />;
-      case 'settings': return <SellerSettings seller={seller} onUpdate={loadSellerStats} />;
+      case 'subscription': return <SellerSubscriptionManager seller={seller} onUpdate={onUpdate} />;
+      case 'settings': return <SellerSettings seller={seller} onUpdate={onUpdate} />;
       default: return renderDashboard();
     }
   };

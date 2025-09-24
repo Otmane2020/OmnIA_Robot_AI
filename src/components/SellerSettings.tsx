@@ -31,6 +31,16 @@ interface SellerSettingsData {
   };
   widget_position: 'bottom-right' | 'bottom-left';
   auto_training: boolean;
+  // Informations vendeur éditables
+  company_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  siret: string;
+  position: string;
 }
 
 interface SellerSettingsProps {
@@ -50,7 +60,17 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
       secondary: '#1e40af'
     },
     widget_position: 'bottom-right',
-    auto_training: true
+    auto_training: true,
+    // Initialiser avec les données du vendeur
+    company_name: seller.company_name || '',
+    contact_name: seller.contact_name || '',
+    email: seller.email || '',
+    phone: seller.phone || '',
+    address: seller.address || '',
+    city: seller.city || '',
+    postal_code: seller.postal_code || '',
+    siret: seller.siret || '',
+    position: seller.position || ''
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,7 +88,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
       if (savedSettings) {
         try {
           const parsed = JSON.parse(savedSettings);
-          setSettings({ ...settings, ...parsed });
+          setSettings(prev => ({ ...prev, ...parsed }));
           console.log('⚙️ Paramètres vendeur chargés depuis localStorage');
         } catch (error) {
           console.error('Erreur parsing paramètres:', error);
@@ -89,8 +109,26 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
     try {
       setIsSaving(true);
       
-      // Save to localStorage
+      // Sauvegarder les paramètres robot
       localStorage.setItem(`seller_${seller.id}_settings`, JSON.stringify(settings));
+      
+      // Mettre à jour les informations vendeur dans validated_retailers
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const updatedRetailers = validatedRetailers.map((retailer: any) => 
+        retailer.id === seller.id ? { 
+          ...retailer, 
+          company_name: settings.company_name,
+          contact_name: settings.contact_name,
+          email: settings.email,
+          phone: settings.phone,
+          address: settings.address,
+          city: settings.city,
+          postal_code: settings.postal_code,
+          siret: settings.siret,
+          position: settings.position
+        } : retailer
+      );
+      localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -171,7 +209,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Nom de l'entreprise</label>
             <input
               type="text"
-              defaultValue={seller.company_name}
+              value={settings.company_name}
+              onChange={(e) => handleSettingChange('company_name', e.target.value)}
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
           </div>
@@ -179,7 +218,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Contact principal</label>
             <input
               type="text"
-              defaultValue={seller.contact_name}
+              value={settings.contact_name}
+              onChange={(e) => handleSettingChange('contact_name', e.target.value)}
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
           </div>
@@ -187,7 +227,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Email professionnel</label>
             <input
               type="email"
-              defaultValue={seller.email}
+              value={settings.email}
+              onChange={(e) => handleSettingChange('email', e.target.value)}
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
           </div>
@@ -195,7 +236,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Téléphone</label>
             <input
               type="text"
-              defaultValue={seller.phone || ''}
+              value={settings.phone}
+              onChange={(e) => handleSettingChange('phone', e.target.value)}
               placeholder="+33 1 23 45 67 89"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
@@ -204,7 +246,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Adresse</label>
             <input
               type="text"
-              defaultValue={seller.address || ''}
+              value={settings.address}
+              onChange={(e) => handleSettingChange('address', e.target.value)}
               placeholder="123 Rue de la Paix"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
@@ -213,7 +256,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Ville</label>
             <input
               type="text"
-              defaultValue={seller.city || ''}
+              value={settings.city}
+              onChange={(e) => handleSettingChange('city', e.target.value)}
               placeholder="Paris"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
@@ -222,7 +266,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Code postal</label>
             <input
               type="text"
-              defaultValue={seller.postal_code || ''}
+              value={settings.postal_code}
+              onChange={(e) => handleSettingChange('postal_code', e.target.value)}
               placeholder="75001"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
@@ -231,7 +276,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">SIRET</label>
             <input
               type="text"
-              defaultValue={seller.siret || ''}
+              value={settings.siret}
+              onChange={(e) => handleSettingChange('siret', e.target.value)}
               placeholder="12345678901234"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />
@@ -240,7 +286,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Fonction</label>
             <input
               type="text"
-              defaultValue={seller.position || ''}
+              value={settings.position}
+              onChange={(e) => handleSettingChange('position', e.target.value)}
               placeholder="Directeur, Gérant..."
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
             />

@@ -76,6 +76,19 @@ function App() {
     localStorage.setItem('pending_applications', JSON.stringify(pendingApplications));
   }, [pendingApplications]);
 
+  const handleUpdateCurrentVendor = () => {
+    if (currentVendor) {
+      // Recharger les informations du vendeur depuis localStorage
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const updatedVendor = validatedRetailers.find((v: any) => v.id === currentVendor.id);
+      
+      if (updatedVendor) {
+        setCurrentVendor(updatedVendor);
+        console.log('✅ Informations vendeur mises à jour:', updatedVendor.company_name);
+      }
+    }
+  };
+
   const handleLogin = (credentials: { email: string; password: string }) => {
     console.log('Login attempt:', credentials);
     
@@ -301,6 +314,7 @@ function App() {
             <AdminDashboard 
               onLogout={handleLogout}
               currentVendor={currentVendor}
+              onUpdateVendor={handleUpdateCurrentVendor}
             />
           )
         ) : (
