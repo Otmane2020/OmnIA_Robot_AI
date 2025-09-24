@@ -10,6 +10,7 @@ import { SellerSettings } from './SellerSettings';
 import { SellerSubscriptionManager } from './SellerSubscriptionManager';
 import { ProductsEnrichedTable } from './ProductsEnrichedTable';
 import { EcommerceIntegration } from './EcommerceIntegration';
+import { SmartAIEnrichmentTab } from './SmartAIEnrichmentTab';
 import { NotificationSystem, useNotifications } from './NotificationSystem';
 
 interface Seller {
@@ -64,6 +65,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'products', label: 'Mes Produits', icon: Package },
     { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
+    { id: 'smart-ai', label: 'SMART AI', icon: Brain },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'conversations', label: 'Conversations', icon: MessageSquare },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -322,6 +324,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       case 'dashboard': return renderDashboard();
       case 'products': return <SellerCatalogManagement sellerId={seller.id} />;
       case 'enriched': return <ProductsEnrichedTable retailerId={seller.id} />;
+      case 'smart-ai': return <SmartAIEnrichmentTab />;
       case 'integration': return <EcommerceIntegration onConnected={handlePlatformConnected} />;
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;

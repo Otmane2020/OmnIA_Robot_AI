@@ -139,7 +139,17 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
         shop_domain: shopifyConfig.shopDomain,
         access_token: shopifyConfig.accessToken,
         shop_name: testData.shop_info.name,
-        connected_at: new Date().toISOString()
+        variants: product.variants?.map((variant: any) => ({
+          id: variant.id,
+          title: variant.title,
+          price: variant.price,
+          compareAtPrice: variant.compare_at_price,
+          availableForSale: variant.available,
+          quantityAvailable: variant.inventory_quantity || 0,
+          selectedOptions: variant.selectedOptions || [],
+          image: variant.image?.src,
+          sku: variant.sku
+        })) || []
       }));
       console.log('✅ Configuration Shopify sauvegardée');
 
