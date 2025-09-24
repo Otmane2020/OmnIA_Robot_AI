@@ -513,7 +513,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
           // NOUVEAU: D'abord sauvegarder dans imported_products pour déclencher les triggers
           const importedProductsData = transformedProducts.map(product => ({
             external_id: product.id,
-            retailer_id: 'demo-retailer-id',
+            retailer_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format
             name: product.name,
             description: product.description,
             price: product.price,
@@ -539,7 +539,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             },
             body: JSON.stringify({
               products: importedProductsData,
-              retailer_id: 'demo-retailer-id',
+              retailer_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format
               source: 'csv'
             }),
           });
@@ -558,7 +558,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             body: JSON.stringify({
               products: transformedProducts,
               source: 'csv',
-              store_id: 'demo-retailer-id',
+              store_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format
               trigger_type: 'import'
             }),
           });
@@ -592,7 +592,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  retailer_id: 'demo-retailer-id',
+                  retailer_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format
                   force_full_enrichment: true,
                   source_filter: 'csv'
                 }),
@@ -616,7 +616,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  retailer_id: 'demo-retailer-id',
+                  retailer_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format
                   schedule: 'daily',
                   enabled: true
                 }),
