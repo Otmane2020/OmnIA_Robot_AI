@@ -120,8 +120,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         } catch (error) {
           console.error('Erreur parsing produits enrichis:', error);
           enrichedProducts = [];
+          // Reset products to empty array if parsing fails
+          setProducts([]);
+          setFilteredProducts([]);
         }
       } else {
+        // Initialize with empty arrays if no saved products
         console.log(`📦 [enriched-table] Aucun produit enrichi trouvé pour ${retailerId || vendorId || 'admin'}`);
         enrichedProducts = [];
       }
@@ -132,6 +136,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
       showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
+      // Reset products to empty array if any other error occurs during loading
+      setProducts([]);
+      setFilteredProducts([]);
     } finally {
       setIsLoading(false);
     }
