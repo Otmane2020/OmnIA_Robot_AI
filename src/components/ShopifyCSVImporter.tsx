@@ -254,12 +254,6 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       const { headers, data } = await parseFileContent(file);
       
-      console.log('📄 Fichier parsé:', {
-        headers_count: headers.length,
-        data_rows: data.length,
-        headers: headers.slice(0, 10)
-      });
-      
       setCsvHeaders(headers);
       
       // Auto-mapping intelligent
@@ -294,43 +288,28 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         }
       });
       
-      console.log('🔗 Auto-mapping généré:', autoMapping);
-      
       setFieldMapping(autoMapping);
       
       // Générer aperçu des produits
       const previews = generateProductPreviews(data, autoMapping);
-      console.log('👁️ Aperçus générés:', previews.length);
       setProductPreviews(previews);
       
       setCurrentStep(2);
       showSuccess('Fichier analysé', `${headers.length} colonnes détectées, ${previews.length} produits valides trouvés !`);
       
     } catch (error) {
-      console.error('❌ Erreur analyse fichier:', error);
       showError('Erreur lecture', error.message || 'Impossible de lire le fichier.');
-      setCurrentStep(1);
     } finally {
       setIsLoading(false);
     }
   };
 
   const generateProductPreviews = (data: any[], mapping: { [key: string]: string }): ProductPreview[] => {
-    console.log('🔍 Génération aperçus avec mapping:', mapping);
-    console.log('📊 Données à traiter:', data.length, 'lignes');
-    
-    const validRows = data.filter(row => {
+    return data.filter(row => {
       // Filtrer seulement les produits actifs
       const status = row[mapping['Status']] || 'active';
-      const hasTitle = row[mapping['Title']] && row[mapping['Title']].trim().length > 0;
-      const hasPrice = row[mapping['Variant Price']] && parseFloat(row[mapping['Variant Price']]?.replace(/[^\d.,]/g, '').replace(',', '.')) > 0;
-      
-      return status.toLowerCase() === 'active' && hasTitle && hasPrice;
-    });
-    
-    console.log('✅ Lignes valides:', validRows.length);
-    
-    return validRows.map(row => {
+      return status.toLowerCase() === 'active';
+    }).map(row => {
       const title = row[mapping['Title']] || '';
       const price = parseFloat(row[mapping['Variant Price']]?.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
       const compareAtPrice = row[mapping['Variant Compare At Price']] ? 
@@ -352,7 +331,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         description,
         isValid: title.trim().length > 0 && price > 0
       };
-    });
+    }).filter(preview => preview.isValid);
   };
 
   const calculateDiscount = (price: number, compareAtPrice?: number): number => {
@@ -361,8 +340,6 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
   };
 
   const handleMappingChange = (shopifyField: string, csvColumn: string) => {
-    console.log('🔄 Changement mapping:', shopifyField, '->', csvColumn);
-    
     const newMapping = {
       ...fieldMapping,
       [shopifyField]: csvColumn
@@ -371,17 +348,10 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
     
     // Régénérer l'aperçu avec le nouveau mapping
     if (csvFile) {
-      try {
-        parseFileContent(csvFile).then(({ data }) => {
-          const previews = generateProductPreviews(data, newMapping);
-          console.log('🔄 Aperçus régénérés:', previews.length);
-          setProductPreviews(previews);
-        }).catch(error => {
-          console.error('❌ Erreur régénération aperçu:', error);
-        });
-      } catch (error) {
-        console.error('❌ Erreur mapping:', error);
-      }
+      parseFileContent(csvFile).then(({ data }) => {
+        const previews = generateProductPreviews(data, newMapping);
+        setProductPreviews(previews);
+      });
     }
   };
 
@@ -547,71 +517,45 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       }));
       console.log(`✅ Produits CSV sauvegardés pour ${currentUser?.email}:`, activeProducts.length, '/', transformedProducts.length);
       
-      // NOUVEAU: Déclencher l'enrichissement et l'entraînement IA automatique après import
+      // NOUVEAU: Déclencher l'entraînement IA automatique après import
       try {
-        console.log('🤖 Déclenchement enrichissement et entraînement automatique IA...');
-        showInfo('Enrichissement IA', 'OmnIA enrichit et analyse votre catalogue pour optimiser les réponses...');
+        console.log('🤖 Déclenchement entraînement automatique IA...');
+        showInfo('Entraînement IA', 'OmnIA analyse votre catalogue pour optimiser les réponses...');
         
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         
         if (supabaseUrl && supabaseKey) {
-          // ÉTAPE 1: Enrichir les produits avec DeepSeek
-          const enrichResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
+          const trainingResponse = await fetch(`${supabaseUrl}/functions/v1/auto-ai-trainer`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${supabaseKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              products: activeProducts,
-              source: 'csv_import',
-              retailer_id: currentUser?.email || 'demo-retailer-id'
+              products: transformedProducts,
+              source: 'csv',
+              store_id: currentUser?.email || 'demo-retailer-id',
+              trigger_type: 'import'
             }),
           });
           
-          if (enrichResponse.ok) {
-            const enrichResult = await enrichResponse.json();
-            console.log('✅ Enrichissement IA réussi:', enrichResult.stats);
-            
-            // ÉTAPE 2: Entraîner OmnIA avec les produits enrichis
-            const trainingResponse = await fetch(`${supabaseUrl}/functions/v1/auto-ai-trainer`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                products: enrichResult.enriched_products || activeProducts,
-                source: 'csv_enriched',
-                store_id: currentUser?.email || 'demo-retailer-id',
-                trigger_type: 'import_enriched'
-              }),
-            });
-            
-            if (trainingResponse.ok) {
-              const trainingResult = await trainingResponse.json();
-              console.log('✅ Entraînement IA réussi:', trainingResult.stats);
-            }
-            
+          if (trainingResponse.ok) {
+            const trainingResult = await trainingResponse.json();
+            console.log('✅ Entraînement IA réussi:', trainingResult.stats);
             showSuccess(
-              'Catalogue enrichi et IA entraînée !', 
-              `${enrichResult.stats?.enriched_count || activeProducts.length} produits enrichis et OmnIA entraînée !`,
+              'IA Entraînée !', 
+              `OmnIA a analysé ${trainingResult.stats?.products_processed || activeProducts.length} produits ! Réponses optimisées.`,
               [
                 {
                   label: 'Tester OmnIA',
                   action: () => window.open('/robot', '_blank'),
                   variant: 'primary'
-                },
-                {
-                  label: 'Voir catalogue enrichi',
-                  action: () => window.location.href = '/admin#enriched',
-                  variant: 'secondary'
                 }
               ]
             );
             
-            // ÉTAPE 3: Configurer le cron quotidien automatiquement
+            // NOUVEAU: Configurer le cron quotidien automatiquement
             try {
               const cronResponse = await fetch(`${supabaseUrl}/functions/v1/setup-ai-cron`, {
                 method: 'POST',
@@ -628,19 +572,19 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
               
               if (cronResponse.ok) {
                 console.log('✅ Cron quotidien configuré automatiquement');
-                showInfo('Cron configuré', 'Enrichissement automatique quotidien activé à 2h du matin !');
+                showInfo('Cron configuré', 'Entraînement automatique quotidien activé à 2h du matin !');
               }
             } catch (cronError) {
               console.log('⚠️ Erreur configuration cron:', cronError);
             }
           } else {
-            console.log('⚠️ Enrichissement IA échoué, produits importés sans enrichissement');
-            showInfo('Import terminé', 'Produits importés ! Enrichissement IA en arrière-plan...');
+            console.log('⚠️ Entraînement IA échoué, produits importés sans optimisation');
+            showInfo('Import terminé', 'Produits importés ! Entraînement IA en arrière-plan...');
           }
         }
       } catch (error) {
-        console.log('⚠️ Enrichissement IA échoué:', error);
-        showInfo('Import terminé', 'Produits importés ! Enrichissement IA en arrière-plan...');
+        console.log('⚠️ Entraînement IA échoué:', error);
+        showInfo('Import terminé', 'Produits importés ! Entraînement IA en arrière-plan...');
       }
       
       // Notifier le parent

@@ -359,9 +359,6 @@ export const CatalogManagement: React.FC = () => {
     const allProducts = [newProduct, ...products];
     localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(allProducts));
     
-    // NOUVEAU: Synchroniser automatiquement vers le catalogue enrichi
-    triggerEnrichmentSync([newProduct]);
-    
     setShowAddModal(false);
     showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
   };
@@ -377,61 +374,11 @@ export const CatalogManagement: React.FC = () => {
     // Sauvegarder dans localStorage
     localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(updatedProducts));
     
-    // NOUVEAU: Synchroniser automatiquement vers le catalogue enrichi
-    const updatedProduct = updatedProducts.find(p => p.id === selectedProduct?.id);
-    if (updatedProduct) {
-      triggerEnrichmentSync([updatedProduct]);
-    }
-    
     setShowAddModal(false);
     setSelectedProduct(null);
     showSuccess('Produit modifié', 'Le produit a été modifié avec succès.');
   };
 
-  // NOUVEAU: Fonction pour déclencher la synchronisation automatique
-  const triggerEnrichmentSync = async (productsToSync: Product[]) => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.log('⚠️ Supabase non configuré, synchronisation enrichie ignorée');
-        return;
-      }
-
-      console.log('🔄 Synchronisation automatique vers catalogue enrichi...');
-      
-      // Appeler la fonction d'enrichissement en arrière-plan
-      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: productsToSync,
-          source: 'catalog_sync',
-          retailer_id: currentUser?.email || 'demo-retailer-id'
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Synchronisation enrichie réussie:', result.stats);
-        
-        // Notification discrète
-        showSuccess(
-          'Catalogue enrichi mis à jour', 
-          `${productsToSync.length} produit(s) synchronisé(s) automatiquement.`
-        );
-      } else {
-        console.log('⚠️ Erreur synchronisation enrichie, continuant sans enrichissement');
-      }
-    } catch (error) {
-      console.log('⚠️ Erreur synchronisation enrichie:', error);
-      // Ne pas afficher d'erreur à l'utilisateur, c'est en arrière-plan
-    }
-  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 text-green-300';
