@@ -591,7 +591,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   };
 
   const handleSaveEdit = async () => {
-    if (!editingProduct) return;
+    }, 60000); // 60 secondes
 
     try {
       const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
