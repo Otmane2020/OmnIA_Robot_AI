@@ -56,8 +56,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [syncProgress, setSyncProgress] = useState(0);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
-  const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
   
   const { showSuccess, showError, showInfo } = useNotifications();
 
