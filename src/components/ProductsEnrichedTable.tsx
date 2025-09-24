@@ -282,63 +282,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       setSyncProgress(0);
     }
   };
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: catalogProducts,
-          retailer_id: effectiveId,
-          force_full_enrichment: true,
-          enable_image_analysis: false // Disable for faster processing
-        }),
-        signal: abortController.signal
-      });
-
-      clearTimeout(timeoutId);
-      setSyncProgress(80);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ [sync-debug] Erreur réponse:', errorData);
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ [sync-debug] Enrichissement réussi:', result.stats);
-
-      setSyncProgress(100);
-
-      // Reload enriched products
-      await loadEnrichedProducts();
-
-      showSuccess(
-        'Synchronisation terminée',
-        `${result.stats?.enriched_products || 0} produits enrichis avec IA !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => setViewMode('table'),
-            variant: 'primary'
-          }
-        ]
-      );
-
-    } catch (error: any) {
-      console.error('❌ [sync-debug] Erreur détaillée:', error);
-      console.error('❌ Erreur synchronisation:', error);
-      
-      if (error.name === 'AbortError') {
-        showError('Synchronisation annulée', 'La synchronisation a pris trop de temps et a été annulée.');
-      } else {
-        showError('Erreur de synchronisation', error.message || 'Erreur lors de la synchronisation des produits enrichis.');
-      }
-    } finally {
-      setIsSyncing(false);
-      setSyncProgress(0);
-    }
-  };
 
   const getCatalogProducts = () => {
     try {

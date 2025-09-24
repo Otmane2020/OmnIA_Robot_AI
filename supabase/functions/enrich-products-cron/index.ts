@@ -60,6 +60,21 @@ interface EnrichedAttributes {
 }
 
 Deno.serve(async (req: Request) => {
+  // Handle GET requests for health check
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({ 
+        status: "OK", 
+        message: "Edge Function enrich-products-cron is running",
+        timestamp: new Date().toISOString()
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      }
+    );
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
