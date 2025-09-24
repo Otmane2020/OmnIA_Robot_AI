@@ -322,8 +322,14 @@ export const CatalogManagement: React.FC = () => {
     if (confirm('Supprimer TOUS les produits du catalogue ? Cette action est irréversible.')) {
       setProducts([]);
       
-      // Vider localStorage
-      localStorage.removeItem('catalog_products');
+      // Vider localStorage avec gestion d'erreur
+      try {
+        localStorage.removeItem('catalog_products');
+        console.log('✅ Catalogue vidé et localStorage nettoyé');
+      } catch (error) {
+        console.error('❌ Erreur nettoyage localStorage:', error);
+        showError('Erreur de nettoyage', 'Catalogue vidé mais erreur de nettoyage localStorage.');
+      }
       
       setSelectedProducts([]);
       showSuccess('Catalogue vidé', 'Tous les produits ont été supprimés.');
@@ -356,11 +362,17 @@ export const CatalogManagement: React.FC = () => {
       updated_at: new Date().toISOString()
     };
     
-    setProducts(prev => [newProduct, ...prev]);
+    const updatedProducts = [newProduct, ...products];
+    setProducts(updatedProducts);
     
     // Sauvegarder dans localStorage
-    const allProducts = [newProduct, ...products];
-    localStorage.setItem('catalog_products', JSON.stringify(allProducts));
+    try {
+      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+      console.log('✅ Produit ajouté et sauvegardé:', newProduct.name);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde localStorage:', error);
+      showError('Erreur de sauvegarde', 'Impossible de sauvegarder le produit en local.');
+    }
     
     setShowAddModal(false);
     showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
@@ -375,8 +387,13 @@ export const CatalogManagement: React.FC = () => {
     setProducts(updatedProducts);
     
     // Sauvegarder dans localStorage
-    const localProducts = updatedProducts.filter(p => p.source_platform === 'manual' || p.source_platform === 'csv');
-    localStorage.setItem('catalog_products', JSON.stringify(localProducts));
+    try {
+      localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+      console.log('✅ Produit modifié et sauvegardé:', selectedProduct?.name);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde localStorage:', error);
+      showError('Erreur de sauvegarde', 'Impossible de sauvegarder les modifications.');
+    }
     
     setShowAddModal(false);
     setSelectedProduct(null);
