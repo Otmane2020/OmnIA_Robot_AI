@@ -245,6 +245,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           confidence_score: calculateBasicConfidence(product),
           enriched_at: new Date().toISOString(),
           enrichment_source: 'sync_local',
+          retailer_id: vendorId || retailerId,
           created_at: product.created_at || new Date().toISOString()
         }));
         
@@ -293,6 +294,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            products: products, // Pass current products to enrich
             retailer_id: vendorId || 'demo-retailer-id',
             force_full_enrichment: true,
             vendor_id: vendorId
