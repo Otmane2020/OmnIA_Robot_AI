@@ -3,10 +3,8 @@ import {
   BarChart3, Users, Package, DollarSign, Calendar, Clock, 
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, LogOut, Brain,
-  TrendingUp, DollarSign, ShoppingCart, Eye, Plus, X,
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
-  Battery, Signal, Smartphone, Monitor, Tablet, Megaphone,
-  Upload, Download, Loader2
+  Plus, X, Megaphone, Palette, Monitor, Smartphone, Tablet, 
+  Edit, Trash2, Battery, Signal, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { CatalogManagement } from '../components/CatalogManagement';
