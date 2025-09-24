@@ -1,18 +1,4 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
-interface AutoTrainingRequest {
-  products: any[];
-  source: 'shopify' | 'csv' | 'xml' | 'api';
-  store_id?: string;
-  trigger_type: 'import' | 'update' | 'sync';
-}
-
+@@ .. @@
 interface ExtractedAttributes {
   colors: string[];
   materials: string[];
@@ -26,6 +12,7 @@ interface ExtractedAttributes {
   };
   styles: string[];
   categories: string[];
+  subcategory: string;
   priceRange: {
     min?: number;
     max?: number;
@@ -50,7 +37,7 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Variables d\'environnement Supabase manquantes');
+      console.error('❌ [auto-ai-trainer] Variables d\'environnement Supabase manquantes');
       return new Response(
         JSON.stringify({
           success: false,
@@ -69,7 +56,7 @@ Deno.serve(async (req: Request) => {
 
     const { products, source, store_id, trigger_type }: AutoTrainingRequest = await req.json();
     
-    console.log('🤖 Auto-training déclenché:', {
+    console.log('🤖 [auto-ai-trainer] Auto-training déclenché:', {
       source,
       products_count: products.length,
       trigger_type,
@@ -82,18 +69,18 @@ Deno.serve(async (req: Request) => {
     const processedProducts = [];
     const batchSize = 10; // Process in batches to avoid timeouts
     
-    console.log('🧠 Démarrage extraction IA par batch...');
+    console.log('🧠 [auto-ai-trainer] Démarrage extraction IA par batch...');
     
     for (let i = 0; i < products.length; i += batchSize) {
       const batch = products.slice(i, i + batchSize);
-      console.log(`📦 Traitement batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(products.length/batchSize)}`);
+      console.log(`📦 [auto-ai-trainer] Traitement batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(products.length/batchSize)}`);
       
       const batchPromises = batch.map(async (product) => {
         try {
           const attributes = await extractAttributesWithAI(product, source);
           return {
             // Standardize product format
-            id: product.id || `${source}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${store_id || 'default'}-${product.id || product.external_id || Date.now()}`,
             name: product.title || product.name || 'Produit sans nom',
             description: product.description || '',
             price: parseFloat(product.price) || 0,
@@ -103,13 +90,13 @@ Deno.serve(async (req: Request) => {
             product_url: product.product_url || `#${product.handle || product.id}`,
             stock: product.quantityAvailable || product.stock || 0,
             source_platform: source,
-            store_id: store_id || 'default',
+            store_id: store_id,
             extracted_attributes: attributes,
             confidence_score: attributes.confidence_score,
             last_trained: new Date().toISOString(),
           };
         } catch (error) {
-          console.error('❌ Erreur traitement produit:', error);
+          console.error('❌ [auto-ai-trainer] Erreur traitement produit:', error);
           return null;
         }
       });
@@ -124,7 +111,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`✅ ${processedProducts.length}/${products.length} produits traités avec succès`);
+    console.log(`✅ [auto-ai-trainer] ${processedProducts.length}/${products.length} produits traités avec succès`);
 
     // Store in database with upsert (update or insert)
     if (processedProducts.length > 0) {
@@ -137,15 +124,15 @@ Deno.serve(async (req: Request) => {
         });
 
       if (upsertError) {
-        console.error('❌ Erreur upsert:', upsertError);
+        console.error('❌ [auto-ai-trainer] Erreur upsert:', upsertError);
         throw upsertError;
       }
 
       // NOUVEAU: Insérer aussi dans imported_products pour déclencher le trigger de sync
-      console.log('🔄 Synchronisation vers imported_products pour trigger...');
+      console.log('🔄 [auto-ai-trainer] Synchronisation vers imported_products pour trigger...');
       const importedProducts = processedProducts.map(product => ({
         external_id: product.id,
-        retailer_id: store_id || 'demo-retailer-id',
+        retailer_id: store_id,
         name: product.name,
         description: product.description || '',
         price: product.price,
@@ -157,7 +144,7 @@ Deno.serve(async (req: Request) => {
         stock: product.stock,
         source_platform: source,
         status: 'active',
-        extracted_attributes: product.extracted_attributes,
+        extracted_attributes: product.extracted_attributes || {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }));
@@ -170,10 +157,10 @@ Deno.serve(async (req: Request) => {
         });
 
       if (importedError) {
-        console.error('❌ Erreur sync imported_products:', importedError);
+        console.error('❌ [auto-ai-trainer] Erreur sync imported_products:', importedError);
         // Ne pas faire échouer tout le processus
       } else {
-        console.log('✅ Produits synchronisés vers imported_products (trigger auto vers enriched):', importedProducts.length);
+        console.log('✅ [auto-ai-trainer] Produits synchronisés vers imported_products:', importedProducts.length);
       }
     }
 
@@ -182,13 +169,13 @@ Deno.serve(async (req: Request) => {
       products_count: processedProducts.length,
       source_platform: source,
       trigger_type,
-      store_id: store_id || 'default'
+      store_id: store_id
     });
 
     // Update OmnIA Robot knowledge base
     await updateRobotKnowledge(supabase, processedProducts, source);
 
-    console.log('🤖 OmnIA Robot mis à jour avec nouveau catalogue');
+    console.log('🤖 [auto-ai-trainer] OmnIA Robot mis à jour avec nouveau catalogue');
 
     return new Response(
       JSON.stringify({
@@ -215,7 +202,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error('❌ Erreur auto-training:', error);
+    console.error('❌ [auto-ai-trainer] Erreur auto-training:', error);
     
     return new Response(
       JSON.stringify({
@@ -238,7 +225,7 @@ async function extractAttributesWithAI(product: any, source: string): Promise<Ex
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
   if (!deepseekApiKey) {
-    console.log('⚠️ DeepSeek non configuré, extraction basique pour:', product.title?.substring(0, 30));
+    console.log('⚠️ [auto-ai-trainer] DeepSeek non configuré, extraction basique pour:', product.title?.substring(0, 30));
     return extractAttributesBasic(product);
   }
 
@@ -252,7 +239,7 @@ TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : ''}
 SOURCE: ${source}
     `.trim();
 
-    const prompt = `Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
+    const prompt = `\Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
 
 ${productText}
 
@@ -260,6 +247,7 @@ EXTRAIT ces attributs au format JSON exact :
 {
   "colors": ["couleur1", "couleur2"],
   "materials": ["matériau1", "matériau2"], 
+  "subcategory": "Description précise du type (ex: Canapé d'angle convertible, Table basse ronde)",
   "dimensions": {
     "length": 200,
     "width": 100,
@@ -277,6 +265,7 @@ RÈGLES STRICTES:
 - Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, jaune, orange, rose, violet, crème, naturel, anthracite, taupe, ivoire, chêne, noyer, teck
 - Matériaux: chêne, hêtre, pin, teck, noyer, bois massif, métal, acier, verre, tissu, cuir, velours, travertin, marbre, plastique, rotin
 - Styles: moderne, contemporain, scandinave, industriel, vintage, rustique, classique, minimaliste, bohème, baroque
+- Subcategory: Description précise et spécifique du produit (ex: "Canapé d'angle convertible", "Table basse ronde", "Chaise de bureau ergonomique")
 - Dimensions en cm uniquement si mentionnées
 - Pièces: salon, chambre, cuisine, bureau, salle à manger, entrée
 - Fonctionnalités: convertible, réversible, pliable, extensible, rangement, tiroir, roulettes, réglable
@@ -295,14 +284,14 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON. Aucun texte supplémentaire.'
+            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON avec sous-catégories précises. Aucun texte supplémentaire.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 600,
+        max_tokens: 700,
         temperature: 0.1,
         stream: false
       }),
@@ -315,10 +304,11 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
       if (content) {
         try {
           const extracted = JSON.parse(content);
-          console.log('✅ IA extraction réussie:', {
+          console.log('✅ [auto-ai-trainer] IA extraction réussie:', {
             product: product.title?.substring(0, 30),
             colors: extracted.colors?.length || 0,
             materials: extracted.materials?.length || 0,
+            subcategory: extracted.subcategory || 'Non définie',
             confidence: extracted.confidence_score || 0
           });
           
@@ -327,14 +317,14 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
             confidence_score: extracted.confidence_score || 50
           };
         } catch (parseError) {
-          console.log('⚠️ JSON invalide, fallback basique pour:', product.title?.substring(0, 30));
+          console.log('⚠️ [auto-ai-trainer] JSON invalide, fallback basique pour:', product.title?.substring(0, 30));
         }
       }
     } else {
-      console.log('⚠️ DeepSeek erreur, fallback basique');
+      console.log('⚠️ [auto-ai-trainer] DeepSeek erreur, fallback basique');
     }
   } catch (error) {
-    console.log('⚠️ Erreur DeepSeek, fallback basique:', error);
+    console.log('⚠️ [auto-ai-trainer] Erreur DeepSeek, fallback basique:', error);
   }
 
   return extractAttributesBasic(product);
@@ -343,6 +333,46 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
 function extractAttributesBasic(product: any): ExtractedAttributes {
   const text = `${product.title || product.name || ''} ${product.description || ''} ${product.productType || product.category || ''}`.toLowerCase();
   
+  // Detect category and subcategory
+  let category = 'Mobilier';
+  let subcategory = '';
+  
+  if (text.includes('canapé') || text.includes('sofa')) {
+    category = 'Canapé';
+    if (text.includes('angle')) subcategory = 'Canapé d\'angle';
+    else if (text.includes('convertible')) subcategory = 'Canapé convertible';
+    else if (text.includes('lit')) subcategory = 'Canapé-lit';
+    else subcategory = 'Canapé fixe';
+  } else if (text.includes('table')) {
+    category = 'Table';
+    if (text.includes('basse')) subcategory = 'Table basse';
+    else if (text.includes('manger') || text.includes('repas')) subcategory = 'Table à manger';
+    else if (text.includes('bureau')) subcategory = 'Bureau';
+    else if (text.includes('console')) subcategory = 'Console';
+    else if (text.includes('ronde')) subcategory = 'Table ronde';
+    else if (text.includes('rectangulaire')) subcategory = 'Table rectangulaire';
+    else subcategory = 'Table';
+  } else if (text.includes('chaise') || text.includes('fauteuil')) {
+    category = 'Chaise';
+    if (text.includes('bureau')) subcategory = 'Chaise de bureau';
+    else if (text.includes('fauteuil')) subcategory = 'Fauteuil';
+    else if (text.includes('bar')) subcategory = 'Tabouret de bar';
+    else subcategory = 'Chaise de salle à manger';
+  } else if (text.includes('lit')) {
+    category = 'Lit';
+    if (text.includes('simple')) subcategory = 'Lit simple';
+    else if (text.includes('double')) subcategory = 'Lit double';
+    else if (text.includes('queen')) subcategory = 'Lit Queen';
+    else if (text.includes('king')) subcategory = 'Lit King';
+    else subcategory = 'Lit';
+  } else if (text.includes('armoire') || text.includes('commode')) {
+    category = 'Rangement';
+    if (text.includes('armoire')) subcategory = 'Armoire';
+    else if (text.includes('commode')) subcategory = 'Commode';
+    else if (text.includes('bibliothèque')) subcategory = 'Bibliothèque';
+    else subcategory = 'Meuble de rangement';
+  }
+
   // Extract colors with comprehensive patterns
   const colorPatterns = [
     { name: 'blanc', patterns: ['blanc', 'white', 'ivoire', 'crème', 'cream'] },
@@ -391,22 +421,6 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
     .map(({ name }) => name);
 
-  // Extract styles
-  const stylePatterns = [
-    { name: 'moderne', patterns: ['moderne', 'modern', 'contemporain', 'contemporary'] },
-    { name: 'scandinave', patterns: ['scandinave', 'scandinavian', 'nordique', 'nordic'] },
-    { name: 'industriel', patterns: ['industriel', 'industrial', 'loft'] },
-    { name: 'vintage', patterns: ['vintage', 'rétro', 'retro'] },
-    { name: 'minimaliste', patterns: ['minimaliste', 'minimalist', 'épuré', 'simple'] },
-    { name: 'rustique', patterns: ['rustique', 'rustic', 'campagne', 'country'] },
-    { name: 'classique', patterns: ['classique', 'classic', 'traditionnel'] },
-    { name: 'bohème', patterns: ['bohème', 'boho', 'ethnique'] }
-  ];
-  
-  const styles = stylePatterns
-    .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
-    .map(({ name }) => name);
-
   // Extract dimensions
   const dimensions: any = { unit: 'cm' };
   const dimPatterns = [
@@ -424,20 +438,31 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     }
   });
 
-  // Extract features
-  const featurePatterns = [
-    'convertible', 'réversible', 'pliable', 'extensible', 'rangement', 
-    'tiroir', 'roulettes', 'réglable', 'coffre', 'angle'
+  // Extract styles
+  const stylePatterns = [
+    'moderne', 'modern', 'contemporain', 'contemporary', 'scandinave', 'scandinavian',
+    'industriel', 'industrial', 'vintage', 'rustique', 'rustic', 'classique', 'classic',
+    'minimaliste', 'minimalist', 'bohème', 'boho', 'baroque'
   ];
   
-  const features = featurePatterns.filter(feature => text.includes(feature));
+  const styles = stylePatterns.filter(style => text.includes(style));
 
   // Extract room types
   const roomPatterns = [
-    'salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'
+    'salon', 'living', 'chambre', 'bedroom', 'cuisine', 'kitchen',
+    'bureau', 'office', 'salle à manger', 'dining', 'entrée', 'entrance'
   ];
   
   const room = roomPatterns.filter(r => text.includes(r));
+
+  // Extract features
+  const featurePatterns = [
+    'convertible', 'réversible', 'reversible', 'pliable', 'foldable',
+    'extensible', 'extendable', 'rangement', 'storage', 'tiroir', 'drawer',
+    'roulettes', 'wheels', 'réglable', 'adjustable'
+  ];
+  
+  const features = featurePatterns.filter(feature => text.includes(feature));
 
   // Calculate confidence score
   let confidence = 0;
@@ -451,9 +476,10 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
   return {
     colors: [...new Set(colors)],
     materials: [...new Set(materials)],
+    subcategory,
     dimensions,
     styles: [...new Set(styles)],
-    categories: [product.productType || product.category || 'mobilier'].filter(Boolean),
+    categories: [category],
     priceRange: {
       min: parseFloat(product.price) || 0,
       max: parseFloat(product.price) || 0,
@@ -463,145 +489,4 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     room: [...new Set(room)],
     confidence_score: Math.min(confidence, 100)
   };
-}
-
-async function updateTrainingMetadata(supabase: any, trainingData: any) {
-  const metadata = {
-    id: 'singleton',
-    last_training: new Date().toISOString(),
-    products_count: trainingData.products_count,
-    training_type: 'auto',
-    source_platform: trainingData.source_platform,
-    trigger_type: trainingData.trigger_type,
-    store_id: trainingData.store_id,
-    model_version: '2.0-auto',
-    updated_at: new Date().toISOString()
-  };
-
-  await supabase
-    .from('ai_training_metadata')
-    .upsert(metadata, { onConflict: 'id' });
-}
-
-async function updateRobotKnowledge(supabase: any, products: any[], source: string) {
-  try {
-    // Create knowledge summary for OmnIA Robot
-    const knowledgeUpdate = {
-      id: `knowledge-${source}-${Date.now()}`,
-      source_platform: source,
-      products_count: products.length,
-      categories: [...new Set(products.map(p => p.category))],
-      price_range: {
-        min: Math.min(...products.map(p => p.price || 0)),
-        max: Math.max(...products.map(p => p.price || 0))
-      },
-      top_materials: getTopAttributes(products, 'materials'),
-      top_colors: getTopAttributes(products, 'colors'),
-      top_styles: getTopAttributes(products, 'styles'),
-      avg_confidence: products.reduce((sum, p) => sum + p.confidence_score, 0) / products.length,
-      updated_at: new Date().toISOString()
-    };
-
-    console.log('🤖 Base de connaissances robot mise à jour:', {
-      source,
-      categories: knowledgeUpdate.categories.length,
-      confidence: Math.round(knowledgeUpdate.avg_confidence)
-    });
-  } catch (error) {
-    console.error('⚠️ Erreur mise à jour base de connaissances:', error);
-    // Continue without failing the entire process
-  }
-}
-
-function getTopAttributes(products: any[], attributeType: string): string[] {
-  const attributeCount = new Map<string, number>();
-  
-  products.forEach(product => {
-    const attributes = product.extracted_attributes?.[attributeType] || [];
-    attributes.forEach((attr: string) => {
-      attributeCount.set(attr, (attributeCount.get(attr) || 0) + 1);
-    });
-  });
-  
-  return Array.from(attributeCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([attr]) => attr);
-}
-
-// NOUVELLES FONCTIONS UTILITAIRES
-function extractDimensionsString(dimensions: any): string {
-  if (!dimensions || typeof dimensions !== 'object') return '';
-  
-  const { length, width, height, diameter, unit = 'cm' } = dimensions;
-  
-  if (diameter) {
-    return `Ø${diameter}${unit}`;
-  }
-  
-  if (length && width && height) {
-    return `${length}×${width}×${height}${unit}`;
-  }
-  
-  if (length && width) {
-    return `${length}×${width}${unit}`;
-  }
-  
-  return '';
-}
-
-function generateSEOTitle(name: string, attributes: any): string {
-  const color = attributes?.colors?.[0] || '';
-  const material = attributes?.materials?.[0] || '';
-  const brand = 'Decora Home';
-  
-  let title = name;
-  if (color) title += ` ${color}`;
-  if (material) title += ` ${material}`;
-  title += ` - ${brand}`;
-  
-  return title.substring(0, 70);
-}
-
-function generateSEODescription(name: string, description: string, attributes: any): string {
-  const style = attributes?.styles?.[0] || '';
-  const material = attributes?.materials?.[0] || '';
-  
-  let desc = `${name}`;
-  if (material) desc += ` en ${material}`;
-  if (style) desc += ` de style ${style}`;
-  desc += '. Livraison gratuite. Garantie qualité.';
-  
-  return desc.substring(0, 155);
-}
-
-function generateAdHeadline(name: string): string {
-  return name.substring(0, 30);
-}
-
-function generateAdDescription(name: string, attributes: any): string {
-  const material = attributes?.materials?.[0] || '';
-  const style = attributes?.styles?.[0] || '';
-  
-  let desc = name;
-  if (material) desc += ` ${material}`;
-  if (style) desc += ` ${style}`;
-  desc += '. Promo !';
-  
-  return desc.substring(0, 90);
-}
-
-function getGoogleCategory(category: string): string {
-  const categoryMap: { [key: string]: string } = {
-    'canapé': '635',
-    'table': '443', 
-    'chaise': '436',
-    'lit': '569',
-    'rangement': '6552',
-    'meuble tv': '6552',
-    'décoration': '696',
-    'éclairage': '594'
-  };
-  
-  return categoryMap[category?.toLowerCase()] || '';
 }
