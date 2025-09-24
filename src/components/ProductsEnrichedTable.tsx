@@ -46,14 +46,15 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [selectedMaterial, setSelectedMaterial] = useState('all');
   const [selectedStyle, setSelectedStyle] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEnriching, setIsEnriching] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
+  
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
@@ -70,7 +71,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.seo_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
@@ -98,24 +98,22 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     try {
       setIsLoading(true);
       
-      console.log('📦 [ProductsEnrichedTable] Chargement produits enrichis...');
-      
-      // Charger les produits enrichis depuis localStorage spécifique au vendeur
+      // Charger depuis localStorage spécifique au vendeur
       const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      const savedEnrichedProducts = localStorage.getItem(enrichedKey);
+      const savedEnriched = localStorage.getItem(enrichedKey);
       
       let enrichedProducts: EnrichedProduct[] = [];
       
-      if (savedEnrichedProducts) {
+      if (savedEnriched) {
         try {
-          enrichedProducts = JSON.parse(savedEnrichedProducts);
-          console.log('📦 [ProductsEnrichedTable] Produits enrichis chargés depuis localStorage:', enrichedProducts.length);
+          enrichedProducts = JSON.parse(savedEnriched);
+          console.log('📦 Produits enrichis chargés:', enrichedProducts.length);
         } catch (error) {
-          console.error('❌ [ProductsEnrichedTable] Erreur parsing produits enrichis:', error);
+          console.error('Erreur parsing produits enrichis:', error);
           enrichedProducts = [];
         }
       } else {
-        console.log('📦 [ProductsEnrichedTable] Aucun produit enrichi trouvé');
+        console.log('📦 Aucun produit enrichi trouvé');
         enrichedProducts = [];
       }
       
@@ -123,436 +121,249 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       setFilteredProducts(enrichedProducts);
       
     } catch (error) {
-      console.error('❌ [ProductsEnrichedTable] Erreur chargement produits enrichis:', error);
+      console.error('❌ Erreur chargement produits enrichis:', error);
       showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const enrichProduct = (product: any): EnrichedProduct => {
-    const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
-    
-    // Enrichissement automatique basé sur le texte
-    const enriched = {
-      id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-      handle: product.handle || product.id || `handle-${Date.now()}`,
-      title: product.name || product.title || 'Produit sans nom',
-      description: product.description || '',
-      category: detectCategory(text),
-      subcategory: detectSubcategory(text),
-      color: detectColor(text),
-      material: detectMaterial(text),
-      fabric: detectFabric(text),
-      style: detectStyle(text),
-      dimensions: detectDimensions(text),
-      room: detectRoom(text),
-      price: product.price || 0,
-      stock_qty: product.stock || product.quantityAvailable || 0,
-      image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.product_url || '#',
-      tags: generateTags(text),
-      seo_title: generateSEOTitle(product.name || product.title, detectColor(text), detectMaterial(text)),
-      seo_description: generateSEODescription(product.name || product.title, detectStyle(text), detectMaterial(text)),
-      ad_headline: generateAdHeadline(product.name || product.title),
-      ad_description: generateAdDescription(product.name || product.title, detectMaterial(text)),
-      google_product_category: getGoogleCategory(detectCategory(text)),
-      gtin: '',
-      brand: product.vendor || 'Decora Home',
-      confidence_score: calculateConfidence(text),
-      enriched_at: new Date().toISOString(),
-      enrichment_source: 'auto',
-      created_at: product.created_at || new Date().toISOString()
-    };
-    
-    return enriched;
-  };
-
-  // Fonctions de détection
-  const detectCategory = (text: string): string => {
-    if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
-    if (text.includes('table')) return 'Table';
-    if (text.includes('chaise') || text.includes('fauteuil')) return 'Chaise';
-    if (text.includes('lit')) return 'Lit';
-    if (text.includes('armoire') || text.includes('commode')) return 'Rangement';
-    if (text.includes('meuble tv')) return 'Meuble TV';
-    return 'Mobilier';
-  };
-
-  const detectSubcategory = (text: string): string => {
-    if (text.includes('canapé') || text.includes('sofa')) {
-      if (text.includes('angle')) return 'Canapé d\'angle';
-      if (text.includes('convertible')) return 'Canapé convertible';
-      if (text.includes('lit')) return 'Canapé-lit';
-      return 'Canapé fixe';
-    }
-    if (text.includes('table')) {
-      if (text.includes('basse')) return 'Table basse';
-      if (text.includes('manger') || text.includes('repas')) return 'Table à manger';
-      if (text.includes('bureau')) return 'Bureau';
-      if (text.includes('console')) return 'Console';
-      if (text.includes('ronde')) return 'Table ronde';
-      return 'Table';
-    }
-    if (text.includes('chaise') || text.includes('fauteuil')) {
-      if (text.includes('bureau')) return 'Chaise de bureau';
-      if (text.includes('fauteuil')) return 'Fauteuil';
-      if (text.includes('bar')) return 'Tabouret de bar';
-      return 'Chaise de salle à manger';
-    }
-    if (text.includes('lit')) {
-      if (text.includes('simple')) return 'Lit simple';
-      if (text.includes('double')) return 'Lit double';
-      return 'Lit';
-    }
-    return '';
-  };
-
-  const detectColor = (text: string): string => {
-    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
-    for (const color of colors) {
-      if (text.includes(color)) return color;
-    }
-    return '';
-  };
-
-  const detectMaterial = (text: string): string => {
-    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
-    for (const material of materials) {
-      if (text.includes(material)) return material;
-    }
-    return '';
-  };
-
-  const detectFabric = (text: string): string => {
-    const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
-    for (const fabric of fabrics) {
-      if (text.includes(fabric)) return fabric;
-    }
-    return '';
-  };
-
-  const detectStyle = (text: string): string => {
-    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
-    for (const style of styles) {
-      if (text.includes(style)) return style;
-    }
-    return '';
-  };
-
-  const detectDimensions = (text: string): string => {
-    // Format LxlxH
-    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-    if (dimensionMatch) {
-      const [, length, width, height] = dimensionMatch;
-      if (height) {
-        return `L:${length}cm x l:${width}cm x H:${height}cm`;
-      } else {
-        return `L:${length}cm x l:${width}cm`;
-      }
-    }
-    
-    // Format diamètre
-    const diameterMatch = text.match(/(?:ø|diamètre)\s*(\d+)\s*cm/);
-    if (diameterMatch) {
-      return `Ø:${diameterMatch[1]}cm`;
-    }
-    
-    // Dimensions séparées
-    const lengthMatch = text.match(/(?:longueur|long|l)\s*:?\s*(\d+)\s*cm/);
-    const widthMatch = text.match(/(?:largeur|larg|w)\s*:?\s*(\d+)\s*cm/);
-    const heightMatch = text.match(/(?:hauteur|haut|h)\s*:?\s*(\d+)\s*cm/);
-    
-    const dimParts = [];
-    if (lengthMatch) dimParts.push(`L:${lengthMatch[1]}cm`);
-    if (widthMatch) dimParts.push(`l:${widthMatch[1]}cm`);
-    if (heightMatch) dimParts.push(`H:${heightMatch[1]}cm`);
-    
-    if (dimParts.length > 0) {
-      return dimParts.join(' x ');
-    }
-    
-    return '';
-  };
-
-  const detectRoom = (text: string): string => {
-    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
-    for (const room of rooms) {
-      if (text.includes(room)) return room;
-    }
-    return '';
-  };
-
-  const generateTags = (text: string): string[] => {
-    const tags = [];
-    if (text.includes('convertible')) tags.push('convertible');
-    if (text.includes('rangement')) tags.push('rangement');
-    if (text.includes('angle')) tags.push('angle');
-    if (text.includes('moderne')) tags.push('moderne');
-    if (text.includes('design')) tags.push('design');
-    return tags;
-  };
-
-  const generateSEOTitle = (name: string, color: string, material: string): string => {
-    let title = name;
-    if (color) title += ` ${color}`;
-    if (material) title += ` ${material}`;
-    title += ' - Decora Home';
-    return title.substring(0, 70);
-  };
-
-  const generateSEODescription = (name: string, style: string, material: string): string => {
-    let desc = `${name}`;
-    if (material) desc += ` en ${material}`;
-    if (style) desc += ` de style ${style}`;
-    desc += '. Livraison gratuite. Garantie qualité Decora Home.';
-    return desc.substring(0, 155);
-  };
-
-  const generateAdHeadline = (name: string): string => {
-    return name.substring(0, 30);
-  };
-
-  const generateAdDescription = (name: string, material: string): string => {
-    let desc = name;
-    if (material) desc += ` ${material}`;
-    desc += '. Promo !';
-    return desc.substring(0, 90);
-  };
-
-  const getGoogleCategory = (category: string): string => {
-    const categoryMap: { [key: string]: string } = {
-      'Canapé': '635',
-      'Table': '443', 
-      'Chaise': '436',
-      'Lit': '569',
-      'Rangement': '6552',
-      'Meuble TV': '6552',
-      'Décoration': '696',
-      'Éclairage': '594'
-    };
-    return categoryMap[category] || '';
-  };
-
-  const calculateConfidence = (text: string): number => {
-    let confidence = 30; // Base
-    if (detectColor(text)) confidence += 20;
-    if (detectMaterial(text)) confidence += 20;
-    if (detectStyle(text)) confidence += 15;
-    if (detectRoom(text)) confidence += 10;
-    if (detectDimensions(text)) confidence += 5;
-    return Math.min(confidence, 100);
-  };
-
-  const handleEnrichAll = async () => {
-    setIsEnriching(true);
-    setSyncProgress(0);
-    showInfo('Enrichissement en cours', 'Analyse IA de tous les produits du catalogue...');
-    
-    try {
-      // Simuler l'enrichissement IA avec progression
-      for (let i = 0; i <= 100; i += 10) {
-        setSyncProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      
-      // Recharger les produits enrichis
-      await loadEnrichedProducts();
-      
-      showSuccess(
-        'Enrichissement terminé',
-        `${products.length} produits enrichis avec succès !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => setViewMode('grid'),
-            variant: 'primary'
-          }
-        ]
-      );
-      
-    } catch (error) {
-      showError('Erreur enrichissement', 'Impossible d\'enrichir les produits.');
-    } finally {
-      setIsEnriching(false);
-      setSyncProgress(0);
-    }
-  };
-
   const handleSyncFromCatalog = async () => {
-    setIsSyncing(true);
-    setSyncProgress(0);
-    showInfo('Synchronisation', 'Récupération des produits depuis le catalogue...');
-    
     try {
-      console.log('🔄 [ProductsEnrichedTable] Synchronisation depuis catalogue...');
+      setIsSyncing(true);
+      setSyncProgress(0);
       
-      // Récupérer les produits depuis le catalogue avec plusieurs tentatives
-      const catalogProducts = await getCatalogProducts();
+      showInfo('Synchronisation démarrée', 'Récupération des produits depuis le catalogue...');
       
-      if (catalogProducts.length === 0) {
-        showError(
-          'Aucun produit trouvé',
-          'Votre catalogue est vide. Importez d\'abord vos produits via l\'onglet Intégration.',
-          [
-            {
-              label: 'Aller à l\'intégration',
-              action: () => window.location.hash = '#integration',
-              variant: 'primary'
-            }
-          ]
-        );
+      // Charger les produits du catalogue principal
+      const catalogKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
+      const savedCatalog = localStorage.getItem(catalogKey);
+      
+      if (!savedCatalog) {
+        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue principal. Importez d\'abord vos produits.');
         return;
       }
       
-      console.log('📦 [ProductsEnrichedTable] Produits catalogue trouvés:', catalogProducts.length);
+      const catalogProducts = JSON.parse(savedCatalog);
+      const activeProducts = catalogProducts.filter((p: any) => p.status === 'active');
       
-      // Enrichir chaque produit avec progression
-      const enrichedProducts: EnrichedProduct[] = [];
+      console.log('📦 Produits catalogue trouvés:', activeProducts.length);
       
-      for (let i = 0; i < catalogProducts.length; i++) {
-        const product = catalogProducts[i];
-        setSyncProgress(Math.round((i / catalogProducts.length) * 100));
+      // Simuler la progression
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => Math.min(prev + 10, 90));
+      }, 200);
+      
+      // Déclencher l'enrichissement automatique
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            retailer_id: vendorId || 'demo-retailer-id',
+            force_full_enrichment: true,
+            vendor_id: vendorId
+          }),
+        });
         
-        try {
-          const enriched = enrichProduct(product);
-          enrichedProducts.push(enriched);
-          console.log(`✅ [ProductsEnrichedTable] Produit enrichi: ${enriched.title.substring(0, 30)}`);
-        } catch (error) {
-          console.error(`❌ [ProductsEnrichedTable] Erreur enrichissement ${product.name}:`, error);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Enrichissement automatique réussi:', result);
+          
+          // Récupérer les données enrichies depuis la réponse
+          if (result.enriched_data && Array.isArray(result.enriched_data)) {
+            const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+            localStorage.setItem(enrichedKey, JSON.stringify(result.enriched_data));
+            
+            setProducts(result.enriched_data);
+            setFilteredProducts(result.enriched_data);
+            
+            showSuccess(
+              'Synchronisation terminée',
+              `${result.enriched_data.length} produits enrichis automatiquement !`,
+              [
+                {
+                  label: 'Voir les résultats',
+                  action: () => setViewMode('table'),
+                  variant: 'primary'
+                }
+              ]
+            );
+          }
+        } else {
+          showError('Erreur d\'enrichissement', 'Impossible d\'enrichir automatiquement les produits.');
         }
+      } else {
+        // Fallback : enrichissement basique local
+        const enrichedProducts = activeProducts.map((product: any) => ({
+          id: product.id || `enriched-${Date.now()}-${Math.random()}`,
+          handle: product.handle || product.id || `handle-${Date.now()}`,
+          title: product.name || product.title || 'Produit sans nom',
+          description: product.description || '',
+          category: detectCategory(product.name || product.title || ''),
+          subcategory: detectSubcategory(product.name || product.title || '', product.description || ''),
+          color: detectColor(product.name + ' ' + product.description),
+          material: detectMaterial(product.name + ' ' + product.description),
+          fabric: detectFabric(product.name + ' ' + product.description),
+          style: detectStyle(product.name + ' ' + product.description),
+          dimensions: extractDimensions(product.description || ''),
+          room: detectRoom(product.name + ' ' + product.description),
+          price: product.price || 0,
+          stock_qty: product.stock || product.quantityAvailable || 0,
+          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          product_url: product.product_url || '#',
+          tags: Array.isArray(product.tags) ? product.tags : [],
+          seo_title: generateSEOTitle(product.name || product.title || '', product.vendor || 'Boutique'),
+          seo_description: generateSEODescription(product.name || product.title || '', product.description || ''),
+          ad_headline: (product.name || product.title || '').substring(0, 30),
+          ad_description: `${product.name || 'Produit'} ${detectMaterial(product.name + ' ' + product.description)}. Promo !`.substring(0, 90),
+          google_product_category: getGoogleCategory(detectCategory(product.name || product.title || '')),
+          gtin: '',
+          brand: product.vendor || 'Boutique',
+          confidence_score: calculateBasicConfidence(product),
+          enriched_at: new Date().toISOString(),
+          enrichment_source: 'sync_local',
+          created_at: product.created_at || new Date().toISOString()
+        }));
         
-        // Pause pour éviter de bloquer l'UI
-        if (i % 5 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
+        const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+        localStorage.setItem(enrichedKey, JSON.stringify(enrichedProducts));
+        
+        setProducts(enrichedProducts);
+        setFilteredProducts(enrichedProducts);
+        
+        showSuccess('Synchronisation terminée', `${enrichedProducts.length} produits synchronisés et enrichis !`);
       }
       
+      clearInterval(progressInterval);
       setSyncProgress(100);
       
-      // Sauvegarder les produits enrichis
-      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      localStorage.setItem(enrichedKey, JSON.stringify(enrichedProducts));
-      
-      console.log('💾 [ProductsEnrichedTable] Produits enrichis sauvegardés:', enrichedProducts.length);
-      
-      // Recharger depuis localStorage
-      await loadEnrichedProducts();
-      
-      showSuccess(
-        'Synchronisation réussie',
-        `${enrichedProducts.length} produits synchronisés et enrichis !`,
-        [
-          {
-            label: 'Voir les produits',
-            action: () => setViewMode('grid'),
-            variant: 'primary'
-          }
-        ]
-      );
-      
     } catch (error) {
-      console.error('❌ [ProductsEnrichedTable] Erreur synchronisation:', error);
-      showError('Erreur synchronisation', 'Impossible de synchroniser le catalogue.');
+      console.error('❌ Erreur synchronisation:', error);
+      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
     } finally {
       setIsSyncing(false);
       setSyncProgress(0);
     }
   };
 
-  const getCatalogProducts = async (): Promise<any[]> => {
+  const handleEnrichAll = async () => {
     try {
-      console.log('🔍 [ProductsEnrichedTable] Recherche produits catalogue...');
+      setIsEnriching(true);
+      setSyncProgress(0);
       
-      // Essayer plusieurs clés de stockage possibles pour le vendeur
-      const storageKeys = [
-        vendorId ? `seller_${vendorId}_products` : null,
-        vendorId ? `vendor_${vendorId}_products` : null,
-        'catalog_products', // Fallback global
-        'imported_products',
-        'demo_products'
-      ];
+      showInfo('Enrichissement démarré', 'Analyse IA de tous les produits...');
       
-      for (const key of storageKeys.filter(Boolean)) {
-        try {
-          const savedProducts = localStorage.getItem(key);
-          if (savedProducts) {
-            const products = JSON.parse(savedProducts);
-            const activeProducts = products.filter((p: any) => 
-              p.status === 'active' && (p.stock > 0 || p.quantityAvailable > 0)
-            );
+      // Simuler la progression
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => Math.min(prev + 15, 90));
+      }, 500);
+      
+      // Déclencher l'enrichissement IA
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            retailer_id: vendorId || 'demo-retailer-id',
+            force_full_enrichment: true,
+            vendor_id: vendorId
+          }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.enriched_data && Array.isArray(result.enriched_data)) {
+            const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+            localStorage.setItem(enrichedKey, JSON.stringify(result.enriched_data));
             
-            if (activeProducts.length > 0) {
-              console.log(`✅ [ProductsEnrichedTable] Produits trouvés dans ${key}:`, activeProducts.length);
-              return activeProducts;
-            }
+            setProducts(result.enriched_data);
+            setFilteredProducts(result.enriched_data);
           }
-        } catch (error) {
-          console.warn(`⚠️ [ProductsEnrichedTable] Erreur lecture ${key}:`, error);
+          
+          showSuccess('Enrichissement terminé', `${result.stats?.products_processed || 0} produits enrichis avec IA !`);
+        } else {
+          showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits avec l\'IA.');
         }
       }
       
-      console.log('⚠️ [ProductsEnrichedTable] Aucun produit trouvé dans localStorage');
-      return [];
+      clearInterval(progressInterval);
+      setSyncProgress(100);
       
     } catch (error) {
-      console.error('❌ [ProductsEnrichedTable] Erreur récupération produits:', error);
-      return [];
+      console.error('❌ Erreur enrichissement:', error);
+      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
+    } finally {
+      setIsEnriching(false);
+      setSyncProgress(0);
     }
   };
 
   const handleExportCSV = () => {
-    if (filteredProducts.length === 0) {
-      showError('Aucun produit', 'Aucun produit à exporter.');
-      return;
+    try {
+      const csvHeaders = [
+        'ID', 'Titre', 'Catégorie', 'Sous-catégorie', 'Couleur', 'Matériau', 
+        'Tissu', 'Style', 'Dimensions', 'Pièce', 'Prix', 'Stock', 'Tags',
+        'Titre SEO', 'Description SEO', 'Titre Pub', 'Description Pub',
+        'Catégorie Google', 'Marque', 'Score Confiance', 'Source Enrichissement'
+      ];
+      
+      const csvData = [
+        csvHeaders.join(','),
+        ...filteredProducts.map(product => [
+          product.id,
+          `"${product.title}"`,
+          product.category,
+          product.subcategory,
+          product.color,
+          product.material,
+          product.fabric,
+          product.style,
+          product.dimensions,
+          product.room,
+          product.price,
+          product.stock_qty,
+          `"${product.tags.join(', ')}"`,
+          `"${product.seo_title}"`,
+          `"${product.seo_description}"`,
+          `"${product.ad_headline}"`,
+          `"${product.ad_description}"`,
+          product.google_product_category,
+          product.brand,
+          product.confidence_score,
+          product.enrichment_source
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `produits-enrichis-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSuccess('Export réussi', `${filteredProducts.length} produits exportés en CSV.`);
+      
+    } catch (error) {
+      console.error('❌ Erreur export CSV:', error);
+      showError('Erreur d\'export', 'Impossible d\'exporter les produits.');
     }
-
-    const csvHeaders = [
-      'ID', 'Nom', 'Catégorie', 'Sous-catégorie', 'Couleur', 'Matériau', 'Tissu', 'Style', 'Dimensions', 'Pièce',
-      'Prix', 'Stock', 'Tags', 'Titre SEO', 'Description SEO', 'Titre Pub', 'Description Pub',
-      'Catégorie Google', 'GTIN', 'Marque', 'Score Confiance', 'Enrichi le'
-    ];
-
-    const csvData = filteredProducts.map(product => [
-      product.id,
-      product.title,
-      product.category,
-      product.subcategory,
-      product.color,
-      product.material,
-      product.fabric,
-      product.style,
-      product.dimensions,
-      product.room,
-      product.price,
-      product.stock_qty,
-      product.tags.join('; '),
-      product.seo_title,
-      product.seo_description,
-      product.ad_headline,
-      product.ad_description,
-      product.google_product_category,
-      product.gtin,
-      product.brand,
-      product.confidence_score,
-      new Date(product.enriched_at).toLocaleDateString('fr-FR')
-    ]);
-
-    const csvContent = [csvHeaders, ...csvData]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `produits-enrichis-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showSuccess('Export réussi', `${filteredProducts.length} produits exportés en CSV.`);
   };
 
   const handleBulkAction = (action: string) => {
@@ -1212,16 +1023,20 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                       )}
                     </div>
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <span className="text-lg font-bold text-green-400">{product.price}€</span>
                       <span className="text-sm text-gray-400">Stock: {product.stock_qty}</span>
                     </div>
                     
-                    <div className="mt-3 flex gap-2">
-                        <Edit className="w-3 h-3" />
-                      <button className="flex-1 px-3 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">
+                    <div className="flex gap-2">
+                      <button
                         onClick={() => handleEditProduct(product)}
                         className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Edit className="w-3 h-3" />
+                        Modifier
+                      </button>
+                      <button
                         onClick={() => {
                           const updatedProducts = products.filter(p => p.id !== product.id);
                           setProducts(updatedProducts);
@@ -1230,7 +1045,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                           showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
                         }}
                         className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
-                      <button className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                      >
                         Supprimer
                       </button>
                     </div>
@@ -1244,3 +1059,135 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     </div>
   );
 };
+
+// Helper functions for basic enrichment
+function detectCategory(text: string): string {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('canapé') || lowerText.includes('sofa')) return 'Canapé';
+  if (lowerText.includes('table')) return 'Table';
+  if (lowerText.includes('chaise') || lowerText.includes('fauteuil')) return 'Chaise';
+  if (lowerText.includes('lit')) return 'Lit';
+  if (lowerText.includes('armoire') || lowerText.includes('commode')) return 'Rangement';
+  return 'Mobilier';
+}
+
+function detectSubcategory(title: string, description: string): string {
+  const text = `${title} ${description}`.toLowerCase();
+  
+  if (text.includes('canapé')) {
+    if (text.includes('angle')) return 'Canapé d\'angle';
+    if (text.includes('convertible')) return 'Canapé convertible';
+    if (text.includes('lit')) return 'Canapé-lit';
+    return 'Canapé fixe';
+  }
+  
+  if (text.includes('table')) {
+    if (text.includes('basse')) return 'Table basse';
+    if (text.includes('manger') || text.includes('repas')) return 'Table à manger';
+    if (text.includes('bureau')) return 'Bureau';
+    if (text.includes('console')) return 'Console';
+    if (text.includes('ronde')) return 'Table ronde';
+    return 'Table rectangulaire';
+  }
+  
+  if (text.includes('chaise')) {
+    if (text.includes('bureau')) return 'Chaise de bureau';
+    if (text.includes('bar')) return 'Tabouret de bar';
+    return 'Chaise de salle à manger';
+  }
+  
+  return '';
+}
+
+function detectColor(text: string): string {
+  const lowerText = text.toLowerCase();
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+  for (const color of colors) {
+    if (lowerText.includes(color)) return color;
+  }
+  return '';
+}
+
+function detectMaterial(text: string): string {
+  const lowerText = text.toLowerCase();
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
+  for (const material of materials) {
+    if (lowerText.includes(material)) return material;
+  }
+  return '';
+}
+
+function detectFabric(text: string): string {
+  const lowerText = text.toLowerCase();
+  const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
+  for (const fabric of fabrics) {
+    if (lowerText.includes(fabric)) return fabric;
+  }
+  return '';
+}
+
+function detectStyle(text: string): string {
+  const lowerText = text.toLowerCase();
+  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+  for (const style of styles) {
+    if (lowerText.includes(style)) return style;
+  }
+  return '';
+}
+
+function detectRoom(text: string): string {
+  const lowerText = text.toLowerCase();
+  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
+  for (const room of rooms) {
+    if (lowerText.includes(room)) return room;
+  }
+  return '';
+}
+
+function extractDimensions(text: string): string {
+  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+  if (dimensionMatch) {
+    const [, length, width, height] = dimensionMatch;
+    if (height) {
+      return `L:${length}cm x l:${width}cm x H:${height}cm`;
+    } else {
+      return `L:${length}cm x l:${width}cm`;
+    }
+  }
+  
+  const diameterMatch = text.match(/(?:ø|diamètre)\s*(\d+)\s*cm/);
+  if (diameterMatch) {
+    return `Ø:${diameterMatch[1]}cm`;
+  }
+  
+  return '';
+}
+
+function generateSEOTitle(productName: string, brand: string): string {
+  return `${productName} - ${brand}`.substring(0, 70);
+}
+
+function generateSEODescription(productName: string, description: string): string {
+  return `${productName}. ${description.substring(0, 100)}. Livraison gratuite.`.substring(0, 155);
+}
+
+function getGoogleCategory(category: string): string {
+  const categoryMap: { [key: string]: string } = {
+    'Canapé': '635',
+    'Table': '443',
+    'Chaise': '436',
+    'Lit': '569',
+    'Rangement': '6552'
+  };
+  return categoryMap[category] || '';
+}
+
+function calculateBasicConfidence(product: any): number {
+  let confidence = 30; // Base
+  if (product.name || product.title) confidence += 20;
+  if (product.description) confidence += 15;
+  if (product.price > 0) confidence += 10;
+  if (product.image_url) confidence += 10;
+  if (product.category || product.productType) confidence += 15;
+  return Math.min(confidence, 100);
+}
