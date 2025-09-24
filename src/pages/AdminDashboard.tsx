@@ -16,7 +16,6 @@ import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { APITest } from './APITest';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
-import { APITest } from '../pages/APITest';
 import { QrCode } from 'lucide-react';
 
 interface AdminDashboardProps {
