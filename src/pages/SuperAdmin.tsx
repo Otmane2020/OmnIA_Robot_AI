@@ -103,6 +103,15 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
     setShowKbisModal(true);
   };
 
+  // Fonction pour générer un sous-domaine vendeur
+  const generateSellerSubdomain = (companyName: string): string => {
+    return companyName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Supprimer caractères spéciaux
+      .replace(/\s+/g, '') // Supprimer espaces
+      .substring(0, 20); // Limiter longueur
+  };
+
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'retailers', label: 'Revendeurs', icon: Store },
