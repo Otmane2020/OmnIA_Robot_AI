@@ -296,7 +296,7 @@
      `.trim();
  
 -    const prompt = `Analyse ce produit mobilier et enrichis-le au format JSON strict :
-+    const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
++    const prompt = \`Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
  
  ${productText}
  
