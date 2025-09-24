@@ -1,100 +1,584 @@
 import React, { useState } from 'react';
-import { Shield, Users, Clock, CheckCircle, XCircle, Building, Mail, Phone, MapPin, Calendar, User, Briefcase, Globe, CreditCard, Eye, FileText, Download, Search, Filter } from 'lucide-react';
+import { 
+  Users, Store, BarChart3, Settings, Shield, 
+  Search, Filter, Eye, Edit, Trash2, Plus,
+  CheckCircle, XCircle, AlertTriangle, Crown,
+  TrendingUp, DollarSign, Calendar, Mail,
+  FileText
+} from 'lucide-react';
 import { Logo } from '../components/Logo';
-
-interface Application {
-  id: string;
-  companyName: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  siret: string;
-  position: string;
-  plan: string;
-  proposedSubdomain: string;
-  submittedAt: string;
-  submittedDate: string;
-  submittedTime: string;
-  status: string;
-  country?: string;
-  kbisFile?: File;
-}
+import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 
 interface SuperAdminProps {
   onLogout: () => void;
-  pendingApplications: Application[];
-  onValidateApplication: (applicationId: string, approved: boolean) => void;
+  pendingApplications: any[];
+  onValidateApplication: (id: string) => void;
+}
+
+interface Retailer {
+  id: string;
+  name: string;
+  email: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended';
+  revenue: number;
+  conversations: number;
+  products: number;
+  joinDate: string;
+  lastActive: string;
 }
 
 export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplications, onValidateApplication }) => {
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-
-  const handleApprove = (applicationId: string) => {
-    if (confirm('Approuver cette demande d\'inscription ?')) {
-      onValidateApplication(applicationId, true);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [showKbisModal, setShowKbisModal] = useState(false);
+  const [selectedKbis, setSelectedKbis] = useState<any>(null);
+  const [retailers, setRetailers] = useState<Retailer[]>(() => {
+    // Charger les revendeurs depuis localStorage
+    try {
+      const saved = localStorage.getItem('retailers');
+      return saved ? JSON.parse(saved) : [
+        {
+          id: '1',
+          name: 'Mobilier Design Paris',
+          email: 'contact@mobilierdesign.fr',
+          plan: 'enterprise',
+          status: 'active',
+          revenue: 5890,
+          conversations: 3456,
+          products: 234,
+          joinDate: '2024-01-15',
+          lastActive: '2024-03-15'
+        },
+        {
+          id: '2',
+          name: 'Déco Contemporain',
+          email: 'info@decocontemporain.com',
+          plan: 'professional',
+          status: 'active',
+          revenue: 3200,
+          conversations: 2100,
+          products: 156,
+          joinDate: '2024-02-01',
+          lastActive: '2024-03-14'
+        },
+        {
+          id: '3',
+          name: 'Decora Home',
+          email: 'admin@decorahome.fr',
+          plan: 'professional',
+          status: 'active',
+          revenue: 2450,
+          conversations: 1234,
+          products: 89,
+          joinDate: '2024-02-20',
+          lastActive: '2024-03-13'
+        },
+        {
+          id: '4',
+          name: 'Meubles Lyon',
+          email: 'contact@meubleslyon.fr',
+          plan: 'starter',
+          status: 'active',
+          revenue: 890,
+          conversations: 456,
+          products: 45,
+          joinDate: '2024-03-01',
+          lastActive: '2024-03-12'
+        }
+      ];
+    } catch (error) {
+      console.error('Erreur chargement retailers:', error);
+      return [];
     }
+  });
+  const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
+  const handleViewKbis = (application: any) => {
+    setSelectedKbis(application);
+    setShowKbisModal(true);
   };
 
-  const handleReject = (applicationId: string) => {
-    const reason = prompt('Raison du rejet (optionnel) :');
-    if (reason !== null) { // null = annulé, string vide = OK
-      onValidateApplication(applicationId, false);
-    }
-  };
+  const tabs = [
+    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
+    { id: 'retailers', label: 'Revendeurs', icon: Store },
+    { id: 'applications', label: 'Demandes', icon: Users },
+    { id: 'users', label: 'Utilisateurs', icon: Users },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'settings', label: 'Paramètres', icon: Settings }
+  ];
 
   const getPlanColor = (plan: string) => {
     switch (plan) {
-      case 'starter': return 'bg-green-500/20 text-green-300';
-      case 'professional': return 'bg-blue-500/20 text-blue-300';
+      case 'starter': return 'bg-gray-500/20 text-gray-300';
+      case 'professional': return 'bg-cyan-500/20 text-cyan-300';
       case 'enterprise': return 'bg-purple-500/20 text-purple-300';
       default: return 'bg-gray-500/20 text-gray-300';
     }
   };
 
-  const getPlanPrice = (plan: string) => {
-    switch (plan) {
-      case 'starter': return '29€/mois';
-      case 'professional': return '79€/mois';
-      case 'enterprise': return '199€/mois';
-      default: return 'N/A';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500/20 text-green-300';
+      case 'inactive': return 'bg-yellow-500/20 text-yellow-300';
+      case 'suspended': return 'bg-red-500/20 text-red-300';
+      default: return 'bg-gray-500/20 text-gray-300';
     }
   };
 
-  const getCountryFlag = (countryCode: string) => {
-    const flags: { [key: string]: string } = {
-      'FR': '🇫🇷',
-      'BE': '🇧🇪',
-      'CH': '🇨🇭',
-      'LU': '🇱🇺',
-      'CA': '🇨🇦'
-    };
-    return flags[countryCode] || '🌍';
+  const handleValidateApplication = (application: any, approved: boolean) => {
+    if (approved) {
+      console.log(`✅ Application approuvée: ${application.companyName}`);
+      console.log(`🌐 Sous-domaine créé: ${application.proposedSubdomain}`);
+      console.log(`📧 Email d'approbation simulé pour: ${application.email}`);
+      
+      // Créer le nouveau revendeur
+      const newRetailer: Retailer = {
+        id: Date.now().toString(),
+        name: application.companyName,
+        email: application.email,
+        plan: application.selectedPlan,
+        status: 'active',
+        revenue: 0,
+        conversations: 0,
+        products: 0,
+        joinDate: new Date().toISOString(),
+        lastActive: new Date().toISOString()
+      };
+      
+      setRetailers(prev => [...prev, newRetailer]);
+      
+      showSuccess(
+        'Demande approuvée',
+        `${application.companyName} a été approuvé ! Sous-domaine ${application.proposedSubdomain}.omnia.sale créé. Identifiants: ${application.email} / ${application.password || 'motdepasse123'}`,
+        [
+          {
+            label: 'Voir les revendeurs',
+            action: () => setActiveTab('retailers'),
+            variant: 'primary'
+          }
+        ]
+      );
+
+      onValidateApplication(application.id, true);
+    } else {
+      console.log(`❌ Application rejetée: ${application.companyName}`);
+      console.log(`📧 Email de rejet envoyé à: ${application.email}`);
+      
+      showInfo(
+        'Demande rejetée',
+        `${application.companyName} a été rejeté. Email d'explication envoyé à ${application.email}.`
+      );
+
+      onValidateApplication(application.id, false);
+    }
+    setShowValidationModal(false);
+    setSelectedApplication(null);
   };
 
-  const filteredApplications = pendingApplications.filter(app => {
-    const matchesSearch = searchTerm === '' || 
-      app.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.lastName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesPlan = filterPlan === 'all' || app.plan === filterPlan;
-    const matchesStatus = filterStatus === 'all' || app.status === filterStatus;
+  const filteredRetailers = retailers.filter(retailer => {
+    const matchesSearch = retailer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         retailer.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPlan = filterPlan === 'all' || retailer.plan === filterPlan;
+    const matchesStatus = filterStatus === 'all' || retailer.status === filterStatus;
     
     return matchesSearch && matchesPlan && matchesStatus;
   });
 
-  const stats = {
-    pending: pendingApplications.filter(app => app.status === 'pending').length,
-    approved: pendingApplications.filter(app => app.status === 'approved').length,
-    rejected: pendingApplications.filter(app => app.status === 'rejected').length
+  const totalRevenue = retailers.reduce((sum, retailer) => sum + retailer.revenue, 0);
+  const totalConversations = retailers.reduce((sum, retailer) => sum + retailer.conversations, 0);
+  const activeRetailers = retailers.filter(r => r.status === 'active').length;
+
+  const renderDashboard = () => (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">Super Administration</h1>
+          <p className="text-gray-300 text-lg">Gestion de la plateforme OmnIA.sale</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+            <span className="text-2xl font-bold text-gray-800">O</span>
+          </div>
+          <div>
+            <div className="text-white font-bold text-xl">OmnIA.sale</div>
+            <div className="text-gray-400 text-sm">Super Admin</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards - Exact layout from image */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-200 text-sm mb-1">Revendeurs Actifs</p>
+              <p className="text-4xl font-bold text-white mb-1">{activeRetailers}</p>
+              <p className="text-green-400 text-sm">+12% ce mois</p>
+            </div>
+            <Store className="w-12 h-12 text-cyan-400" />
+          </div>
+        </div>
+        
+        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-200 text-sm mb-1">Revenus Totaux</p>
+              <p className="text-4xl font-bold text-white mb-1">€{totalRevenue.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+23% ce mois</p>
+            </div>
+            <DollarSign className="w-12 h-12 text-green-400" />
+          </div>
+        </div>
+        
+        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-200 text-sm mb-1">Conversations IA</p>
+              <p className="text-4xl font-bold text-white mb-1">{totalConversations.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+34% ce mois</p>
+            </div>
+            <BarChart3 className="w-12 h-12 text-purple-400" />
+          </div>
+        </div>
+        
+        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-200 text-sm mb-1">Taux Conversion</p>
+              <p className="text-4xl font-bold text-white mb-1">28%</p>
+              <p className="text-green-400 text-sm">+5% ce mois</p>
+            </div>
+            <TrendingUp className="w-12 h-12 text-orange-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Activité Récente - Exact layout from image */}
+      <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6">Activité Récente</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Nouveau revendeur inscrit: <strong>Mobilier Moderne</strong></p>
+              <p className="text-blue-200 text-sm">Plan Professional • Il y a 2h</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <TrendingUp className="w-6 h-6 text-blue-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Pic de conversations: <strong>+150% aujourd'hui</strong></p>
+              <p className="text-blue-200 text-sm">Tous revendeurs • Il y a 4h</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <DollarSign className="w-6 h-6 text-green-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Upgrade plan: <strong>Decora Home → Enterprise</strong></p>
+              <p className="text-blue-200 text-sm">+€120/mois • Il y a 6h</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Revendeurs et Répartition des Plans */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Top Revendeurs (Revenus) */}
+        <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30">
+          <h2 className="text-2xl font-bold text-white mb-6">Top Revendeurs (Revenus)</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                1
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Mobilier Design Paris</p>
+                    <p className="text-blue-200 text-sm">enterprise</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€5890</p>
+                    <p className="text-blue-200 text-sm">3456 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                2
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Déco Contemporain</p>
+                    <p className="text-blue-200 text-sm">professional</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€3200</p>
+                    <p className="text-blue-200 text-sm">2100 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                3
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Decora Home</p>
+                    <p className="text-blue-200 text-sm">professional</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€2450</p>
+                    <p className="text-blue-200 text-sm">1234 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                4
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Meubles Lyon</p>
+                    <p className="text-blue-200 text-sm">starter</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€890</p>
+                    <p className="text-blue-200 text-sm">456 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Répartition des Plans */}
+        <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30">
+          <h2 className="text-2xl font-bold text-white mb-6">Répartition des Plans</h2>
+          <div className="space-y-6">
+            {/* Starter */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Starter</span>
+                <span className="text-white text-lg font-bold">25%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-gray-500 h-3 rounded-full transition-all duration-1000" style={{ width: '25%' }}></div>
+              </div>
+            </div>
+
+            {/* Professional */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Professional</span>
+                <span className="text-white text-lg font-bold">50%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-cyan-500 h-3 rounded-full transition-all duration-1000" style={{ width: '50%' }}></div>
+              </div>
+            </div>
+
+            {/* Enterprise */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Enterprise</span>
+                <span className="text-white text-lg font-bold">25%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-purple-500 h-3 rounded-full transition-all duration-1000" style={{ width: '25%' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderApplications = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Demandes de Création</h2>
+        <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl px-4 py-2">
+          <span className="text-orange-300 font-semibold">{pendingApplications.length} en attente</span>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {pendingApplications.map((application) => (
+          <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-2">{application.companyName}</h3>
+                <div className="space-y-1">
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📧 {application.email}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📞 {application.phone}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    🏢 {application.address}, {application.city}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    🌐 {application.country}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    👤 {application.firstName} {application.lastName} - {application.position}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📄 SIRET: {application.siret}
+                  </p>
+                </div>
+                <div className="text-sm text-gray-400 mt-3 space-y-1">
+                  <p>📅 Soumis le {application.submittedDate || new Date(application.submittedAt || Date.now()).toLocaleDateString('fr-FR')}</p>
+                  <p>🕐 À {application.submittedTime || new Date(application.submittedAt || Date.now()).toLocaleTimeString('fr-FR')}</p>
+                  <p>⏱️ Il y a {Math.floor((Date.now() - new Date(application.submittedAt || Date.now()).getTime()) / (1000 * 60 * 60))}h</p>
+                </div>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(application.plan)}`}>
+                {application.plan}
+              </span>
+            </div>
+
+            {/* Affichage du fichier Kbis si disponible */}
+            <div className="mb-4 p-4 bg-blue-500/20 border border-blue-400/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <span className="text-blue-200 font-semibold">Document Kbis</span>
+              </div>
+              {application.kbisFile ? (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-blue-300">
+                  📄 {application.kbisFile.name} ({(application.kbisFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                  <button
+                    onClick={() => handleViewKbis(application)}
+                    className="text-cyan-400 hover:text-cyan-300 text-sm underline"
+                  >
+                    👁️ Voir le document
+                  </button>
+                </div>
+              ) : (
+                <div className="text-sm text-yellow-300">⚠️ Aucun fichier Kbis uploadé</div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setSelectedApplication(application);
+                  setShowValidationModal(true);
+                }}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ✅ Valider la demande
+              </button>
+              <button
+                onClick={() => handleValidateApplication(application, false)}
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ❌ Rejeter
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderRetailers = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
+        <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nouveau revendeur
+        </button>
+      </div>
+
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Revenus</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Conversations</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRetailers.map((retailer) => (
+                <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div>
+                      <div className="font-semibold text-white">{retailer.name}</div>
+                      <div className="text-sm text-gray-400">{retailer.email}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(retailer.plan)}`}>
+                      {retailer.plan}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(retailer.status)}`}>
+                      {retailer.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-green-400">€{retailer.revenue}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-white">{retailer.conversations.toLocaleString()}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button className="text-blue-400 hover:text-blue-300 p-1">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button className="text-yellow-400 hover:text-yellow-300 p-1">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button className="text-red-400 hover:text-red-300 p-1">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return renderDashboard();
+      case 'retailers': return renderRetailers();
+      case 'applications': return renderApplications();
+      case 'users': return <div className="text-white">Gestion des utilisateurs - En développement</div>;
+      case 'analytics': return <div className="text-white">Analytics avancées - En développement</div>;
+      case 'settings': return <div className="text-white">Paramètres système - En développement</div>;
+      default: return renderDashboard();
+    }
   };
 
   return (
@@ -105,334 +589,174 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Super Admin OmnIA</h1>
-                <p className="text-red-300">Gestion des demandes d'inscription</p>
-              </div>
+      <div className="relative z-10 flex h-screen">
+        {/* Sidebar - Exact design from image */}
+        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+          {/* Header with orange crown icon */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+              <Crown className="w-6 h-6 text-white" />
             </div>
-            <button
-              onClick={onLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-            >
-              <Shield className="w-4 h-4" />
-              Déconnexion
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-yellow-600/20 backdrop-blur-xl rounded-2xl p-6 border border-yellow-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-200 text-sm mb-1">En attente</p>
-                <p className="text-3xl font-bold text-white mb-1">{stats.pending}</p>
-                <p className="text-yellow-300 text-sm">Validation requise</p>
-              </div>
-              <Clock className="w-10 h-10 text-yellow-400" />
+            <div>
+              <h1 className="text-xl font-bold text-white">Super Admin</h1>
+              <p className="text-sm text-orange-300">omnia.sale</p>
             </div>
           </div>
-          
-          <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-200 text-sm mb-1">Approuvées</p>
-                <p className="text-3xl font-bold text-white mb-1">{stats.approved}</p>
-                <p className="text-green-300 text-sm">Comptes actifs</p>
-              </div>
-              <CheckCircle className="w-10 h-10 text-green-400" />
-            </div>
-          </div>
-          
-          <div className="bg-red-600/20 backdrop-blur-xl rounded-2xl p-6 border border-red-500/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-200 text-sm mb-1">Rejetées</p>
-                <p className="text-3xl font-bold text-white mb-1">{stats.rejected}</p>
-                <p className="text-red-300 text-sm">Informations manquantes</p>
-              </div>
-              <XCircle className="w-10 h-10 text-red-400" />
-            </div>
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Rechercher par entreprise, email, nom..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-            
-            <select
-              value={filterPlan}
-              onChange={(e) => setFilterPlan(e.target.value)}
-              className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            >
-              <option value="all">Tous les plans</option>
-              <option value="starter">Starter</option>
-              <option value="professional">Professional</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-            
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="approved">Approuvées</option>
-              <option value="rejected">Rejetées</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Applications List */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-          <div className="p-6 border-b border-white/10">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Demandes d'inscription ({filteredApplications.length})
-            </h2>
-          </div>
-
-          {filteredApplications.length === 0 ? (
-            <div className="p-12 text-center">
-              <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">
-                {searchTerm || filterPlan !== 'all' || filterStatus !== 'all' 
-                  ? 'Aucune demande correspondante' 
-                  : 'Aucune demande en attente'}
-              </h3>
-              <p className="text-gray-400">
-                {searchTerm || filterPlan !== 'all' || filterStatus !== 'all'
-                  ? 'Modifiez vos critères de recherche.'
-                  : 'Les nouvelles demandes d\'inscription apparaîtront ici.'}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-white/10">
-              {filteredApplications.map((application) => (
-                <div key={application.id} className="p-6 hover:bg-white/5 transition-all">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      {/* Header */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center">
-                            <Building className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                              {getCountryFlag(application.country || 'FR')}
-                              {application.companyName}
-                            </h3>
-                            <p className="text-gray-400">
-                              Demande reçue le {application.submittedDate} à {application.submittedTime}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPlanColor(application.plan)}`}>
-                            {application.plan.charAt(0).toUpperCase() + application.plan.slice(1)} - {getPlanPrice(application.plan)}
-                          </span>
-                          <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm font-medium">
-                            {application.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <User className="w-4 h-4 text-cyan-400" />
-                            <span className="text-cyan-300 font-semibold text-sm">Contact</span>
-                          </div>
-                          <div className="text-white font-medium">{application.firstName} {application.lastName}</div>
-                          <div className="text-gray-400 text-sm">{application.position}</div>
-                        </div>
-                        
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Mail className="w-4 h-4 text-green-400" />
-                            <span className="text-green-300 font-semibold text-sm">Email</span>
-                          </div>
-                          <div className="text-white font-medium">{application.email}</div>
-                          <div className="text-gray-400 text-sm">
-                            <Phone className="w-3 h-3 inline mr-1" />
-                            {application.phone}
-                          </div>
-                        </div>
-                        
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <MapPin className="w-4 h-4 text-purple-400" />
-                            <span className="text-purple-300 font-semibold text-sm">Adresse</span>
-                          </div>
-                          <div className="text-white font-medium">{application.city}</div>
-                          <div className="text-gray-400 text-sm">{application.postalCode}</div>
-                        </div>
-                        
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <CreditCard className="w-4 h-4 text-orange-400" />
-                            <span className="text-orange-300 font-semibold text-sm">SIRET</span>
-                          </div>
-                          <div className="text-white font-mono">{application.siret}</div>
-                        </div>
-                        
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Globe className="w-4 h-4 text-blue-400" />
-                            <span className="text-blue-300 font-semibold text-sm">Sous-domaine</span>
-                          </div>
-                          <div className="text-white font-medium">{application.proposedSubdomain}.omnia.sale</div>
-                        </div>
-                        
-                        <div className="bg-black/20 rounded-xl p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Calendar className="w-4 h-4 text-pink-400" />
-                            <span className="text-pink-300 font-semibold text-sm">Soumission</span>
-                          </div>
-                          <div className="text-white font-medium">{application.submittedDate}</div>
-                          <div className="text-gray-400 text-sm">{application.submittedTime}</div>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => handleApprove(application.id)}
-                          className="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-green-500/50"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Approuver
-                        </button>
-                        <button
-                          onClick={() => handleReject(application.id)}
-                          className="flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-red-500/50"
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Rejeter
-                        </button>
-                        <button
-                          onClick={() => setSelectedApplication(application)}
-                          className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Détails
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Modal détails application */}
-        {selectedApplication && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-              <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-                <h2 className="text-2xl font-bold text-white">Détails de la demande</h2>
+          {/* Navigation Menu */}
+          <nav className="space-y-2 mb-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
                 <button
-                  onClick={() => setSelectedApplication(null)}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                    activeTab === tab.id
+                      ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
+                  }`}
                 >
-                  ×
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{tab.label}</span>
                 </button>
+              );
+            })}
+          </nav>
+
+          {/* Super Admin Access Card */}
+          <div className="bg-yellow-600/20 border border-yellow-500/30 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-300 font-semibold">Accès Super Admin</span>
+            </div>
+            <p className="text-yellow-200 text-sm">Gestion complète de la plateforme</p>
+          </div>
+          
+          <button
+            onClick={onLogout}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all"
+          >
+            Déconnexion
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          {renderContent()}
+        </div>
+      </div>
+
+      {/* Modal de validation */}
+      {showValidationModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-2xl w-full">
+            <h2 className="text-2xl font-bold text-white mb-6">Validation de {selectedApplication.companyName}</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                <h3 className="font-semibold text-green-300 mb-2">✅ Création du compte revendeur</h3>
+                <ul className="text-sm text-green-200 space-y-1">
+                  <li>• Compte admin créé avec accès complet</li>
+                  <li>• Interface de gestion catalogue activée</li>
+                  <li>• Configuration OmnIA personnalisée</li>
+                  <li>• Abonnement {selectedApplication.plan} activé</li>
+                </ul>
               </div>
-              
-              <div className="p-6 space-y-6">
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h3 className="font-bold text-white mb-3">🏢 Informations entreprise</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Entreprise :</span>
-                      <span className="text-white font-semibold">{selectedApplication.companyName}</span>
+
+              <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                <h3 className="font-semibold text-purple-300 mb-2">🌐 Sous-domaine assigné</h3>
+                <div className="bg-black/40 rounded-lg p-3">
+                  <code className="text-purple-300 text-lg">{selectedApplication.proposedSubdomain}</code>
+                </div>
+                <p className="text-sm text-purple-200 mt-2">
+                  Le client pourra accéder à son OmnIA via cette URL personnalisée
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => handleValidateApplication(selectedApplication, true)}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ✅ Confirmer la validation
+              </button>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification System */}
+      <NotificationSystem 
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
+
+      {/* Modal Kbis */}
+      {showKbisModal && selectedKbis && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-xl font-bold text-white">📄 Document Kbis - {selectedKbis.companyName}</h3>
+              <button
+                onClick={() => setShowKbisModal(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-white rounded-xl p-6 text-center">
+                {selectedKbis.kbisFile && selectedKbis.kbisFile instanceof File ? (
+                  selectedKbis.kbisFile.type === 'application/pdf' ? (
+                    <div>
+                      <FileText className="w-24 h-24 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 text-lg font-semibold">{selectedKbis.kbisFile.name}</p>
+                      <p className="text-gray-500">Document PDF - {(selectedKbis.kbisFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-sm text-gray-400 mt-2">Prévisualisation PDF non disponible dans le navigateur</p>
+                      <button
+                        onClick={() => {
+                          const url = URL.createObjectURL(selectedKbis.kbisFile);
+                          window.open(url, '_blank');
+                        }}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                      >
+                        📥 Télécharger le PDF
+                      </button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">SIRET :</span>
-                      <span className="text-white font-mono">{selectedApplication.siret}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Adresse :</span>
-                      <span className="text-white">{selectedApplication.address}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Ville :</span>
-                      <span className="text-white">{selectedApplication.city} {selectedApplication.postalCode}</span>
-                    </div>
+                  ) : (
+                    <img 
+                      src={URL.createObjectURL(selectedKbis.kbisFile)} 
+                      alt="Kbis"
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                    />
+                  )
+                ) : selectedKbis.kbisFile ? (
+                  <div>
+                    <FileText className="w-24 h-24 text-orange-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-lg font-semibold">Document Kbis disponible</p>
+                    <p className="text-orange-500">Fichier: {selectedKbis.kbisFile.name || 'Document uploadé'}</p>
+                    <p className="text-sm text-gray-400 mt-2">⚠️ Prévisualisation non disponible - Le fichier n'est plus accessible après rechargement de la page</p>
+                    <p className="text-xs text-gray-400 mt-1">Les fichiers ne sont pas persistés dans localStorage pour des raisons de performance</p>
                   </div>
-                </div>
-                
-                <div className="bg-black/20 rounded-xl p-4">
-                  <h3 className="font-bold text-white mb-3">👤 Contact responsable</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Nom :</span>
-                      <span className="text-white">{selectedApplication.firstName} {selectedApplication.lastName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Email :</span>
-                      <span className="text-white">{selectedApplication.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Téléphone :</span>
-                      <span className="text-white">{selectedApplication.phone}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Fonction :</span>
-                      <span className="text-white">{selectedApplication.position}</span>
-                    </div>
+                ) : (
+                  <div>
+                    <AlertTriangle className="w-24 h-24 text-yellow-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-lg">Aucun document Kbis uploadé</p>
                   </div>
-                </div>
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      handleApprove(selectedApplication.id);
-                      setSelectedApplication(null);
-                    }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ✅ Approuver
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleReject(selectedApplication.id);
-                      setSelectedApplication(null);
-                    }}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-all"
-                  >
-                    ❌ Rejeter
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
-}
+};
