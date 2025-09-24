@@ -3,7 +3,9 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  Clock, Star, X, ShoppingBag, Target, Search
+  Clock, Star, X, ShoppingBag, Search, Zap, Target, PenTool, Image, Plus,
+  Megaphone, DollarSign, Palette, Monitor, Smartphone, Tablet, Edit, Trash2,
+  ExternalLink, Mail, Phone, MapPin, Calendar, Filter, RefreshCw, Save, Package, Sparkles
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -17,11 +19,6 @@ import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
-import { supabase } from '../lib/supabase';
-import { QrCode, Megaphone } from 'lucide-react';
-import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
-import { GoogleAdsTab } from '../components/GoogleAdsTab';
-import { SEOBlogTab } from '../components/SEOBlogTab';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -32,486 +29,973 @@ interface DashboardStats {
   conversions: number;
   products: number;
   revenue: number;
+  visitors: number;
+  sessionDuration: string;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
     conversions: 42,
-    products: getActiveProductsCount(),
-    revenue: 2450
+    products: 247,
+    revenue: 45600,
+    visitors: 89,
+    sessionDuration: '4m 12s'
   });
   const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [blogPosts, setBlogPosts] = useState([
+    { id: 1, title: 'Tendances mobilier 2025', status: 'published', views: 1234, date: '2025-01-10' },
+    { id: 2, title: 'Guide aménagement salon', status: 'draft', views: 0, date: '2025-01-08' },
+    { id: 3, title: 'Couleurs tendance décoration', status: 'published', views: 892, date: '2025-01-05' }
+  ]);
+  const [adCampaigns, setAdCampaigns] = useState([
+    { id: 1, name: 'Canapés Hiver 2025', status: 'active', budget: 500, spent: 347, roas: 4.2 },
+    { id: 2, name: 'Tables Design', status: 'paused', budget: 300, spent: 156, roas: 3.8 },
+    { id: 3, name: 'Mobilier Bureau', status: 'active', budget: 200, spent: 89, roas: 5.1 }
+  ]);
 
-  // Fonction pour compter les produits actifs
-  function getActiveProductsCount(): number {
-    try {
-      const savedProducts = localStorage.getItem('catalog_products');
-      if (savedProducts) {
-        const products = JSON.parse(savedProducts);
-        const activeProducts = products.filter((p: any) => p.status === 'active');
-        return activeProducts.length;
-      }
-    } catch (error) {
-      console.error('Erreur comptage produits:', error);
+  const sidebarItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'bg-cyan-500' },
+    { 
+      id: 'ecommerce', 
+      label: 'E-Commerce', 
+      icon: ShoppingCart, 
+      color: 'bg-green-500',
+      subItems: [
+        { id: 'catalog', label: 'Catalogue', icon: Package },
+        { id: 'products', label: 'Produits', icon: ShoppingBag },
+        { id: 'inventory', label: 'Inventaire', icon: Database },
+        { id: 'orders', label: 'Commandes', icon: Receipt }
+      ]
+    },
+    { 
+      id: 'ads', 
+      label: 'Ads & Marketing', 
+      icon: Target, 
+      color: 'bg-blue-500',
+      subItems: [
+        { id: 'google-ads', label: 'Google Ads', icon: Target },
+        { id: 'social-media', label: 'Réseaux Sociaux', icon: Megaphone },
+        { id: 'email-marketing', label: 'Email Marketing', icon: Mail },
+        { id: 'budget', label: 'Budget', icon: DollarSign }
+      ]
+    },
+    { 
+      id: 'vision', 
+      label: 'Vision & Studio', 
+      icon: Eye, 
+      color: 'bg-pink-500',
+      subItems: [
+        { id: 'ar-studio', label: 'AR Studio', icon: Eye },
+        { id: 'photo-studio', label: 'Studio Photo', icon: Image },
+        { id: 'video-studio', label: 'Studio Vidéo', icon: Monitor },
+        { id: 'ai-generator', label: 'Générateur IA', icon: Sparkles }
+      ]
+    },
+    { 
+      id: 'seo', 
+      label: 'SEO', 
+      icon: Search, 
+      color: 'bg-purple-500',
+      subItems: [
+        { id: 'keywords', label: 'Mots-clés', icon: Search },
+        { id: 'blog', label: 'Blog', icon: FileText },
+        { id: 'content', label: 'Contenu', icon: Edit },
+        { id: 'performance', label: 'Performance', icon: TrendingUp }
+      ]
+    },
+    { id: 'omnia', label: 'OmnIA Bot', icon: Bot, color: 'bg-purple-600' },
+    { 
+      id: 'analytics', 
+      label: 'Analytics', 
+      icon: BarChart3, 
+      color: 'bg-orange-500',
+      subItems: [
+        { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
+        { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+        { id: 'sales', label: 'Ventes', icon: TrendingUp },
+        { id: 'reports', label: 'Rapports', icon: FileText }
+      ]
+    },
+    { 
+      id: 'admin', 
+      label: 'Admin', 
+      icon: Settings, 
+      color: 'bg-gray-500',
+      subItems: [
+        { id: 'settings', label: 'Paramètres', icon: Settings },
+        { id: 'users', label: 'Utilisateurs', icon: Users },
+        { id: 'domain', label: 'Domaine', icon: Globe },
+        { id: 'billing', label: 'Facturation', icon: CreditCard }
+      ]
     }
-    return 3; // Valeur par défaut Decora Home (3 produits de base)
-  }
+  ];
 
-  const tabs = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
-    { id: 'catalogue', label: 'Catalogue', icon: Database },
-    { id: 'integration', label: 'Intégration', icon: Globe },
-    { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
-    { id: 'google-merchant', label: 'Google Merchant', icon: ShoppingBag },
-    { id: 'google-ads', label: 'Google Ads', icon: Target },
-    { id: 'seo-blog', label: 'SEO & Blog', icon: Search },
-    { id: 'robot', label: 'Robot OmnIA', icon: Bot },
-    { id: 'historique', label: 'Historique', icon: MessageSquare },
-    { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
-    { id: 'settings', label: 'Paramètres', icon: Settings }
+  const dashboardCards = [
+    { title: 'E-Commerce', subtitle: '247 Produits', icon: ShoppingCart, color: 'bg-green-500', stats: '247 Produits' },
+    { title: 'Ads & Marketing', subtitle: '4.2x ROAS', icon: Target, color: 'bg-blue-500', stats: '4.2x ROAS' },
+    { title: 'Vision & Studio', subtitle: 'AR/VR', icon: Eye, color: 'bg-pink-500', stats: 'AR/VR' },
+    { title: 'SEO', subtitle: '15 Articles', icon: Search, color: 'bg-purple-500', stats: '15 Articles' },
+    { title: 'OmnIA Bot', subtitle: '1,234 Chats', icon: Bot, color: 'bg-purple-600', stats: '1,234 Chats' },
+    { title: 'Analytics', subtitle: '42% Conv.', icon: BarChart3, color: 'bg-orange-500', stats: '42% Conv.' },
+    { title: 'Admin', subtitle: '100% Uptime', icon: Settings, color: 'bg-gray-500', stats: '100% Uptime' }
   ];
 
   const handlePlatformConnected = (platformData: any) => {
-    console.log('Plateforme connectée:', platformData);
-    
     setConnectedPlatforms(prev => [...prev, platformData]);
-    
-    // Sauvegarder les produits dans localStorage si fournis
-    if (platformData.products && Array.isArray(platformData.products)) {
-      const existingProducts = localStorage.getItem('catalog_products');
-      let allProducts = platformData.products;
-      
-      if (existingProducts) {
-        try {
-          const existing = JSON.parse(existingProducts);
-          allProducts = [...existing, ...platformData.products];
-        } catch (error) {
-          console.error('Erreur parsing produits existants:', error);
-        }
-      }
-      
-      localStorage.setItem('catalog_products', JSON.stringify(allProducts));
-      console.log('✅ Produits sauvegardés dans localStorage:', allProducts.length);
-    }
-    
-    // Update products count
-    if (platformData.products_count) {
-      setStats(prev => ({
-        ...prev,
-        products: getActiveProductsCount()
-      }));
-    }
-    
-    showSuccess(
-      'Plateforme connectée',
-      `${platformData.name || 'Plateforme'} connectée avec ${platformData.products_count || 0} produits !`,
-      [
-        {
-          label: 'Voir le catalogue',
-          action: () => setActiveTab('catalogue'),
-          variant: 'primary'
-        }
-      ]
-    );
+    showSuccess('Plateforme connectée', `${platformData.name} connectée avec succès !`);
   };
 
-  const handleTrainingComplete = (trainingStats: any) => {
-    console.log('Entraînement IA terminé:', trainingStats);
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    setActiveSubTab('');
   };
 
-  const renderDashboard = () => (
-    <div className="space-y-8">
-      {/* Header */}
+  const handleSubTabClick = (subTabId: string) => {
+    setActiveSubTab(subTabId);
+  };
+
+  const renderGoogleAds = () => (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Interface Revendeur</h1>
-          <p className="text-gray-300">Gestion de votre assistant IA OmnIA</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-            <Store className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold">Decora Home</div>
-            <div className="text-gray-400 text-sm">Plan Professional</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-cyan-300 text-sm">{stats.products} produits actifs</span>
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="p-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl text-purple-300 hover:text-white transition-all"
-              title="QR Code boutique"
-            >
-              <QrCode className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <h3 className="text-xl font-bold text-white">Campagnes Google Ads</h3>
+        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nouvelle campagne
+        </button>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.conversations.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">+23% ce mois</p>
-            </div>
-            <MessageSquare className="w-10 h-10 text-blue-400" />
-          </div>
-        </div>
-        
-        <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-200 text-sm mb-1">Conversions</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.conversions}%</p>
-              <p className="text-green-400 text-sm">+8% ce mois</p>
-            </div>
-            <TrendingUp className="w-10 h-10 text-green-400" />
-          </div>
-        </div>
-        
-        <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-200 text-sm mb-1">Produits</p>
-              <p className="text-3xl font-bold text-white mb-1">{stats.products}</p>
-              <p className="text-green-400 text-sm">+15% ce mois</p>
-            </div>
-            <Database className="w-10 h-10 text-purple-400" />
-          </div>
-        </div>
-        
-        <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-200 text-sm mb-1">Revenus</p>
-              <p className="text-3xl font-bold text-white mb-1">€{stats.revenue.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">+12% ce mois</p>
-            </div>
-            <Receipt className="w-10 h-10 text-orange-400" />
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h2 className="text-2xl font-bold text-white mb-6">Actions Rapides</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button
-            onClick={() => setActiveTab('integration')}
-            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Upload className="w-8 h-8 text-cyan-400 mb-3" />
-            <h3 className="text-lg font-semibold text-white mb-2">Importer Catalogue</h3>
-            <p className="text-gray-300 text-sm">CSV, Shopify ou XML</p>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('robot')}
-            className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Bot className="w-8 h-8 text-purple-400 mb-3" />
-            <h3 className="text-lg font-semibold text-white mb-2">Configurer OmnIA</h3>
-            <p className="text-gray-300 text-sm">Personnaliser votre robot</p>
-          </button>
-          
-          <button
-            onClick={() => window.open('/robot', '_blank')}
-            className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
-          >
-            <Eye className="w-8 h-8 text-green-400 mb-3" />
-            <h3 className="text-lg font-semibold text-white mb-2">Tester OmnIA</h3>
-            <p className="text-gray-300 text-sm">Voir en action</p>
-          </button>
-        </div>
-      </div>
-
-      {/* Connected Platforms */}
-      {connectedPlatforms.length > 0 && (
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6">Plateformes Connectées</h2>
-          <div className="space-y-4">
-            {connectedPlatforms.map((platform, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-green-500/20 rounded-xl border border-green-400/30">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                  <div>
-                    <div className="font-semibold text-white">{platform.name}</div>
-                    <div className="text-sm text-green-300">
-                      {platform.products_count} produits • {platform.platform}
-                    </div>
+      
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl border border-slate-600/50 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-800/50">
+            <tr>
+              <th className="text-left p-4 text-cyan-300">Campagne</th>
+              <th className="text-left p-4 text-cyan-300">Statut</th>
+              <th className="text-left p-4 text-cyan-300">Budget</th>
+              <th className="text-left p-4 text-cyan-300">Dépensé</th>
+              <th className="text-left p-4 text-cyan-300">ROAS</th>
+              <th className="text-left p-4 text-cyan-300">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {adCampaigns.map((campaign) => (
+              <tr key={campaign.id} className="border-b border-slate-600/30">
+                <td className="p-4 text-white font-medium">{campaign.name}</td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs ${
+                    campaign.status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                  }`}>
+                    {campaign.status}
+                  </span>
+                </td>
+                <td className="p-4 text-white">€{campaign.budget}</td>
+                <td className="p-4 text-orange-400">€{campaign.spent}</td>
+                <td className="p-4 text-green-400 font-bold">{campaign.roas}x</td>
+                <td className="p-4">
+                  <div className="flex gap-2">
+                    <button className="text-blue-400 hover:text-blue-300"><Edit className="w-4 h-4" /></button>
+                    <button className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
                   </div>
-                </div>
-                <div className="text-sm text-green-400">
-                  Connecté
-                </div>
-              </div>
+                </td>
+              </tr>
             ))}
-          </div>
-        </div>
-      )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
-  // Modal QR Code
-  const renderQRModal = () => (
-    showQR && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-600/50">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-white">QR Code Boutique</h3>
-            <button
-              onClick={() => setShowQR(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              ×
-            </button>
-          </div>
-          <div className="text-center">
-            <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://omnia.sale/chat')}`}
-                alt="QR Code"
-                className="w-44 h-44 rounded-xl"
-              />
+  const renderBlogManagement = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold text-white">Gestion du Blog</h3>
+        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nouvel article
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-blue-600/20 rounded-xl p-4 border border-blue-500/30">
+          <div className="text-2xl font-bold text-white">{blogPosts.length}</div>
+          <div className="text-blue-300">Articles totaux</div>
+        </div>
+        <div className="bg-green-600/20 rounded-xl p-4 border border-green-500/30">
+          <div className="text-2xl font-bold text-white">{blogPosts.filter(p => p.status === 'published').length}</div>
+          <div className="text-green-300">Publiés</div>
+        </div>
+        <div className="bg-orange-600/20 rounded-xl p-4 border border-orange-500/30">
+          <div className="text-2xl font-bold text-white">{blogPosts.reduce((sum, p) => sum + p.views, 0)}</div>
+          <div className="text-orange-300">Vues totales</div>
+        </div>
+      </div>
+      
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl border border-slate-600/50 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-800/50">
+            <tr>
+              <th className="text-left p-4 text-cyan-300">Article</th>
+              <th className="text-left p-4 text-cyan-300">Statut</th>
+              <th className="text-left p-4 text-cyan-300">Vues</th>
+              <th className="text-left p-4 text-cyan-300">Date</th>
+              <th className="text-left p-4 text-cyan-300">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {blogPosts.map((post) => (
+              <tr key={post.id} className="border-b border-slate-600/30">
+                <td className="p-4 text-white font-medium">{post.title}</td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs ${
+                    post.status === 'published' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                  }`}>
+                    {post.status}
+                  </span>
+                </td>
+                <td className="p-4 text-white">{post.views}</td>
+                <td className="p-4 text-gray-300">{new Date(post.date).toLocaleDateString('fr-FR')}</td>
+                <td className="p-4">
+                  <div className="flex gap-2">
+                    <button className="text-blue-400 hover:text-blue-300"><Edit className="w-4 h-4" /></button>
+                    <button className="text-green-400 hover:text-green-300"><Eye className="w-4 h-4" /></button>
+                    <button className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderSocialMedia = () => (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold text-white">Réseaux Sociaux</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-blue-600/20 rounded-xl p-4 border border-blue-500/30">
+          <div className="text-2xl font-bold text-white">12.5k</div>
+          <div className="text-blue-300">Followers Facebook</div>
+        </div>
+        <div className="bg-pink-600/20 rounded-xl p-4 border border-pink-500/30">
+          <div className="text-2xl font-bold text-white">8.2k</div>
+          <div className="text-pink-300">Followers Instagram</div>
+        </div>
+        <div className="bg-cyan-600/20 rounded-xl p-4 border border-cyan-500/30">
+          <div className="text-2xl font-bold text-white">3.1k</div>
+          <div className="text-cyan-300">Followers LinkedIn</div>
+        </div>
+        <div className="bg-green-600/20 rounded-xl p-4 border border-green-500/30">
+          <div className="text-2xl font-bold text-white">8.5%</div>
+          <div className="text-green-300">Engagement moyen</div>
+        </div>
+      </div>
+      
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+        <h4 className="text-lg font-bold text-white mb-4">Posts programmés</h4>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-slate-600/50 rounded-xl">
+            <div>
+              <div className="text-white font-medium">Nouvelle collection printemps</div>
+              <div className="text-gray-300 text-sm">Facebook, Instagram • Demain 14h00</div>
             </div>
-            <p className="text-gray-300">Scannez pour accéder au chat OmnIA</p>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm">Modifier</button>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-slate-600/50 rounded-xl">
+            <div>
+              <div className="text-white font-medium">Conseils aménagement salon</div>
+              <div className="text-gray-300 text-sm">LinkedIn • Vendredi 10h00</div>
+            </div>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm">Modifier</button>
           </div>
         </div>
       </div>
-    )
+    </div>
   );
 
-  const renderCatalogue = () => (
+  const renderARStudio = () => (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold text-white">AR/VR Studio</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h4 className="text-lg font-bold text-white mb-4">Modèles 3D</h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-slate-600/50 rounded-xl">
+              <div>
+                <div className="text-white font-medium">Canapé ALYANA</div>
+                <div className="text-gray-300 text-sm">Modèle 3D prêt</div>
+              </div>
+              <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">Actif</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-600/50 rounded-xl">
+              <div>
+                <div className="text-white font-medium">Table AUREA</div>
+                <div className="text-gray-300 text-sm">En cours de création</div>
+              </div>
+              <span className="bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded text-xs">En cours</span>
+            </div>
+          </div>
+          <button className="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white py-2 rounded-xl">
+            Créer nouveau modèle 3D
+          </button>
+        </div>
+        
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h4 className="text-lg font-bold text-white mb-4">Expériences AR</h4>
+          <div className="space-y-3">
+            <div className="bg-pink-500/20 border border-pink-400/50 rounded-xl p-4">
+              <h5 className="font-semibold text-pink-200 mb-2">🥽 Fonctionnalités :</h5>
+              <ul className="text-pink-300 text-sm space-y-1">
+                <li>• Placement virtuel dans l'espace</li>
+                <li>• Essai couleurs et matériaux</li>
+                <li>• Mesures automatiques</li>
+                <li>• Partage expérience client</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderKeywords = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold text-white">Mots-clés SEO</h3>
+        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Ajouter mot-clé
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="bg-green-600/20 rounded-xl p-4 border border-green-500/30">
+          <div className="text-2xl font-bold text-white">47</div>
+          <div className="text-green-300">Top 10</div>
+        </div>
+        <div className="bg-blue-600/20 rounded-xl p-4 border border-blue-500/30">
+          <div className="text-2xl font-bold text-white">3.2</div>
+          <div className="text-blue-300">Position moy.</div>
+        </div>
+        <div className="bg-purple-600/20 rounded-xl p-4 border border-purple-500/30">
+          <div className="text-2xl font-bold text-white">+23%</div>
+          <div className="text-purple-300">Trafic organique</div>
+        </div>
+        <div className="bg-orange-600/20 rounded-xl p-4 border border-orange-500/30">
+          <div className="text-2xl font-bold text-white">156</div>
+          <div className="text-orange-300">Mots-clés suivis</div>
+        </div>
+      </div>
+      
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+        <h4 className="text-lg font-bold text-white mb-4">Top mots-clés</h4>
+        <div className="space-y-3">
+          {[
+            { keyword: 'canapé moderne', position: 2, volume: 1200, difficulty: 'Moyen' },
+            { keyword: 'table travertin', position: 1, volume: 800, difficulty: 'Facile' },
+            { keyword: 'mobilier design', position: 4, volume: 2100, difficulty: 'Difficile' },
+            { keyword: 'chaise bureau', position: 3, volume: 950, difficulty: 'Moyen' }
+          ].map((kw, index) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-slate-600/50 rounded-xl">
+              <div>
+                <div className="text-white font-medium">{kw.keyword}</div>
+                <div className="text-gray-300 text-sm">Volume: {kw.volume} • Difficulté: {kw.difficulty}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-cyan-400 font-bold">#{kw.position}</div>
+                <div className="text-gray-300 text-sm">Position</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderConversationsAnalytics = () => (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold text-white">Analytics Conversations</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="bg-blue-600/20 rounded-xl p-4 border border-blue-500/30">
+          <div className="text-2xl font-bold text-white">1,234</div>
+          <div className="text-blue-300">Conversations totales</div>
+        </div>
+        <div className="bg-green-600/20 rounded-xl p-4 border border-green-500/30">
+          <div className="text-2xl font-bold text-white">42%</div>
+          <div className="text-green-300">Taux conversion</div>
+        </div>
+        <div className="bg-purple-600/20 rounded-xl p-4 border border-purple-500/30">
+          <div className="text-2xl font-bold text-white">4m 12s</div>
+          <div className="text-purple-300">Durée moyenne</div>
+        </div>
+        <div className="bg-orange-600/20 rounded-xl p-4 border border-orange-500/30">
+          <div className="text-2xl font-bold text-white">98%</div>
+          <div className="text-orange-300">Satisfaction</div>
+        </div>
+      </div>
+      
+      <ConversationHistory />
+    </div>
+  );
+
+  const renderUserManagement = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold text-white">Gestion Utilisateurs</h3>
+        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Inviter utilisateur
+        </button>
+      </div>
+      
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl border border-slate-600/50 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-800/50">
+            <tr>
+              <th className="text-left p-4 text-cyan-300">Utilisateur</th>
+              <th className="text-left p-4 text-cyan-300">Rôle</th>
+              <th className="text-left p-4 text-cyan-300">Dernière connexion</th>
+              <th className="text-left p-4 text-cyan-300">Statut</th>
+              <th className="text-left p-4 text-cyan-300">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-slate-600/30">
+              <td className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">AD</span>
+                  </div>
+                  <div>
+                    <div className="text-white font-medium">Admin Principal</div>
+                    <div className="text-gray-300 text-sm">admin@decorahome.fr</div>
+                  </div>
+                </div>
+              </td>
+              <td className="p-4">
+                <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded text-xs">Propriétaire</span>
+              </td>
+              <td className="p-4 text-white">Maintenant</td>
+              <td className="p-4">
+                <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">Actif</span>
+              </td>
+              <td className="p-4">
+                <div className="flex gap-2">
+                  <button className="text-blue-400 hover:text-blue-300"><Edit className="w-4 h-4" /></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <div className="space-y-8">
+      {/* Dashboard Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {dashboardCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={index}
+              onClick={() => setActiveTab(card.title.toLowerCase().replace(/[^a-z]/g, ''))}
+              className="bg-slate-700/50 hover:bg-slate-600/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50 cursor-pointer transition-all hover:scale-105 hover:border-cyan-500/50"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-12 h-12 ${card.color} rounded-2xl flex items-center justify-center`}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">{card.title}</h3>
+              <p className="text-gray-300 text-sm">{card.subtitle}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Synthèse d'activité */}
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-600/50">
+        <h2 className="text-2xl font-bold text-white mb-8">Synthèse d'activité</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-400 mb-2">{stats.products}</div>
+            <div className="text-gray-300 text-sm">Produits</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-400 mb-2">{stats.conversations.toLocaleString()}</div>
+            <div className="text-gray-300 text-sm">Conversations</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-purple-400 mb-2">€{stats.revenue.toLocaleString()}</div>
+            <div className="text-gray-300 text-sm">Revenus</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-orange-400 mb-2">{stats.conversions}%</div>
+            <div className="text-gray-300 text-sm">Conversion</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-cyan-400 mb-2">{stats.visitors}</div>
+            <div className="text-gray-300 text-sm">Visiteurs</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-pink-400 mb-2">{stats.sessionDuration}</div>
+            <div className="text-gray-300 text-sm">Session moy.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderECommerce = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Gestion du Catalogue</h2>
+        <h2 className="text-2xl font-bold text-white">E-Commerce</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('catalog')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'catalog' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Catalogue
+          </button>
+          <button
+            onClick={() => setActiveSubTab('products')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'products' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Produits
+          </button>
+          <button
+            onClick={() => setActiveSubTab('inventory')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'inventory' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Inventaire
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
           <span className="text-green-300 text-sm">{stats.products} produits actifs</span>
         </div>
       </div>
 
-      <CatalogManagement />
+      {activeSubTab === 'catalog' || !activeSubTab ? <CatalogManagement /> : null}
+      {activeSubTab === 'products' ? <ProductsEnrichedTable /> : null}
+      {activeSubTab === 'inventory' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Gestion Inventaire</h3>
+          <p className="text-gray-300">Module inventaire en développement...</p>
+        </div>
+      ) : null}
     </div>
   );
 
-  const renderIntegration = () => (
+  const renderAdsMarketing = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Intégration E-commerce</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-          <span className="text-blue-300 text-sm">{connectedPlatforms.length} plateforme(s) connectée(s)</span>
+        <h2 className="text-2xl font-bold text-white">Ads & Marketing</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('google-ads')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'google-ads' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Google Ads
+          </button>
+          <button
+            onClick={() => setActiveSubTab('social-media')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'social-media' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Réseaux Sociaux
+          </button>
+          <button
+            onClick={() => setActiveSubTab('email-marketing')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'email-marketing' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Email
+          </button>
         </div>
       </div>
-
-      <EcommerceIntegration onConnected={handlePlatformConnected} />
-    </div>
-  );
-
-  const renderMLTraining = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Entraînement IA</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-          <span className="text-purple-300 text-sm">Modèle IA actif</span>
-        </div>
-      </div>
-
-      <MLTrainingDashboard />
-    </div>
-  );
-
-  const renderRobot = () => (
-    <div className="space-y-8">
-      <OmniaRobotTab />
-    </div>
-  );
-
-  const renderGoogleMerchant = () => (
-    <div className="space-y-8">
-      <GoogleMerchantTab />
-    </div>
-  );
-
-  const renderGoogleAds = () => (
-    <div className="space-y-8">
-      <GoogleAdsTab />
-    </div>
-  );
-
-  const renderSEOBlog = () => (
-    <div className="space-y-8">
-      <SEOBlogTab />
-    </div>
-  );
-  const renderHistorique = () => (
-    <ConversationHistory />
-  );
-
-  const renderAbonnement = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Abonnement Professional</h2>
       
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-bold text-white">Plan Professional</h3>
-            <p className="text-gray-300">5000 conversations/mois • Produits illimités</p>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-cyan-400">€79/mois</div>
-            <div className="text-sm text-green-400">Actif</div>
-          </div>
+      {activeSubTab === 'google-ads' || !activeSubTab ? renderGoogleAds() : null}
+      {activeSubTab === 'social-media' ? renderSocialMedia() : null}
+      {activeSubTab === 'email-marketing' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Email Marketing</h3>
+          <p className="text-gray-300">Module email marketing en développement...</p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-white mb-3">Fonctionnalités incluses :</h4>
-            <ul className="space-y-2 text-gray-300">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                5000 conversations/mois
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Produits illimités
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Support prioritaire
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Domaine personnalisé
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400" />
-                Analytics avancées
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-white mb-3">Utilisation ce mois :</h4>
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-300">Conversations</span>
-                  <span className="text-white">{stats.conversations}/5000</span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-cyan-500 h-2 rounded-full" 
-                    style={{ width: `${(stats.conversations / 5000) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
+      ) : null}
+    </div>
+  );
+
+  const renderVisionStudio = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Vision & Studio</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('ar-studio')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'ar-studio' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            AR Studio
+          </button>
+          <button
+            onClick={() => setActiveSubTab('photo-studio')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'photo-studio' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Studio Photo
+          </button>
+        </div>
+      </div>
+      
+      {activeSubTab === 'ar-studio' || !activeSubTab ? renderARStudio() : null}
+      {activeSubTab === 'photo-studio' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Studio Photo IA</h3>
+          <p className="text-gray-300">Génération d'images produits avec IA en développement...</p>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const renderSEO = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">SEO & Content</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('keywords')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'keywords' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Mots-clés
+          </button>
+          <button
+            onClick={() => setActiveSubTab('blog')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'blog' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Blog
+          </button>
+          <button
+            onClick={() => setActiveSubTab('performance')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'performance' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Performance
+          </button>
+        </div>
+      </div>
+      
+      {activeSubTab === 'keywords' || !activeSubTab ? renderKeywords() : null}
+      {activeSubTab === 'blog' ? renderBlogManagement() : null}
+      {activeSubTab === 'performance' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Performance SEO</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-400">87/100</div>
+              <div className="text-gray-300">Score SEO</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-400">92/100</div>
+              <div className="text-gray-300">Vitesse site</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-400">✓</div>
+              <div className="text-gray-300">Mobile-friendly</div>
             </div>
           </div>
         </div>
-        
-        <div className="flex gap-4 mt-6">
-          <button 
-            onClick={() => showInfo(
-              'Upgrade Enterprise', 
-              'Contactez notre équipe commerciale pour upgrader vers Enterprise : commercial@omnia.sale ou +33 1 84 88 32 45',
-              [
-                {
-                  label: 'Contacter commercial',
-                  action: () => window.open('mailto:commercial@omnia.sale?subject=Upgrade Enterprise', '_blank'),
-                  variant: 'primary'
-                }
-              ]
-            )}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+      ) : null}
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Analytics</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('overview')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'overview' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
           >
-            Upgrade vers Enterprise
+            Vue d'ensemble
           </button>
-          <button 
-            onClick={() => showInfo(
-              'Gestion abonnement', 
-              'Accédez au portail client pour gérer votre abonnement, facturation et moyens de paiement.',
-              [
-                {
-                  label: 'Portail client',
-                  action: () => window.open('https://billing.omnia.sale/portal', '_blank'),
-                  variant: 'primary'
-                },
-                {
-                  label: 'Support facturation',
-                  action: () => window.open('mailto:billing@omnia.sale', '_blank'),
-                  variant: 'secondary'
-                }
-              ]
-            )}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          <button
+            onClick={() => setActiveSubTab('conversations')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'conversations' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
           >
-            Gérer l'abonnement
+            Conversations
           </button>
+          <button
+            onClick={() => setActiveSubTab('sales')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'sales' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Ventes
+          </button>
+        </div>
+      </div>
+      
+      {activeSubTab === 'overview' || !activeSubTab ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-200 text-sm mb-1">Conversions</p>
+                <p className="text-3xl font-bold text-white mb-1">{stats.conversions}%</p>
+                <p className="text-green-400 text-sm">+8% ce mois</p>
+              </div>
+              <TrendingUp className="w-10 h-10 text-orange-400" />
+            </div>
+          </div>
+          
+          <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-200 text-sm mb-1">Visiteurs</p>
+                <p className="text-3xl font-bold text-white mb-1">{stats.visitors}</p>
+                <p className="text-green-400 text-sm">+15% ce mois</p>
+              </div>
+              <Users className="w-10 h-10 text-blue-400" />
+            </div>
+          </div>
+          
+          <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-200 text-sm mb-1">Session moy.</p>
+                <p className="text-3xl font-bold text-white mb-1">{stats.sessionDuration}</p>
+                <p className="text-green-400 text-sm">+5% ce mois</p>
+              </div>
+              <Clock className="w-10 h-10 text-purple-400" />
+            </div>
+          </div>
+          
+          <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-200 text-sm mb-1">Revenus</p>
+                <p className="text-3xl font-bold text-white mb-1">€{stats.revenue.toLocaleString()}</p>
+                <p className="text-green-400 text-sm">+12% ce mois</p>
+              </div>
+              <DollarSign className="w-10 h-10 text-green-400" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {activeSubTab === 'conversations' ? renderConversationsAnalytics() : null}
+      {activeSubTab === 'sales' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Analytics Ventes</h3>
+          <p className="text-gray-300">Module analytics ventes en développement...</p>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const renderAdmin = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Administration</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSubTab('settings')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'settings' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Paramètres
+          </button>
+          <button
+            onClick={() => setActiveSubTab('users')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'users' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Utilisateurs
+          </button>
+          <button
+            onClick={() => setActiveSubTab('domain')}
+            className={`px-4 py-2 rounded-xl transition-all ${
+              activeSubTab === 'domain' ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+            }`}
+          >
+            Domaine
+          </button>
+        </div>
+      </div>
+      
+      {activeSubTab === 'settings' || !activeSubTab ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-gray-500 rounded-2xl flex items-center justify-center">
+                <Settings className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Paramètres Généraux</h3>
+                <p className="text-gray-300 text-sm">Configuration système</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Nom de la boutique</label>
+                <input
+                  type="text"
+                  defaultValue="Decora Home"
+                  className="w-full bg-slate-600/50 border border-slate-500 rounded-xl px-4 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2">Email de contact</label>
+                <input
+                  type="email"
+                  defaultValue="contact@decorahome.fr"
+                  className="w-full bg-slate-600/50 border border-slate-500 rounded-xl px-4 py-2 text-white"
+                />
+              </div>
+              <button className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-xl transition-all">
+                Sauvegarder
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center">
+                <Globe className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Domaine</h3>
+                <p className="text-gray-300 text-sm">Configuration DNS</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                <h4 className="font-semibold text-green-200 mb-2">🌐 Domaine actuel :</h4>
+                <p className="text-green-300 text-sm">decorahome.omnia.sale</p>
+                <p className="text-green-400 text-xs">✓ SSL actif • ✓ DNS configuré</p>
+              </div>
+              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition-all">
+                Gérer le domaine
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {activeSubTab === 'users' ? renderUserManagement() : null}
+      {activeSubTab === 'domain' ? (
+        <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-600/50">
+          <h3 className="text-lg font-bold text-white mb-4">Gestion Domaine</h3>
+          <div className="space-y-4">
+            <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+              <h4 className="font-semibold text-green-200 mb-2">🌐 Domaine principal :</h4>
+              <p className="text-green-300">decorahome.omnia.sale</p>
+              <p className="text-green-400 text-sm">✓ Actif depuis le 15/12/2024</p>
+            </div>
+            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+              <h4 className="font-semibold text-blue-200 mb-2">🔒 Certificat SSL :</h4>
+              <p className="text-blue-300">Let's Encrypt • Expire le 15/03/2025</p>
+              <p className="text-blue-400 text-sm">✓ Renouvellement automatique</p>
+            </div>
+            <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+              <h4 className="font-semibold text-purple-200 mb-2">📊 Statistiques DNS :</h4>
+              <p className="text-purple-300">Temps de réponse : 45ms</p>
+              <p className="text-purple-400 text-sm">✓ Propagation mondiale complète</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Système Status */}
+      <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-600/50">
+        <h3 className="text-xl font-bold text-white mb-6">État du Système</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex items-center gap-3 p-4 bg-green-500/20 rounded-xl border border-green-400/30">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div>
+              <div className="font-semibold text-white">API OmnIA</div>
+              <div className="text-sm text-green-300">Opérationnel</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-4 bg-green-500/20 rounded-xl border border-green-400/30">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div>
+              <div className="font-semibold text-white">Base de données</div>
+              <div className="text-sm text-green-300">Connectée</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-4 bg-green-500/20 rounded-xl border border-green-400/30">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div>
+              <div className="font-semibold text-white">Uptime</div>
+              <div className="text-sm text-green-300">100%</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 
-  const renderSettings = () => (
+  const renderOmnIABot = () => (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Paramètres</h2>
-      
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Configuration OmnIA</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm text-cyan-300 mb-2">Nom du robot</label>
-            <input
-              type="text"
-              defaultValue="OmnIA"
-              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-cyan-300 mb-2">Personnalité</label>
-            <select className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white">
-              <option value="commercial">Commercial & Amical</option>
-              <option value="expert">Expert Technique</option>
-              <option value="conseil">Conseiller Déco</option>
-            </select>
-          </div>
-        </div>
-        
-        <div className="mt-6">
-          <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            Sauvegarder les paramètres
-          </button>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">OmnIA Bot</h2>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-green-300 text-sm">Robot actif</span>
         </div>
       </div>
+
+      <OmniaRobotTab />
     </div>
   );
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
-      case 'catalogue': return renderCatalogue();
-      case 'integration': return renderIntegration();
-      case 'ml-training': return renderMLTraining();
-      case 'google-merchant': return renderGoogleMerchant();
-      case 'google-ads': return renderGoogleAds();
-      case 'seo-blog': return renderSEOBlog();
-      case 'robot': return renderRobot();
-      case 'historique': return renderHistorique();
-      case 'abonnement': return renderAbonnement();
-      case 'settings': return renderSettings();
+      case 'ecommerce': return renderECommerce();
+      case 'ads': return renderAdsMarketing();
+      case 'vision': return renderVisionStudio();
+      case 'seo': return renderSEO();
+      case 'omnia': return renderOmnIABot();
+      case 'analytics': return renderAnalytics();
+      case 'admin': return renderAdmin();
       default: return renderDashboard();
     }
   };
@@ -519,7 +1003,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
       <NotificationSystem notifications={notifications} onRemove={removeNotification} />
-      {renderQRModal()}
       
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-20">
@@ -528,66 +1011,109 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
-          {/* Header avec logo OmnIA */}
+        {/* Sidebar - Design exact de l'image */}
+        <div className="w-64 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+          {/* Header avec logo */}
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <Bot className="w-6 h-6 text-white" />
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <Bot className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">OmnIA</h1>
-              <p className="text-sm text-cyan-300">Commercial Mobilier IA</p>
+              <h1 className="text-lg font-bold text-white">OmnIA Admin</h1>
+              <p className="text-xs text-cyan-300">Decora Home</p>
             </div>
           </div>
 
-          {/* Info magasin */}
-          <div className="bg-slate-700/50 rounded-xl p-4 mb-6">
-            <div className="text-white font-bold">Mon Magasin</div>
-            <div className="text-gray-400 text-sm">Plan Professional</div>
-          </div>
-
-          {/* Navigation Menu */}
-          <nav className="space-y-2 mb-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
+          {/* Navigation Menu - Style exact de l'image */}
+          <nav className="space-y-2">
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
               return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                    activeTab === tab.id
-                      ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
-                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
-                </button>
+                <div key={item.id}>
+                  <button
+                    onClick={() => handleTabClick(item.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                      activeTab === item.id
+                        ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                        : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 ${item.color} rounded-xl flex items-center justify-center`}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </button>
+                  
+                  {/* Sous-menus */}
+                  {item.subItems && activeTab === item.id && (
+                    <div className="ml-12 mt-2 space-y-1">
+                      {item.subItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                          <button
+                            key={subItem.id}
+                            onClick={() => handleSubTabClick(subItem.id)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left text-sm ${
+                              activeSubTab === subItem.id
+                                ? 'bg-cyan-400/20 text-cyan-300'
+                                : 'text-gray-400 hover:bg-slate-700/30 hover:text-gray-300'
+                            }`}
+                          >
+                            <SubIcon className="w-3 h-3" />
+                            <span>{subItem.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
-
-          {/* Status OmnIA */}
-          <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Bot className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 font-semibold">OmnIA Robot</span>
-            </div>
-            <p className="text-green-200 text-sm">Assistant IA actif et opérationnel</p>
-          </div>
-          
-          <button
-            onClick={onLogout}
-            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all"
-          >
-            Déconnexion
-          </button>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-8">
-          {renderContent()}
+        <div className="flex-1 flex flex-col">
+          {/* Header - Style exact de l'image */}
+          <div className="bg-slate-800/90 backdrop-blur-xl border-b border-slate-700/50 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">OmnIA Admin</h1>
+                  <p className="text-cyan-300 text-sm">Decora Home</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => window.open('/robot', '_blank')}
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-2 rounded-xl font-semibold transition-all flex items-center gap-2"
+                >
+                  <Bot className="w-4 h-4" />
+                  Tester OmnIA
+                </button>
+                
+                <button className="bg-slate-600 hover:bg-slate-700 text-white p-2 rounded-xl transition-all">
+                  <Settings className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={onLogout}
+                  className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-xl transition-all"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-8">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>
