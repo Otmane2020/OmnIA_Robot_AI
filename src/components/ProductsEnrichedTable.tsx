@@ -540,9 +540,256 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   }
 
   return (
-    </div>
-  );
-}
+    <div className="space-y-6">
+      {/* Header avec actions */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-2">Produits Enrichis</h2>
+          <p className="text-gray-400">
+            {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} enrichi{filteredProducts.length > 1 ? 's' : ''} avec IA
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleSyncFromCatalog}
+            disabled={isSyncing}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Synchronisation... {syncProgress}%
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Sync Catalogue
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={handleEnrichAll}
+            disabled={isEnriching || products.length === 0}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            {isEnriching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Enrichissement... {syncProgress}%
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Enrichir IA
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={handleExportCSV}
+            disabled={filteredProducts.length === 0}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Barre de recherche et filtres */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4">
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Rechercher par nom, catégorie, marque..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-black/40 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Filtres
+              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            
+            <div className="flex bg-gray-700 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded transition-colors ${
+                  viewMode === 'table' ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded transition-colors ${
+                  viewMode === 'grid' ? 'bg-cyan-600 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Filtres avancés */}
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-white/10">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Catégorie</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="all">Toutes les catégories</option>
+                {uniqueCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Couleur</label>
+              <select
+                value={selectedColor}
+                onChange={(e) => setSelectedColor(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="all">Toutes les couleurs</option>
+                {uniqueColors.map(color => (
+                  <option key={color} value={color}>{color}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Matériau</label>
+              <select
+                value={selectedMaterial}
+                onChange={(e) => setSelectedMaterial(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="all">Tous les matériaux</option>
+                {uniqueMaterials.map(material => (
+                  <option key={material} value={material}>{material}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Style</label>
+              <select
+                value={selectedStyle}
+                onChange={(e) => setSelectedStyle(e.target.value)}
+                className="w-full bg-black/40 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="all">Tous les styles</option>
+                {uniqueStyles.map(style => (
+                  <option key={style} value={style}>{style}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Actions en lot */}
+      {selectedProducts.length > 0 && (
+        <div className="bg-cyan-600/20 backdrop-blur-xl rounded-2xl p-4 border border-cyan-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-cyan-300 font-medium">
+              {selectedProducts.length} produit{selectedProducts.length > 1 ? 's' : ''} sélectionné{selectedProducts.length > 1 ? 's' : ''}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleBulkAction('export')}
+                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
+              >
+                Exporter
+              </button>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contenu principal */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-20">
+          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Aucun produit enrichi</h3>
+          <p className="text-gray-400 mb-6">
+            {products.length === 0 
+              ? "Commencez par synchroniser votre catalogue pour enrichir vos produits."
+              : "Aucun produit ne correspond à vos critères de recherche."
+            }
+          </p>
+          {products.length === 0 && (
+            <button
+              onClick={handleSyncFromCatalog}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Synchroniser le catalogue
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Vue tableau */}
+          {viewMode === 'table' && (
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-black/20">
+                    <tr>
+                      <th className="px-4 py-4 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                          onChange={toggleAllSelection}
+                          className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500"
+                        />
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        Produit
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        Attributs IA
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        Prix & Stock
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        SEO & Pub
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        Confiance
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {filteredProducts.map((product) => (
                       <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
@@ -973,4 +1220,4 @@ function calculateBasicConfidence(product: any): number {
   return Math.min(confidence, 100);
 }
 
-export { ProductsEnrichedTable }
+export { ProductsEnrichedTable };
