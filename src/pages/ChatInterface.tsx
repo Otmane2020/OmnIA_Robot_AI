@@ -27,6 +27,7 @@ export const ChatInterface: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);

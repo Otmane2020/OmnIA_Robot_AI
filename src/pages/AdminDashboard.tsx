@@ -3,31 +3,28 @@ import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
-  Clock, Star, X, ShoppingBag
+  Clock, Star, X, ShoppingBag, Target, Search
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { VendorDashboard } from '../components/VendorDashboard';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
+import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
 import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
+import { ProductDetailModal } from '../components/ProductDetailModal';
+import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
-import { QrCode } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { QrCode, Megaphone } from 'lucide-react';
+import { GoogleMerchantTab } from '../components/GoogleMerchantTab';
+import { GoogleAdsTab } from '../components/GoogleAdsTab';
+import { SEOBlogTab } from '../components/SEOBlogTab';
 
 interface AdminDashboardProps {
   onLogout: () => void;
-  currentVendor?: {
-    id: string;
-    email: string;
-    company_name: string;
-    subdomain: string;
-    plan: string;
-    status: string;
-    contact_name: string;
-  };
 }
 
 interface DashboardStats {
@@ -37,14 +34,9 @@ interface DashboardStats {
   revenue: number;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, currentVendor }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
   
-  // Si un vendeur est connecté, afficher son dashboard personnalisé
-  if (currentVendor) {
-    return <VendorDashboard vendor={currentVendor} onLogout={onLogout} />;
-  }
-
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<DashboardStats>({
     conversations: 1234,
@@ -57,10 +49,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   const [showQR, setShowQR] = useState(false);
 
   // Fonction pour compter les produits actifs
-  function getActiveProductsCount(vendorId?: string): number {
+  function getActiveProductsCount(): number {
     try {
-      const storageKey = vendorId ? `vendor_${vendorId}_products` : 'catalog_products';
-      const savedProducts = localStorage.getItem(storageKey);
+      const savedProducts = localStorage.getItem('catalog_products');
       if (savedProducts) {
         const products = JSON.parse(savedProducts);
         const activeProducts = products.filter((p: any) => p.status === 'active');
@@ -75,9 +66,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'catalogue', label: 'Catalogue', icon: Database },
-    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
+    { id: 'google-merchant', label: 'Google Merchant', icon: ShoppingBag },
+    { id: 'google-ads', label: 'Google Ads', icon: Target },
+    { id: 'seo-blog', label: 'SEO & Blog', icon: Search },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
     { id: 'historique', label: 'Historique', icon: MessageSquare },
     { id: 'abonnement', label: 'Abonnement', icon: CreditCard },
@@ -89,10 +82,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     
     setConnectedPlatforms(prev => [...prev, platformData]);
     
-    // Sauvegarder les produits dans localStorage avec vendor_id si fournis
+    // Sauvegarder les produits dans localStorage si fournis
     if (platformData.products && Array.isArray(platformData.products)) {
-      const storageKey = currentVendor ? `vendor_${currentVendor.id}_products` : 'catalog_products';
-      const existingProducts = localStorage.getItem(storageKey);
+      const existingProducts = localStorage.getItem('catalog_products');
       let allProducts = platformData.products;
       
       if (existingProducts) {
@@ -104,7 +96,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
         }
       }
       
-      localStorage.setItem(storageKey, JSON.stringify(allProducts));
+      localStorage.setItem('catalog_products', JSON.stringify(allProducts));
       console.log('✅ Produits sauvegardés dans localStorage:', allProducts.length);
     }
     
@@ -112,7 +104,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     if (platformData.products_count) {
       setStats(prev => ({
         ...prev,
-        products: getActiveProductsCount(currentVendor?.id)
+        products: getActiveProductsCount()
       }));
     }
     
@@ -312,20 +304,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     </div>
   );
 
-  const renderEnriched = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-          <span className="text-purple-300 text-sm">Enrichissement automatique actif</span>
-        </div>
-      </div>
-
-      <ProductsEnrichedTable />
-    </div>
-  );
-  
   const renderIntegration = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -360,6 +338,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     </div>
   );
 
+  const renderGoogleMerchant = () => (
+    <div className="space-y-8">
+      <GoogleMerchantTab />
+    </div>
+  );
+
+  const renderGoogleAds = () => (
+    <div className="space-y-8">
+      <GoogleAdsTab />
+    </div>
+  );
+
+  const renderSEOBlog = () => (
+    <div className="space-y-8">
+      <SEOBlogTab />
+    </div>
+  );
   const renderHistorique = () => (
     <ConversationHistory />
   );
@@ -508,9 +503,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'catalogue': return renderCatalogue();
-      case 'enriched': return renderEnriched();
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
+      case 'google-merchant': return renderGoogleMerchant();
+      case 'google-ads': return renderGoogleAds();
+      case 'seo-blog': return renderSEOBlog();
       case 'robot': return renderRobot();
       case 'historique': return renderHistorique();
       case 'abonnement': return renderAbonnement();

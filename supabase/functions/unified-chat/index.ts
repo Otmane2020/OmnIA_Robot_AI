@@ -24,8 +24,8 @@ Deno.serve(async (req: Request) => {
     const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
+    const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!deepseekApiKey) {
       return new Response(JSON.stringify({
         message: "Bonjour ! Je suis OmnIA, votre conseiller mobilier. Que cherchez-vous pour votre intérieur ?",
         products: []
@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
     const relevantProducts = await getRelevantProductsForQuery(message, retailer_id);
 
     // Étape 2 : réponse IA
-    const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
+    const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, deepseekApiKey);
 
     // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
@@ -63,92 +63,47 @@ Deno.serve(async (req: Request) => {
 
 async function getRelevantProductsForQuery(query: string, retailerId: string) {
   try {
-    console.log('🔍 Recherche produits pour:', query);
-    
-    // NOUVEAU: Essayer d'abord products_enriched, puis fallback vers ai_products
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    console.log('🔍 Recherche dans products_enriched pour:', query);
+
     const productIntent = analyzeProductIntent(query);
     const extractedAttributes = extractAttributesFromQuery(query);
 
-    // Recherche dans products_enriched d'abord
     let qb = supabase
       .from('products_enriched')
-      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
+      .select('id, title, description, category, type, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
+      .eq('retailer_id', retailerId)
       .gt('stock_qty', 0);
 
     if (productIntent.category) {
-      qb = qb.or(`category.ilike.%${productIntent.category}%,subcategory.ilike.%${productIntent.category}%`);
+      qb = qb.ilike('type', `%${productIntent.category}%`);
     }
     if (extractedAttributes.colors.length > 0) {
-      qb = qb.or(extractedAttributes.colors.map(color => `color.ilike.%${color}%`).join(','));
+      qb = qb.in('color', extractedAttributes.colors);
     }
     if (extractedAttributes.materials.length > 0) {
-      qb = qb.or(extractedAttributes.materials.map(material => `material.ilike.%${material}%,fabric.ilike.%${material}%`).join(','));
+      qb = qb.in('material', extractedAttributes.materials);
     }
     if (extractedAttributes.dimensions.length > 0) {
       qb = qb.or(extractedAttributes.dimensions.map(dim => `dimensions.ilike.%${dim}%`).join(','));
     }
 
     qb = qb.limit(5);
-    const { data: enrichedData, error: enrichedError } = await qb;
+    const { data, error } = await qb;
 
-    if (enrichedError) {
-      console.error('❌ Erreur DB products_enriched:', enrichedError);
+    if (error) {
+      console.error('❌ Erreur DB products_enriched:', error);
+      return [];
     }
 
-    let products = enrichedData || [];
-    console.log('✅ Produits enrichis trouvés:', products.length);
-
-    // FALLBACK: Si pas assez de produits enrichis, chercher dans ai_products
-    if (products.length < 3) {
-      console.log('🔄 Fallback vers ai_products...');
-      
-      let aiQuery = supabase
-        .from('ai_products')
-        .select('id, name as title, description, category, price, stock, image_url, product_url')
-        .gt('stock', 0);
-
-      if (productIntent.category) {
-        aiQuery = aiQuery.ilike('category', `%${productIntent.category}%`);
-      }
-
-      aiQuery = aiQuery.limit(5 - products.length);
-      const { data: aiData } = await aiQuery;
-      
-      if (aiData && aiData.length > 0) {
-        // Convertir format ai_products vers format products_enriched
-        const convertedProducts = aiData.map(product => ({
-          id: product.id,
-          handle: product.id,
-          title: product.title,
-          description: product.description,
-          category: product.category,
-          subcategory: '',
-          color: '',
-          material: '',
-          fabric: '',
-          style: '',
-          dimensions: '',
-          room: '',
-          price: product.price,
-          stock_qty: product.stock,
-          image_url: product.image_url,
-          product_url: product.product_url
-        }));
-        
-        products = [...products, ...convertedProducts];
-        console.log('✅ Produits AI ajoutés:', convertedProducts.length);
-      }
-    }
-
-    console.log('✅ Total produits trouvés:', products.length);
-    return products;
+    console.log('✅ Produits trouvés:', data?.length || 0);
+    return data || [];
   } catch (error) {
-    console.error('❌ Erreur recherche produits:', error);
+    console.error('❌ Erreur filtrage products_enriched:', error);
     return [];
   }
 }
@@ -184,14 +139,22 @@ function extractAttributesFromQuery(query: string) {
   return { colors, materials, dimensions: dims };
 }
 
-async function generateExpertResponse(query: string, products: any[], context: any[], apiKey: string) {
+async function generateExpertResponse(query: string, products: any[], context: any[], deepseekApiKey: string) {
   const productsContext = products.length > 0
     ? products.map(p => `• ${p.title} - ${p.price}€`).join('\n')
     : 'Aucun produit trouvé.';
 
-  const systemPrompt = `Tu es OmnIA, conseiller déco Decora Home.
-Réponds court (2 phrases max), engageant et humain.
-Toujours proposer 1–2 produits si disponibles.
+  const systemPrompt = `Tu es OmnIA, robot commercial expert mobilier chez Decora Home.
+
+🎯 MISSION: Vendre intelligemment avec personnalité chaleureuse.
+
+STYLE DE RÉPONSE:
+- Salutation amicale ("Bonjour ! 👋", "Parfait !", "Excellente idée !")
+- 2-3 phrases courtes et engageantes
+- TOUJOURS proposer 1-2 produits concrets avec prix
+- Conseil déco bonus
+- Question de relance pour continuer la vente
+
 Produits dispo :
 ${productsContext}`;
 
@@ -203,8 +166,14 @@ ${productsContext}`;
 
   const resp = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 100, temperature: 0.8 })
+    headers: { 'Authorization': `Bearer ${deepseekApiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      model: 'deepseek-chat', 
+      messages, 
+      max_tokens: 150, 
+      temperature: 0.9,
+      presence_penalty: 0.2
+    })
   });
 
   const data = await resp.json();
