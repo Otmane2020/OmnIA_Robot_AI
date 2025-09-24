@@ -186,8 +186,39 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
       
+      // Log environment variables and URL for debugging
+      console.log('🔍 [sync-debug] Environment check:', {
+        supabaseUrl: supabaseUrl ? 'Défini' : 'Manquant',
+        supabaseKey: supabaseKey ? 'Défini (longueur: ' + supabaseKey.length + ')' : 'Manquant',
+        vendorId,
+        retailerId
+      });
+      
+      if (!supabaseUrl || !supabaseKey) {
+        clearInterval(progressInterval);
+        showError('Configuration manquante', 'Variables d\'environnement Supabase non configurées. Cliquez sur "Connect to Supabase" en haut à droite.');
+        return;
+      }
+      
+      const enrichmentUrl = `${supabaseUrl}/functions/v1/enrich-products-cron`;
+      console.log('🌐 [sync-debug] URL complète:', enrichmentUrl);
+      
       if (supabaseUrl && supabaseKey) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+        // Create AbortController for timeout
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('⏰ [sync-debug] Timeout atteint (30s), annulation de la requête...');
+          abortController.abort();
+        }, 30000); // 30 seconds timeout
+        
+        console.log('🚀 [sync-debug] Démarrage requête enrichissement...');
+        console.log('📦 [sync-debug] Données envoyées:', {
+          products_count: activeProducts.length,
+          retailer_id: vendorId || 'demo-retailer-id',
+          vendor_id: vendorId
+        });
+        
+        const response = await fetch(enrichmentUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseKey}`,
@@ -199,10 +230,26 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             force_full_enrichment: true,
             vendor_id: vendorId
           }),
+          signal: abortController.signal
+        });
+        
+        // Clear timeout if request completes
+        clearTimeout(timeoutId);
+        
+        console.log('📡 [sync-debug] Réponse reçue:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
         });
         
         if (response.ok) {
           const result = await response.json();
+          console.log('✅ [sync-debug] Résultat enrichissement:', {
+            success: result.success,
+            enriched_count: result.enriched_data?.length || 0,
+            stats: result.stats
+          });
+          
           console.log('✅ Enrichissement automatique réussi:', result);
           
           // Récupérer les données enrichies depuis la réponse
@@ -232,12 +279,24 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               'Synchronisation terminée',
               `${result.enriched_data.length} produits enrichis automatiquement !`
             );
+          } else {
+            console.warn('⚠️ [sync-debug] Aucune donnée enrichie dans la réponse');
+            showError('Données manquantes', 'La réponse ne contient pas de données enrichies.');
           }
         } else {
+          const errorText = await response.text();
+          console.error('❌ [sync-debug] Erreur réponse serveur:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 200)
+          });
+          
           showError('Erreur d\'enrichissement', 'Impossible d\'enrichir automatiquement les produits.');
         }
       } else {
         // Fallback : enrichissement basique local
+        console.log('🔄 [sync-debug] Fallback vers enrichissement local...');
+        
         const enrichedProducts = activeProducts.map((product: any) => ({
           id: product.id || `enriched-${Date.now()}-${Math.random()}`,
           handle: product.handle || product.id || `handle-${Date.now()}`,
@@ -283,8 +342,23 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       setSyncProgress(100);
       
     } catch (error) {
+      console.error('❌ [sync-debug] Erreur détaillée:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+      
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        showError('Timeout de synchronisation', 'La synchronisation a pris trop de temps (30s). Vérifiez votre connexion réseau et réessayez.');
+      } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        showError('Erreur de connexion', 'Impossible de contacter le serveur Supabase. Vérifiez votre configuration et votre connexion réseau.');
+      } else {
+        showError('Erreur de synchronisation', `Erreur technique: ${error.message}`);
+      }
+      
       console.error('❌ Erreur synchronisation:', error);
-      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
     } finally {
       setIsSyncing(false);
       setSyncProgress(0);
@@ -307,8 +381,33 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
+      // Log environment variables for debugging
+      console.log('🔍 [enrich-debug] Environment check:', {
+        supabaseUrl: supabaseUrl ? 'Défini' : 'Manquant',
+        supabaseKey: supabaseKey ? 'Défini (longueur: ' + supabaseKey.length + ')' : 'Manquant',
+        products_count: products.length
+      });
+      
+      if (!supabaseUrl || !supabaseKey) {
+        clearInterval(progressInterval);
+        showError('Configuration manquante', 'Variables d\'environnement Supabase non configurées. Cliquez sur "Connect to Supabase" en haut à droite.');
+        return;
+      }
+      
+      const enrichmentUrl = `${supabaseUrl}/functions/v1/enrich-products-cron`;
+      console.log('🌐 [enrich-debug] URL complète:', enrichmentUrl);
+      
       if (supabaseUrl && supabaseKey) {
-        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+        // Create AbortController for timeout
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('⏰ [enrich-debug] Timeout atteint (30s), annulation de la requête...');
+          abortController.abort();
+        }, 30000); // 30 seconds timeout
+        
+        console.log('🚀 [enrich-debug] Démarrage requête enrichissement...');
+        
+        const response = await fetch(enrichmentUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseKey}`,
@@ -320,10 +419,25 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             force_full_enrichment: true,
             vendor_id: vendorId
           }),
+          signal: abortController.signal
+        });
+        
+        // Clear timeout if request completes
+        clearTimeout(timeoutId);
+        
+        console.log('📡 [enrich-debug] Réponse reçue:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
         });
         
         if (response.ok) {
           const result = await response.json();
+          console.log('✅ [enrich-debug] Résultat enrichissement:', {
+            success: result.success,
+            enriched_count: result.enriched_data?.length || 0,
+            stats: result.stats
+          });
           
           if (result.enriched_data && Array.isArray(result.enriched_data)) {
             const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
@@ -335,6 +449,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           
           showSuccess('Enrichissement terminé', `${result.stats?.products_processed || 0} produits enrichis avec IA !`);
         } else {
+          const errorText = await response.text();
+          console.error('❌ [enrich-debug] Erreur réponse serveur:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 200)
+          });
+          
           showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits avec l\'IA.');
         }
       }
@@ -343,8 +464,23 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       setSyncProgress(100);
       
     } catch (error) {
+      console.error('❌ [enrich-debug] Erreur détaillée:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack?.substring(0, 300),
+        cause: error.cause
+      });
+      
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        showError('Timeout d\'enrichissement', 'L\'enrichissement a pris trop de temps (30s). Réessayez avec moins de produits ou vérifiez votre connexion.');
+      } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        showError('Erreur de connexion', 'Impossible de contacter le serveur Supabase. Vérifiez que Supabase est connecté (bouton en haut à droite).');
+      } else {
+        showError('Erreur d\'enrichissement', `Erreur technique: ${error.message}`);
+      }
+      
       console.error('❌ Erreur enrichissement:', error);
-      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
     } finally {
       setIsEnriching(false);
       setSyncProgress(0);
