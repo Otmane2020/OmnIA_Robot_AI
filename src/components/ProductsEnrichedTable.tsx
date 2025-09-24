@@ -118,7 +118,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       }
 
       // Try to load from Supabase first
-      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&retailer_id=eq.${effectiveId}&order=enriched_at.desc&limit=100`, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=enriched_at.desc&limit=100`, {
         headers: {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
@@ -166,6 +166,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   };
 
   const syncEnrichedProducts = async () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
     try {
       setIsSyncing(true);
       setSyncProgress(0);
@@ -184,9 +187,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       }
 
       setSyncProgress(20);
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseKey) {
         throw new Error('Supabase non configuré');
