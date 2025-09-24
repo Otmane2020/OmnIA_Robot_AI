@@ -461,8 +461,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       ));
       
       // Sauvegarder dans localStorage
-      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
-      localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
+      const localStorageKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+      localStorage.setItem(localStorageKey, JSON.stringify(updatedProducts));
       
       setEditingProduct(null);
       setEditFormData({});
