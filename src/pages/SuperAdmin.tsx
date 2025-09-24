@@ -19,6 +19,7 @@ interface Retailer {
   id: string;
   name: string;
   email: string;
+  subdomain: string;
   plan: 'starter' | 'professional' | 'enterprise';
   status: 'active' | 'inactive' | 'suspended';
   revenue: number;
@@ -101,15 +102,6 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
   const handleViewKbis = (application: any) => {
     setSelectedKbis(application);
     setShowKbisModal(true);
-  };
-
-  // Fonction pour générer un sous-domaine vendeur
-  const generateSellerSubdomain = (companyName: string): string => {
-    return companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Supprimer caractères spéciaux
-      .replace(/\s+/g, '') // Supprimer espaces
-      .substring(0, 20); // Limiter longueur
   };
 
   const tabs = [

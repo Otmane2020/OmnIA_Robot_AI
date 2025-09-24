@@ -242,7 +242,8 @@ function App() {
       submittedDate: new Date().toLocaleDateString('fr-FR'),
       submittedTime: new Date().toLocaleTimeString('fr-FR'),
       status: 'pending',
-      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
+      proposedSubdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20),
+      subdomain: applicationData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20)
     };
     
     setPendingApplications(prev => [...prev, newApplication]);

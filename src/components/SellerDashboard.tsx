@@ -350,7 +350,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/30">
         <h3 className="text-lg font-bold text-white mb-4">🔗 URL de votre Robot IA</h3>
         <div className="bg-black/40 rounded-lg p-4 font-mono text-cyan-300 break-all">
-          {window.location.origin}/robot/{seller.subdomain}
+          https://omnia.sale/robot/{seller.subdomain}
         </div>
         <p className="text-cyan-200 text-sm mt-3">
           Partagez cette URL avec vos clients ou intégrez le widget sur votre site
