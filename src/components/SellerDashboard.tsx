@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Store, Users, TrendingUp, MessageSquare, Database, Bot, Settings, LogOut,
+  Store, Users, TrendingUp, MessageSquare, Database, Bot, Settings, LogOut, CreditCard,
   BarChart3, Package, DollarSign, Eye, Plus, Upload, Download, RefreshCw
 } from 'lucide-react';
 import { SellerCatalogManagement } from './SellerCatalogManagement';
