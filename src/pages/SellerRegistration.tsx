@@ -5,6 +5,7 @@ import {
   Eye, EyeOff, CreditCard, Globe, Loader2
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { supabase } from '../lib/supabase';
 
 interface SellerRegistrationProps {
   onSubmit: (data: any) => void;
@@ -147,6 +148,91 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       proposedSubdomain: uniqueSubdomain
     };
     
+    // NOUVEAU: Créer automatiquement le sous-domaine
+    try {
+      const { data: subdomainData, error: subdomainError } = await supabase
+        .from('retailer_subdomains')
+        .insert({
+          subdomain: uniqueSubdomain,
+          dns_status: 'pending',
+          ssl_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (subdomainError) {
+        console.error('❌ Erreur création sous-domaine:', subdomainError);
+      } else {
+        console.log('✅ Sous-domaine créé automatiquement:', uniqueSubdomain);
+        
+        // Simuler activation DNS/SSL (2 secondes)
+        setTimeout(async () => {
+          await supabase
+            .from('retailer_subdomains')
+            .update({
+              dns_status: 'active',
+              ssl_status: 'active',
+              activated_at: new Date().toISOString()
+            })
+            .eq('id', subdomainData.id);
+          
+          console.log('🌐 DNS/SSL activé pour:', uniqueSubdomain);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('❌ Erreur sous-domaine:', error);
+    }
+    
+    // NOUVEAU: Sauvegarder la demande dans la base de données
+    try {
+      const { data: applicationData, error } = await supabase
+        .from('retailer_applications')
+        .insert({
+          company_name: formData.companyName,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postalCode,
+          siret: formData.siret,
+          position: formData.position,
+          plan: formData.selectedPlan,
+          proposed_subdomain: uniqueSubdomain,
+          kbis_document_url: formData.kbisFile ? `kbis-${Date.now()}.pdf` : null,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erreur sauvegarde DB:', error);
+        
+        // Vérifier si c'est un doublon
+        if (error.code === '23505') { // Violation contrainte unique
+          if (error.message.includes('email')) {
+            alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+            return;
+          }
+          if (error.message.includes('siret')) {
+            alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+            return;
+          }
+        }
+        throw error;
+      }
+
+      console.log('✅ Demande sauvegardée en base de données:', applicationData);
+      
+      // Mettre à jour l'ID avec celui de la DB
+      accountInfo.id = applicationData.id;
+      
+    } catch (dbError) {
+      console.error('❌ Erreur base de données:', dbError);
+      // Continuer avec localStorage en fallback
+    }
+    
     setCreatedAccountInfo(accountInfo);
     setIsAccountCreated(true);
     
@@ -218,6 +304,40 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!validateStep(4)) return;
+
+    // Vérifier les doublons avant soumission
+    const existingApplications = JSON.parse(localStorage.getItem('pending_applications') || '[]');
+    const existingRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+    
+    // Vérifier email unique dans les demandes en attente
+    const emailInPending = existingApplications.some((app: any) => 
+      app.email?.toLowerCase() === formData.email.toLowerCase()
+    );
+    
+    // Vérifier email unique dans les revendeurs validés
+    const emailInValidated = existingRetailers.some((retailer: any) => 
+      retailer.email?.toLowerCase() === formData.email.toLowerCase()
+    );
+    
+    // Vérifier SIRET unique dans les demandes en attente
+    const siretInPending = existingApplications.some((app: any) => 
+      app.siret === formData.siret
+    );
+    
+    // Vérifier SIRET unique dans les revendeurs validés
+    const siretInValidated = existingRetailers.some((retailer: any) => 
+      retailer.siret === formData.siret
+    );
+    
+    if (emailInPending || emailInValidated) {
+      alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+      return;
+    }
+    
+    if (siretInPending || siretInValidated) {
+      alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+      return;
+    }
 
     setIsSubmitting(true);
     

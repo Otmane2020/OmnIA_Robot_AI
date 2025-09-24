@@ -122,20 +122,31 @@ export const useWhisperSTT = (options: WhisperSTTOptions = {}) => {
   const startBrowserRecognition = useCallback(() => {
     if (!isSupported) return;
 
-    console.log('🎤 Démarrage reconnaissance navigateur...');
+    console.log('🎤 Démarrage reconnaissance navigateur (continu:', continuousMode, ')...');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
 
     // Configuration optimisée pour conversation
-    recognition.continuous = true; // Écoute continue
-    recognition.interimResults = false; // Seulement résultats finaux
+    recognition.continuous = continuousMode; // Écoute continue selon le mode
+    recognition.interimResults = true; // Résultats intermédiaires pour feedback
     recognition.lang = options.language || 'fr-FR';
     recognition.maxAlternatives = 1;
-    recognition.grammars = null; // Pas de grammaire spécifique
+    
+    // Améliorer la précision pour le mobilier
+    if ('webkitSpeechGrammarList' in window) {
+      const grammar = '#JSGF V1.0; grammar mobilier; public <mobilier> = canapé | table | chaise | lit | armoire | commode | fauteuil | bureau | salon | chambre;';
+      const speechRecognitionList = new (window as any).webkitSpeechGrammarList();
+      speechRecognitionList.addFromString(grammar, 1);
+      recognition.grammars = speechRecognitionList;
+    }
 
-    console.log('🎤 Configuration reconnaissance:', { lang: recognition.lang, continuous: recognition.continuous });
+    console.log('🎤 Configuration reconnaissance:', { 
+      lang: recognition.lang, 
+      continuous: recognition.continuous,
+      interimResults: recognition.interimResults
+    });
 
     recognition.onstart = () => {
       console.log('🎤 Reconnaissance vocale démarrée');
@@ -144,16 +155,32 @@ export const useWhisperSTT = (options: WhisperSTTOptions = {}) => {
     };
 
     recognition.onresult = (event) => {
-      const lastResult = event.results[event.results.length - 1];
-      if (lastResult.isFinal) {
-        const finalTranscript = lastResult[0].transcript.trim();
-        console.log('🎤 Confiance:', lastResult[0].confidence);
-        console.log('🎤 Transcription finale:', finalTranscript);
+      let interimTranscript = '';
+      let finalTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
         
-        if (finalTranscript.length > 2) {
-          setTranscript(finalTranscript);
-          // Arrêter automatiquement après transcription
-          recognition.stop();
+        if (result.isFinal) {
+          finalTranscript += transcript;
+          console.log('🎤 Transcription finale:', transcript);
+          console.log('🎤 Confiance:', result[0].confidence);
+        } else {
+          interimTranscript += transcript;
+          console.log('🎤 Transcription intermédiaire:', transcript);
+        }
+      }
+      
+      // Utiliser la transcription finale si disponible, sinon l'intermédiaire
+      const bestTranscript = finalTranscript || interimTranscript;
+      
+      if (bestTranscript.trim().length > 2) {
+        setTranscript(bestTranscript.trim());
+        
+        // Arrêter automatiquement après transcription finale
+        if (finalTranscript && !continuousMode) {
+          setTimeout(() => recognition.stop(), 500);
         }
       }
     };
@@ -163,12 +190,12 @@ export const useWhisperSTT = (options: WhisperSTTOptions = {}) => {
       console.error('❌ Détails erreur:', event);
       
       if (event.error === 'not-allowed') {
-        setError('Permission microphone refusée. Autorisez l\'accès au microphone.');
+        setError('🎤 Permission microphone refusée. Cliquez sur l\'icône 🔒 dans la barre d\'adresse et autorisez le microphone.');
       } else if (event.error === 'no-speech') {
         console.log('⚠️ Aucune parole détectée, redémarrage...');
-        // Ne pas afficher d'erreur pour no-speech
+        setError('🎤 Aucune parole détectée. Parlez plus fort ou rapprochez-vous du microphone.');
       } else if (event.error !== 'aborted') {
-        setError(`Erreur reconnaissance: ${event.error}`);
+        setError(`🎤 Erreur reconnaissance: ${event.error}. Vérifiez votre microphone.`);
       }
       
       setIsRecording(false);

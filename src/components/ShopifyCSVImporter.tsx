@@ -140,6 +140,25 @@ const translateCategory = (category: string): string => {
 export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => void }> = ({ onImportComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const loggedUser = localStorage.getItem('current_logged_user');
+    if (loggedUser) {
+      try {
+        return JSON.parse(loggedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Générer clé de stockage spécifique au revendeur
+  const getRetailerStorageKey = (key: string) => {
+    if (!currentUser?.email) return key;
+    const emailHash = btoa(currentUser.email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `${key}_${emailHash}`;
+  };
+
   const [savedCsvFile, setSavedCsvFile] = useState<File | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<{ [key: string]: string }>({});
@@ -487,8 +506,8 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
-      localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
-      localStorage.setItem('csv_file_data', JSON.stringify({
+      localStorage.setItem(getRetailerStorageKey('catalog_products'), JSON.stringify(activeProducts));
+      localStorage.setItem(getRetailerStorageKey('csv_file_data'), JSON.stringify({
         filename: csvFile.name,
         size: csvFile.size,
         imported_at: new Date().toISOString(),
@@ -496,7 +515,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         active_products: activeProducts.length,
         mapping: fieldMapping
       }));
-      console.log('✅ Produits CSV actifs sauvegardés:', activeProducts.length, '/', transformedProducts.length);
+      console.log(`✅ Produits CSV sauvegardés pour ${currentUser?.email}:`, activeProducts.length, '/', transformedProducts.length);
       
       // NOUVEAU: Déclencher l'entraînement IA automatique après import
       try {
@@ -516,7 +535,7 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
             body: JSON.stringify({
               products: transformedProducts,
               source: 'csv',
-              store_id: 'demo-retailer-id',
+              store_id: currentUser?.email || 'demo-retailer-id',
               trigger_type: 'import'
             }),
           });
