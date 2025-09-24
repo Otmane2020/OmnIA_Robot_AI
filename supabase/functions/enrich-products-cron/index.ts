@@ -157,11 +157,6 @@ Deno.serve(async (req: Request) => {
         enrichedProducts.push(enrichedProduct);
         successCount++;
 
-        // Pause anti-rate limiting
-        if (index < activeProducts.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
       } catch (error) {
         console.error(`❌ Erreur enrichissement ${product.name}:`, error);
         errorCount++;
