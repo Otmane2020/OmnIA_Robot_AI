@@ -80,10 +80,11 @@ Deno.serve(async (req: Request) => {
     // Ensure extracted_attributes is always a valid JSON object
     const cleanedProducts = validProducts.map(product => ({
       ...product,
+      id: undefined, // Exclude id to let database auto-generate UUID
       extracted_attributes: product.extracted_attributes || {},
       created_at: product.created_at || new Date().toISOString(),
       updated_at: product.updated_at || new Date().toISOString()
-    }));
+    })).map(({ id, ...product }) => product); // Remove id field completely
 
     // Insert products into database
     const { data, error } = await supabase
