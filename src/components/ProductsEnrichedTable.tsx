@@ -1153,3 +1153,93 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     </div>
   );
 };
+
+// Helper functions for basic enrichment (add these at the end of the file)
+function detectCategory(text: string): string {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('canapé') || lowerText.includes('sofa')) return 'Canapé';
+  if (lowerText.includes('table')) return 'Table';
+  if (lowerText.includes('chaise') || lowerText.includes('fauteuil')) return 'Chaise';
+  if (lowerText.includes('lit')) return 'Lit';
+  if (lowerText.includes('armoire') || lowerText.includes('commode')) return 'Rangement';
+  if (lowerText.includes('meuble tv')) return 'Meuble TV';
+  if (lowerText.includes('luminaire') || lowerText.includes('lampe')) return 'Éclairage';
+  return 'Mobilier';
+}
+
+function detectSubcategory(title: string, description: string): string {
+  const text = `${title} ${description}`.toLowerCase();
+  if (text.includes('angle')) return 'Canapé d\'angle';
+  if (text.includes('convertible')) return 'Canapé convertible';
+  if (text.includes('basse')) return 'Table basse';
+  if (text.includes('manger') || text.includes('repas')) return 'Table à manger';
+  if (text.includes('bureau')) return 'Chaise de bureau';
+  if (text.includes('fauteuil')) return 'Fauteuil';
+  return '';
+}
+
+function detectColor(text: string): string {
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+  return colors.find(color => text.toLowerCase().includes(color)) || '';
+}
+
+function detectMaterial(text: string): string {
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
+  return materials.find(material => text.toLowerCase().includes(material)) || '';
+}
+
+function detectFabric(text: string): string {
+  const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
+  return fabrics.find(fabric => text.toLowerCase().includes(fabric)) || '';
+}
+
+function detectStyle(text: string): string {
+  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+  return styles.find(style => text.toLowerCase().includes(style)) || '';
+}
+
+function detectRoom(text: string): string {
+  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
+  return rooms.find(room => text.toLowerCase().includes(room)) || '';
+}
+
+function extractDimensions(text: string): string {
+  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+  if (dimensionMatch) {
+    const [, length, width, height] = dimensionMatch;
+    return height ? `L:${length}cm x l:${width}cm x H:${height}cm` : `L:${length}cm x l:${width}cm`;
+  }
+  return '';
+}
+
+function generateSEOTitle(name: string, brand: string): string {
+  return `${name} - ${brand}`.substring(0, 70);
+}
+
+function generateSEODescription(name: string, description: string): string {
+  return `${name}. ${description || 'Produit de qualité pour votre intérieur.'}`.substring(0, 155);
+}
+
+function getGoogleCategory(category: string): string {
+  const categoryMap: { [key: string]: string } = {
+    'Canapé': '635',
+    'Table': '443', 
+    'Chaise': '436',
+    'Lit': '569',
+    'Rangement': '6552',
+    'Meuble TV': '6552',
+    'Éclairage': '594',
+    'Décoration': '696'
+  };
+  return categoryMap[category] || '696';
+}
+
+function calculateBasicConfidence(product: any): number {
+  let score = 50;
+  if (product.name && product.name.length > 10) score += 10;
+  if (product.description && product.description.length > 50) score += 15;
+  if (product.image_url) score += 10;
+  if (product.price && product.price > 0) score += 10;
+  if (product.vendor) score += 5;
+  return Math.min(score, 95);
+}
