@@ -46,6 +46,7 @@ export const RobotInterface: React.FC = () => {
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingSTTMessages, setPendingSTTMessages] = useState<any[]>([]);
   
   // Robot state
   const [robotState, setRobotState] = useState<RobotState>({
@@ -62,6 +63,17 @@ export const RobotInterface: React.FC = () => {
   const [isDetectingHuman, setIsDetectingHuman] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVolumeOn, setIsVolumeOn] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const loggedUser = localStorage.getItem('current_logged_user');
+    if (loggedUser) {
+      try {
+        return JSON.parse(loggedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,8 +97,30 @@ export const RobotInterface: React.FC = () => {
 
   useEffect(() => {
     handleInitialGreeting();
+    checkForPendingSTTMessages();
   }, []);
 
+  useEffect(() => {
+    // Vérifier les messages STT en attente toutes les 2 secondes
+    const interval = setInterval(checkForPendingSTTMessages, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkForPendingSTTMessages = () => {
+    const pending = JSON.parse(localStorage.getItem('robot_pending_messages') || '[]');
+    if (pending.length > 0) {
+      // Traiter les nouveaux messages STT
+      pending.forEach((msg: any) => {
+        if (!pendingSTTMessages.find(p => p.id === msg.id)) {
+          handleSendMessage(msg.content);
+        }
+      });
+      
+      setPendingSTTMessages(pending);
+      // Vider la queue après traitement
+      localStorage.removeItem('robot_pending_messages');
+    }
+  };
   useEffect(() => {
     if (transcript && !isProcessing) {
       handleSendMessage(transcript);
@@ -106,7 +140,8 @@ export const RobotInterface: React.FC = () => {
   }, [isSpeaking, isRecording]);
 
   const handleInitialGreeting = () => {
-    const greeting = "Bonjour ! Je suis OmnIA 🤖 Votre Robot Designer spécialisé en mobilier. Comment puis-je vous aider aujourd'hui ?";
+    const companyName = currentUser?.company_name || 'notre boutique';
+    const greeting = `Bonjour ! Je suis OmnIA 🤖 Robot Designer spécialisé pour ${companyName}. Comment puis-je vous aider aujourd'hui ?`;
     
     const greetingMessage: ChatMessageType = {
       id: Date.now().toString(),
@@ -145,7 +180,7 @@ export const RobotInterface: React.FC = () => {
         },
         body: JSON.stringify({ 
           message: messageText,
-          retailer_id: 'demo-retailer-id'
+          retailer_id: currentUser?.email || 'demo-retailer-id'
         }),
       });
 
@@ -715,8 +750,10 @@ export const RobotInterface: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
               <div>
-                <h2 className="text-xl font-bold text-white">Conversation OmnIA</h2>
-                <p className="text-gray-300">Robot IA à votre écoute</p>
+                <h2 className="text-xl font-bold text-white">
+                  Conversation OmnIA • {currentUser?.company_name || 'Revendeur'}
+                </h2>
+                <p className="text-gray-300">Robot IA spécialisé {currentUser?.company_name || 'mobilier'}</p>
               </div>
             </div>
             <CartButton 
@@ -830,12 +867,12 @@ export const RobotInterface: React.FC = () => {
                   {isRecording ? (
                     <>
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-red-300 font-semibold">🎤 Parlez maintenant... (cliquez pour arrêter)</span>
+                      <span className="text-red-300 font-semibold">🎤 Écoute active... Parlez maintenant</span>
                     </>
                   ) : isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                      <span className="text-blue-300 font-semibold">🔄 Transcription en cours...</span>
+                      <span className="text-blue-300 font-semibold">🔄 Transcription Whisper en cours...</span>
                     </>
                   ) : isAnalyzingPhoto ? (
                     <>
@@ -843,6 +880,18 @@ export const RobotInterface: React.FC = () => {
                       <span className="text-purple-300 font-semibold">📸 Analyse photo en cours...</span>
                     </>
                   ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Statut détection humaine */}
+            {isDetectingHuman && (
+              <div className="mb-4 p-4 bg-green-500/20 border border-green-400/50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Eye className="w-4 h-4 text-green-400" />
+                  <span className="text-green-300 font-semibold">
+                    👁️ Détection humaine active - Showroom {currentUser?.company_name || 'boutique'} surveillé
+                  </span>
                 </div>
               </div>
             )}
@@ -898,10 +947,16 @@ export const RobotInterface: React.FC = () => {
               </button>
             </div>
 
-            {/* Erreur vocale */}
+            {/* Erreur vocale avec diagnostic */}
             {sttError && (
               <div className="mt-3 p-3 bg-red-500/20 border border-red-400/50 rounded-xl">
                 <p className="text-red-300">🎤 {sttError}</p>
+                <div className="mt-2 text-xs text-red-400">
+                  <p>💡 Solutions :</p>
+                  <p>• Autorisez l'accès au microphone</p>
+                  <p>• Vérifiez que votre micro fonctionne</p>
+                  <p>• Essayez de recharger la page</p>
+                </div>
               </div>
             )}
           </div>
