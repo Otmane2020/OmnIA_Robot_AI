@@ -209,9 +209,15 @@ Deno.serve(async (req: Request) => {
       console.log('💾 Sauvegarde dans products_enriched...');
       
       try {
+        // Ajouter retailer_id à tous les produits
+        const productsWithRetailer = enrichedProducts.map(product => ({
+          ...product,
+          retailer_id: retailer_id
+        }));
+
         const { data, error } = await supabase
           .from('products_enriched')
-          .upsert(enrichedProducts, { 
+          .upsert(productsWithRetailer, { 
             onConflict: 'handle',
             ignoreDuplicates: false 
           })
@@ -219,12 +225,13 @@ Deno.serve(async (req: Request) => {
 
         if (error) {
           console.error('❌ Erreur sauvegarde Supabase:', error);
-          console.log('💾 Sauvegarde en localStorage en fallback...');
+          throw new Error(`Erreur Supabase: ${error.message}`);
         } else {
           console.log('✅ Produits enrichis sauvegardés en Supabase:', data?.length || 0);
         }
       } catch (dbError) {
-        console.error('❌ Erreur DB, sauvegarde locale:', dbError);
+        console.error('❌ Erreur DB:', dbError);
+        throw dbError;
       }
     }
 

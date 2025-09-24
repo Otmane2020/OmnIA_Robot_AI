@@ -176,26 +176,36 @@ export const ProductsEnrichedTable: React.FC = () => {
     try {
       setLoading(true);
       
-      // Charger depuis localStorage spécifique au revendeur
-      const localEnrichedProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
-      if (localEnrichedProducts) {
-        try {
-          const parsedProducts = JSON.parse(localEnrichedProducts);
-          console.log(`✅ Catalogue enrichi chargé pour ${currentUser?.email}:`, parsedProducts.length);
-          setProducts(parsedProducts);
-          return;
-        } catch (error) {
-          console.error('Erreur parsing localStorage:', error);
-        }
-      }
+      console.log(`📦 Chargement catalogue enrichi pour ${currentUser?.email}...`);
       
-      // Nouveau revendeur = catalogue vide
-      console.log(`📦 Nouveau revendeur ${currentUser?.email} - catalogue vide`);
-      setProducts([]);
+      // Charger depuis Supabase
+      const { data: enrichedProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .eq('retailer_id', currentUser?.email || 'demo-retailer-id')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erreur chargement Supabase:', error);
+        // Fallback vers localStorage si Supabase échoue
+        const localProducts = localStorage.getItem(getRetailerStorageKey('enriched_products'));
+        if (localProducts) {
+          const parsedProducts = JSON.parse(localProducts);
+          console.log(`📦 Fallback localStorage: ${parsedProducts.length} produits`);
+          setProducts(parsedProducts);
+        } else {
+          setProducts([]);
+        }
+        return;
+      }
+
+      console.log(`✅ Catalogue enrichi Supabase chargé: ${enrichedProducts?.length || 0} produits`);
+      setProducts(enrichedProducts || []);
       
     } catch (error) {
       console.error('❌ Erreur:', error);
       showError('Erreur', 'Erreur lors du chargement du catalogue enrichi.');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -212,68 +222,48 @@ export const ProductsEnrichedTable: React.FC = () => {
       const products = JSON.parse(catalogProducts);
       console.log(`📦 Import catalogue pour ${currentUser?.email}:`, products.length);
 
-      // Transformer les produits du catalogue en produits enrichis
-      const enrichedProducts = products.map((product: any) => ({
-        id: `enriched-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: product.name || product.title || 'Produit sans nom',
-        description: product.description || '',
-        short_description: (product.description || product.title || '').substring(0, 160),
-        product_type: product.category || product.productType || 'Mobilier',
-        subcategory: '',
-        tags: Array.isArray(product.tags) ? product.tags : [],
-        brand: product.vendor || 'Decora Home',
-        vendor: product.vendor || 'Decora Home',
-        material: '',
-        color: '',
-        style: '',
-        room: '',
-        dimensions: '',
-        weight: '',
-        capacity: '',
-        price: parseFloat(product.price) || 0,
-        compare_at_price: product.compare_at_price ? parseFloat(product.compare_at_price) : undefined,
-        currency: 'EUR',
-        stock_quantity: parseInt(product.stock) || 0,
-        availability_status: parseInt(product.stock) > 0 ? 'En stock' : 'Rupture',
-        gtin: '',
-        mpn: product.sku || '',
-        identifier_exists: !!product.sku,
-        image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        additional_image_links: [],
-        product_url: product.product_url || '#',
-        canonical_link: product.product_url || '#',
-        percent_off: product.compare_at_price && product.price ? 
-          Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100) : 0,
-        ai_confidence: 0,
-        seo_title: product.title || '',
-        seo_description: (product.description || product.title || '').substring(0, 155),
-        enrichment_source: 'import',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
+      // Envoyer les produits à Supabase pour enrichissement et sauvegarde
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: products,
+          source: 'catalog',
+          retailer_id: currentUser?.email || 'demo-retailer-id'
+        }),
+      });
 
-      setProducts(enrichedProducts);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur enrichissement:', errorText);
+        throw new Error('Erreur lors de l\'enrichissement des produits');
+      }
+
+      const result = await response.json();
+      console.log('✅ Produits enrichis et sauvegardés:', result.stats);
+
       setShowImportModal(false);
       
-      // Sauvegarder pour ce revendeur
-      localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedProducts));
+      // Recharger depuis Supabase
+      await loadEnrichedProducts();
       
       showSuccess(
         'Catalogue importé !', 
-        `${enrichedProducts.length} produits importés dans le catalogue enrichi.`,
+        `${result.stats?.enriched_count || products.length} produits importés et enrichis avec DeepSeek !`,
         [
           {
-            label: 'Enrichir avec DeepSeek',
-            action: () => handleEnrichWithDeepSeek(),
+            label: 'Voir les résultats',
+            action: () => loadEnrichedProducts(),
             variant: 'primary'
           }
         ]
       );
 
-      // Déclencher automatiquement l'enrichissement DeepSeek
-      setTimeout(() => {
-        handleEnrichWithDeepSeek();
-      }, 2000);
+      // Configurer automatiquement le cron quotidien
+      await handleSetupCron('daily', true);
 
     } catch (error) {
       console.error('❌ Erreur import catalogue:', error);
@@ -288,28 +278,29 @@ export const ProductsEnrichedTable: React.FC = () => {
       
       showInfo('Enrichissement démarré', 'Analyse des produits avec DeepSeek IA...');
 
-      // Récupérer les produits du catalogue local
-      const catalogProducts = localStorage.getItem(getRetailerStorageKey('catalog_products'));
-      if (!catalogProducts) {
+      // Récupérer les produits depuis Supabase
+      const { data: existingProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .eq('retailer_id', currentUser?.email || 'demo-retailer-id');
+
+      if (error || !existingProducts || existingProducts.length === 0) {
         showError('Catalogue vide', 'Aucun produit trouvé. Importez d\'abord votre catalogue.');
         return;
       }
 
-      const products = JSON.parse(catalogProducts);
-      console.log(`📦 Produits à enrichir pour ${currentUser?.email}:`, products.length);
+      console.log(`📦 Produits à enrichir pour ${currentUser?.email}:`, existingProducts.length);
 
       // Traitement par batch pour éviter les timeouts
       const batchSize = 5;
-      const enrichedProducts = [];
       
-      for (let i = 0; i < products.length; i += batchSize) {
-        const batch = products.slice(i, i + batchSize);
+      for (let i = 0; i < existingProducts.length; i += batchSize) {
+        const batch = existingProducts.slice(i, i + batchSize);
         const batchNumber = Math.floor(i/batchSize) + 1;
-        const totalBatches = Math.ceil(products.length/batchSize);
+        const totalBatches = Math.ceil(existingProducts.length/batchSize);
         
         console.log(`🔄 Batch ${batchNumber}/${totalBatches} - ${batch.length} produits`);
         
-        // Appeler DeepSeek pour chaque batch
         try {
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-products`, {
             method: 'POST',
@@ -319,89 +310,50 @@ export const ProductsEnrichedTable: React.FC = () => {
             },
             body: JSON.stringify({
               products: batch,
-              source: 'catalog',
+              source: 'enriched_update',
               retailer_id: currentUser?.email || 'demo-retailer-id'
             }),
           });
 
           if (response.ok) {
             const result = await response.json();
-            if (result.enriched_products) {
-              enrichedProducts.push(...result.enriched_products);
-              console.log(`✅ Batch ${batchNumber} enrichi: ${result.enriched_products.length} produits`);
-            }
+            console.log(`✅ Batch ${batchNumber} enrichi: ${result.stats?.enriched_count || 0} produits`);
           } else {
             const errorText = await response.text();
             console.error(`❌ Erreur batch ${batchNumber}:`, errorText);
-            
-            // Ajouter les produits sans enrichissement en cas d'erreur
-            const basicProducts = batch.map(product => ({
-              id: `basic-${product.id || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              title: product.name || product.title || 'Produit sans nom',
-              description: product.description || '',
-              product_type: product.category || 'Mobilier',
-              subcategory: '',
-              vendor: product.vendor || 'Boutique',
-              price: parseFloat(product.price) || 0,
-              stock_quantity: parseInt(product.stock) || 0,
-              image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-              product_url: product.product_url || '#',
-              enrichment_source: 'basic',
-              ai_confidence: 0,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }));
-            enrichedProducts.push(...basicProducts);
           }
         } catch (batchError) {
           console.error(`❌ Erreur réseau batch ${batchNumber}:`, batchError);
         }
         
         // Mettre à jour la progression
-        const progress = Math.round(((processedCount) / products.length) * 100);
+        const progress = Math.round(((i + batchSize) / existingProducts.length) * 100);
         setEnrichmentProgress(progress);
-        console.log(`📊 Progression: ${progress}% (${processedCount}/${products.length} produits)`);
+        console.log(`📊 Progression: ${progress}% (${i + batchSize}/${existingProducts.length} produits)`);
         
         // Pause entre les batches
-        if (i + batchSize < products.length) {
+        if (i + batchSize < existingProducts.length) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
       
-      // Sauvegarder les produits enrichis dans products_enriched
-      if (enrichedProducts.length > 0) {
-        console.log(`💾 Sauvegarde pour ${currentUser?.email}:`, enrichedProducts.length);
-        
-        // Ajouter retailer_id aux produits enrichis
-        const enrichedWithRetailer = enrichedProducts.map(product => ({
-          ...product,
-          retailer_id: currentUser?.email || 'demo-retailer-id',
-          vendor: currentUser?.company_name || product.vendor
-        }));
-        
-        // Sauvegarder dans localStorage spécifique au revendeur
-        localStorage.setItem(getRetailerStorageKey('enriched_products'), JSON.stringify(enrichedWithRetailer));
-        
-        // Mettre à jour l'état local
-        setProducts(enrichedWithRetailer);
-        
-        showSuccess(
-          'Enrichissement terminé !', 
-          `${enrichedWithRetailer.length} produits enrichis pour ${currentUser?.company_name} avec DeepSeek IA !`,
-          [
-            {
-              label: 'Voir les résultats',
-              action: () => loadEnrichedProducts(),
-              variant: 'primary'
-            }
-          ]
-        );
-        
-        // Configurer automatiquement le cron quotidien
-        await handleSetupCron('daily', true);
-      } else {
-        showError('Enrichissement échoué', 'Aucun produit n\'a pu être enrichi.');
-      }
+      // Recharger les produits depuis Supabase
+      await loadEnrichedProducts();
+      
+      showSuccess(
+        'Enrichissement terminé !', 
+        `Produits enrichis pour ${currentUser?.company_name} avec DeepSeek IA !`,
+        [
+          {
+            label: 'Voir les résultats',
+            action: () => loadEnrichedProducts(),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+      // Configurer automatiquement le cron quotidien
+      await handleSetupCron('daily', true);
 
     } catch (error) {
       console.error('❌ Erreur enrichissement:', error);
