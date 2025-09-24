@@ -6,6 +6,7 @@ import {
   Upload, Download, RefreshCw, Brain, Loader2, Zap
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { supabase } from '../lib/supabase';
 
 interface EnrichedProduct {
   id: string;
@@ -117,7 +118,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
         return;
       }
 
-      // Try to load from Supabase first
+      // Try to load from Supabase first - without retailer_id filter since column doesn't exist
       const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=enriched_at.desc&limit=100`, {
         headers: {
           'apikey': supabaseKey,
@@ -166,6 +167,10 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   };
 
   const syncEnrichedProducts = async () => {
+    // Move variable declarations to function scope
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
@@ -195,21 +200,28 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       console.log('🤖 [sync-debug] Appel enrich-products-cron...');
       setSyncProgress(40);
 
-      // Use Supabase client for better reliability
-      const { data, error } = await supabase.functions.invoke('enrich-products-cron', {
-        body: {
+      // Use direct fetch to Edge Function
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
           products: catalogProducts,
           retailer_id: effectiveId,
           force_full_enrichment: true,
           enable_image_analysis: false
-        }
+        }),
       });
 
-      if (error) {
-        console.error('❌ [sync-debug] Erreur Edge Function:', error);
-        throw new Error(error.message || 'Erreur Edge Function');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [sync-debug] Erreur Edge Function:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
+      const data = await response.json();
       console.log('✅ [sync-debug] Enrichissement réussi:', data);
       setSyncProgress(100);
 
@@ -231,51 +243,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
     } catch (error: any) {
       console.error('❌ [sync-debug] Erreur détaillée:', error);
       
-      // Fallback: try direct fetch with proper URL
-      try {
-        console.log('🔄 [sync-debug] Tentative fallback avec fetch direct...');
-        
-        const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            products: catalogProducts.slice(0, 5), // Limit to 5 for fallback
-            retailer_id: effectiveId,
-            force_full_enrichment: true,
-            enable_image_analysis: false
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ [sync-debug] Fallback réussi:', result);
-        
-        setSyncProgress(100);
-        await loadEnrichedProducts();
-        
-        showSuccess(
-          'Synchronisation terminée (fallback)',
-          `${result?.stats?.enriched_products || 0} produits enrichis !`
+      if (error.name === 'AbortError') {
+        showError('Synchronisation annulée', 'La synchronisation a pris trop de temps et a été annulée.');
+      } else {
+        showError(
+          'Erreur de synchronisation', 
+          `${error.message || 'Erreur lors de la synchronisation des produits enrichis.'}\n\nVérifiez:\n• Configuration Supabase\n• Déploiement Edge Function\n• Variables d'environnement`
         );
-        
-      } catch (fallbackError: any) {
-        console.error('❌ [sync-debug] Fallback échoué aussi:', fallbackError);
-        
-        if (fallbackError.name === 'AbortError') {
-          showError('Synchronisation annulée', 'La synchronisation a pris trop de temps et a été annulée.');
-        } else {
-          showError(
-            'Erreur de synchronisation', 
-            `${fallbackError.message || 'Erreur lors de la synchronisation des produits enrichis.'}\n\nVérifiez:\n• Configuration Supabase\n• Déploiement Edge Function\n• Variables d'environnement`
-          );
-        }
       }
     } finally {
       setIsSyncing(false);
