@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
   TrendingUp, MessageSquare, ShoppingCart, Upload, Download,
-  Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
+  Brain, LogOut, Loader2, Settings,
   DollarSign, Plus, X, Package, Target, Search, Mail, Mic, Image, Sparkles,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  Loader2
+  Bot
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
@@ -15,10 +14,10 @@ import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
+import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { ProductDetailModal } from '../components/ProductDetailModal';
 import { AddProductModal } from '../components/AddProductModal';
 import { ConversationHistory } from '../components/ConversationHistory';
-import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
 import { MessagingSystem } from '../components/MessagingSystem';
 import { SpeechToTextInterface } from '../components/SpeechToTextInterface';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
