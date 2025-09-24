@@ -352,7 +352,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-white text-lg font-bold">Decora Home</p>
-                    <p className="text-blue-200 text-sm">professional</p>
+                    <p className="text-blue-200 text-sm">{retailers.find(r => r.name === 'Decora Home')?.plan || 'N/A'}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-green-400 text-xl font-bold">€2450</p>
