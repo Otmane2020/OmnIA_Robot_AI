@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, ChevronDown, ChevronUp, List, Grid, Download, RefreshCw, Sparkles, Loader2, Package } from 'lucide-react';
-import { useNotifications } from '../hooks/useNotifications';
+import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {
   id: string;
