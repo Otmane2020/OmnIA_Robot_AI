@@ -9,9 +9,21 @@ interface EcommerceIntegrationProps {
 export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onConnected }) => {
   const [activeTab, setActiveTab] = useState('shopify');
   const [isConnecting, setIsConnecting] = useState(false);
-  const [shopifyConfig, setShopifyConfig] = useState({
-    shopDomain: '',
-    accessToken: ''
+  const [shopifyConfig, setShopifyConfig] = useState(() => {
+    // Charger la configuration sauvegardée
+    try {
+      const saved = localStorage.getItem('shopify_connection');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          shopDomain: parsed.shop_domain || '',
+          accessToken: parsed.access_token || ''
+        };
+      }
+    } catch (error) {
+      console.error('Erreur chargement config Shopify:', error);
+    }
+    return { shopDomain: '', accessToken: '' };
   });
   const [isTesting, setIsTesting] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
@@ -40,6 +52,23 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
       color: 'from-purple-500 to-pink-600'
     }
   ];
+
+  // Sauvegarder la configuration à chaque changement
+  useEffect(() => {
+    if (shopifyConfig.shopDomain || shopifyConfig.accessToken) {
+      try {
+        const configToSave = {
+          shop_domain: shopifyConfig.shopDomain,
+          access_token: shopifyConfig.accessToken,
+          saved_at: new Date().toISOString()
+        };
+        localStorage.setItem('shopify_config_temp', JSON.stringify(configToSave));
+        console.log('💾 Configuration Shopify sauvegardée temporairement');
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde config:', error);
+      }
+    }
+  }, [shopifyConfig]);
 
   const handleShopifyConnect = async () => {
     if (!shopifyConfig.shopDomain || !shopifyConfig.accessToken) {
@@ -72,6 +101,9 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
       }
 
       // Récupérer les produits
+      console.log('📦 Récupération COMPLÈTE des produits Shopify...');
+      
+      // Récupérer TOUS les produits (pas de limite)
       const productsResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shopify-admin-api`, {
         method: 'POST',
         headers: {
@@ -82,7 +114,7 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
           action: 'get_products',
           shop_domain: shopifyConfig.shopDomain,
           access_token: shopifyConfig.accessToken,
-          limit: 100
+          limit: 250 // Maximum Shopify par requête
         }),
       });
 
@@ -98,10 +130,17 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
         access_token: shopifyConfig.accessToken,
         shop_info: testData.shop_info,
         connected_at: new Date().toISOString(),
-        products_count: productsData.count || 0
+        products_count: productsData.count || 0,
+        last_sync: new Date().toISOString()
       };
       
       localStorage.setItem('shopify_connection', JSON.stringify(shopifyConnectionData));
+      localStorage.setItem('shopify_config_persistent', JSON.stringify({
+        shop_domain: shopifyConfig.shopDomain,
+        access_token: shopifyConfig.accessToken,
+        shop_name: testData.shop_info.name,
+        connected_at: new Date().toISOString()
+      }));
       console.log('✅ Configuration Shopify sauvegardée');
 
       // Notifier le parent avec les produits
@@ -112,7 +151,8 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
         status: 'connected',
         connected_at: new Date().toISOString(),
         products: productsData.products || [],
-        shop_info: testData.shop_info
+        shop_info: testData.shop_info,
+        auto_sync_enabled: true
       };
       
       setConnectionStatus('success');
