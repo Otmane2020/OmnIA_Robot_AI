@@ -111,17 +111,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       if (savedEnriched) {
         try {
           const parsed = JSON.parse(savedEnriched);
-          const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
-          
-          // Filter products by retailer_id for data isolation
-          const filteredProducts = Array.isArray(parsed) 
-            ? parsed.filter(product => 
-                !product.retailer_id || product.retailer_id === retailerId
-              )
-            : [];
-          
           // Filter by retailer_id if specified
-          enrichedProducts = filteredProducts.filter((p: any) => {
+          enrichedProducts = parsed.filter((p: any) => {
             const hasStock = p.stock_qty > 0;
             const matchesRetailer = !retailerId || p.retailer_id === retailerId;
             return hasStock && matchesRetailer;
@@ -169,9 +160,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       console.log('📦 Produits catalogue trouvés:', activeProducts.length);
       
       if (activeProducts.length === 0) {
-        // Get retailer_id from localStorage or use a default
-        const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
-        
+      // Get retailer_id from localStorage or use a default
+      const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
+      
         showError('Aucun produit actif', 'Aucun produit actif trouvé dans le catalogue. Vérifiez le statut de vos produits.');
         return;
       }
@@ -212,21 +203,20 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             
             setProducts(result.enriched_data);
             setFilteredProducts(result.enriched_data);
-            
-            const enrichedWithRetailer = result.enriched_data.map(product => ({
-              ...product,
-              retailer_id: retailerId
-            }));
-            
-            // Update enriched products with retailer isolation
-            if (result.enriched_data && result.enriched_data.length > 0) {
-              const enrichedWithRetailer = result.enriched_data.map(product => ({
-                ...product,
-                retailer_id: retailerId
-              }));
-              localStorage.setItem('enrichedProducts', JSON.stringify(enrichedWithRetailer));
-              setProducts(enrichedWithRetailer);
-            }
+          
+          const enrichedWithRetailer = result.enriched_data.map(product => ({
+            ...product,
+            retailer_id: retailerId
+          }));
+        // Update enriched products with retailer isolation
+        if (result.enriched_data && result.enriched_data.length > 0) {
+          const enrichedWithRetailer = result.enriched_data.map(product => ({
+            ...product,
+            retailer_id: retailerId
+          }));
+          localStorage.setItem('enrichedProducts', JSON.stringify(enrichedWithRetailer));
+          setProducts(enrichedWithRetailer);
+        }
             
             showSuccess(
               'Synchronisation terminée',
