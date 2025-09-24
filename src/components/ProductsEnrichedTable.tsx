@@ -124,8 +124,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
       const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&retailer_id=eq.${effectiveId}&order=enriched_at.desc&limit=100`, {
         headers: {
           'apikey': supabaseKey,
-          enable_image_analysis: false,
-          vendor_id: vendorId
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json'
         }
       });
