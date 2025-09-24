@@ -71,12 +71,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       filtered = filtered.filter(product =>
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      // Charger depuis localStorage avec isolation retailer/vendor
-      const enrichedKey = retailerId ? `retailer_${retailerId}_enriched_products` : 
-                         vendorId ? `vendor_${vendorId}_enriched_products` : 
-                         'admin_enriched_products';
-      );
+      product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.style.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     }
 
     if (selectedCategory !== 'all') {
