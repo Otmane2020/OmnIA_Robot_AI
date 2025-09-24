@@ -71,12 +71,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       filtered = filtered.filter(product =>
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.style.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.style.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
     if (selectedCategory !== 'all') {
@@ -110,6 +110,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       
       if (savedEnriched) {
         try {
+          const parsed = JSON.parse(savedEnriched);
           // Filter by retailer_id if specified
           enrichedProducts = parsed.filter((p: any) => {
             const hasStock = p.stock_qty > 0;
@@ -120,12 +121,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         } catch (error) {
           console.error('Erreur parsing produits enrichis:', error);
           enrichedProducts = [];
-          // Reset products to empty array if parsing fails
-          setProducts([]);
-          setFilteredProducts([]);
         }
       } else {
-        // Initialize with empty arrays if no saved products
         console.log(`📦 [enriched-table] Aucun produit enrichi trouvé pour ${retailerId || vendorId || 'admin'}`);
         enrichedProducts = [];
       }
@@ -136,9 +133,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
       showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
-      // Reset products to empty array if any other error occurs during loading
-      setProducts([]);
-      setFilteredProducts([]);
     } finally {
       setIsLoading(false);
     }
@@ -435,12 +429,27 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     if (!editingProduct) return;
 
     try {
+      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+      const savedProducts = localStorage.getItem(enrichedKey);
+      
+      if (savedProducts) {
         let parsedData: EnrichedProduct[] = [];
         try {
           parsedData = JSON.parse(savedProducts);
           console.log('📦 Produits enrichis chargés:', parsedData.length);
+        } catch (error) {
+          console.error('Erreur parsing produits enrichis:', error);
+          parsedData = [];
+        }
+      }
+      
+      const updatedProducts = products.map(product =>
+        product.id === editingProduct
+          ? {
               ...product, 
-          allProducts = parsedData.filter((p: any) => {
+              ...editFormData,
+              confidence_score: calculateConfidenceFromData(editFormData),
+              enriched_at: new Date().toISOString(),
               enrichment_source: 'manual'
             }
           : product
