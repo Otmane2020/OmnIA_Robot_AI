@@ -159,6 +159,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       
       console.log('📦 Produits catalogue trouvés:', activeProducts.length);
       
+      if (activeProducts.length === 0) {
+        showError('Aucun produit actif', 'Aucun produit actif trouvé dans le catalogue. Vérifiez le statut de vos produits.');
+        return;
+      }
+      
       // Simuler la progression
       const progressInterval = setInterval(() => {
         setSyncProgress(prev => Math.min(prev + 10, 90));
@@ -176,6 +181,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            products: activeProducts, // Pass products from localStorage
             retailer_id: vendorId || 'demo-retailer-id',
             force_full_enrichment: true,
             vendor_id: vendorId
