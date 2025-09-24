@@ -441,8 +441,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           console.log('📦 Produits enrichis chargés:', parsedData.length);
               ...product, 
           allProducts = parsedData.filter((p: any) => {
-              confidence_score: calculateConfidenceFromData(editFormData),
-              enriched_at: new Date().toISOString(),
               enrichment_source: 'manual'
             }
           : product
