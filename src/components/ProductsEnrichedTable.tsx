@@ -428,11 +428,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     if (!editingProduct) return;
 
     try {
-      const updatedProducts = products.map(product => 
-        product.id === editingProduct 
-          ? { 
+        let parsedData: EnrichedProduct[] = [];
+        try {
+          parsedData = JSON.parse(savedProducts);
+          console.log('📦 Produits enrichis chargés:', parsedData.length);
               ...product, 
-              ...editFormData,
+          allProducts = parsedData.filter((p: any) => {
               confidence_score: calculateConfidenceFromData(editFormData),
               enriched_at: new Date().toISOString(),
               enrichment_source: 'manual'
