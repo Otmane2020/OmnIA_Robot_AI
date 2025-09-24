@@ -321,20 +321,41 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     
     try {
       // Charger les produits du vendeur spécifique
-      const savedProducts = localStorage.getItem(`seller_${vendorId}_products`);
+      const storageKeys = [
+        `seller_${vendorId}_products`,
+        `vendor_${vendorId}_products`,
+        'catalog_products' // Fallback global
+      ];
+      
       let vendorProducts = [];
       
-      if (savedProducts) {
+      // Essayer chaque clé de stockage
+      for (const key of storageKeys) {
         try {
-          const catalogProducts = JSON.parse(savedProducts);
-          vendorProducts = [...vendorProducts, ...catalogProducts];
-          console.log('📦 Produits du vendeur chargés:', catalogProducts.length);
+          const savedProducts = localStorage.getItem(key);
+          if (savedProducts) {
+            const catalogProducts = JSON.parse(savedProducts);
+            const activeProducts = catalogProducts.filter((p: any) => 
+              p.status === 'active' && (p.stock > 0 || p.quantityAvailable > 0)
+            );
+            
+            if (activeProducts.length > 0) {
+              vendorProducts = [...vendorProducts, ...activeProducts];
+              console.log(`📦 Produits chargés depuis ${key}:`, activeProducts.length);
+              break; // Utiliser la première source trouvée
+            }
+          }
         } catch (error) {
-          console.error('Erreur parsing catalogue:', error);
+          console.error(`Erreur parsing ${key}:`, error);
         }
       }
       
-      // NOUVEAU: Forcer la synchronisation via Supabase
+      if (vendorProducts.length === 0) {
+        showError('Catalogue vide', 'Aucun produit trouvé dans votre catalogue. Importez d\'abord vos produits via l\'onglet "Intégration".');
+        return;
+      }
+      
+      // Déclencher l'enrichissement via Edge Function
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -349,9 +370,10 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              retailer_id: 'demo-retailer-id',
+              retailer_id: vendorId || 'demo-retailer-id',
+              vendor_id: vendorId,
               force_full_enrichment: true,
-              source_filter: null // Tous les produits
+              source_filter: null
             }),
           });
           
@@ -375,11 +397,14 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             await loadEnrichedProducts();
             return;
           } else {
-            console.log('⚠️ Synchronisation Supabase échouée, fallback local');
+            const errorData = await syncResponse.json();
+            console.log('⚠️ Synchronisation Supabase échouée:', errorData);
+            showError('Erreur Supabase', errorData.details || 'Erreur lors de la synchronisation via Supabase');
           }
         }
       } catch (error) {
         console.log('⚠️ Erreur synchronisation Supabase:', error);
+        showError('Erreur de connexion', 'Impossible de se connecter à Supabase pour l\'enrichissement');
       }
       
       // Fallback: enrichissement local
@@ -393,8 +418,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         localStorage.setItem(enrichedKey, JSON.stringify(newEnrichedProducts));
         
         showSuccess('Synchronisation locale', `${newEnrichedProducts.length} produits enrichis localement !`);
-      } else {
-        showError('Catalogue vide', 'Aucun produit trouvé dans votre catalogue. Importez d\'abord vos produits.');
       }
     } catch (error) {
       console.error('❌ Erreur synchronisation:', error);

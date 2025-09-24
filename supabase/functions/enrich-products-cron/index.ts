@@ -10,15 +10,13 @@ interface ProductEnrichmentRequest {
   retailer_id?: string;
   force_full_enrichment?: boolean;
   source_filter?: string;
+  vendor_id?: string;
 }
 
 interface EnrichedAttributes {
   category: string;
   subcategory: string;
   color: string;
-  material: string;
-  fabric: string;
-  style: string;
   material: string;
   fabric: string;
   style: string;
@@ -45,98 +43,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { retailer_id, force_full_enrichment = false, source_filter }: ProductEnrichmentRequest = await req.json();
+    const { retailer_id, force_full_enrichment = false, source_filter, vendor_id }: ProductEnrichmentRequest = await req.json();
     
     console.log('🤖 CRON ENRICHISSEMENT: Démarrage...');
     console.log('⏰ Heure d\'exécution:', new Date().toLocaleString('fr-FR'));
+    console.log('🏪 Vendeur ID:', vendor_id || retailer_id);
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 🔍 ÉTAPE 1: Récupérer les produits à enrichir
-    let productsQuery = supabase
-      .from('ai_products')
-      .select('*')
-      .gt('stock', 0);
-
-    if (retailer_id) {
-      productsQuery = productsQuery.eq('store_id', retailer_id);
-    }
-
-    if (source_filter) {
-      productsQuery = productsQuery.eq('source_platform', source_filter);
-    }
-
-    // Si pas d'enrichissement complet, prendre seulement les nouveaux/modifiés
-    if (!force_full_enrichment) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      productsQuery = productsQuery.gte('updated_at', yesterday.toISOString());
-    }
-
-    const { data: products, error: productsError } = await productsQuery;
-
-    if (productsError) {
-      throw productsError;
-    }
-
-    if (!products || products.length === 0) {
-      console.log('⚠️ Aucun produit à enrichir dans ai_products');
-      
-      // Essayer depuis imported_products si ai_products est vide
-      const { data: importedProducts } = await supabase
-        .from('imported_products')
-        .select('*')
-        .eq('retailer_id', retailer_id || 'demo-retailer-id')
-        .eq('status', 'active')
-        .gt('stock', 0)
-        .limit(50);
-      
-      if (!importedProducts || importedProducts.length === 0) {
-        console.log('⚠️ Aucun produit dans imported_products non plus');
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'Aucun nouveau produit à enrichir',
-            stats: { products_processed: 0 }
-          }),
-          {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          }
-        );
-      }
-      
-      // Forcer la synchronisation vers products_enriched
-      console.log('🔄 Utilisation des produits importés:', importedProducts.length);
-      
-      // Déclencher manuellement la synchronisation
-      for (const importedProduct of importedProducts) {
-        try {
-          await supabase.rpc('sync_to_products_enriched_manual', {
-            p_external_id: importedProduct.external_id,
-            p_name: importedProduct.name,
-            p_description: importedProduct.description || '',
-            p_price: importedProduct.price,
-            p_category: importedProduct.category,
-            p_vendor: importedProduct.vendor,
-            p_image_url: importedProduct.image_url,
-            p_product_url: importedProduct.product_url,
-            p_stock: importedProduct.stock
-          });
-        } catch (error) {
-          console.error('❌ Erreur sync manuel:', error);
-        }
-      }
-      
-      console.log('✅ Synchronisation manuelle terminée');
-      
+    // 🔍 ÉTAPE 1: Récupérer les produits depuis localStorage (isolation vendeur)
+    const products = await getVendorProductsFromStorage(vendor_id || retailer_id || 'demo-retailer-id');
+    
+    console.log('📦 Produits vendeur trouvés:', products.length);
+    
+    if (products.length === 0) {
       return new Response(
         JSON.stringify({
-          success: true,
-          message: `Synchronisation forcée: ${importedProducts.length} produits transférés vers catalogue enrichi`,
-          stats: { products_processed: importedProducts.length }
+          success: false,
+          message: 'Aucun produit trouvé dans votre catalogue. Importez d\'abord vos produits via l\'onglet Intégration.',
+          stats: { products_processed: 0 }
         }),
         {
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -144,9 +72,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('📦 Produits à enrichir:', products.length);
-
-    // 🧠 ÉTAPE 2: Enrichir chaque produit avec IA
+    // 🧠 ÉTAPE 2: Enrichir chaque produit avec IA locale
     const enrichedProducts = [];
     let successCount = 0;
     let errorCount = 0;
@@ -201,21 +127,36 @@ Deno.serve(async (req: Request) => {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    // 💾 ÉTAPE 3: Sauvegarder dans products_enriched
+    // 💾 ÉTAPE 3: Sauvegarder dans localStorage vendeur
     if (enrichedProducts.length > 0) {
-      const { error: insertError } = await supabase
-        .from('products_enriched')
-        .upsert(enrichedProducts, { 
-          onConflict: 'handle',
-          ignoreDuplicates: false 
-        });
-
-      if (insertError) {
-        console.error('❌ Erreur insertion products_enriched:', insertError);
-        throw insertError;
+      // Sauvegarder dans localStorage spécifique au vendeur
+      const enrichedKey = `vendor_${vendor_id || retailer_id}_enriched_products`;
+      
+      try {
+        localStorage.setItem(enrichedKey, JSON.stringify(enrichedProducts));
+        console.log('✅ Produits enrichis sauvegardés dans localStorage:', enrichedProducts.length);
+      } catch (storageError) {
+        console.error('❌ Erreur sauvegarde localStorage:', storageError);
+        // Continue sans faire échouer le processus
       }
 
-      console.log('✅ Produits enrichis sauvegardés:', enrichedProducts.length);
+      // OPTIONNEL: Essayer aussi Supabase si configuré
+      try {
+        const { error: insertError } = await supabase
+          .from('products_enriched')
+          .upsert(enrichedProducts, { 
+            onConflict: 'handle',
+            ignoreDuplicates: false 
+          });
+
+        if (insertError) {
+          console.warn('⚠️ Erreur Supabase (non bloquant):', insertError);
+        } else {
+          console.log('✅ Produits enrichis sauvegardés aussi dans Supabase');
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ Supabase non disponible (non bloquant):', supabaseError);
+      }
     }
 
     // 📊 ÉTAPE 4: Mettre à jour les statistiques
@@ -225,6 +166,7 @@ Deno.serve(async (req: Request) => {
       success_rate: successCount / (successCount + errorCount) * 100,
       execution_time: new Date().toISOString(),
       trigger_type: 'enrichment_cron',
+      vendor_id: vendor_id || retailer_id,
       next_run: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
 
@@ -265,6 +207,44 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+// Fonction pour récupérer les produits depuis localStorage
+async function getVendorProductsFromStorage(vendorId: string) {
+  try {
+    // Essayer plusieurs clés de stockage possibles
+    const storageKeys = [
+      `seller_${vendorId}_products`,
+      `vendor_${vendorId}_products`,
+      'catalog_products' // Fallback global
+    ];
+    
+    for (const key of storageKeys) {
+      try {
+        const savedProducts = localStorage?.getItem(key);
+        if (savedProducts) {
+          const products = JSON.parse(savedProducts);
+          const activeProducts = products.filter((p: any) => 
+            p.status === 'active' && (p.stock > 0 || p.quantityAvailable > 0)
+          );
+          
+          if (activeProducts.length > 0) {
+            console.log(`✅ Produits trouvés dans ${key}:`, activeProducts.length);
+            return activeProducts;
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️ Erreur lecture ${key}:`, error);
+      }
+    }
+    
+    console.log('⚠️ Aucun produit trouvé dans localStorage');
+    return [];
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération produits localStorage:', error);
+    return [];
+  }
+}
+
 async function enrichProductWithAI(product: any): Promise<EnrichedAttributes> {
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
@@ -275,7 +255,7 @@ async function enrichProductWithAI(product: any): Promise<EnrichedAttributes> {
 
   try {
     const productText = `
-PRODUIT: ${product.name || ''}
+PRODUIT: ${product.name || product.title || ''}
 DESCRIPTION: ${product.description || ''}
 CATÉGORIE: ${product.category || ''}
 PRIX: ${product.price || 0}€
@@ -351,7 +331,7 @@ RÉPONSE JSON UNIQUEMENT:`;
         try {
           const enriched = JSON.parse(content);
           console.log('✅ Enrichissement IA réussi:', {
-            product: product.name?.substring(0, 30),
+            product: (product.name || product.title)?.substring(0, 30),
             category: enriched.category,
             color: enriched.color,
             material: enriched.material,
@@ -375,7 +355,7 @@ RÉPONSE JSON UNIQUEMENT:`;
 }
 
 function enrichProductBasic(product: any): EnrichedAttributes {
-  const text = `${product.name || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
+  const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || product.productType || ''}`.toLowerCase();
   
   // Détecter catégorie
   let category = 'Mobilier';
@@ -459,7 +439,7 @@ function enrichProductBasic(product: any): EnrichedAttributes {
   if (text.includes('angle')) tags.push('angle');
 
   // Générer contenu SEO
-  const productName = product.name || 'Produit';
+  const productName = product.name || product.title || 'Produit';
   const brand = product.vendor || 'Decora Home';
   
   const seo_title = `${productName} ${color ? color : ''} - ${brand}`.substring(0, 70);
