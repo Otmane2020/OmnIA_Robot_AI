@@ -175,7 +175,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       // Déclencher l'enrichissement automatique
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const retailerId = localStorage.getItem('retailer_id') || 'default-retailer';
       
       if (supabaseUrl && supabaseKey) {
         const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
@@ -203,24 +202,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             
             setProducts(result.enriched_data);
             setFilteredProducts(result.enriched_data);
-          
-          const enrichedWithRetailer = result.enriched_data.map(product => ({
-            ...product,
-            retailer_id: retailerId
-          }));
-        // Update enriched products with retailer isolation
-        if (result.enriched_data && result.enriched_data.length > 0) {
-          const enrichedWithRetailer = result.enriched_data.map(product => ({
-            ...product,
-            retailer_id: retailerId
-          }));
-          localStorage.setItem('enrichedProducts', JSON.stringify(enrichedWithRetailer));
-          setProducts(enrichedWithRetailer);
-        }
             
             showSuccess(
               'Synchronisation terminée',
-              `${result.enriched_data.length} produits enrichis automatiquement !`
+              `${result.enriched_data.length} produits enrichis automatiquement !`,
+              [
+                {
+                  label: 'Voir les produits',
+                  action: () => console.log('Voir produits enrichis')
+                }
+              ]
             );
           }
         } else {
