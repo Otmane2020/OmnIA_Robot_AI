@@ -487,7 +487,18 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
+      
+      // Save to catalog_products for global catalog
       localStorage.setItem('catalog_products', JSON.stringify(activeProducts));
+      
+      // ALSO save to vendor-specific storage if we have a vendor context
+      const currentVendor = JSON.parse(localStorage.getItem('current_user') || '{}');
+      if (currentVendor.id) {
+        localStorage.setItem(`vendor_${currentVendor.id}_products`, JSON.stringify(activeProducts));
+        localStorage.setItem(`seller_${currentVendor.id}_products`, JSON.stringify(activeProducts));
+        console.log('✅ Produits sauvegardés pour vendor:', currentVendor.id);
+      }
+      
       localStorage.setItem('csv_file_data', JSON.stringify({
         filename: csvFile.name,
         size: csvFile.size,

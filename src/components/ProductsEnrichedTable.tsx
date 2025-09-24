@@ -276,15 +276,35 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   const getCatalogProducts = () => {
     try {
       // Load products from localStorage
-      const storageKey = retailerId ? `seller_${retailerId}_products` : 
-                        vendorId ? `vendor_${vendorId}_products` : 
-                        'catalog_products';
+      // Try multiple storage keys to find products
+      const storageKeys = [
+        retailerId ? `seller_${retailerId}_products` : null,
+        vendorId ? `vendor_${vendorId}_products` : null,
+        'catalog_products',
+        `retailer_${effectiveId}_products`,
+        `vendor_${effectiveId}_products`
+      ].filter(Boolean);
       
-      const savedProducts = localStorage.getItem(storageKey);
-      if (savedProducts) {
-        const products = JSON.parse(savedProducts);
-        return products.filter((p: any) => p.status === 'active' && (p.stock > 0 || p.quantityAvailable > 0));
+      for (const storageKey of storageKeys) {
+        const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const products = JSON.parse(savedProducts);
+            const activeProducts = products.filter((p: any) => 
+              p.status === 'active' && 
+              (p.stock > 0 || p.quantityAvailable > 0 || p.stock_qty > 0)
+            );
+            if (activeProducts.length > 0) {
+              console.log(`📦 Produits trouvés dans ${storageKey}:`, activeProducts.length);
+              return activeProducts;
+            }
+          } catch (parseError) {
+            console.error(`❌ Erreur parsing ${storageKey}:`, parseError);
+          }
+        }
       }
+      
+      console.log('⚠️ Aucun produit trouvé dans les clés de stockage:', storageKeys);
     } catch (error) {
       console.error('❌ Erreur chargement catalogue:', error);
     }
