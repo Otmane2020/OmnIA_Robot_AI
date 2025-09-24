@@ -118,9 +118,9 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
         // Default seller info if not found
         setSellerInfo({
           id: 'default',
-          company_name: 'Boutique Demo',
+          company_name: sellerSubdomain,
           subdomain: sellerSubdomain,
-          contact_name: 'Vendeur',
+          contact_name: sellerSubdomain,
           robot_name: 'OmnIA',
           theme_colors: {
             primary: '#0891b2',
@@ -135,7 +135,7 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
 
   const handleInitialGreeting = () => {
     const greeting = sellerInfo 
-      ? `Bonjour ! Je suis ${sellerInfo.robot_name} 🤖 Assistant IA de ${sellerInfo.company_name}. Comment puis-je vous aider aujourd'hui ?`
+      ? `Bonjour ! Je suis ${sellerInfo.robot_name} 🤖 Votre assistant mobilier IA. Comment puis-je vous aider ?`
       : "Bonjour ! Je suis OmnIA 🤖 Votre assistant mobilier IA. Comment puis-je vous aider ?";
     
     const greetingMessage: ChatMessageType = {

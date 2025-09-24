@@ -67,7 +67,7 @@ export const SellerConversationHistory: React.FC<SellerConversationHistoryProps>
           sellerConversations = [];
         }
       } else {
-        console.log(`💬 Nouveau vendeur ${sellerId} - aucune conversation`);
+        console.log(`💬 Vendeur ${sellerId} - aucune conversation (isolation complète)`);
         sellerConversations = [];
       }
       

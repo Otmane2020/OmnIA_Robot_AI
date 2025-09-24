@@ -105,7 +105,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
           sellerProducts = [];
         }
       } else {
-        console.log(`📦 Nouveau vendeur ${sellerId} - aucun produit`);
+        console.log(`📦 Vendeur ${sellerId} - aucun produit (isolation complète)`);
         sellerProducts = [];
       }
       

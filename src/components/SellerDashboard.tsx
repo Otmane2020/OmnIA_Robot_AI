@@ -281,7 +281,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;
       case 'robot': return renderRobotConfig();
-      case 'subscription': return <SellerSubscriptionManager seller={seller} onUpdate={onUpdate} />;
+      case 'subscription': return <SellerSubscriptionManager seller={seller} onUpdate={onUpdate || (() => {})} />;
       case 'settings': return <SellerSettings seller={seller} onUpdate={onUpdate} />;
       default: return renderDashboard();
     }

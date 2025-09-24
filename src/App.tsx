@@ -314,7 +314,7 @@ function App() {
             <AdminDashboard 
               onLogout={handleLogout}
               currentVendor={currentVendor}
-              onUpdateVendor={handleUpdateCurrentVendor}
+              onUpdateVendor={handleUpdateCurrentVendor} // Passer la fonction de mise à jour
             />
           )
         ) : (

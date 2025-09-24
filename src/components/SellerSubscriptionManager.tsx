@@ -202,7 +202,7 @@ export const SellerSubscriptionManager: React.FC<SellerSubscriptionManagerProps>
         ]
       );
       
-      onUpdate();
+      onUpdate(); // Déclencher la mise à jour du vendeur dans App.tsx
       
     } catch (error) {
       showError('Erreur d\'upgrade', 'Impossible de mettre à niveau votre plan.');
@@ -255,7 +255,7 @@ export const SellerSubscriptionManager: React.FC<SellerSubscriptionManagerProps>
         ]
       );
       
-      onUpdate();
+      onUpdate(); // Déclencher la mise à jour du vendeur dans App.tsx
       
     } catch (error) {
       showError('Erreur de downgrade', 'Impossible de programmer la rétrogradation.');

@@ -44,7 +44,7 @@ export const SellerAnalytics: React.FC<SellerAnalyticsProps> = ({ sellerId }) =>
           analyticsData = null;
         }
       } else {
-        console.log(`📊 Nouveau vendeur ${sellerId} - aucune analytics`);
+        console.log(`📊 Vendeur ${sellerId} - aucune analytics (isolation complète)`);
         analyticsData = null;
       }
       

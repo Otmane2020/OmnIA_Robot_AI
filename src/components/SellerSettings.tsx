@@ -31,7 +31,7 @@ interface SellerSettingsData {
   };
   widget_position: 'bottom-right' | 'bottom-left';
   auto_training: boolean;
-  // Informations vendeur éditables
+  // Informations vendeur éditables (depuis /register)
   company_name: string;
   contact_name: string;
   email: string;
@@ -61,7 +61,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
     },
     widget_position: 'bottom-right',
     auto_training: true,
-    // Initialiser avec les données du vendeur
+    // Initialiser avec les données du vendeur (depuis /register)
     company_name: seller.company_name || '',
     contact_name: seller.contact_name || '',
     email: seller.email || '',
@@ -134,7 +134,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       showSuccess('Paramètres sauvegardés', 'Vos paramètres ont été mis à jour avec succès.');
-      onUpdate();
+      onUpdate(); // Déclencher la mise à jour du vendeur dans App.tsx
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde paramètres:', error);
@@ -201,7 +201,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
           <User className="w-6 h-6 text-cyan-400" />
-          Informations du Compte (Modifiables)
+          Informations du Compte (depuis /register)
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -211,7 +211,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               type="text"
               value={settings.company_name}
               onChange={(e) => handleSettingChange('company_name', e.target.value)}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
+              placeholder="Nom de votre entreprise"
             />
           </div>
           <div>
@@ -220,7 +221,8 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               type="text"
               value={settings.contact_name}
               onChange={(e) => handleSettingChange('contact_name', e.target.value)}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
+              placeholder="Nom du responsable"
             />
           </div>
           <div>
@@ -229,17 +231,18 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               type="email"
               value={settings.email}
               onChange={(e) => handleSettingChange('email', e.target.value)}
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
+              placeholder="contact@monentreprise.fr"
             />
           </div>
           <div>
             <label className="block text-sm text-gray-300 mb-2">Téléphone</label>
             <input
-              type="text"
+              type="tel"
               value={settings.phone}
               onChange={(e) => handleSettingChange('phone', e.target.value)}
               placeholder="+33 1 23 45 67 89"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
           <div>
@@ -249,7 +252,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               value={settings.address}
               onChange={(e) => handleSettingChange('address', e.target.value)}
               placeholder="123 Rue de la Paix"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
           <div>
@@ -259,7 +262,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               value={settings.city}
               onChange={(e) => handleSettingChange('city', e.target.value)}
               placeholder="Paris"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
           <div>
@@ -269,7 +272,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               value={settings.postal_code}
               onChange={(e) => handleSettingChange('postal_code', e.target.value)}
               placeholder="75001"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
           <div>
@@ -279,7 +282,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               value={settings.siret}
               onChange={(e) => handleSettingChange('siret', e.target.value)}
               placeholder="12345678901234"
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
           <div>
@@ -289,7 +292,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
               value={settings.position}
               onChange={(e) => handleSettingChange('position', e.target.value)}
               placeholder="Directeur, Gérant..."
-              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+              className="w-full bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
             />
           </div>
         </div>

@@ -117,8 +117,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   };
 
   const generateMockEnrichedProducts = (): EnrichedProduct[] => {
-    // NOUVEAU: Retourner un tableau vide pour les nouveaux vendeurs
-    console.log('📦 Nouveau vendeur - aucun produit enrichi');
+    // FORCÉ: Toujours retourner un tableau vide pour isolation complète
+    console.log('📦 Vendeur - aucun produit enrichi (isolation complète)');
     return [];
   };
 

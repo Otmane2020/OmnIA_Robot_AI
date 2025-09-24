@@ -43,7 +43,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   
   // Si un vendeur est connecté, afficher son dashboard personnalisé
   if (currentVendor) {
-    return <SellerDashboard seller={currentVendor} onLogout={onLogout} onUpdate={onUpdateVendor || (() => {})} />;
+    return <SellerDashboard seller={currentVendor} onLogout={onLogout} onUpdate={onUpdateVendor} />;
   }
 
   const [activeTab, setActiveTab] = useState('dashboard');
