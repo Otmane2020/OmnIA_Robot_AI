@@ -30,21 +30,21 @@ export const SellerAnalytics: React.FC<SellerAnalyticsProps> = ({ sellerId }) =>
     try {
       setIsLoading(true);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Charger UNIQUEMENT les analytics de ce vendeur
+      const analyticsKey = `seller_${sellerId}_analytics_${selectedPeriod}`;
+      const savedAnalytics = localStorage.getItem(analyticsKey);
       
-      const savedAnalytics = localStorage.getItem(`seller_${sellerId}_analytics_${selectedPeriod}`);
       let analyticsData: SellerAnalyticsData | null = null;
-      
       if (savedAnalytics) {
         try {
           analyticsData = JSON.parse(savedAnalytics);
-          console.log('📊 Analytics vendeur chargées:', analyticsData);
+          console.log(`📊 Analytics vendeur ${sellerId} chargées:`, analyticsData);
         } catch (error) {
           console.error('Erreur parsing analytics:', error);
           analyticsData = null;
         }
       } else {
-        console.log('📊 Nouveau vendeur - aucune donnée analytics');
+        console.log(`📊 Nouveau vendeur ${sellerId} - aucune analytics`);
         analyticsData = null;
       }
       

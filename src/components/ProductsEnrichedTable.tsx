@@ -440,7 +440,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         setProducts(newEnrichedProducts);
         
         // Sauvegarder les produits enrichis spécifiques au vendeur
-        localStorage.setItem(`seller_${vendorId}_enriched_products`, JSON.stringify(newEnrichedProducts));
+        const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+        localStorage.setItem(enrichedKey, JSON.stringify(newEnrichedProducts));
         
         showSuccess('Synchronisation locale', `${newEnrichedProducts.length} produits enrichis localement !`);
       } else {

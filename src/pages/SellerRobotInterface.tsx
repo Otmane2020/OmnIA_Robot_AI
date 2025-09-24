@@ -228,6 +228,7 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
 
   const saveConversationToStorage = (sellerId: string, userMessage: string, aiResponse: string, products: Product[]) => {
     try {
+      // Clé spécifique au vendeur pour isolation complète
       const conversationKey = `seller_${sellerId}_conversations`;
       const existingConversations = localStorage.getItem(conversationKey);
       let conversations = existingConversations ? JSON.parse(existingConversations) : [];
@@ -251,6 +252,7 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
       }
       
       localStorage.setItem(conversationKey, JSON.stringify(conversations));
+      console.log(`💾 Conversation sauvegardée pour vendeur ${sellerId}`);
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde conversation:', error);

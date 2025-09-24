@@ -53,19 +53,21 @@ export const SellerConversationHistory: React.FC<SellerConversationHistoryProps>
     try {
       setIsLoading(true);
       
-      const savedConversations = localStorage.getItem(`seller_${sellerId}_conversations`);
-      let sellerConversations: SellerConversation[] = [];
+      // Charger UNIQUEMENT les conversations de ce vendeur spécifique
+      const sellerConversationKey = `seller_${sellerId}_conversations`;
+      const savedConversations = localStorage.getItem(sellerConversationKey);
       
+      let sellerConversations: SellerConversation[] = [];
       if (savedConversations) {
         try {
           sellerConversations = JSON.parse(savedConversations);
-          console.log('💬 Conversations vendeur chargées:', sellerConversations.length);
+          console.log(`💬 Conversations vendeur ${sellerId} chargées:`, sellerConversations.length);
         } catch (error) {
           console.error('Erreur parsing conversations:', error);
           sellerConversations = [];
         }
       } else {
-        console.log('💬 Nouveau vendeur - aucune conversation trouvée');
+        console.log(`💬 Nouveau vendeur ${sellerId} - aucune conversation`);
         sellerConversations = [];
       }
       

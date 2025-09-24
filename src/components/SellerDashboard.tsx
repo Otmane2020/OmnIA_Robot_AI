@@ -62,6 +62,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     { id: 'conversations', label: 'Conversations', icon: MessageSquare },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'robot', label: 'Mon Robot IA', icon: Bot },
+    { id: 'subscription', label: 'Abonnement', icon: CreditCard },
     { id: 'settings', label: 'Paramètres', icon: Settings }
   ];
 
@@ -73,37 +74,18 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     try {
       setIsLoading(true);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Toujours partir de zéro pour un nouveau vendeur
+      const realStats = {
+        conversations: getSellerConversationsCount(seller.id),
+        conversions: 0,
+        products: getSellerProductsCount(seller.id),
+        revenue: 0,
+        visitors: 0,
+        cart_additions: 0
+      };
       
-      const savedStats = localStorage.getItem(`seller_${seller.id}_stats`);
-      if (savedStats) {
-        try {
-          setStats(JSON.parse(savedStats));
-          console.log('📊 Stats vendeur chargées depuis localStorage');
-        } catch (error) {
-          console.error('Erreur parsing stats:', error);
-          setStats({
-            conversations: 0,
-            conversions: 0,
-            products: getSellerProductsCount(seller.id),
-            revenue: 0,
-            visitors: 0,
-            cart_additions: 0
-          });
-        }
-      } else {
-        console.log('📊 Nouveau vendeur - initialisation stats vides');
-        const emptyStats = {
-          conversations: 0,
-          conversions: 0,
-          products: getSellerProductsCount(seller.id),
-          revenue: 0,
-          visitors: 0,
-          cart_additions: 0
-        };
-        setStats(emptyStats);
-        localStorage.setItem(`seller_${seller.id}_stats`, JSON.stringify(emptyStats));
-      }
+      setStats(realStats);
+      console.log('📊 Stats vendeur réelles:', realStats);
       
     } catch (error) {
       console.error('❌ Erreur chargement stats vendeur:', error);
@@ -122,6 +104,19 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       }
     } catch (error) {
       console.error('Erreur comptage produits:', error);
+    }
+    return 0;
+  };
+
+  const getSellerConversationsCount = (sellerId: string): number => {
+    try {
+      const savedConversations = localStorage.getItem(`seller_${sellerId}_conversations`);
+      if (savedConversations) {
+        const conversations = JSON.parse(savedConversations);
+        return conversations.length;
+      }
+    } catch (error) {
+      console.error('Erreur comptage conversations:', error);
     }
     return 0;
   };
@@ -216,12 +211,12 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
           </button>
           
           <button
-            onClick={() => window.open(`/robot/${seller.subdomain}`, '_blank')}
+            onClick={() => window.open(`/robot/${seller.subdomain || seller.id}`, '_blank')}
             className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Eye className="w-8 h-8 text-green-400 mb-3" />
             <h3 className="text-lg font-semibold text-white mb-2">Tester Mon Robot</h3>
-            <p className="text-gray-300 text-sm">Voir en action</p>
+            <p className="text-gray-300 text-sm">/robot/{seller.subdomain || seller.id}</p>
           </button>
         </div>
       </div>
@@ -285,6 +280,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;
       case 'robot': return renderRobotConfig();
+      case 'subscription': return <SellerSubscriptionManager seller={seller} onUpdate={loadSellerStats} />;
       case 'settings': return <SellerSettings seller={seller} onUpdate={loadSellerStats} />;
       default: return renderDashboard();
     }
@@ -321,7 +317,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => window.open(`/robot/${seller.subdomain}`, '_blank')}
+            onClick={() => window.open(`/robot/${seller.subdomain || seller.id}`, '_blank')}
             className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 text-green-300 p-4 rounded-xl font-semibold transition-all"
           >
             <Eye className="w-6 h-6 mx-auto mb-2" />
@@ -350,7 +346,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/30">
         <h3 className="text-lg font-bold text-white mb-4">🔗 URL de votre Robot IA</h3>
         <div className="bg-black/40 rounded-lg p-4 font-mono text-cyan-300 break-all">
-          https://omnia.sale/robot/{seller.subdomain}
+          https://omnia.sale/robot/{seller.subdomain || seller.id}
         </div>
         <p className="text-cyan-200 text-sm mt-3">
           Partagez cette URL avec vos clients ou intégrez le widget sur votre site

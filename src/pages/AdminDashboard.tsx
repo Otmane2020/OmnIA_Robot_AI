@@ -232,12 +232,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
           </button>
           
           <button
-            onClick={() => window.open('/robot', '_blank')}
+            onClick={() => {
+              // Si c'est un vendeur, rediriger vers son robot spécifique
+              if (currentVendor) {
+                window.open(`/robot/${currentVendor.subdomain || currentVendor.id}`, '_blank');
+              } else {
+                window.open('/robot', '_blank');
+              }
+            }}
             className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Eye className="w-8 h-8 text-green-400 mb-3" />
             <h3 className="text-lg font-semibold text-white mb-2">Tester OmnIA</h3>
-            <p className="text-gray-300 text-sm">Voir en action</p>
+            <p className="text-gray-300 text-sm">
+              {currentVendor ? `/robot/${currentVendor.subdomain || currentVendor.id}` : 'Robot global'}
+            </p>
           </button>
         </div>
       </div>

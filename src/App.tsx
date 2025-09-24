@@ -94,13 +94,19 @@ function App() {
     const testVendors = [
       {
         id: '550e8400-e29b-41d4-a716-446655440001',
-        email: 'demo@decorahome.fr',
-        password: 'demo123',
+        email: 'benyahya.otmane@outlook.com',
+        password: 'password123',
         company_name: 'Decora Home',
         subdomain: 'decorahome',
         plan: 'professional',
         status: 'active',
-        contact_name: 'Marie Dubois',
+        contact_name: 'Otmane Benyahya',
+        phone: '+33 6 12 34 56 78',
+        address: '123 Rue de la Paix',
+        city: 'Paris',
+        postal_code: '75001',
+        siret: '12345678901234',
+        position: 'Directeur',
         created_at: '2024-03-15T10:00:00Z',
         validated_at: '2024-03-15T12:00:00Z'
       },
@@ -173,6 +179,11 @@ function App() {
     
     if (vendor && vendor.password === credentials.password) {
       console.log('✅ Connexion vendeur:', vendor.company_name);
+      
+      // Sauvegarder l'ID et sous-domaine du vendeur connecté pour les composants
+      localStorage.setItem('current_vendor_id', vendor.id);
+      localStorage.setItem('current_vendor_subdomain', vendor.subdomain || vendor.id);
+      
       setIsSuperAdmin(false);
       setIsLoggedIn(true);
       setCurrentVendor(vendor);
@@ -200,6 +211,10 @@ function App() {
   };
 
   const handleLogout = () => {
+    // Nettoyer les données de session vendeur
+    localStorage.removeItem('current_vendor_id');
+    localStorage.removeItem('current_vendor_subdomain');
+    
     setIsLoggedIn(false);
     setIsSuperAdmin(false);
     setCurrentVendor(null);

@@ -163,7 +163,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
           <User className="w-6 h-6 text-cyan-400" />
-          Informations du Compte
+          Informations du Compte (Modifiables)
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -171,38 +171,100 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <label className="block text-sm text-gray-300 mb-2">Nom de l'entreprise</label>
             <input
               type="text"
-              value={seller.company_name}
+              defaultValue={seller.company_name}
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              readOnly
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Email</label>
+            <label className="block text-sm text-gray-300 mb-2">Contact principal</label>
+            <input
+              type="text"
+              defaultValue={seller.contact_name}
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Email professionnel</label>
             <input
               type="email"
-              value={seller.email}
+              defaultValue={seller.email}
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              readOnly
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Sous-domaine</label>
+            <label className="block text-sm text-gray-300 mb-2">Téléphone</label>
             <input
               type="text"
-              value={`${seller.subdomain}.omnia.sale`}
+              defaultValue={seller.phone || ''}
+              placeholder="+33 1 23 45 67 89"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              readOnly
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Plan</label>
+            <label className="block text-sm text-gray-300 mb-2">Adresse</label>
             <input
               type="text"
-              value={seller.plan.charAt(0).toUpperCase() + seller.plan.slice(1)}
+              defaultValue={seller.address || ''}
+              placeholder="123 Rue de la Paix"
               className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
-              readOnly
             />
           </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Ville</label>
+            <input
+              type="text"
+              defaultValue={seller.city || ''}
+              placeholder="Paris"
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Code postal</label>
+            <input
+              type="text"
+              defaultValue={seller.postal_code || ''}
+              placeholder="75001"
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">SIRET</label>
+            <input
+              type="text"
+              defaultValue={seller.siret || ''}
+              placeholder="12345678901234"
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Fonction</label>
+            <input
+              type="text"
+              defaultValue={seller.position || ''}
+              placeholder="Directeur, Gérant..."
+              className="w-full bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <button
+            onClick={handleSaveSettings}
+            disabled={isSaving}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Sauvegarde...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Sauvegarder les informations
+              </>
+            )}
+          </button>
         </div>
       </div>
 

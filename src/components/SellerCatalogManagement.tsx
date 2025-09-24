@@ -82,7 +82,9 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     try {
       setIsLoading(true);
       
-      const savedProducts = localStorage.getItem(`seller_${sellerId}_products`);
+      // Charger UNIQUEMENT les produits de ce vendeur spécifique
+      const sellerProductsKey = `seller_${sellerId}_products`;
+      const savedProducts = localStorage.getItem(sellerProductsKey);
       let sellerProducts: SellerProduct[] = [];
       
       if (savedProducts) {
@@ -97,13 +99,13 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
             extracted_attributes: p.extracted_attributes || {},
             confidence_score: p.confidence_score || 0
           }));
-          console.log('📦 Produits vendeur chargés:', sellerProducts.length);
+          console.log(`📦 Produits vendeur ${sellerId} chargés:`, sellerProducts.length);
         } catch (error) {
           console.error('Erreur parsing produits vendeur:', error);
           sellerProducts = [];
         }
       } else {
-        console.log('📦 Nouveau vendeur - aucun produit trouvé');
+        console.log(`📦 Nouveau vendeur ${sellerId} - aucun produit`);
         sellerProducts = [];
       }
       

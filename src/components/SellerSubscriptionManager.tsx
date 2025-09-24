@@ -171,8 +171,12 @@ export const SellerSubscriptionManager: React.FC<SellerSubscriptionManagerProps>
       // Simuler l'upgrade
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mettre à jour le plan dans localStorage (simulation)
-      const updatedSeller = { ...seller, plan: newPlan as any };
+      // Mettre à jour le plan du vendeur
+      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
+      const updatedRetailers = validatedRetailers.map((retailer: any) => 
+        retailer.id === seller.id ? { ...retailer, plan: newPlan } : retailer
+      );
+      localStorage.setItem('validated_retailers', JSON.stringify(updatedRetailers));
       
       // Mettre à jour l'utilisation avec les nouvelles limites
       const newPlanData = plans.find(p => p.id === newPlan);
@@ -219,6 +223,15 @@ export const SellerSubscriptionManager: React.FC<SellerSubscriptionManagerProps>
     try {
       // Simuler le downgrade
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Programmer le downgrade pour la fin de période
+      const downgradePlan = {
+        seller_id: seller.id,
+        new_plan: newPlan,
+        effective_date: usage?.next_billing_date,
+        scheduled_at: new Date().toISOString()
+      };
+      localStorage.setItem(`seller_${seller.id}_scheduled_downgrade`, JSON.stringify(downgradePlan));
       
       showInfo(
         'Downgrade programmé',
