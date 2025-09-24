@@ -549,9 +549,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
                   </td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(retailer.plan)}`}>
-                      {(retailer.plan && typeof retailer.plan === 'string') ? 
-                        retailer.plan.charAt(0).toUpperCase() + retailer.plan.slice(1) : 
-                        'N/A'}
+                      {retailer.plan || 'N/A'}
                     </span>
                   </td>
                   <td className="p-4">
@@ -685,7 +683,7 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplica
               <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
                 <h3 className="font-semibold text-purple-300 mb-2">🌐 Sous-domaine assigné</h3>
                 <div className="bg-black/40 rounded-lg p-3">
-                  <code className="text-purple-300 text-lg">{selectedApplication.proposedSubdomain}</code>
+                  <code className="text-purple-300 text-lg">{selectedApplication.proposedSubdomain || generateSubdomain(selectedApplication.companyName || selectedApplication.company_name)}.omnia.sale</code>
                 </div>
                 <p className="text-sm text-purple-200 mt-2">
                   Le client pourra accéder à son OmnIA via cette URL personnalisée
