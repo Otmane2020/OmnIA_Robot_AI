@@ -167,10 +167,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   };
 
   const syncEnrichedProducts = async () => {
-    // Move variable declarations to function scope
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
     try {
       setIsSyncing(true);
       setSyncProgress(0);
@@ -190,12 +186,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
 
       setSyncProgress(20);
 
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
       if (!supabaseUrl || !supabaseKey) {
         throw new Error('Supabase non configuré');
       }
-
-      console.log('🤖 [sync-debug] Appel enrich-products-cron...');
-      setSyncProgress(40);
 
       // Use direct fetch to Edge Function
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
