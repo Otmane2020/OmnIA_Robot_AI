@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { RobotInterface } from './pages/RobotInterface';
 import { ChatInterface } from './pages/ChatInterface';
@@ -47,28 +47,26 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/robot/:retailerId" element={<RobotInterface />} />
-        <Route path="/chat/:retailerId" element={<ChatInterface />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/super" element={<SuperAdmin />} />
-        <Route path="/seller/register" element={<SellerRegistration />} />
-        <Route path="/seller/robot" element={<SellerRobotInterface />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/documentation" element={<Documentation />} />
-        <Route path="/guides" element={<Guides />} />
-        <Route path="/press" element={<Press />} />
-        <Route path="/partnerships" element={<Partnerships />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/thank-you" element={<ThankYou />} />
-        <Route path="/testapi" element={<APITest />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/robot/:retailerId" element={<RobotInterface />} />
+      <Route path="/chat/:retailerId" element={<ChatInterface />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/super" element={<SuperAdmin />} />
+      <Route path="/seller/register" element={<SellerRegistration />} />
+      <Route path="/seller/robot" element={<SellerRobotInterface />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/support" element={<Support />} />
+      <Route path="/documentation" element={<Documentation />} />
+      <Route path="/guides" element={<Guides />} />
+      <Route path="/press" element={<Press />} />
+      <Route path="/partnerships" element={<Partnerships />} />
+      <Route path="/upload" element={<UploadPage />} />
+      <Route path="/thank-you" element={<ThankYou />} />
+      <Route path="/testapi" element={<APITest />} />
+    </Routes>
   );
 }
 
