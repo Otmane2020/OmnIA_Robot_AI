@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Store, Users, TrendingUp, MessageSquare, Database, Bot, Settings, LogOut, CreditCard,
-  BarChart3, Package, DollarSign, Eye, Plus, Upload, Download, RefreshCw
+  BarChart3, Package, DollarSign, Eye, Plus, Upload, Download, RefreshCw, Brain, Globe
 } from 'lucide-react';
 import { SellerCatalogManagement } from './SellerCatalogManagement';
 import { SellerConversationHistory } from './SellerConversationHistory';
 import { SellerAnalytics } from './SellerAnalytics';
 import { SellerSettings } from './SellerSettings';
 import { SellerSubscriptionManager } from './SellerSubscriptionManager';
+import { ProductsEnrichedTable } from './ProductsEnrichedTable';
+import { EcommerceIntegration } from './EcommerceIntegration';
 import { NotificationSystem, useNotifications } from './NotificationSystem';
 
 interface Seller {
@@ -61,6 +63,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'products', label: 'Mes Produits', icon: Package },
+    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
+    { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'conversations', label: 'Conversations', icon: MessageSquare },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'robot', label: 'Mon Robot IA', icon: Bot },
@@ -121,6 +125,44 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       console.error('Erreur comptage conversations:', error);
     }
     return 0;
+  };
+
+  const handlePlatformConnected = (platformData: any) => {
+    console.log('Plateforme connectée pour vendeur:', platformData);
+    
+    // Sauvegarder les produits dans localStorage spécifique au vendeur
+    if (platformData.products && Array.isArray(platformData.products)) {
+      const storageKey = `seller_${seller.id}_products`;
+      const existingProducts = localStorage.getItem(storageKey);
+      let allProducts = platformData.products;
+      
+      if (existingProducts) {
+        try {
+          const existing = JSON.parse(existingProducts);
+          allProducts = [...existing, ...platformData.products];
+        } catch (error) {
+          console.error('Erreur parsing produits existants:', error);
+        }
+      }
+      
+      localStorage.setItem(storageKey, JSON.stringify(allProducts));
+      console.log('✅ Produits sauvegardés pour vendeur:', allProducts.length);
+    }
+    
+    // Mettre à jour les stats
+    loadSellerStats();
+    
+    showSuccess(
+      'Plateforme connectée',
+      `${platformData.name || 'Plateforme'} connectée avec ${platformData.products_count || 0} produits !`,
+      [
+        {
+          label: 'Voir le catalogue',
+          action: () => setActiveTab('products'),
+          variant: 'primary'
+        }
+      ]
+    );
   };
 
   const renderDashboard = () => (
@@ -279,6 +321,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'products': return <SellerCatalogManagement sellerId={seller.id} />;
+      case 'enriched': return <ProductsEnrichedTable vendorId={seller.id} />;
+      case 'integration': return <EcommerceIntegration onConnected={handlePlatformConnected} />;
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;
       case 'robot': return renderRobotConfig();

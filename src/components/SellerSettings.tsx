@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, User, Bot, Palette, Globe, Shield, Bell } from 'lucide-react';
+import { Settings, Save, User, Bot, Palette, Globe, Shield, Bell, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface Seller {
@@ -74,6 +74,7 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const { showSuccess, showError } = useNotifications();
 
   useEffect(() => {
@@ -156,6 +157,86 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
         [colorKey]: value
       }
     }));
+  };
+
+  const handleResetAllData = async () => {
+    const confirmMessage = `⚠️ ATTENTION : Cette action va supprimer TOUTES vos données :
+
+• Tous vos produits importés
+• Historique des conversations
+• Analytics et statistiques
+• Paramètres personnalisés
+• Données d'utilisation
+
+Cette action est IRRÉVERSIBLE.
+
+Êtes-vous absolument sûr de vouloir continuer ?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    // Double confirmation pour sécurité
+    const doubleConfirm = prompt(`Pour confirmer, tapez exactement : RESET
+
+Cela supprimera définitivement toutes vos données.`);
+
+    if (doubleConfirm !== 'RESET') {
+      showError('Réinitialisation annulée', 'Confirmation incorrecte. Aucune donnée n\'a été supprimée.');
+      return;
+    }
+
+    setIsResetting(true);
+
+    try {
+      console.log('🗑️ RÉINITIALISATION COMPLÈTE pour vendeur:', seller.id);
+
+      // Liste de toutes les clés localStorage à supprimer pour ce vendeur
+      const keysToRemove = [
+        `seller_${seller.id}_products`,
+        `seller_${seller.id}_conversations`,
+        `seller_${seller.id}_analytics_1d`,
+        `seller_${seller.id}_analytics_7d`,
+        `seller_${seller.id}_analytics_30d`,
+        `seller_${seller.id}_usage`,
+        `seller_${seller.id}_settings`,
+        `seller_${seller.id}_enriched_products`,
+        `vendor_${seller.id}_products`,
+        `vendor_${seller.id}_enriched_products`
+      ];
+
+      // Supprimer toutes les données du vendeur
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log('🗑️ Supprimé:', key);
+      });
+
+      // Simuler le processus de réinitialisation
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      showSuccess(
+        'Réinitialisation terminée',
+        'Toutes vos données ont été supprimées. Votre compte est maintenant vierge et prêt pour un nouveau démarrage.',
+        [
+          {
+            label: 'Recharger la page',
+            action: () => window.location.reload(),
+            variant: 'primary'
+          }
+        ]
+      );
+
+      // Recharger automatiquement après 3 secondes
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+
+    } catch (error) {
+      console.error('❌ Erreur réinitialisation:', error);
+      showError('Erreur de réinitialisation', 'Impossible de réinitialiser les données.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (isLoading) {
@@ -551,6 +632,65 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
             <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm">
               Demander la suppression
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Management */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <RefreshCw className="w-6 h-6 text-orange-400" />
+          Gestion des Données
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl p-4">
+            <h4 className="font-semibold text-orange-200 mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              Réinitialisation Complète du Compte
+            </h4>
+            <p className="text-orange-300 text-sm mb-4">
+              Supprime TOUTES vos données : produits, conversations, analytics, paramètres.
+              Votre compte repartira de zéro comme un nouveau vendeur.
+            </p>
+            <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-3 mb-4">
+              <h5 className="font-semibold text-red-200 mb-2">⚠️ Données qui seront supprimées :</h5>
+              <ul className="text-red-300 text-xs space-y-1">
+                <li>• Catalogue produits importés</li>
+                <li>• Historique des conversations</li>
+                <li>• Analytics et statistiques</li>
+                <li>• Paramètres robot personnalisés</li>
+                <li>• Données d'utilisation et métriques</li>
+                <li>• Produits enrichis par IA</li>
+              </ul>
+            </div>
+            <button
+              onClick={handleResetAllData}
+              disabled={isResetting}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isResetting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Réinitialisation...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-5 h-5" />
+                  Réinitialiser Toutes les Données
+                </>
+              )}
+            </button>
+          </div>
+          
+          <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
+            <h4 className="font-semibold text-blue-200 mb-2">💡 Cas d'usage de la réinitialisation :</h4>
+            <ul className="text-blue-300 text-sm space-y-1">
+              <li>• Nouveau démarrage avec un catalogue différent</li>
+              <li>• Test de nouvelles configurations</li>
+              <li>• Nettoyage après des tests de développement</li>
+              <li>• Résolution de problèmes de données corrompues</li>
+            </ul>
           </div>
         </div>
       </div>
