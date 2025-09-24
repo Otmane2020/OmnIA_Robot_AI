@@ -23,15 +23,34 @@ Deno.serve(async (req: Request) => {
   try {
     const { products, retailer_id, source }: SaveImportedProductsRequest = await req.json();
     
-    console.log('💾 Sauvegarde produits importés:', {
+    console.log('💾 [save-imported-products] Sauvegarde produits importés:', {
       products_count: products.length,
       retailer_id,
       source
     });
 
     // Initialize Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Variables d\'environnement Supabase manquantes');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Configuration Supabase manquante',
+          details: 'SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY requis'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Validate and clean products
@@ -39,7 +58,7 @@ Deno.serve(async (req: Request) => {
       product.name && product.name.trim().length > 0 && product.price > 0
     );
 
-    console.log(`✅ ${validProducts.length}/${products.length} produits valides`);
+    console.log(`✅ [save-imported-products] ${validProducts.length}/${products.length} produits valides`);
 
     if (validProducts.length === 0) {
       return new Response(
@@ -58,27 +77,35 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Ensure extracted_attributes is always a valid JSON object
+    const cleanedProducts = validProducts.map(product => ({
+      ...product,
+      extracted_attributes: product.extracted_attributes || {},
+      created_at: product.created_at || new Date().toISOString(),
+      updated_at: product.updated_at || new Date().toISOString()
+    }));
+
     // Insert products into database
     const { data, error } = await supabase
       .from('imported_products')
-      .upsert(validProducts, { 
+      .upsert(cleanedProducts, { 
         onConflict: 'retailer_id,external_id,source_platform',
         ignoreDuplicates: false 
       })
       .select();
 
     if (error) {
-      console.error('❌ Erreur insertion DB:', error);
+      console.error('❌ [save-imported-products] Erreur insertion DB:', error);
       throw error;
     }
 
-    console.log('✅ Produits sauvegardés:', data?.length || 0);
+    console.log('✅ [save-imported-products] Produits sauvegardés:', data?.length || 0);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${validProducts.length} produits sauvegardés avec succès`,
-        saved_count: validProducts.length,
+        message: `${cleanedProducts.length} produits sauvegardés avec succès`,
+        saved_count: cleanedProducts.length,
         products: data || []
       }),
       {
@@ -90,7 +117,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error('❌ Erreur sauvegarde produits:', error);
+    console.error('❌ [save-imported-products] Erreur sauvegarde produits:', error);
     
     return new Response(
       JSON.stringify({
