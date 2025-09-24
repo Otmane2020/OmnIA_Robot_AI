@@ -332,7 +332,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
         </div>
       </div>
 
-      <ProductsEnrichedTable />
+      <ProductsEnrichedTable vendorId={currentVendor?.id} />
     </div>
   );
   

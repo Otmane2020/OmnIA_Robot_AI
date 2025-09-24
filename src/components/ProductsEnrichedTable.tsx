@@ -30,14 +30,16 @@ interface EnrichedProduct {
   confidence_score: number;
   enriched_at: string;
   enrichment_source: string;
+  retailer_id?: string;
   created_at: string;
 }
 
 interface ProductsEnrichedTableProps {
   vendorId?: string;
+  retailerId?: string;
 }
 
-export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ vendorId }) => {
+export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ vendorId, retailerId }) => {
   const [products, setProducts] = useState<EnrichedProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<EnrichedProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,12 +56,14 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [syncProgress, setSyncProgress] = useState(0);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
   
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
     loadEnrichedProducts();
-  }, [vendorId]);
+  }, [vendorId, retailerId]);
 
   useEffect(() => {
     // Filtrer les produits
@@ -70,8 +74,10 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      // Charger depuis localStorage avec isolation retailer/vendor
+      const enrichedKey = retailerId ? `retailer_${retailerId}_enriched_products` : 
+                         vendorId ? `vendor_${vendorId}_enriched_products` : 
+                         'admin_enriched_products';
       );
     }
 
@@ -106,14 +112,19 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       
       if (savedEnriched) {
         try {
-          enrichedProducts = JSON.parse(savedEnriched);
-          console.log('📦 Produits enrichis chargés:', enrichedProducts.length);
+          // Filter by retailer_id if specified
+          enrichedProducts = parsed.filter((p: any) => {
+            const hasStock = p.stock_qty > 0;
+            const matchesRetailer = !retailerId || p.retailer_id === retailerId;
+            return hasStock && matchesRetailer;
+          });
+          console.log('✅ [enriched-table] Produits enrichis chargés:', enrichedProducts.length);
         } catch (error) {
           console.error('Erreur parsing produits enrichis:', error);
           enrichedProducts = [];
         }
       } else {
-        console.log('📦 Aucun produit enrichi trouvé');
+        console.log(`📦 [enriched-table] Aucun produit enrichi trouvé pour ${retailerId || vendorId || 'admin'}`);
         enrichedProducts = [];
       }
       

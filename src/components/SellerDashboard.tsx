@@ -321,7 +321,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'products': return <SellerCatalogManagement sellerId={seller.id} />;
-      case 'enriched': return <ProductsEnrichedTable vendorId={seller.id} />;
+      case 'enriched': return <ProductsEnrichedTable retailerId={seller.id} />;
       case 'integration': return <EcommerceIntegration onConnected={handlePlatformConnected} />;
       case 'conversations': return <SellerConversationHistory sellerId={seller.id} />;
       case 'analytics': return <SellerAnalytics sellerId={seller.id} />;
