@@ -5,7 +5,7 @@ interface AdminLoginProps {
   onLogin: (credentials: { email: string; password: string }) => void;
   onShowRegistration: () => void;
 }
-a
+
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onShowRegistration }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
