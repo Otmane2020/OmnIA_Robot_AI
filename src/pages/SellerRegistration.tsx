@@ -387,8 +387,10 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       
       if (!formData.siret.trim()) {
         newErrors.siret = 'SIRET requis';
-      } else if (siretValidation === 'invalid') {
-        newErrors.siret = 'SIRET invalide (14 chiffres requis)';
+      } else if (formData.siret.length !== 14) {
+        newErrors.siret = 'SIRET doit contenir exactement 14 chiffres';
+      } else if (!/^\d{14}$/.test(formData.siret)) {
+        newErrors.siret = 'SIRET doit contenir uniquement des chiffres';
       }
       
       if (!formData.address.trim()) {
