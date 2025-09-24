@@ -138,18 +138,7 @@ export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onCo
       localStorage.setItem('shopify_config_persistent', JSON.stringify({
         shop_domain: shopifyConfig.shopDomain,
         access_token: shopifyConfig.accessToken,
-        shop_name: testData.shop_info.name,
-        variants: product.variants?.map((variant: any) => ({
-          id: variant.id,
-          title: variant.title,
-          price: variant.price,
-          compareAtPrice: variant.compare_at_price,
-          availableForSale: variant.available,
-          quantityAvailable: variant.inventory_quantity || 0,
-          selectedOptions: variant.selectedOptions || [],
-          image: variant.image?.src,
-          sku: variant.sku
-        })) || []
+        shop_name: testData.shop_info.name
       }));
       console.log('✅ Configuration Shopify sauvegardée');
 
