@@ -53,22 +53,20 @@ export const SellerConversationHistory: React.FC<SellerConversationHistoryProps>
     try {
       setIsLoading(true);
       
-      // Load seller-specific conversations from localStorage
       const savedConversations = localStorage.getItem(`seller_${sellerId}_conversations`);
       let sellerConversations: SellerConversation[] = [];
       
       if (savedConversations) {
         try {
           sellerConversations = JSON.parse(savedConversations);
+          console.log('💬 Conversations vendeur chargées:', sellerConversations.length);
         } catch (error) {
           console.error('Erreur parsing conversations:', error);
+          sellerConversations = [];
         }
-      }
-      
-      // Generate sample conversations if none exist
-      if (sellerConversations.length === 0) {
-        sellerConversations = generateSampleConversations(sellerId);
-        localStorage.setItem(`seller_${sellerId}_conversations`, JSON.stringify(sellerConversations));
+      } else {
+        console.log('💬 Nouveau vendeur - aucune conversation trouvée');
+        sellerConversations = [];
       }
       
       setConversations(sellerConversations);
@@ -79,36 +77,6 @@ export const SellerConversationHistory: React.FC<SellerConversationHistoryProps>
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateSampleConversations = (sellerId: string): SellerConversation[] => {
-    return [
-      {
-        id: `${sellerId}-conv-1`,
-        seller_id: sellerId,
-        session_id: `session-${Date.now()}-1`,
-        user_message: 'Bonjour, je cherche un canapé pour mon salon',
-        ai_response: 'Bonjour ! Parfait, quel style vous plaît ? Moderne, classique ou scandinave ?',
-        products_shown: [],
-        user_ip: '192.168.1.100',
-        user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        conversation_type: 'product_search',
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: `${sellerId}-conv-2`,
-        seller_id: sellerId,
-        session_id: `session-${Date.now()}-2`,
-        user_message: 'Conseils pour aménager une chambre de 12m²',
-        ai_response: 'Pour 12m², privilégiez un lit avec rangements intégrés et des meubles multifonctions.',
-        products_shown: [],
-        user_ip: '192.168.1.101',
-        user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0)',
-        conversation_type: 'design_advice',
-        satisfaction_score: 5,
-        created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-      }
-    ];
   };
 
   const getTypeColor = (type: string) => {

@@ -64,11 +64,18 @@ export const SellerSettings: React.FC<SellerSettingsProps> = ({ seller, onUpdate
     try {
       setIsLoading(true);
       
-      // Load seller-specific settings
       const savedSettings = localStorage.getItem(`seller_${seller.id}_settings`);
       if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings({ ...settings, ...parsed });
+        try {
+          const parsed = JSON.parse(savedSettings);
+          setSettings({ ...settings, ...parsed });
+          console.log('⚙️ Paramètres vendeur chargés depuis localStorage');
+        } catch (error) {
+          console.error('Erreur parsing paramètres:', error);
+          console.log('⚙️ Utilisation des paramètres par défaut');
+        }
+      } else {
+        console.log('⚙️ Nouveau vendeur - paramètres par défaut');
       }
       
     } catch (error) {

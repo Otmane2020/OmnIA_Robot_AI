@@ -30,18 +30,22 @@ export const SellerAnalytics: React.FC<SellerAnalyticsProps> = ({ sellerId }) =>
     try {
       setIsLoading(true);
       
-      // Simulate loading analytics data
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Load or generate analytics data
       const savedAnalytics = localStorage.getItem(`seller_${sellerId}_analytics_${selectedPeriod}`);
-      let analyticsData: SellerAnalyticsData;
+      let analyticsData: SellerAnalyticsData | null = null;
       
       if (savedAnalytics) {
-        analyticsData = JSON.parse(savedAnalytics);
+        try {
+          analyticsData = JSON.parse(savedAnalytics);
+          console.log('📊 Analytics vendeur chargées:', analyticsData);
+        } catch (error) {
+          console.error('Erreur parsing analytics:', error);
+          analyticsData = null;
+        }
       } else {
-        analyticsData = generateAnalyticsData(sellerId, selectedPeriod);
-        localStorage.setItem(`seller_${sellerId}_analytics_${selectedPeriod}`, JSON.stringify(analyticsData));
+        console.log('📊 Nouveau vendeur - aucune donnée analytics');
+        analyticsData = null;
       }
       
       setAnalytics(analyticsData);
@@ -51,30 +55,6 @@ export const SellerAnalytics: React.FC<SellerAnalyticsProps> = ({ sellerId }) =>
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateAnalyticsData = (sellerId: string, period: string): SellerAnalyticsData => {
-    const multiplier = period === '30d' ? 4 : period === '7d' ? 1 : 0.5;
-    
-    return {
-      conversations_count: Math.floor((Math.random() * 200 + 50) * multiplier),
-      unique_visitors: Math.floor((Math.random() * 500 + 100) * multiplier),
-      products_viewed: Math.floor((Math.random() * 1000 + 200) * multiplier),
-      cart_additions: Math.floor((Math.random() * 50 + 10) * multiplier),
-      conversions: Math.floor(Math.random() * 30 + 15),
-      revenue: Math.floor((Math.random() * 3000 + 500) * multiplier),
-      avg_session_duration: '3m 45s',
-      top_products: [
-        { name: 'Canapé Moderne', views: Math.floor(50 * multiplier) },
-        { name: 'Table Design', views: Math.floor(35 * multiplier) },
-        { name: 'Chaise Ergonomique', views: Math.floor(28 * multiplier) }
-      ],
-      top_searches: [
-        { query: 'canapé moderne', count: Math.floor(25 * multiplier) },
-        { query: 'table ronde', count: Math.floor(18 * multiplier) },
-        { query: 'chaise bureau', count: Math.floor(12 * multiplier) }
-      ]
-    };
   };
 
   if (isLoading) {

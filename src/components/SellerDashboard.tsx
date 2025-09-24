@@ -73,25 +73,36 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
     try {
       setIsLoading(true);
       
-      // Simulate loading seller-specific stats
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Load from localStorage or generate mock data
       const savedStats = localStorage.getItem(`seller_${seller.id}_stats`);
       if (savedStats) {
-        setStats(JSON.parse(savedStats));
+        try {
+          setStats(JSON.parse(savedStats));
+          console.log('📊 Stats vendeur chargées depuis localStorage');
+        } catch (error) {
+          console.error('Erreur parsing stats:', error);
+          setStats({
+            conversations: 0,
+            conversions: 0,
+            products: getSellerProductsCount(seller.id),
+            revenue: 0,
+            visitors: 0,
+            cart_additions: 0
+          });
+        }
       } else {
-        // Generate initial stats
-        const initialStats = {
-          conversations: Math.floor(Math.random() * 500) + 50,
-          conversions: Math.floor(Math.random() * 30) + 15,
+        console.log('📊 Nouveau vendeur - initialisation stats vides');
+        const emptyStats = {
+          conversations: 0,
+          conversions: 0,
           products: getSellerProductsCount(seller.id),
-          revenue: Math.floor(Math.random() * 5000) + 1000,
-          visitors: Math.floor(Math.random() * 1000) + 200,
-          cart_additions: Math.floor(Math.random() * 100) + 20
+          revenue: 0,
+          visitors: 0,
+          cart_additions: 0
         };
-        setStats(initialStats);
-        localStorage.setItem(`seller_${seller.id}_stats`, JSON.stringify(initialStats));
+        setStats(emptyStats);
+        localStorage.setItem(`seller_${seller.id}_stats`, JSON.stringify(emptyStats));
       }
       
     } catch (error) {
@@ -142,7 +153,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
             <div>
               <p className="text-blue-200 text-sm mb-1">Conversations</p>
               <p className="text-3xl font-bold text-white mb-1">{stats.conversations.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">+15% ce mois</p>
+              <p className="text-gray-400 text-sm">{stats.conversations === 0 ? 'Aucune conversation' : '+15% ce mois'}</p>
             </div>
             <MessageSquare className="w-10 h-10 text-blue-400" />
           </div>
@@ -153,7 +164,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
             <div>
               <p className="text-green-200 text-sm mb-1">Conversions</p>
               <p className="text-3xl font-bold text-white mb-1">{stats.conversions}%</p>
-              <p className="text-green-400 text-sm">+8% ce mois</p>
+              <p className="text-gray-400 text-sm">{stats.conversions === 0 ? 'Aucune conversion' : '+8% ce mois'}</p>
             </div>
             <TrendingUp className="w-10 h-10 text-green-400" />
           </div>
@@ -164,7 +175,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
             <div>
               <p className="text-purple-200 text-sm mb-1">Produits</p>
               <p className="text-3xl font-bold text-white mb-1">{stats.products}</p>
-              <p className="text-green-400 text-sm">Catalogue actif</p>
+              <p className="text-gray-400 text-sm">{stats.products === 0 ? 'Catalogue vide' : 'Catalogue actif'}</p>
             </div>
             <Package className="w-10 h-10 text-purple-400" />
           </div>
@@ -175,7 +186,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
             <div>
               <p className="text-orange-200 text-sm mb-1">Revenus</p>
               <p className="text-3xl font-bold text-white mb-1">€{stats.revenue.toLocaleString()}</p>
-              <p className="text-green-400 text-sm">+12% ce mois</p>
+              <p className="text-gray-400 text-sm">{stats.revenue === 0 ? 'Aucun revenu' : '+12% ce mois'}</p>
             </div>
             <DollarSign className="w-10 h-10 text-orange-400" />
           </div>
@@ -218,29 +229,51 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       {/* Recent Activity */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
         <h2 className="text-2xl font-bold text-white mb-6">Activité Récente</h2>
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-4 bg-green-500/20 rounded-xl border border-green-400/30">
-            <MessageSquare className="w-6 h-6 text-green-400" />
-            <div>
-              <p className="text-white font-semibold">Nouvelle conversation client</p>
-              <p className="text-green-300 text-sm">Recherche canapé moderne • Il y a 2h</p>
-            </div>
+        {stats.conversations === 0 && stats.products === 0 ? (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Aucune activité récente</h3>
+            <p className="text-gray-400 mb-6">
+              Votre activité apparaîtra ici une fois que vous aurez importé des produits et reçu des conversations.
+            </p>
+            <button
+              onClick={() => setActiveTab('products')}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
+              Importer vos produits
+            </button>
           </div>
-          <div className="flex items-center gap-4 p-4 bg-blue-500/20 rounded-xl border border-blue-400/30">
-            <Package className="w-6 h-6 text-blue-400" />
-            <div>
-              <p className="text-white font-semibold">Catalogue mis à jour</p>
-              <p className="text-blue-300 text-sm">5 nouveaux produits ajoutés • Il y a 4h</p>
-            </div>
+        ) : (
+          <div className="space-y-4">
+            {stats.conversations > 0 && (
+              <div className="flex items-center gap-4 p-4 bg-green-500/20 rounded-xl border border-green-400/30">
+                <MessageSquare className="w-6 h-6 text-green-400" />
+                <div>
+                  <p className="text-white font-semibold">Conversations actives</p>
+                  <p className="text-green-300 text-sm">{stats.conversations} conversations ce mois</p>
+                </div>
+              </div>
+            )}
+            {stats.products > 0 && (
+              <div className="flex items-center gap-4 p-4 bg-blue-500/20 rounded-xl border border-blue-400/30">
+                <Package className="w-6 h-6 text-blue-400" />
+                <div>
+                  <p className="text-white font-semibold">Catalogue configuré</p>
+                  <p className="text-blue-300 text-sm">{stats.products} produits dans votre catalogue</p>
+                </div>
+              </div>
+            )}
+            {stats.revenue > 0 && (
+              <div className="flex items-center gap-4 p-4 bg-purple-500/20 rounded-xl border border-purple-400/30">
+                <Bot className="w-6 h-6 text-purple-400" />
+                <div>
+                  <p className="text-white font-semibold">Revenus générés</p>
+                  <p className="text-purple-300 text-sm">€{stats.revenue} via OmnIA ce mois</p>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-4 p-4 bg-purple-500/20 rounded-xl border border-purple-400/30">
-            <Bot className="w-6 h-6 text-purple-400" />
-            <div>
-              <p className="text-white font-semibold">Robot IA entraîné</p>
-              <p className="text-purple-300 text-sm">Analyse de 50 produits terminée • Il y a 6h</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

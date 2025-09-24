@@ -52,7 +52,6 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
   }, [sellerId]);
 
   useEffect(() => {
-    // Filter products
     let filtered = products;
 
     if (searchTerm) {
@@ -83,7 +82,6 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     try {
       setIsLoading(true);
       
-      // Load from localStorage with seller-specific key
       const savedProducts = localStorage.getItem(`seller_${sellerId}_products`);
       let sellerProducts: SellerProduct[] = [];
       
@@ -102,13 +100,11 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
           console.log('📦 Produits vendeur chargés:', sellerProducts.length);
         } catch (error) {
           console.error('Erreur parsing produits vendeur:', error);
+          sellerProducts = [];
         }
-      }
-      
-      // If no products, create some sample data
-      if (sellerProducts.length === 0) {
-        sellerProducts = generateSampleProducts(sellerId);
-        localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(sellerProducts));
+      } else {
+        console.log('📦 Nouveau vendeur - aucun produit trouvé');
+        sellerProducts = [];
       }
       
       setProducts(sellerProducts);
@@ -120,37 +116,6 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateSampleProducts = (sellerId: string): SellerProduct[] => {
-    return [
-      {
-        id: `${sellerId}-sample-1`,
-        seller_id: sellerId,
-        external_id: 'sample-product-1',
-        name: 'Produit d\'exemple 1',
-        description: 'Description du produit d\'exemple pour votre catalogue',
-        price: 299,
-        compare_at_price: 399,
-        category: 'Mobilier',
-        vendor: 'Votre Marque',
-        image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        product_url: '#',
-        stock: 10,
-        source_platform: 'manual',
-        status: 'active',
-        sku: 'SAMPLE-001',
-        tags: ['exemple', 'demo'],
-        extracted_attributes: {
-          colors: ['beige'],
-          materials: ['bois'],
-          style: 'moderne'
-        },
-        confidence_score: 75,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ];
   };
 
   const handleImportProducts = () => {
