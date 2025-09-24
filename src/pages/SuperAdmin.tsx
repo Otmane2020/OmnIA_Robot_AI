@@ -1,489 +1,583 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  Shield, Users, Building, CheckCircle, X, Eye, Mail, 
-  Phone, MapPin, FileText, Calendar, Clock, AlertCircle,
-  Download, ExternalLink, BarChart3, TrendingUp, DollarSign,
-  LogOut, Settings, Database, Globe, Target, Zap
+  Users, Store, BarChart3, Settings, Shield, 
+  Search, Filter, Eye, Edit, Trash2, Plus,
+  CheckCircle, XCircle, AlertTriangle, Crown,
+  TrendingUp, DollarSign, Calendar, Mail,
+  FileText
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 
-interface Application {
-  id: string;
-  companyName: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  siret: string;
-  position: string;
-  selectedPlan: string;
-  kbisFile?: File;
-  submittedAt: string;
-  submittedDate: string;
-  submittedTime: string;
-  status: 'pending' | 'approved' | 'rejected';
-  proposedSubdomain: string;
-}
-
 interface SuperAdminProps {
   onLogout: () => void;
-  pendingApplications: Application[];
-  onValidateApplication: (applicationId: string, approved: boolean) => void;
+  pendingApplications: any[];
+  onValidateApplication: (id: string) => void;
 }
 
-interface GlobalStats {
-  totalRetailers: number;
-  totalConversations: number;
-  totalRevenue: number;
-  activeUsers: number;
-  conversionRate: number;
-  avgSessionDuration: string;
+interface Retailer {
+  id: string;
+  name: string;
+  email: string;
+  plan: 'starter' | 'professional' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended';
+  revenue: number;
+  conversations: number;
+  products: number;
+  joinDate: string;
+  lastActive: string;
 }
 
-export const SuperAdmin: React.FC<SuperAdminProps> = ({ 
-  onLogout, 
-  pendingApplications, 
-  onValidateApplication 
-}) => {
-  const [activeTab, setActiveTab] = useState('applications');
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [globalStats, setGlobalStats] = useState<GlobalStats>({
-    totalRetailers: 156,
-    totalConversations: 45680,
-    totalRevenue: 234500,
-    activeUsers: 1240,
-    conversionRate: 38,
-    avgSessionDuration: '4m 12s'
-  });
-  const { notifications, removeNotification, showSuccess, showError, showInfo } = useNotifications();
-
-  useEffect(() => {
-    showInfo('Super Admin', 'Interface Super Admin chargée avec succès !');
-  }, []);
-
-  const handleApproveApplication = (application: Application) => {
-    onValidateApplication(application.id, true);
-    setSelectedApplication(null);
-    showSuccess(
-      'Demande approuvée !',
-      `${application.companyName} a été approuvé. Email de bienvenue envoyé.`,
-      [
+export const SuperAdmin: React.FC<SuperAdminProps> = ({ onLogout, pendingApplications, onValidateApplication }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPlan, setFilterPlan] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [showKbisModal, setShowKbisModal] = useState(false);
+  const [selectedKbis, setSelectedKbis] = useState<any>(null);
+  const [retailers, setRetailers] = useState<Retailer[]>(() => {
+    // Charger les revendeurs depuis localStorage
+    try {
+      const saved = localStorage.getItem('retailers');
+      return saved ? JSON.parse(saved) : [
         {
-          label: 'Voir le nouveau revendeur',
-          action: () => setActiveTab('retailers'),
-          variant: 'primary'
+          id: '1',
+          name: 'Mobilier Design Paris',
+          email: 'contact@mobilierdesign.fr',
+          plan: 'enterprise',
+          status: 'active',
+          revenue: 5890,
+          conversations: 3456,
+          products: 234,
+          joinDate: '2024-01-15',
+          lastActive: '2024-03-15'
+        },
+        {
+          id: '2',
+          name: 'Déco Contemporain',
+          email: 'info@decocontemporain.com',
+          plan: 'professional',
+          status: 'active',
+          revenue: 3200,
+          conversations: 2100,
+          products: 156,
+          joinDate: '2024-02-01',
+          lastActive: '2024-03-14'
+        },
+        {
+          id: '3',
+          name: 'Decora Home',
+          email: 'admin@decorahome.fr',
+          plan: 'professional',
+          status: 'active',
+          revenue: 2450,
+          conversations: 1234,
+          products: 89,
+          joinDate: '2024-02-20',
+          lastActive: '2024-03-13'
+        },
+        {
+          id: '4',
+          name: 'Meubles Lyon',
+          email: 'contact@meubleslyon.fr',
+          plan: 'starter',
+          status: 'active',
+          revenue: 890,
+          conversations: 456,
+          products: 45,
+          joinDate: '2024-03-01',
+          lastActive: '2024-03-12'
         }
-      ]
-    );
-  };
-
-  const handleRejectApplication = (application: Application) => {
-    const reason = prompt('Raison du rejet (optionnel):');
-    onValidateApplication(application.id, false);
-    setSelectedApplication(null);
-    showError(
-      'Demande rejetée',
-      `${application.companyName} a été rejeté. Email d'information envoyé.`
-    );
+      ];
+    } catch (error) {
+      console.error('Erreur chargement retailers:', error);
+      return [];
+    }
+  });
+  const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications();
+  const handleViewKbis = (application: any) => {
+    setSelectedKbis(application);
+    setShowKbisModal(true);
   };
 
   const tabs = [
-    { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
-    { id: 'applications', label: 'Demandes', icon: FileText, badge: pendingApplications.length },
-    { id: 'retailers', label: 'Revendeurs', icon: Building },
+    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
+    { id: 'retailers', label: 'Revendeurs', icon: Store },
+    { id: 'applications', label: 'Demandes', icon: Users },
+    { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'system', label: 'Système', icon: Settings }
+    { id: 'settings', label: 'Paramètres', icon: Settings }
   ];
 
-  const renderOverview = () => (
+  const getPlanColor = (plan: string) => {
+    switch (plan) {
+      case 'starter': return 'bg-gray-500/20 text-gray-300';
+      case 'professional': return 'bg-cyan-500/20 text-cyan-300';
+      case 'enterprise': return 'bg-purple-500/20 text-purple-300';
+      default: return 'bg-gray-500/20 text-gray-300';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500/20 text-green-300';
+      case 'inactive': return 'bg-yellow-500/20 text-yellow-300';
+      case 'suspended': return 'bg-red-500/20 text-red-300';
+      default: return 'bg-gray-500/20 text-gray-300';
+    }
+  };
+
+  const handleValidateApplication = (application: any, approved: boolean) => {
+    if (approved) {
+      console.log(`✅ Application approuvée: ${application.companyName}`);
+      console.log(`🌐 Sous-domaine créé: ${application.proposedSubdomain}`);
+      console.log(`📧 Email d'approbation simulé pour: ${application.email}`);
+      
+      // Créer le nouveau revendeur
+      const newRetailer: Retailer = {
+        id: Date.now().toString(),
+        name: application.companyName,
+        email: application.email,
+        plan: application.selectedPlan,
+        status: 'active',
+        revenue: 0,
+        conversations: 0,
+        products: 0,
+        joinDate: new Date().toISOString(),
+        lastActive: new Date().toISOString()
+      };
+      
+      setRetailers(prev => [...prev, newRetailer]);
+      
+      showSuccess(
+        'Demande approuvée',
+        `${application.companyName} a été approuvé ! Sous-domaine ${application.proposedSubdomain}.omnia.sale créé. Identifiants: ${application.email} / ${application.password || 'motdepasse123'}`,
+        [
+          {
+            label: 'Voir les revendeurs',
+            action: () => setActiveTab('retailers'),
+            variant: 'primary'
+          }
+        ]
+      );
+
+      onValidateApplication(application.id, true);
+    } else {
+      console.log(`❌ Application rejetée: ${application.companyName}`);
+      console.log(`📧 Email de rejet envoyé à: ${application.email}`);
+      
+      showInfo(
+        'Demande rejetée',
+        `${application.companyName} a été rejeté. Email d'explication envoyé à ${application.email}.`
+      );
+
+      onValidateApplication(application.id, false);
+    }
+    setShowValidationModal(false);
+    setSelectedApplication(null);
+  };
+
+  const filteredRetailers = retailers.filter(retailer => {
+    const matchesSearch = retailer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         retailer.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPlan = filterPlan === 'all' || retailer.plan === filterPlan;
+    const matchesStatus = filterStatus === 'all' || retailer.status === filterStatus;
+    
+    return matchesSearch && matchesPlan && matchesStatus;
+  });
+
+  const totalRevenue = retailers.reduce((sum, retailer) => sum + retailer.revenue, 0);
+  const totalConversations = retailers.reduce((sum, retailer) => sum + retailer.conversations, 0);
+  const activeRetailers = retailers.filter(r => r.status === 'active').length;
+
+  const renderDashboard = () => (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Vue d'ensemble OmnIA</h2>
-        <p className="text-gray-300">Statistiques globales de la plateforme</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">Super Administration</h1>
+          <p className="text-gray-300 text-lg">Gestion de la plateforme OmnIA.sale</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+            <span className="text-2xl font-bold text-gray-800">O</span>
+          </div>
+          <div>
+            <div className="text-white font-bold text-xl">OmnIA.sale</div>
+            <div className="text-gray-400 text-sm">Super Admin</div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats globales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      {/* Stats Cards - Exact layout from image */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-200 text-sm mb-1">Revendeurs</p>
-              <p className="text-3xl font-bold text-white">{globalStats.totalRetailers}</p>
-              <p className="text-blue-300 text-sm">Actifs</p>
+              <p className="text-blue-200 text-sm mb-1">Revendeurs Actifs</p>
+              <p className="text-4xl font-bold text-white mb-1">{activeRetailers}</p>
+              <p className="text-green-400 text-sm">+12% ce mois</p>
             </div>
-            <Building className="w-10 h-10 text-blue-400" />
+            <Store className="w-12 h-12 text-cyan-400" />
           </div>
         </div>
         
         <div className="bg-green-600/20 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-200 text-sm mb-1">Conversations</p>
-              <p className="text-3xl font-bold text-white">{globalStats.totalConversations.toLocaleString()}</p>
-              <p className="text-green-300 text-sm">Total</p>
+              <p className="text-green-200 text-sm mb-1">Revenus Totaux</p>
+              <p className="text-4xl font-bold text-white mb-1">€{totalRevenue.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+23% ce mois</p>
             </div>
-            <Users className="w-10 h-10 text-green-400" />
+            <DollarSign className="w-12 h-12 text-green-400" />
           </div>
         </div>
         
         <div className="bg-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm mb-1">Revenus</p>
-              <p className="text-3xl font-bold text-white">€{globalStats.totalRevenue.toLocaleString()}</p>
-              <p className="text-purple-300 text-sm">MRR</p>
+              <p className="text-purple-200 text-sm mb-1">Conversations IA</p>
+              <p className="text-4xl font-bold text-white mb-1">{totalConversations.toLocaleString()}</p>
+              <p className="text-green-400 text-sm">+34% ce mois</p>
             </div>
-            <DollarSign className="w-10 h-10 text-purple-400" />
+            <BarChart3 className="w-12 h-12 text-purple-400" />
           </div>
         </div>
         
         <div className="bg-orange-600/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-200 text-sm mb-1">Utilisateurs</p>
-              <p className="text-3xl font-bold text-white">{globalStats.activeUsers.toLocaleString()}</p>
-              <p className="text-orange-300 text-sm">Actifs</p>
+              <p className="text-orange-200 text-sm mb-1">Taux Conversion</p>
+              <p className="text-4xl font-bold text-white mb-1">28%</p>
+              <p className="text-green-400 text-sm">+5% ce mois</p>
             </div>
-            <Users className="w-10 h-10 text-orange-400" />
-          </div>
-        </div>
-        
-        <div className="bg-cyan-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-cyan-200 text-sm mb-1">Conversion</p>
-              <p className="text-3xl font-bold text-white">{globalStats.conversionRate}%</p>
-              <p className="text-cyan-300 text-sm">Moyenne</p>
-            </div>
-            <TrendingUp className="w-10 h-10 text-cyan-400" />
-          </div>
-        </div>
-        
-        <div className="bg-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-pink-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-pink-200 text-sm mb-1">Session</p>
-              <p className="text-3xl font-bold text-white">{globalStats.avgSessionDuration}</p>
-              <p className="text-pink-300 text-sm">Durée moy.</p>
-            </div>
-            <Clock className="w-10 h-10 text-pink-400" />
+            <TrendingUp className="w-12 h-12 text-orange-400" />
           </div>
         </div>
       </div>
 
-      {/* Demandes en attente */}
-      {pendingApplications.length > 0 && (
-        <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-2xl p-6">
-          <h3 className="text-xl font-bold text-yellow-200 mb-4 flex items-center gap-2">
-            <AlertCircle className="w-6 h-6" />
-            🔔 {pendingApplications.length} demande(s) en attente
-          </h3>
-          <div className="space-y-3">
-            {pendingApplications.slice(0, 3).map((app) => (
-              <div key={app.id} className="flex items-center justify-between p-4 bg-black/20 rounded-xl">
-                <div>
-                  <h4 className="font-semibold text-white">{app.companyName}</h4>
-                  <p className="text-yellow-300 text-sm">{app.firstName} {app.lastName} • {app.selectedPlan}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedApplication(app);
-                    setActiveTab('applications');
-                  }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-xl transition-all"
-                >
-                  Examiner
-                </button>
-              </div>
-            ))}
+      {/* Activité Récente - Exact layout from image */}
+      <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6">Activité Récente</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <CheckCircle className="w-6 h-6 text-green-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Nouveau revendeur inscrit: <strong>Mobilier Moderne</strong></p>
+              <p className="text-blue-200 text-sm">Plan Professional • Il y a 2h</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <TrendingUp className="w-6 h-6 text-blue-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Pic de conversations: <strong>+150% aujourd'hui</strong></p>
+              <p className="text-blue-200 text-sm">Tous revendeurs • Il y a 4h</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+            <DollarSign className="w-6 h-6 text-green-400" />
+            <div className="flex-1">
+              <p className="text-white text-lg">Upgrade plan: <strong>Decora Home → Enterprise</strong></p>
+              <p className="text-blue-200 text-sm">+€120/mois • Il y a 6h</p>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Top Revendeurs et Répartition des Plans */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Top Revendeurs (Revenus) */}
+        <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30">
+          <h2 className="text-2xl font-bold text-white mb-6">Top Revendeurs (Revenus)</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                1
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Mobilier Design Paris</p>
+                    <p className="text-blue-200 text-sm">enterprise</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€5890</p>
+                    <p className="text-blue-200 text-sm">3456 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                2
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Déco Contemporain</p>
+                    <p className="text-blue-200 text-sm">professional</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€3200</p>
+                    <p className="text-blue-200 text-sm">2100 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                3
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Decora Home</p>
+                    <p className="text-blue-200 text-sm">professional</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€2450</p>
+                    <p className="text-blue-200 text-sm">1234 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-blue-700/20 rounded-xl border border-blue-500/20">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                4
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-white text-lg font-bold">Meubles Lyon</p>
+                    <p className="text-blue-200 text-sm">starter</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-green-400 text-xl font-bold">€890</p>
+                    <p className="text-blue-200 text-sm">456 conv.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Répartition des Plans */}
+        <div className="bg-blue-800/30 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30">
+          <h2 className="text-2xl font-bold text-white mb-6">Répartition des Plans</h2>
+          <div className="space-y-6">
+            {/* Starter */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Starter</span>
+                <span className="text-white text-lg font-bold">25%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-gray-500 h-3 rounded-full transition-all duration-1000" style={{ width: '25%' }}></div>
+              </div>
+            </div>
+
+            {/* Professional */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Professional</span>
+                <span className="text-white text-lg font-bold">50%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-cyan-500 h-3 rounded-full transition-all duration-1000" style={{ width: '50%' }}></div>
+              </div>
+            </div>
+
+            {/* Enterprise */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-white text-lg font-medium">Enterprise</span>
+                <span className="text-white text-lg font-bold">25%</span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="bg-purple-500 h-3 rounded-full transition-all duration-1000" style={{ width: '25%' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
   const renderApplications = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Demandes de Revendeurs</h2>
-          <p className="text-gray-300">{pendingApplications.length} demande(s) en attente de validation</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Demandes de Création</h2>
+        <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl px-4 py-2">
+          <span className="text-orange-300 font-semibold">{pendingApplications.length} en attente</span>
         </div>
       </div>
 
-      {pendingApplications.length === 0 ? (
-        <div className="text-center py-20">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucune demande en attente</h3>
-          <p className="text-gray-400">Toutes les demandes ont été traitées</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {pendingApplications.map((application) => (
-            <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">{application.companyName}</h3>
-                <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-xs font-medium">
-                  En attente
-                </span>
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{application.firstName} {application.lastName}</span>
+      <div className="grid gap-6">
+        {pendingApplications.map((application) => (
+          <div key={application.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-2">{application.companyName}</h3>
+                <div className="space-y-1">
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📧 {application.email}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📞 {application.phone}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    🏢 {application.address}, {application.city}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    🌐 {application.country}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    👤 {application.firstName} {application.lastName} - {application.position}
+                  </p>
+                  <p className="text-gray-300 flex items-center gap-2">
+                    📄 SIRET: {application.siret}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{application.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{application.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{application.city}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Building className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">SIRET: {application.siret}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{application.submittedDate} à {application.submittedTime}</span>
+                <div className="text-sm text-gray-400 mt-3 space-y-1">
+                  <p>📅 Soumis le {application.submittedDate || new Date(application.submittedAt || Date.now()).toLocaleDateString('fr-FR')}</p>
+                  <p>🕐 À {application.submittedTime || new Date(application.submittedAt || Date.now()).toLocaleTimeString('fr-FR')}</p>
+                  <p>⏱️ Il y a {Math.floor((Date.now() - new Date(application.submittedAt || Date.now()).getTime()) / (1000 * 60 * 60))}h</p>
                 </div>
               </div>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedApplication(application)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  Examiner
-                </button>
-                <button
-                  onClick={() => handleApproveApplication(application)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition-all"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleRejectApplication(application)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(application.plan)}`}>
+                {application.plan}
+              </span>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Modal de détail */}
-      {selectedApplication && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-white">Demande de {selectedApplication.companyName}</h2>
-                <button
-                  onClick={() => setSelectedApplication(null)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+            {/* Affichage du fichier Kbis si disponible */}
+            <div className="mb-4 p-4 bg-blue-500/20 border border-blue-400/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <span className="text-blue-200 font-semibold">Document Kbis</span>
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Informations entreprise */}
-                <div className="bg-black/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Building className="w-5 h-5 text-blue-400" />
-                    Entreprise
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Nom de l'entreprise</label>
-                      <p className="text-white font-semibold">{selectedApplication.companyName}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">SIRET</label>
-                      <p className="text-white font-mono">{selectedApplication.siret}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Adresse</label>
-                      <p className="text-white">{selectedApplication.address}</p>
-                      <p className="text-white">{selectedApplication.postalCode} {selectedApplication.city}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Plan choisi</label>
-                      <span className="inline-block bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-sm font-medium mt-1">
-                        {selectedApplication.selectedPlan.charAt(0).toUpperCase() + selectedApplication.selectedPlan.slice(1)}
-                      </span>
-                    </div>
+              {application.kbisFile ? (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-blue-300">
+                  📄 {application.kbisFile.name} ({(application.kbisFile.size / 1024 / 1024).toFixed(2)} MB)
                   </div>
+                  <button
+                    onClick={() => handleViewKbis(application)}
+                    className="text-cyan-400 hover:text-cyan-300 text-sm underline"
+                  >
+                    👁️ Voir le document
+                  </button>
                 </div>
-
-                {/* Contact responsable */}
-                <div className="bg-black/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <User className="w-5 h-5 text-green-400" />
-                    Contact
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Responsable</label>
-                      <p className="text-white font-semibold">{selectedApplication.firstName} {selectedApplication.lastName}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Fonction</label>
-                      <p className="text-white">{selectedApplication.position}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Email</label>
-                      <p className="text-white">{selectedApplication.email}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Téléphone</label>
-                      <p className="text-white">{selectedApplication.phone}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Soumis le</label>
-                      <p className="text-white">{selectedApplication.submittedDate} à {selectedApplication.submittedTime}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Document Kbis */}
-              {selectedApplication.kbisFile && (
-                <div className="mt-8 bg-black/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-400" />
-                    Document Kbis
-                  </h3>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold">{selectedApplication.kbisFile.name}</p>
-                      <p className="text-gray-400 text-sm">
-                        {(selectedApplication.kbisFile.size / 1024 / 1024).toFixed(2)} MB • {selectedApplication.kbisFile.type}
-                      </p>
-                    </div>
-                    <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      Télécharger
-                    </button>
-                  </div>
-                </div>
+              ) : (
+                <div className="text-sm text-yellow-300">⚠️ Aucun fichier Kbis uploadé</div>
               )}
-
-              {/* Actions */}
-              <div className="flex justify-between mt-8 pt-6 border-t border-slate-600/50">
-                <button
-                  onClick={() => setSelectedApplication(null)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-                >
-                  Fermer
-                </button>
-                
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => handleRejectApplication(selectedApplication)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl transition-all flex items-center gap-2"
-                  >
-                    <X className="w-4 h-4" />
-                    Rejeter
-                  </button>
-                  <button
-                    onClick={() => handleApproveApplication(selectedApplication)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-all flex items-center gap-2"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approuver
-                  </button>
-                </div>
-              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setSelectedApplication(application);
+                  setShowValidationModal(true);
+                }}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ✅ Valider la demande
+              </button>
+              <button
+                onClick={() => handleValidateApplication(application, false)}
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ❌ Rejeter
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 
   const renderRetailers = () => (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Revendeurs Actifs</h2>
-        <p className="text-gray-300">{globalStats.totalRetailers} revendeurs sur la plateforme</p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-2xl font-bold text-white">Gestion des Revendeurs</h2>
+        <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nouveau revendeur
+        </button>
       </div>
 
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="text-center py-12">
-          <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Liste des revendeurs</h3>
-          <p className="text-gray-400">Interface de gestion des revendeurs en développement</p>
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20">
+              <tr>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Revendeur</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Plan</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Statut</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Revenus</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Conversations</th>
+                <th className="text-left p-4 text-cyan-300 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRetailers.map((retailer) => (
+                <tr key={retailer.id} className="border-b border-white/10 hover:bg-white/5">
+                  <td className="p-4">
+                    <div>
+                      <div className="font-semibold text-white">{retailer.name}</div>
+                      <div className="text-sm text-gray-400">{retailer.email}</div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPlanColor(retailer.plan)}`}>
+                      {retailer.plan}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(retailer.status)}`}>
+                      {retailer.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-green-400">€{retailer.revenue}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-semibold text-white">{retailer.conversations.toLocaleString()}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button className="text-blue-400 hover:text-blue-300 p-1">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button className="text-yellow-400 hover:text-yellow-300 p-1">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button className="text-red-400 hover:text-red-300 p-1">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 
-  const renderAnalytics = () => (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Analytics Globales</h2>
-        <p className="text-gray-300">Performances de la plateforme OmnIA</p>
-      </div>
-
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="text-center py-12">
-          <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Analytics avancées</h3>
-          <p className="text-gray-400">Tableaux de bord et métriques détaillées en développement</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSystem = () => (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Administration Système</h2>
-        <p className="text-gray-300">Configuration et maintenance de la plateforme</p>
-      </div>
-
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
-        <div className="text-center py-12">
-          <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Paramètres système</h3>
-          <p className="text-gray-400">Configuration serveur et maintenance en développement</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderTabContent = () => {
+  const renderContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return renderOverview();
-      case 'applications':
-        return renderApplications();
-      case 'retailers':
-        return renderRetailers();
-      case 'analytics':
-        return renderAnalytics();
-      case 'system':
-        return renderSystem();
-      default:
-        return renderOverview();
+      case 'dashboard': return renderDashboard();
+      case 'retailers': return renderRetailers();
+      case 'applications': return renderApplications();
+      case 'users': return <div className="text-white">Gestion des utilisateurs - En développement</div>;
+      case 'analytics': return <div className="text-white">Analytics avancées - En développement</div>;
+      case 'settings': return <div className="text-white">Paramètres système - En développement</div>;
+      default: return renderDashboard();
     }
   };
 
@@ -495,76 +589,174 @@ export const SuperAdmin: React.FC<SuperAdminProps> = ({
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Notifications */}
-      <NotificationSystem 
-        notifications={notifications} 
-        onRemove={removeNotification} 
-      />
-
       <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <div className="w-80 bg-black/20 backdrop-blur-2xl border-r border-white/10 flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-white/10">
-            <Logo size="md" />
-            <div className="mt-4 p-4 bg-red-500/20 rounded-xl border border-red-400/30">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold">Super Admin</h3>
-                  <p className="text-red-300 text-sm">Accès complet</p>
-                </div>
-              </div>
+        {/* Sidebar - Exact design from image */}
+        <div className="w-80 bg-slate-800/90 backdrop-blur-2xl border-r border-slate-700/50 p-6">
+          {/* Header with orange crown icon */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+              <Crown className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Super Admin</h1>
+              <p className="text-sm text-orange-300">omnia.sale</p>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+          {/* Navigation Menu */}
+          <nav className="space-y-2 mb-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left relative ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
                     activeTab === tab.id
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-lg'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-cyan-500/30 text-white border border-cyan-500/50'
+                      : 'text-gray-300 hover:bg-slate-700/50 hover:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{tab.label}</span>
-                  {tab.badge && tab.badge > 0 && (
-                    <span className="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce">
-                      {tab.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="p-6 border-t border-white/10">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-xl transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Déconnexion</span>
-            </button>
+          {/* Super Admin Access Card */}
+          <div className="bg-yellow-600/20 border border-yellow-500/30 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-300 font-semibold">Accès Super Admin</span>
+            </div>
+            <p className="text-yellow-200 text-sm">Gestion complète de la plateforme</p>
           </div>
+          
+          <button
+            onClick={onLogout}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-300 px-4 py-3 rounded-xl font-medium border border-red-500/30 transition-all"
+          >
+            Déconnexion
+          </button>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {renderTabContent()}
-          </div>
+        <div className="flex-1 overflow-y-auto p-8">
+          {renderContent()}
         </div>
       </div>
+
+      {/* Modal de validation */}
+      {showValidationModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-2xl w-full">
+            <h2 className="text-2xl font-bold text-white mb-6">Validation de {selectedApplication.companyName}</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-4">
+                <h3 className="font-semibold text-green-300 mb-2">✅ Création du compte revendeur</h3>
+                <ul className="text-sm text-green-200 space-y-1">
+                  <li>• Compte admin créé avec accès complet</li>
+                  <li>• Interface de gestion catalogue activée</li>
+                  <li>• Configuration OmnIA personnalisée</li>
+                  <li>• Abonnement {selectedApplication.plan} activé</li>
+                </ul>
+              </div>
+
+              <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-4">
+                <h3 className="font-semibold text-purple-300 mb-2">🌐 Sous-domaine assigné</h3>
+                <div className="bg-black/40 rounded-lg p-3">
+                  <code className="text-purple-300 text-lg">{selectedApplication.proposedSubdomain}</code>
+                </div>
+                <p className="text-sm text-purple-200 mt-2">
+                  Le client pourra accéder à son OmnIA via cette URL personnalisée
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => handleValidateApplication(selectedApplication, true)}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                ✅ Confirmer la validation
+              </button>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification System */}
+      <NotificationSystem 
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
+
+      {/* Modal Kbis */}
+      {showKbisModal && selectedKbis && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h3 className="text-xl font-bold text-white">📄 Document Kbis - {selectedKbis.companyName}</h3>
+              <button
+                onClick={() => setShowKbisModal(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-white rounded-xl p-6 text-center">
+                {selectedKbis.kbisFile && selectedKbis.kbisFile instanceof File ? (
+                  selectedKbis.kbisFile.type === 'application/pdf' ? (
+                    <div>
+                      <FileText className="w-24 h-24 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 text-lg font-semibold">{selectedKbis.kbisFile.name}</p>
+                      <p className="text-gray-500">Document PDF - {(selectedKbis.kbisFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-sm text-gray-400 mt-2">Prévisualisation PDF non disponible dans le navigateur</p>
+                      <button
+                        onClick={() => {
+                          const url = URL.createObjectURL(selectedKbis.kbisFile);
+                          window.open(url, '_blank');
+                        }}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                      >
+                        📥 Télécharger le PDF
+                      </button>
+                    </div>
+                  ) : (
+                    <img 
+                      src={URL.createObjectURL(selectedKbis.kbisFile)} 
+                      alt="Kbis"
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                    />
+                  )
+                ) : selectedKbis.kbisFile ? (
+                  <div>
+                    <FileText className="w-24 h-24 text-orange-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-lg font-semibold">Document Kbis disponible</p>
+                    <p className="text-orange-500">Fichier: {selectedKbis.kbisFile.name || 'Document uploadé'}</p>
+                    <p className="text-sm text-gray-400 mt-2">⚠️ Prévisualisation non disponible - Le fichier n'est plus accessible après rechargement de la page</p>
+                    <p className="text-xs text-gray-400 mt-1">Les fichiers ne sont pas persistés dans localStorage pour des raisons de performance</p>
+                  </div>
+                ) : (
+                  <div>
+                    <AlertTriangle className="w-24 h-24 text-yellow-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-lg">Aucun document Kbis uploadé</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
