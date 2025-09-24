@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown, ChevronUp, List, Grid, Download, RefreshCw, Sparkles, Loader2, Package } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, List, Grid, Download, RefreshCw, Sparkles, Loader2, Package, Edit, Save, X } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {
@@ -52,6 +52,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<EnrichedProduct>>({});
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
@@ -563,6 +565,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       case 'delete':
         const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
         setProducts(updatedProducts);
+        
+        // Sauvegarder dans localStorage
+        const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+        localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
+        
         setSelectedProducts([]);
         showSuccess('Suppression réussie', `${selectedProducts.length} produits supprimés.`);
         break;
@@ -572,6 +579,96 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         showSuccess('Export réussi', `${selectedProducts.length} produits exportés.`);
         break;
     }
+  };
+
+  const handleEditProduct = (product: EnrichedProduct) => {
+    setEditingProduct(product.id);
+    setEditFormData({
+      category: product.category,
+      subcategory: product.subcategory,
+      color: product.color,
+      material: product.material,
+      fabric: product.fabric,
+      style: product.style,
+      dimensions: product.dimensions,
+      room: product.room,
+      price: product.price,
+      stock_qty: product.stock_qty,
+      tags: product.tags,
+      seo_title: product.seo_title,
+      seo_description: product.seo_description,
+      ad_headline: product.ad_headline,
+      ad_description: product.ad_description,
+      google_product_category: product.google_product_category,
+      brand: product.brand
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProduct) return;
+
+    try {
+      const updatedProducts = products.map(product => 
+        product.id === editingProduct 
+          ? { 
+              ...product, 
+              ...editFormData,
+              confidence_score: calculateConfidenceFromData(editFormData),
+              enriched_at: new Date().toISOString(),
+              enrichment_source: 'manual'
+            }
+          : product
+      );
+      
+      setProducts(updatedProducts);
+      setFilteredProducts(updatedProducts.filter(p => 
+        filteredProducts.some(fp => fp.id === p.id)
+      ));
+      
+      // Sauvegarder dans localStorage
+      const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+      localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
+      
+      setEditingProduct(null);
+      setEditFormData({});
+      
+      showSuccess('Produit modifié', 'Les modifications ont été sauvegardées avec succès.');
+      
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde modification:', error);
+      showError('Erreur de sauvegarde', 'Impossible de sauvegarder les modifications.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setEditFormData({});
+  };
+
+  const calculateConfidenceFromData = (data: Partial<EnrichedProduct>): number => {
+    let confidence = 30; // Base
+    if (data.category && data.category !== 'Mobilier') confidence += 25;
+    if (data.color) confidence += 20;
+    if (data.material) confidence += 20;
+    if (data.style) confidence += 15;
+    if (data.room) confidence += 10;
+    if (data.dimensions) confidence += 10;
+    return Math.min(confidence, 100);
+  };
+
+  const formatAIAttributes = (product: EnrichedProduct): string => {
+    const attributes = [];
+    
+    if (product.category) attributes.push(`📂 ${product.category}`);
+    if (product.subcategory) attributes.push(`📋 ${product.subcategory}`);
+    if (product.color) attributes.push(`🎨 ${product.color}`);
+    if (product.material) attributes.push(`🏗️ ${product.material}`);
+    if (product.fabric) attributes.push(`🧵 ${product.fabric}`);
+    if (product.style) attributes.push(`✨ ${product.style}`);
+    if (product.dimensions) attributes.push(`📏 ${product.dimensions}`);
+    if (product.room) attributes.push(`🏠 ${product.room}`);
+    
+    return attributes.join(' • ');
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -598,10 +695,10 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-600" />
-          <p className="text-gray-600">Chargement des produits enrichis...</p>
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Chargement des produits enrichis...</p>
         </div>
       </div>
     );
@@ -612,8 +709,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       {/* En-tête avec actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Catalogue Enrichi</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
+          <p className="text-gray-300">
             {products.length} produits enrichis par IA • {filteredProducts.length} affichés
           </p>
         </div>
@@ -622,13 +719,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           {!isSyncing ? (
             <button
               onClick={handleSyncFromCatalog}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all"
             >
               <RefreshCw className="w-4 h-4" />
               Sync depuis catalogue
             </button>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 rounded-xl border border-blue-400/50">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Synchronisation... {syncProgress}%</span>
             </div>
@@ -637,13 +734,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           {!isEnriching ? (
             <button
               onClick={handleEnrichAll}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all"
             >
               <Sparkles className="w-4 h-4" />
               Enrichir tout
             </button>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg">
+            <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-300 rounded-xl border border-purple-400/50">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Enrichissement... {syncProgress}%</span>
             </div>
@@ -651,7 +748,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -661,16 +758,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
       {/* Barre de progression */}
       {(isSyncing || isEnriching) && (
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-white">
               {isSyncing ? 'Synchronisation en cours...' : 'Enrichissement en cours...'}
             </span>
-            <span className="text-sm text-gray-500">{syncProgress}%</span>
+            <span className="text-sm text-cyan-300">{syncProgress}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-700 rounded-full h-3">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 h-3 rounded-full transition-all duration-300"
               style={{ width: `${syncProgress}%` }}
             ></div>
           </div>
@@ -678,17 +775,17 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       )}
 
       {/* Barre de recherche et filtres */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Rechercher par nom, catégorie, marque, tags..."
+                placeholder="Rechercher par nom, catégorie, sous-catégorie, marque, tags..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
               />
             </div>
           </div>
@@ -696,7 +793,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           <div className="flex gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all"
             >
               <Filter className="w-4 h-4" />
               Filtres
@@ -704,16 +801,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               {!showFilters && <ChevronDown className="w-4 h-4" />}
             </button>
             
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            <div className="flex bg-black/40 border border-gray-600 rounded-xl overflow-hidden">
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 ${viewMode === 'table' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+                className={`p-2 ${viewMode === 'table' ? 'bg-cyan-500 text-white' : 'text-gray-300 hover:bg-white/10'} transition-colors`}
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+                className={`p-2 ${viewMode === 'grid' ? 'bg-cyan-500 text-white' : 'text-gray-300 hover:bg-white/10'} transition-colors`}
               >
                 <Grid className="w-4 h-4" />
               </button>
@@ -723,13 +820,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
         {/* Filtres avancés */}
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6 border-t border-gray-600/50">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Catégorie</label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
               >
                 <option value="all">Toutes les catégories</option>
                 {uniqueCategories.map(category => (
@@ -739,11 +836,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Couleur</label>
               <select
                 value={selectedColor}
                 onChange={(e) => setSelectedColor(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
               >
                 <option value="all">Toutes les couleurs</option>
                 {uniqueColors.map(color => (
@@ -753,11 +850,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Matériau</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Matériau</label>
               <select
                 value={selectedMaterial}
                 onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
               >
                 <option value="all">Tous les matériaux</option>
                 {uniqueMaterials.map(material => (
@@ -767,11 +864,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Style</label>
               <select
                 value={selectedStyle}
                 onChange={(e) => setSelectedStyle(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-black/40 border border-gray-600 rounded-xl px-3 py-2 text-white"
               >
                 <option value="all">Tous les styles</option>
                 {uniqueStyles.map(style => (
@@ -785,21 +882,21 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
       {/* Actions en lot */}
       {selectedProducts.length > 0 && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+        <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-indigo-700 font-medium">
+            <span className="text-blue-300 font-semibold">
               {selectedProducts.length} produit{selectedProducts.length > 1 ? 's' : ''} sélectionné{selectedProducts.length > 1 ? 's' : ''}
             </span>
             <div className="flex gap-2">
               <button
                 onClick={() => handleBulkAction('export')}
-                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
               >
                 Exporter
               </button>
               <button
                 onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
                 Supprimer
               </button>
@@ -810,16 +907,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
       {/* Contenu principal */}
       {products.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-20">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun produit enrichi</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-xl font-bold text-white mb-2">Aucun produit enrichi</h3>
+          <p className="text-gray-400 mb-6">
             Commencez par synchroniser votre catalogue pour enrichir vos produits avec l'IA.
           </p>
           <button
             onClick={handleSyncFromCatalog}
             disabled={isSyncing}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
           >
             {isSyncing ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -833,91 +930,164 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         <>
           {/* Vue tableau */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-black/20">
                     <tr>
                       <th className="px-4 py-3 text-left">
                         <input
                           type="checkbox"
                           checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
                           onChange={toggleAllSelection}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie / Sous-catégorie</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Couleur</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matériau</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Style</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confiance</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">Produit</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">Attributs IA</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">Prix & Stock</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">SEO & Marketing</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">Confiance</th>
+                      <th className="px-4 py-3 text-left text-cyan-300 font-semibold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {filteredProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
+                      <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
                         <td className="px-4 py-4">
                           <input
                             type="checkbox"
                             checked={selectedProducts.includes(product.id)}
                             onChange={() => toggleProductSelection(product.id)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500"
                           />
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center">
-                            <img
-                              src={product.image_url}
-                              alt={product.title}
-                              className="w-12 h-12 rounded-lg object-cover mr-3"
-                            />
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0 mr-3">
+                              <img
+                                src={product.image_url}
+                                alt={product.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                                }}
+                              />
+                            </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{product.title}</div>
-                              <div className="text-sm text-gray-500">{product.brand}</div>
+                              <div className="text-sm font-medium text-white">{product.title}</div>
+                              <div className="text-sm text-gray-400">{product.brand}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900">{product.category}</div>
-                          {product.subcategory && (
-                            <div className="text-sm text-gray-500">{product.subcategory}</div>
+                          {editingProduct === product.id ? (
+                            <div className="space-y-2 min-w-0">
+                              <input
+                                type="text"
+                                value={editFormData.category || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                                placeholder="Catégorie"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.subcategory || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, subcategory: e.target.value }))}
+                                placeholder="Sous-catégorie"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.color || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, color: e.target.value }))}
+                                placeholder="Couleur"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.material || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, material: e.target.value }))}
+                                placeholder="Matériau"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.style || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, style: e.target.value }))}
+                                placeholder="Style"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.dimensions || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, dimensions: e.target.value }))}
+                                placeholder="Dimensions (ex: L:200cm x l:100cm x H:75cm)"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-sm text-white max-w-xs">
+                              {formatAIAttributes(product) || (
+                                <span className="text-gray-400 italic">Aucun attribut détecté</span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-4">
-                          {product.color && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {product.color}
-                            </span>
+                          {editingProduct === product.id ? (
+                            <div className="space-y-2">
+                              <input
+                                type="number"
+                                value={editFormData.price || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                                placeholder="Prix"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="number"
+                                value={editFormData.stock_qty || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, stock_qty: parseInt(e.target.value) || 0 }))}
+                                placeholder="Stock"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="text-sm font-medium text-green-400">{product.price}€</div>
+                              <div className="text-sm text-gray-400">Stock: {product.stock_qty}</div>
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-4">
-                          {product.material && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {product.material}
-                            </span>
+                          {editingProduct === product.id ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                value={editFormData.seo_title || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, seo_title: e.target.value }))}
+                                placeholder="Titre SEO"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={editFormData.ad_headline || ''}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, ad_headline: e.target.value }))}
+                                placeholder="Titre pub"
+                                className="w-full bg-black/40 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div className="max-w-xs">
+                              <div className="text-xs text-cyan-300 mb-1">SEO: {product.seo_title.substring(0, 30)}...</div>
+                              <div className="text-xs text-purple-300">Pub: {product.ad_headline}</div>
+                            </div>
                           )}
-                        </td>
-                        <td className="px-4 py-4">
-                          {product.style && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                              {product.style}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-gray-900">{product.dimensions || 'Non spécifié'}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm font-medium text-gray-900">{product.price}€</div>
-                          <div className="text-sm text-gray-500">Stock: {product.stock_qty}</div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900">{product.confidence_score}%</div>
+                            <div className="text-sm font-medium text-white">{product.confidence_score}%</div>
                             <div className={`ml-2 w-2 h-2 rounded-full ${
                               product.confidence_score >= 80 ? 'bg-green-400' :
                               product.confidence_score >= 60 ? 'bg-yellow-400' : 'bg-red-400'
@@ -925,14 +1095,47 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <button className="text-indigo-600 hover:text-indigo-900 text-sm">
-                              Modifier
-                            </button>
-                            <button className="text-red-600 hover:text-red-900 text-sm">
-                              Supprimer
-                            </button>
-                          </div>
+                          {editingProduct === product.id ? (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={handleSaveEdit}
+                                className="p-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                                title="Sauvegarder"
+                              >
+                                <Save className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+                                title="Annuler"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditProduct(product)}
+                                className="text-yellow-400 hover:text-yellow-300 p-1"
+                                title="Modifier"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const updatedProducts = products.filter(p => p.id !== product.id);
+                                  setProducts(updatedProducts);
+                                  const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+                                  localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
+                                  showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
+                                }}
+                                className="text-red-400 hover:text-red-300 p-1"
+                                title="Supprimer"
+                              >
+                                <Package className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -946,19 +1149,25 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           {viewMode === 'grid' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105">
                   <div className="relative">
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="w-full h-48 object-cover"
-                    />
+                    <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                        }}
+                      />
+                    </div>
                     <div className="absolute top-2 left-2">
                       <input
                         type="checkbox"
                         checked={selectedProducts.includes(product.id)}
                         onChange={() => toggleProductSelection(product.id)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="w-4 h-4 text-cyan-600 bg-gray-800 border-gray-600 rounded focus:ring-cyan-500 z-10"
                       />
                     </div>
                     <div className="absolute top-2 right-2">
@@ -971,56 +1180,56 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                     </div>
                   </div>
                   
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 mb-1">{product.title}</h3>
-                    <p className="text-sm text-gray-500 mb-2">{product.brand}</p>
+                  <div>
+                    <h3 className="font-semibold text-white mb-2 line-clamp-2">{product.title}</h3>
+                    <p className="text-gray-300 text-sm mb-3">{product.brand}</p>
                     
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Catégorie:</span>
-                        <span className="text-sm font-medium">{product.category}</span>
+                    {/* AI Attributes consolidés */}
+                    <div className="bg-black/20 rounded-xl p-3 mb-3">
+                      <h4 className="text-xs font-semibold text-cyan-300 mb-2">🤖 Attributs IA</h4>
+                      <div className="text-xs text-white space-y-1">
+                        {formatAIAttributes(product) || (
+                          <span className="text-gray-400 italic">Aucun attribut détecté</span>
+                        )}
                       </div>
-                      {product.subcategory && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Sous-catégorie:</span>
-                          <span className="text-sm font-medium">{product.subcategory}</span>
-                        </div>
-                      )}
-                      {product.dimensions && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Dimensions:</span>
-                          <span className="text-sm font-medium">{product.dimensions}</span>
-                        </div>
-                      )}
                     </div>
                     
                     <div className="flex flex-wrap gap-1 mb-3">
                       {product.color && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">
                           {product.color}
                         </span>
                       )}
                       {product.material && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300">
                           {product.material}
                         </span>
                       )}
                       {product.style && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300">
                           {product.style}
                         </span>
                       )}
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <div className="text-lg font-bold text-gray-900">{product.price}€</div>
-                      <div className="text-sm text-gray-500">Stock: {product.stock_qty}</div>
+                      <span className="text-lg font-bold text-green-400">{product.price}€</span>
+                      <span className="text-sm text-gray-400">Stock: {product.stock_qty}</span>
                     </div>
                     
                     <div className="mt-3 flex gap-2">
+                        <Edit className="w-3 h-3" />
                       <button className="flex-1 px-3 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">
-                        Modifier
-                      </button>
+                        onClick={() => handleEditProduct(product)}
+                        className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-1"
+                        onClick={() => {
+                          const updatedProducts = products.filter(p => p.id !== product.id);
+                          setProducts(updatedProducts);
+                          const enrichedKey = vendorId ? `vendor_${vendorId}_enriched_products` : 'admin_enriched_products';
+                          localStorage.setItem(enrichedKey, JSON.stringify(updatedProducts));
+                          showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
+                        }}
+                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
                       <button className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors">
                         Supprimer
                       </button>
