@@ -26,7 +26,6 @@ interface CSVProduct {
   'Variant SKU': string;
 }
 
-export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImportComplete }) => {
 export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImportComplete, retailerId }) => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -49,7 +48,7 @@ export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImport
 
     setCsvFile(file);
     setIsProcessing(true);
-    setProcessingStep('Lecture du fich ier CSV...');
+    setProcessingStep('Lecture du fichier CSV...');
 
     try {
       const text = await file.text();
