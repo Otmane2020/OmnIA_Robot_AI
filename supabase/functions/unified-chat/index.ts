@@ -15,13 +15,15 @@ interface UnifiedChatRequest {
   }>;
 }
 
+const DEFAULT_RETAILER_ID = '00000000-0000-0000-0000-000000000000'; // Placeholder UUID for demo
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
+    const { message, conversation_context = [], retailer_id = DEFAULT_RETAILER_ID }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');

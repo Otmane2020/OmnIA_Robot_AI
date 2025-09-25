@@ -10,6 +10,7 @@ interface SellerChatRequest {
   message: string;
   seller_id: string;
   retailer_id?: string; // Add retailer_id for consistency with other functions
+  retailer_id?: string; // Add retailer_id for consistency with other functions
   seller_subdomain: string;
   session_id?: string;
   conversation_context?: Array<{
@@ -316,6 +317,10 @@ EXEMPLES:
 
 async function saveSellerConversation(supabase: any, conversationData: any) {
   try {
+    if (!conversationData.seller_id) { // seller_id is NOT NULL, so skip if null
+      console.warn('⚠️ Skipping conversation save: seller_id is null or invalid UUID.');
+      return;
+    }
     if (!conversationData.seller_id) { // seller_id is NOT NULL, so skip if null
       console.warn('⚠️ Skipping conversation save: seller_id is null or invalid UUID.');
       return;
