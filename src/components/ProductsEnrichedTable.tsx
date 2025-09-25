@@ -82,6 +82,33 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const { showSuccess, showError, showInfo } = useNotifications();
 
+  const handleDeleteSelected = () => {
+    if (selectedProducts.length === 0) return;
+    
+    if (confirm(`Supprimer ${selectedProducts.length} produit(s) enrichi(s) sélectionné(s) ?`)) {
+      const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
+      setProducts(updatedProducts);
+      localStorage.setItem('products_enriched', JSON.stringify(updatedProducts));
+      setSelectedProducts([]);
+      showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
+    }
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
   useEffect(() => {
     loadEnrichedProducts();
   }, [vendorId, retailerId, refreshTrigger]);
@@ -743,6 +770,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({
         </div>
         
         <div className="flex flex-wrap gap-3">
+          {selectedProducts.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer ({selectedProducts.length})
+            </button>
+          )}
+          
           <button
             onClick={handleSyncFromCatalog}
             disabled={isEnriching}
