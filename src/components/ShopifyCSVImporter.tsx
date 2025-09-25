@@ -21,6 +21,31 @@ interface ProductPreview {
   vendor: string;
   description: string;
   isValid: boolean;
+  variants: Array<{
+    id: string;
+    title: string;
+    price: number;
+    compareAtPrice?: number;
+    stock: number;
+    sku: string;
+    options: Array<{ name: string; value: string }>;
+    image_url?: string;
+  }>;
+  dimensions: {
+    largeur?: number;
+    profondeur?: number;
+    hauteur?: number;
+    hauteur_assise?: number;
+    couchage?: { largeur: number; longueur: number };
+    unit: string;
+  };
+  extractedAttributes: {
+    colors: string[];
+    materials: string[];
+    styles: string[];
+    features: string[];
+    room: string[];
+  };
 }
 
 const SHOPIFY_FIELDS: CSVField[] = [
