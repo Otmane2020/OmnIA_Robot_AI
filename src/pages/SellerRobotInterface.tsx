@@ -88,36 +88,64 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
 
   const loadSellerInfo = async () => {
     try {
-      // Load seller info from localStorage or API
-      const savedSellers = localStorage.getItem('validated_retailers');
-      let sellers = [];
+      console.log('🔍 Chargement info vendeur pour:', sellerSubdomain);
       
-      if (savedSellers) {
-        sellers = JSON.parse(savedSellers);
+      // Charger depuis plusieurs sources
+      const sources = ['validated_retailers', 'retailers', 'sellers'];
+      let sellers: any[] = [];
+      
+      for (const source of sources) {
+        const saved = localStorage.getItem(source);
+        if (saved) {
+          try {
+            const data = JSON.parse(saved);
+            if (Array.isArray(data)) {
+              sellers = [...sellers, ...data];
+            }
+          } catch (error) {
+            console.error(`❌ Erreur parsing ${source}:`, error);
+          }
+        }
       }
       
-      // Find seller by subdomain
-      const seller = sellers.find((s: any) => s.subdomain === sellerSubdomain);
+      console.log('👥 Vendeurs trouvés:', sellers.length);
+      
+      // Chercher par sous-domaine, ID ou nom de société
+      const seller = sellers.find((s: any) => 
+        s.subdomain === sellerSubdomain || 
+        s.id === sellerSubdomain ||
+        s.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') === sellerSubdomain.toLowerCase()
+      );
+      
+      console.log('🏪 Vendeur trouvé:', seller ? seller.company_name : 'Aucun');
       
       if (seller) {
-        const settings = localStorage.getItem(`seller_${seller.id}_settings`);
+        const settingsKey = `seller_${seller.id}_settings`;
+        const settings = localStorage.getItem(settingsKey);
         const parsedSettings = settings ? JSON.parse(settings) : {};
         
         setSellerInfo({
           id: seller.id,
-          company_name: seller.company_name || seller.name,
+          company_name: seller.company_name || seller.name || sellerSubdomain,
           subdomain: seller.subdomain,
-          contact_name: seller.contact_name,
+          contact_name: seller.contact_name || `${seller.firstName || ''} ${seller.lastName || ''}`.trim(),
           robot_name: parsedSettings.robot_name || 'OmnIA',
           theme_colors: parsedSettings.theme_colors || {
             primary: '#0891b2',
             secondary: '#1e40af'
           }
         });
+        
+        console.log('✅ Info vendeur chargées:', {
+          company: seller.company_name,
+          subdomain: seller.subdomain,
+          robot: parsedSettings.robot_name || 'OmnIA'
+        });
       } else {
-        // Default seller info if not found
+        console.log('⚠️ Vendeur non trouvé, utilisation des valeurs par défaut');
+        
         setSellerInfo({
-          id: 'default',
+          id: sellerSubdomain,
           company_name: sellerSubdomain,
           subdomain: sellerSubdomain,
           contact_name: sellerSubdomain,
@@ -130,6 +158,18 @@ export const SellerRobotInterface: React.FC<SellerRobotInterfaceProps> = ({ sell
       }
     } catch (error) {
       console.error('❌ Erreur chargement info vendeur:', error);
+      // Fallback avec info par défaut
+      setSellerInfo({
+        id: sellerSubdomain,
+        company_name: sellerSubdomain,
+        subdomain: sellerSubdomain,
+        contact_name: sellerSubdomain,
+        robot_name: 'OmnIA',
+        theme_colors: {
+          primary: '#0891b2',
+          secondary: '#1e40af'
+        }
+      });
     }
   };
 

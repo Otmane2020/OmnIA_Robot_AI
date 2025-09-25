@@ -713,7 +713,6 @@ export const CatalogManagement: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-white text-sm">{product.name}</div>
                           <div className="text-gray-400 text-xs">{product.vendor}</div>
-                          {/* Clean description display */}
                           <div className="text-gray-500 text-xs mt-1 line-clamp-2">
                             {product.description ? 
                               product.description.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : 
@@ -722,6 +721,25 @@ export const CatalogManagement: React.FC = () => {
                           </div>
                           {product.sku && (
                             <div className="text-gray-500 text-xs">SKU: {product.sku}</div>
+                          )}
+                          
+                          {/* Affichage des variations */}
+                          {product.variants && product.variants.length > 1 && (
+                            <div className="mt-2">
+                              <div className="text-cyan-300 text-xs font-medium mb-1">
+                                {product.variants.length} variations:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {product.variants.slice(0, 3).map((variant: any, vIndex: number) => (
+                                  <span key={vIndex} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full text-xs">
+                                    {variant.selectedOptions?.map((opt: any) => opt.value).join(' ') || variant.title}
+                                  </span>
+                                ))}
+                                {product.variants.length > 3 && (
+                                  <span className="text-cyan-400 text-xs">+{product.variants.length - 3}</span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -734,28 +752,15 @@ export const CatalogManagement: React.FC = () => {
                             <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
                             <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
                               -{calculateDiscount(product.price, product.compare_at_price)}%
-                        
-                        {/* Affichage des variations */}
-                        {product.variants && product.variants.length > 1 && (
-                          <div className="mt-2">
-                            <div className="text-cyan-300 text-xs font-medium mb-1">
-                              {product.variants.length} variations:
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {product.variants.slice(0, 3).map((variant: any, vIndex: number) => (
-                                <span key={vIndex} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full text-xs">
-                                  {variant.title}
-                                </span>
-                              ))}
-                              {product.variants.length > 3 && (
-                                <span className="text-cyan-400 text-xs">+{product.variants.length - 3}</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
                             </span>
                           </>
+                        )}
+                        
+                        {/* Prix des variations */}
+                        {product.variants && product.variants.length > 1 && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {Math.min(...product.variants.map((v: any) => v.price || v.variant_price || 0))}€ - {Math.max(...product.variants.map((v: any) => v.price || v.variant_price || 0))}€
+                          </div>
                         )}
                       </div>
                     </td>
