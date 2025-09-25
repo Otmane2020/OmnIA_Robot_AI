@@ -385,7 +385,7 @@ export const CatalogManagement: React.FC = () => {
       source_platform: 'manual',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    };
+    showInfo('Enrichissement automatique', 'Analyse IA des produits et extraction des attributs...');
     
     try {
       const updatedProducts = [newProduct, ...products];
@@ -415,32 +415,30 @@ export const CatalogManagement: React.FC = () => {
             const keysToClean = ['csv_file_data', 'last_csv_filename', 'last_csv_size'];
             keysToClean.forEach(key => localStorage.removeItem(key));
             
-            // Réessayer la sauvegarde
-            localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
+      // Charger tous les produits depuis toutes les sources
+      const allProducts = await loadAllProductSources();
+      console.log('📦 Produits chargés pour enrichissement:', allProducts.length);
             console.log('✅ Produit sauvegardé après nettoyage localStorage');
-            showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
-          } catch (retryError) {
-            console.error('❌ Échec sauvegarde même après nettoyage:', retryError);
+      // Enrichir automatiquement avec IA
+      const enrichedProducts = allProducts.map(product => enrichProductWithAI(product));
             showError('Erreur de sauvegarde', 'Espace de stockage insuffisant. Produit ajouté temporairement mais non persisté.');
-          }
-        } else {
-          showError('Erreur de sauvegarde', 'Impossible de sauvegarder le produit en local.');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur ajout produit:', error);
-      showError('Erreur d\'ajout', 'Impossible d\'ajouter le produit au catalogue.');
-    }
-    
-    setShowAddModal(false);
-  };
-
+      // Grouper les variations par handle
+      const groupedProducts = groupProductVariations(enrichedProducts);
   const handleUpdateProduct = (productData: any) => {
-    try {
+      // Sauvegarder dans le catalogue enrichi
+      localStorage.setItem('catalog_products', JSON.stringify(groupedProducts));
+      setProducts(groupedProducts);
       const updatedProducts = products.map(p => 
         p.id === selectedProduct?.id 
-          ? { ...p, ...productData, updated_at: new Date().toISOString() }
-          : p
+        'Enrichissement terminé',
+        `${groupedProducts.length} produits enrichis avec ${groupedProducts.reduce((sum, p) => sum + (p.variations?.length || 1), 0)} variations !`,
+        [
+          {
+            label: 'Voir catalogue enrichi',
+            action: () => window.location.reload(),
+            variant: 'primary'
+          }
+        ]
       );
       setProducts(updatedProducts);
       setFilteredProducts(updatedProducts);
@@ -471,7 +469,7 @@ export const CatalogManagement: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('❌ Erreur modification produit:', error);
+      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir le catalogue.');
       showError('Erreur de modification', 'Impossible de modifier le produit.');
     }
     
