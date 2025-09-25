@@ -170,6 +170,265 @@ export const CatalogManagement: React.FC = () => {
     loadCatalogProducts();
   }, []);
 
+  const loadAllProductSources = async (): Promise<any[]> => {
+    let allProducts: any[] = [];
+    
+    const sources = [
+      'shopify_products',
+      'imported_products', 
+      'vendor_products',
+      'seller_products',
+      'catalog_products'
+    ];
+    
+    for (const source of sources) {
+      try {
+        const savedData = localStorage.getItem(source);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (Array.isArray(parsed)) {
+            console.log(`📦 ${source}: ${parsed.length} produits`);
+            allProducts = [...allProducts, ...parsed];
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Erreur parsing ${source}:`, error);
+      }
+    }
+    
+    // Ajouter produits Decora avec variations
+    const decoraProducts = getDecoraCatalogWithVariations();
+    allProducts = [...allProducts, ...decoraProducts];
+    
+    // Supprimer doublons
+    const uniqueProducts = allProducts.filter((product, index, self) => 
+      index === self.findIndex(p => 
+        (p.handle && product.handle && p.handle === product.handle) ||
+        (p.id === product.id)
+      )
+    );
+    
+    return uniqueProducts;
+  };
+
+  const getDecoraCatalogWithVariations = () => {
+    return [
+      // Canapé VENTU avec description complète
+      {
+        id: 'decora-canape-ventu-gris',
+        handle: 'canape-ventu-convertible',
+        title: 'Canapé VENTU convertible',
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+
+Caractéristiques principales :
+Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
+Espace de couchage généreux : 150 x 210 cm – idéal pour un usage quotidien ou ponctuel.
+Rangement intégré : grand conteneur pour literie, discret et pratique.
+Assise confortable : grâce au ressort ondulé et à la mousse haute densité.
+
+Dimensions :
+Largeur : 263 cm
+Profondeur : 105 cm
+Hauteur : 93 cm
+Hauteur d'assise : 45 cm`,
+        price: 899,
+        compare_at_price: 1299,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        stock: 50,
+        option1_name: 'Couleur',
+        option1_value: 'Gris moderne'
+      },
+      {
+        id: 'decora-canape-ventu-beige',
+        handle: 'canape-ventu-convertible',
+        title: 'Canapé VENTU convertible',
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+
+Caractéristiques principales :
+Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
+Espace de couchage généreux : 150 x 210 cm – idéal pour un usage quotidien ou ponctuel.
+Rangement intégré : grand conteneur pour literie, discret et pratique.
+Assise confortable : grâce au ressort ondulé et à la mousse haute densité.
+
+Dimensions :
+Largeur : 263 cm
+Profondeur : 105 cm
+Hauteur : 93 cm
+Hauteur d'assise : 45 cm`,
+        price: 899,
+        compare_at_price: 1299,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        stock: 45,
+        option1_name: 'Couleur',
+        option1_value: 'Beige doux'
+      }
+    ];
+  };
+
+  const enrichProductWithAI = (product: any) => {
+    const text = `${product.title || product.name || ''} ${product.description || product.body_html || ''}`.toLowerCase();
+    
+    // Extraction des dimensions
+    const dimensions = extractDimensions(product.description || product.body_html || '');
+    
+    return {
+      ...product,
+      // Attributs enrichis par IA
+      category: detectCategory(text),
+      color: detectColor(text, product),
+      material: detectMaterial(text),
+      style: detectStyle(text),
+      dimensions: dimensions,
+      features: extractFeatures(text),
+      room: detectRoom(text),
+      confidence_score: calculateConfidence(text, dimensions),
+      enriched_at: new Date().toISOString(),
+      enrichment_source: 'auto_ai'
+    };
+  };
+
+  const extractDimensions = (description: string) => {
+    const dimensions: any = {};
+    
+    const patterns = [
+      { key: 'largeur', regex: /largeur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'profondeur', regex: /profondeur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'hauteur', regex: /hauteur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'hauteur_assise', regex: /hauteur\s+d[\'']?assise\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'couchage', regex: /couchage\s*:?\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm/gi }
+    ];
+    
+    patterns.forEach(({ key, regex }) => {
+      const matches = [...description.matchAll(regex)];
+      matches.forEach(match => {
+        if (key === 'couchage') {
+          dimensions.couchage_largeur = parseFloat(match[1].replace(',', '.'));
+          dimensions.couchage_longueur = parseFloat(match[2].replace(',', '.'));
+        } else {
+          dimensions[key] = parseFloat(match[1].replace(',', '.'));
+        }
+      });
+    });
+    
+    return dimensions;
+  };
+
+  const detectCategory = (text: string): string => {
+    if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
+    if (text.includes('table')) return 'Table';
+    if (text.includes('chaise') || text.includes('fauteuil')) return 'Chaise';
+    if (text.includes('lit')) return 'Lit';
+    if (text.includes('armoire') || text.includes('commode')) return 'Rangement';
+    return 'Mobilier';
+  };
+
+  const detectColor = (text: string, product: any): string => {
+    if (product.option1_name === 'Couleur' && product.option1_value) {
+      return product.option1_value;
+    }
+    
+    const colors = ['gris moderne', 'beige doux', 'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu'];
+    for (const color of colors) {
+      if (text.includes(color)) return color;
+    }
+    return '';
+  };
+
+  const detectMaterial = (text: string): string => {
+    const materials = ['tissu dunbar', 'velours', 'chenille', 'travertin', 'métal', 'bois', 'cuir'];
+    for (const material of materials) {
+      if (text.includes(material)) return material;
+    }
+    return '';
+  };
+
+  const detectStyle = (text: string): string => {
+    const styles = ['contemporain', 'moderne', 'scandinave', 'industriel', 'vintage', 'épuré'];
+    for (const style of styles) {
+      if (text.includes(style)) return style;
+    }
+    return '';
+  };
+
+  const extractFeatures = (text: string): string[] => {
+    const features = [];
+    if (text.includes('convertible')) features.push('Convertible');
+    if (text.includes('rangement')) features.push('Rangement');
+    if (text.includes('automatique')) features.push('Mécanisme automatique');
+    if (text.includes('ressort')) features.push('Ressort');
+    return features;
+  };
+
+  const detectRoom = (text: string): string => {
+    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'pièce à vivre', 'studio'];
+    for (const room of rooms) {
+      if (text.includes(room)) return room;
+    }
+    return '';
+  };
+
+  const calculateConfidence = (text: string, dimensions: any): number => {
+    let confidence = 30;
+    if (text.includes('dimensions')) confidence += 20;
+    if (Object.keys(dimensions).length > 0) confidence += 25;
+    if (text.includes('caractéristiques')) confidence += 15;
+    if (text.includes('coloris')) confidence += 10;
+    return Math.min(confidence, 100);
+  };
+
+  const groupProductVariations = (products: any[]): any[] => {
+    const grouped = new Map<string, any>();
+    
+    products.forEach(product => {
+      const key = product.handle || generateHandle(product.title || product.name);
+      
+      if (grouped.has(key)) {
+        const existing = grouped.get(key)!;
+        if (!existing.variations) existing.variations = [];
+        existing.variations.push({
+          id: product.id,
+          title: product.option1_value || 'Default',
+          price: parseFloat(product.price) || 0,
+          stock: parseInt(product.stock) || 0,
+          options: product.option1_name ? [{ 
+            name: product.option1_name, 
+            value: product.option1_value 
+          }] : []
+        });
+      } else {
+        grouped.set(key, {
+          ...product,
+          variations: [{
+            id: product.id,
+            title: product.option1_value || 'Default',
+            price: parseFloat(product.price) || 0,
+            stock: parseInt(product.stock) || 0,
+            options: product.option1_name ? [{ 
+              name: product.option1_name, 
+              value: product.option1_value 
+            }] : []
+          }]
+        });
+      }
+    });
+    
+    return Array.from(grouped.values());
+  };
+
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 100);
+  };
+
   const loadCatalogProducts = async () => {
     try {
       setIsLoading(true);
@@ -354,7 +613,7 @@ export const CatalogManagement: React.FC = () => {
     setShowAddModal(true);
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm('Supprimer ce produit ?')) {
       try {
         const updatedProducts = products.filter(p => p.id !== productId);
@@ -385,7 +644,7 @@ export const CatalogManagement: React.FC = () => {
       source_platform: 'manual',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    showInfo('Enrichissement automatique', 'Analyse IA des produits et extraction des attributs...');
+    };
     
     try {
       const updatedProducts = [newProduct, ...products];
@@ -415,30 +674,32 @@ export const CatalogManagement: React.FC = () => {
             const keysToClean = ['csv_file_data', 'last_csv_filename', 'last_csv_size'];
             keysToClean.forEach(key => localStorage.removeItem(key));
             
-      // Charger tous les produits depuis toutes les sources
-      const allProducts = await loadAllProductSources();
-      console.log('📦 Produits chargés pour enrichissement:', allProducts.length);
+            // Réessayer la sauvegarde
+            localStorage.setItem('catalog_products', JSON.stringify(updatedProducts));
             console.log('✅ Produit sauvegardé après nettoyage localStorage');
-      // Enrichir automatiquement avec IA
-      const enrichedProducts = allProducts.map(product => enrichProductWithAI(product));
+            showSuccess('Produit ajouté', 'Le produit a été ajouté au catalogue avec succès.');
+          } catch (retryError) {
+            console.error('❌ Échec sauvegarde même après nettoyage:', retryError);
             showError('Erreur de sauvegarde', 'Espace de stockage insuffisant. Produit ajouté temporairement mais non persisté.');
-      // Grouper les variations par handle
-      const groupedProducts = groupProductVariations(enrichedProducts);
+          }
+        } else {
+          showError('Erreur de sauvegarde', 'Impossible de sauvegarder le produit en local.');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur ajout produit:', error);
+      showError('Erreur d\'ajout', 'Impossible d\'ajouter le produit au catalogue.');
+    }
+    
+    setShowAddModal(false);
+  };
+
   const handleUpdateProduct = (productData: any) => {
-      // Sauvegarder dans le catalogue enrichi
-      localStorage.setItem('catalog_products', JSON.stringify(groupedProducts));
-      setProducts(groupedProducts);
+    try {
       const updatedProducts = products.map(p => 
         p.id === selectedProduct?.id 
-        'Enrichissement terminé',
-        `${groupedProducts.length} produits enrichis avec ${groupedProducts.reduce((sum, p) => sum + (p.variations?.length || 1), 0)} variations !`,
-        [
-          {
-            label: 'Voir catalogue enrichi',
-            action: () => window.location.reload(),
-            variant: 'primary'
-          }
-        ]
+          ? { ...p, ...productData, updated_at: new Date().toISOString() }
+          : p
       );
       setProducts(updatedProducts);
       setFilteredProducts(updatedProducts);
@@ -469,7 +730,7 @@ export const CatalogManagement: React.FC = () => {
         }
       }
     } catch (error) {
-      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir le catalogue.');
+      console.error('❌ Erreur modification produit:', error);
       showError('Erreur de modification', 'Impossible de modifier le produit.');
     }
     
