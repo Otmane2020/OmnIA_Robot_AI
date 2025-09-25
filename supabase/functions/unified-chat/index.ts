@@ -80,7 +80,11 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url, tags, confidence_score, enriched_at')
       .gt('stock_qty', 0);
 
-    if (productIntent.category) {
+    // Only apply retailer_id filter if it's a valid UUID, otherwise skip for demo/global products
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(retailerId);
+    if (retailerId && isUuid) {
+      qb = qb.eq('retailer_id', retailerId);
+    } else if (productIntent.category) {
       qb = qb.or(`category.ilike.%${productIntent.category}%,subcategory.ilike.%${productIntent.category}%`);
     }
     if (extractedAttributes.colors.length > 0) {
@@ -115,6 +119,10 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
         .gt('stock', 0);
 
       if (productIntent.category) {
+        // Apply store_id filter for ai_products if retailerId is a valid UUID
+        if (retailerId && isUuid) {
+          aiQuery = aiQuery.eq('store_id', retailerId);
+        }
         aiQuery = aiQuery.ilike('category', `%${productIntent.category}%`);
       }
 

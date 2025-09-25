@@ -40,7 +40,14 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 🔍 ÉTAPE 1: Récupérer les produits du vendeur
-    const sellerProducts = await getSellerProducts(supabase, seller_id);
+    const isSellerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seller_id);
+    let sellerProducts = [];
+    if (seller_id && isSellerIdUuid) {
+      sellerProducts = await getSellerProducts(supabase, seller_id);
+    } else {
+      console.log('⚠️ Non-UUID seller_id, fallback vers localStorage ou produits par défaut:', seller_id);
+      sellerProducts = getSellerProductsFromStorage(seller_id);
+    }
     console.log('📦 Produits vendeur trouvés:', sellerProducts.length);
 
     // 🎯 ÉTAPE 2: Filtrer les produits pertinents selon le message
@@ -88,6 +95,16 @@ Deno.serve(async (req: Request) => {
 
 async function getSellerProducts(supabase: any, sellerId: string) {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sellerId);
+    
+    if (!isUuid) {
+      // If sellerId is not a UUID, it's likely a demo ID or invalid.
+      // Fallback to local storage or default products without DB query.
+      console.log('⚠️ Non-UUID sellerId, skipping DB query for seller_products:', sellerId);
+      return getSellerProductsFromStorage(sellerId);
+    }
+
+
     // Try to get from seller_products table first
     const { data: sellerProducts, error } = await supabase
       .from('seller_products')

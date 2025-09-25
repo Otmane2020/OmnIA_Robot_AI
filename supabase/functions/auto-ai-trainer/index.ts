@@ -57,6 +57,22 @@ Deno.serve(async (req: Request) => {
     const { products, source, store_id, trigger_type }: AutoTrainingRequest = await req.json();
     
     console.log('🤖 [auto-ai-trainer] Auto-training déclenché:', {
+      // Validate store_id as UUID
+      const isStoreIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(store_id);
+      if (store_id && !isStoreIdUuid) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Invalid store_id format. Must be a valid UUID.',
+            details: `Received store_id: ${store_id}`
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          }
+        );
+      }
+
       source,
       products_count: products.length,
       trigger_type,
