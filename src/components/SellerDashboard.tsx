@@ -173,7 +173,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Dashboard {seller.company_name}</h1>
-          <p className="text-gray-300">Interface personnalisée pour {seller.contact_name}</p>
+          <p className="text-gray-300">Interface personnalisée pour {seller.contact_name} ({seller.email})</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -322,7 +322,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ seller, onLogo
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
-      case 'products': return <SellerCatalogManagement sellerId={seller.id} />;
+      case 'products': return <SellerCatalogManagement sellerId={seller.id} sellerSubdomain={seller.subdomain} />;
       case 'enriched': return <ProductsEnrichedTable retailerId={seller.id} />;
       case 'smart-ai': return <SmartAIEnrichmentTab />;
       case 'integration': return <EcommerceIntegration onConnected={handlePlatformConnected} />;

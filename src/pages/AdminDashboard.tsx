@@ -246,7 +246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
               } else {
                 window.open('/robot', '_blank');
               }
-            }}
+            onClick={() => window.open(`/robot/${currentVendor?.subdomain || currentVendor?.id}`, '_blank')}
             className="bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Eye className="w-8 h-8 text-green-400 mb-3" />

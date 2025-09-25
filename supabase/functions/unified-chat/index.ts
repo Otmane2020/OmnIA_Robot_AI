@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
     // Étape 2 : réponse IA
     const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
 
-    // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
+    // Étape 3 : conversion (forcer l'affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
       aiResponse.selectedProducts = relevantProducts.slice(0, 2);
       aiResponse.should_show_products = true;
@@ -226,4 +226,36 @@ ${productsContext}`;
     selectedProducts: products.slice(0, 2),
     should_show_products: products.length > 0
   };
+}
+
+async function saveConversation(supabase: any, conversationData: any) {
+  try {
+    const isRetailerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.retailer_id);
+    const isUserIdUuid = conversationData.user_id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.user_id) : false;
+
+    // Sauvegarder le message client
+    await supabase.from('retailer_conversations').insert({
+      user_id: isUserIdUuid ? conversationData.user_id : null, // Set to null if not a valid UUID
+      session_id: conversationData.session_id,
+      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null, // Set to null if not a valid UUID
+      message: conversationData.message,
+      intent: conversationData.intent,
+      ip_address: getClientIP(),
+      timestamp: new Date().toISOString()
+    });
+
+    // Sauvegarder la réponse robot
+    await supabase.from('retailer_conversations').insert({
+      user_id: conversationData.user_id,
+      session_id: conversationData.session_id,
+      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null,
+      response: conversationData.response,
+      products: conversationData.products || [],
+      final_action: detectFinalAction(conversationData.response),
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde conversation:', error);
+  }
 }

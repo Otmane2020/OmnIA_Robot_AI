@@ -31,7 +31,8 @@ interface SellerProduct {
 }
 
 interface SellerCatalogManagementProps {
-  sellerId: string;
+  sellerId: string; // This should be the UUID
+  sellerSubdomain?: string; // Add subdomain for context
 }
 
 export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = ({ sellerId }) => {
@@ -83,7 +84,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
       setIsLoading(true);
       
       // Charger UNIQUEMENT les produits de ce vendeur spécifique
-      const sellerProductsKey = `seller_${sellerId}_products`;
+      const sellerProductsKey = `seller_${sellerId}_products`; // Use sellerId (UUID)
       const savedProducts = localStorage.getItem(sellerProductsKey);
       let sellerProducts: SellerProduct[] = [];
       
@@ -123,7 +124,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
   const handleImportProducts = () => {
     showInfo(
       'Import de produits',
-      'Utilisez l\'onglet "Intégration" dans le menu principal pour importer votre catalogue via CSV, Shopify ou XML.',
+      'Utilisez l\'onglet "Intégration" dans le menu principal pour importer votre catalogue via CSV, Shopify ou XML. Les produits seront automatiquement liés à votre compte.',
       [
         {
           label: 'Aller à l\'intégration',
@@ -138,7 +139,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     if (confirm('Supprimer ce produit ?')) {
       const updatedProducts = products.filter(p => p.id !== productId);
       setProducts(updatedProducts);
-      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts));
+      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts)); // Use sellerId (UUID)
       showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
     }
   };
@@ -149,7 +150,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     if (confirm(`Supprimer ${selectedProducts.length} produit(s) sélectionné(s) ?`)) {
       const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
       setProducts(updatedProducts);
-      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts));
+      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts)); // Use sellerId (UUID)
       setSelectedProducts([]);
       showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
     }
