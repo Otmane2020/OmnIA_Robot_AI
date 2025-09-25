@@ -97,6 +97,14 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       setIsLoading(true);
       console.log('🧠 Chargement produits enrichis SMART...');
 
+      // Charger d'abord depuis localStorage (produits importés)
+      const importedProducts = loadFromLocalStorage();
+      if (importedProducts.length > 0) {
+        console.log('📱 Produits chargés depuis localStorage:', importedProducts.length);
+        setEnrichedProducts(importedProducts);
+        setIsLoading(false);
+        return;
+      }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
