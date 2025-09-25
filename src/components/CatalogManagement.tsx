@@ -741,6 +741,13 @@ export const CatalogManagement: React.FC = () => {
                             </span>
                           </>
                         )}
+                        
+                        {/* Prix des variations */}
+                        {product.variants && product.variants.length > 1 && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {Math.min(...product.variants.map((v: any) => v.price))}€ - {Math.max(...product.variants.map((v: any) => v.price))}€
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
