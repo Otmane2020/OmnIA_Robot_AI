@@ -57,6 +57,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SmartProduct | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
@@ -207,7 +209,7 @@ Destination : Salon, pièce à vivre, studio`,
   const enrichProductsWithAdvancedAI = async (rawProducts: any[]): Promise<SmartProduct[]> => {
     const enrichedProducts: SmartProduct[] = [];
     
-    // Grouper par handle pour gérer les variations
+    // Grouper par handle pour gérer les variations (250 produits variables au lieu de 650 single)
     const groupedByHandle = new Map<string, any[]>();
     
     rawProducts.forEach(product => {
@@ -217,6 +219,8 @@ Destination : Salon, pièce à vivre, studio`,
       }
       groupedByHandle.get(handle)!.push(product);
     });
+    
+    console.log(`🔄 Groupement: ${groupedByHandle.size} produits variables (au lieu de ${rawProducts.length} single)`);
     
     // Enrichir chaque groupe de produits
     for (const [handle, productGroup] of groupedByHandle.entries()) {
@@ -434,6 +438,22 @@ Destination : Salon, pièce à vivre, studio`,
     return Math.min(confidence, 100);
   };
 
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
+
   const cleanDescription = (description: string): string => {
     return description
       .replace(/<[^>]*>/g, '')
@@ -531,23 +551,33 @@ Destination : Salon, pièce à vivre, studio`,
           </p>
         </div>
         
-        <button
-          onClick={handleEnrichAll}
-          disabled={isEnriching}
-          className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
-        >
-          {isEnriching ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Enrichissement IA...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              Enrichir avec IA
-            </>
-          )}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
+          >
+            <BarChart3 className="w-4 h-4" />
+            {viewMode === 'table' ? 'Vue grille' : 'Vue liste'}
+          </button>
+          
+          <button
+            onClick={handleEnrichAll}
+            disabled={isEnriching}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
+          >
+            {isEnriching ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Enrichissement IA...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Enrichir avec IA
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}
@@ -577,137 +607,283 @@ Destination : Salon, pièce à vivre, studio`,
         </div>
       </div>
 
-      {/* Grille de produits enrichis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-purple-500/50 transition-all hover:scale-105">
-            {/* Image et infos de base */}
-            <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
-              <img 
-                src={product.image_url} 
-                alt={product.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                }}
-              />
-            </div>
-            
-            <h3 className="font-bold text-white text-lg mb-2 line-clamp-2">{product.name}</h3>
-            <p className="text-gray-300 text-sm mb-4">{product.category} • {product.vendor}</p>
-            
-            {/* Prix et confiance */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-2xl font-bold text-green-400">
-                {product.variations.length > 1 ? 
-                  `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
-                  `${product.price}€`
-                }
-              </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                product.ai_attributes.confidence_score >= 80 ? 'bg-green-500/20 text-green-300' :
-                product.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500/20 text-yellow-300' :
-                'bg-red-500/20 text-red-300'
-              }`}>
-                IA: {product.ai_attributes.confidence_score}%
-              </div>
-            </div>
-
-            {/* Variations */}
-            <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
-              <div className="text-cyan-300 text-sm font-semibold mb-2">
-                {product.variations.length} variation(s):
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {product.variations.map((variation, index) => (
-                  <span key={index} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded text-xs">
-                    {variation.options.map(opt => opt.value).join(' ') || variation.title}
-                  </span>
+      {/* Vue liste ou grille */}
+      {viewMode === 'table' ? (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500"
+                    />
+                  </th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Produit Smart AI</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Prix</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Variations</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Dimensions IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Confiance</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((product) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => handleSelectProduct(product.id)}
+                        className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white text-sm">{product.name}</div>
+                          <div className="text-gray-400 text-xs">{product.category} • {product.vendor}</div>
+                          <div className="text-gray-500 text-xs mt-1 line-clamp-2">
+                            {product.description.substring(0, 100)}...
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-green-400 font-bold">
+                        {product.variations.length > 1 ? 
+                          `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                          `${product.price}€`
+                        }
+                      </div>
+                      <div className="text-gray-400 text-xs">Stock: {product.stock}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-cyan-300 font-semibold text-sm">{product.variations.length}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {product.variations.slice(0, 2).map((variation, index) => (
+                          <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                            {variation.options.map(opt => opt.value).join(' ') || variation.title}
+                          </span>
+                        ))}
+                        {product.variations.length > 2 && (
+                          <span className="text-cyan-400 text-xs">+{product.variations.length - 2}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-purple-300 text-xs font-medium">
+                        {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {product.ai_attributes.colors.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {product.ai_attributes.colors.slice(0, 2).map((color, index) => (
+                              <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
+                                {color}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {product.ai_attributes.materials.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
+                              <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                                {material}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        product.ai_attributes.confidence_score >= 80 ? 'bg-green-500/20 text-green-300' :
+                        product.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-red-500/20 text-red-300'
+                      }`}>
+                        {product.ai_attributes.confidence_score}%
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowDetailModal(true);
+                          }}
+                          className="text-purple-400 hover:text-purple-300 p-1"
+                          title="Voir détails IA"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="text-green-400 hover:text-green-300 p-1" title="Exporter">
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-
-            {/* Dimensions IA */}
-            <div className="bg-purple-500/20 rounded-xl p-3 mb-4 border border-purple-400/30">
-              <div className="text-purple-300 text-sm font-semibold mb-2">Dimensions IA:</div>
-              <div className="text-white text-xs">
-                {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
-              </div>
-            </div>
-
-            {/* Attributs IA */}
-            <div className="space-y-3 mb-4">
-              {/* Couleurs */}
-              {product.ai_attributes.colors.length > 0 && (
-                <div>
-                  <div className="text-pink-300 text-xs font-semibold mb-1">Couleurs IA:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {product.ai_attributes.colors.slice(0, 3).map((color, index) => (
-                      <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
-                        {color}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Matériaux */}
-              {product.ai_attributes.materials.length > 0 && (
-                <div>
-                  <div className="text-green-300 text-xs font-semibold mb-1">Matériaux IA:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
-                      <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
-                        {material}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Fonctionnalités */}
-              {product.ai_attributes.features.length > 0 && (
-                <div>
-                  <div className="text-orange-300 text-xs font-semibold mb-1">Fonctionnalités IA:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {product.ai_attributes.features.slice(0, 3).map((feature, index) => (
-                      <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* SEO optimisé */}
-            <div className="bg-blue-500/20 rounded-xl p-3 mb-4 border border-blue-400/30">
-              <div className="text-blue-300 text-xs font-semibold mb-1">SEO IA:</div>
-              <div className="text-white text-xs font-medium line-clamp-1 mb-1">{product.seo_optimized.title}</div>
-              <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setSelectedProduct(product);
-                  setShowDetailModal(true);
-                }}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold"
-              >
-                <Eye className="w-4 h-4" />
-                Détails IA
-              </button>
-              <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold">
-                <Download className="w-4 h-4" />
-                Exporter
-              </button>
-            </div>
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-purple-500/50 transition-all hover:scale-105">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.includes(product.id)}
+                  onChange={() => handleSelectProduct(product.id)}
+                  className="absolute top-2 left-2 w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 z-10"
+                />
+                <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <h3 className="font-bold text-white text-lg mb-2 line-clamp-2">{product.name}</h3>
+              <p className="text-gray-300 text-sm mb-4">{product.category} • {product.vendor}</p>
+              
+              {/* Prix et confiance */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-2xl font-bold text-green-400">
+                  {product.variations.length > 1 ? 
+                    `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                    `${product.price}€`
+                  }
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  product.ai_attributes.confidence_score >= 80 ? 'bg-green-500/20 text-green-300' :
+                  product.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-red-500/20 text-red-300'
+                }`}>
+                  IA: {product.ai_attributes.confidence_score}%
+                </div>
+              </div>
+
+              {/* Variations */}
+              <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
+                <div className="text-cyan-300 text-sm font-semibold mb-2">
+                  {product.variations.length} variation(s):
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {product.variations.map((variation, index) => (
+                    <span key={index} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded text-xs">
+                      {variation.options.map(opt => opt.value).join(' ') || variation.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dimensions IA */}
+              <div className="bg-purple-500/20 rounded-xl p-3 mb-4 border border-purple-400/30">
+                <div className="text-purple-300 text-sm font-semibold mb-2">Dimensions IA:</div>
+                <div className="text-white text-xs">
+                  {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
+                </div>
+              </div>
+
+              {/* Attributs IA */}
+              <div className="space-y-3 mb-4">
+                {/* Couleurs */}
+                {product.ai_attributes.colors.length > 0 && (
+                  <div>
+                    <div className="text-pink-300 text-xs font-semibold mb-1">Couleurs IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.colors.slice(0, 3).map((color, index) => (
+                        <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
+                          {color}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Matériaux */}
+                {product.ai_attributes.materials.length > 0 && (
+                  <div>
+                    <div className="text-green-300 text-xs font-semibold mb-1">Matériaux IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
+                        <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                          {material}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fonctionnalités */}
+                {product.ai_attributes.features.length > 0 && (
+                  <div>
+                    <div className="text-orange-300 text-xs font-semibold mb-1">Fonctionnalités IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.features.slice(0, 3).map((feature, index) => (
+                        <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SEO optimisé */}
+              <div className="bg-blue-500/20 rounded-xl p-3 mb-4 border border-blue-400/30">
+                <div className="text-blue-300 text-xs font-semibold mb-1">SEO IA:</div>
+                <div className="text-white text-xs font-medium line-clamp-1 mb-1">{product.seo_optimized.title}</div>
+                <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setShowDetailModal(true);
+                  }}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold"
+                >
+                  <Eye className="w-4 h-4" />
+                  Détails IA
+                </button>
+                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold">
+                  <Download className="w-4 h-4" />
+                  Exporter
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Message si aucun produit */}
       {filteredProducts.length === 0 && (
@@ -717,7 +893,7 @@ Destination : Salon, pièce à vivre, studio`,
           <p className="text-gray-400 mb-6">
             {searchTerm || selectedCategory !== 'all'
               ? 'Aucun produit ne correspond à vos critères de recherche.'
-              : 'Votre catalogue Smart AI est vide. Enrichissez vos produits avec l\'IA.'}
+              : 'Enrichissez vos 250 produits variables avec l\'IA avancée.'}
           </p>
           <button
             onClick={handleEnrichAll}
@@ -737,13 +913,13 @@ Destination : Salon, pièce à vivre, studio`,
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-400">{products.length}</div>
-            <div className="text-purple-300 text-sm">Produits enrichis</div>
+            <div className="text-purple-300 text-sm">Produits variables</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-cyan-400">
               {products.reduce((sum, p) => sum + p.variations.length, 0)}
             </div>
-            <div className="text-cyan-300 text-sm">Variations</div>
+            <div className="text-cyan-300 text-sm">Variations totales</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-400">
