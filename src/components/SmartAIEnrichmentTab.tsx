@@ -80,6 +80,13 @@ export const SmartAIEnrichmentTab: React.FC = () => {
 
   useEffect(() => {
     loadSmartEnrichedProducts();
+    // Auto-chargement depuis le catalogue si vide
+    const timer = setTimeout(() => {
+      if (enrichedProducts.length === 0) {
+        loadFromCatalogSources();
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
     loadCronStatus();
     
     // Auto-refresh toutes les 5 minutes
@@ -95,37 +102,10 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const loadSmartEnrichedProducts = async () => {
     try {
       setIsLoading(true);
-      console.log('🧠 Chargement produits enrichis SMART...');
+      console.log('🧠 Chargement produits SMART enrichis...');
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.log('⚠️ Supabase non configuré, chargement depuis localStorage');
-        loadFromLocalStorage();
-        return;
-      }
-
-      // Charger depuis products_enriched avec toutes les données
-      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?select=*&order=enriched_at.desc&limit=200`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Produits SMART enrichis chargés:', data.length);
-        
-        // Enrichir avec les variantes et images additionnelles
-        const enrichedData = await enrichWithVariantsAndImages(data);
-        setEnrichedProducts(enrichedData);
-      } else {
-        console.log('⚠️ Erreur Supabase, fallback localStorage');
-        loadFromLocalStorage();
-      }
+      // Charger depuis localStorage en priorité
+      loadFromLocalStorage();
 
     } catch (error) {
       console.error('❌ Erreur chargement produits SMART:', error);
@@ -223,17 +203,385 @@ export const SmartAIEnrichmentTab: React.FC = () => {
 
   const loadFromLocalStorage = () => {
     try {
-      const stored = localStorage.getItem('smart_enriched_products');
-      if (stored) {
-        const data = JSON.parse(stored);
-        setEnrichedProducts(data);
-        console.log('📱 Produits SMART chargés depuis localStorage:', data.length);
+      // Charger depuis plusieurs sources
+      const sources = [
+        'smart_enriched_products',
+        'enriched_products',
+        'catalog_products',
+        'shopify_products'
+      ];
+      
+      let allProducts: any[] = [];
+      
+      for (const source of sources) {
+        const stored = localStorage.getItem(source);
+        if (stored) {
+          try {
+            const data = JSON.parse(stored);
+            if (Array.isArray(data)) {
+              allProducts = [...allProducts, ...data];
+              console.log(`📱 Produits trouvés dans ${source}:`, data.length);
+            }
+          } catch (error) {
+            console.error(`❌ Erreur parsing ${source}:`, error);
+          }
+        }
       }
+      
+      // Supprimer les doublons et enrichir automatiquement
+      const uniqueProducts = allProducts.filter((product, index, self) => 
+        index === self.findIndex(p => (p.id || p.handle) === (product.id || product.handle))
+      );
+      
+      // Enrichir automatiquement les produits qui ne le sont pas encore
+      const enrichedData = uniqueProducts.map(product => {
+        if (product.enriched_at) {
+          return product; // Déjà enrichi
+        }
+        return enrichProductAutomatically(product);
+      });
+      
+      setEnrichedProducts(enrichedData);
+      console.log('📱 Produits SMART chargés et enrichis:', enrichedData.length);
+      
+      // Sauvegarder les produits enrichis
+      if (enrichedData.length > 0) {
+        localStorage.setItem('smart_enriched_products', JSON.stringify(enrichedData));
+      }
+      
     } catch (error) {
       console.error('❌ Erreur localStorage:', error);
     }
   };
 
+  const loadFromCatalogSources = async () => {
+    console.log('🔄 Chargement automatique depuis les sources catalogue...');
+    
+    // Charger et enrichir automatiquement
+    const catalogSources = ['catalog_products', 'shopify_products', 'imported_products'];
+    let foundProducts: any[] = [];
+    
+    for (const source of catalogSources) {
+      const stored = localStorage.getItem(source);
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          if (Array.isArray(data) && data.length > 0) {
+            foundProducts = data;
+            console.log(`📦 Auto-chargement depuis ${source}:`, data.length);
+            break;
+          }
+        } catch (error) {
+          console.error(`❌ Erreur auto-chargement ${source}:`, error);
+        }
+      }
+    }
+    
+    if (foundProducts.length > 0) {
+      // Enrichir automatiquement
+      const enrichedData = foundProducts.map(product => enrichProductAutomatically(product));
+      setEnrichedProducts(enrichedData);
+      localStorage.setItem('smart_enriched_products', JSON.stringify(enrichedData));
+      console.log('✅ Auto-enrichissement terminé:', enrichedData.length);
+    }
+  };
+
+  const enrichProductAutomatically = (product: any): SmartEnrichedProduct => {
+    const productText = `${product.name || product.title || ''} ${product.description || product.body_html || ''}`;
+    
+    // Extraction automatique des attributs
+    const extractedAttributes = extractAdvancedAttributes(productText);
+    
+    return {
+      id: product.id || `smart-${Date.now()}-${Math.random()}`,
+      handle: product.handle || generateHandle(product.name || product.title),
+      title: product.name || product.title || 'Produit sans nom',
+      description: cleanDescription(product.description || product.body_html || ''),
+      
+      // Attributs extraits
+      category: extractedAttributes.category,
+      subcategory: extractedAttributes.subcategory,
+      color: extractedAttributes.colors.join(', '),
+      material: extractedAttributes.materials.join(', '),
+      fabric: extractedAttributes.fabric,
+      style: extractedAttributes.style,
+      dimensions: extractedAttributes.dimensions,
+      room: extractedAttributes.room.join(', '),
+      
+      // Prix et stock
+      price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+      stock_qty: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || parseInt(product.quantityAvailable) || 0,
+      
+      // Médias
+      image_url: product.image_url || product.image_src || product.featuredImage?.url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+      additional_images: extractAdditionalImages(product),
+      product_url: product.product_url || `#${product.handle}`,
+      
+      // Variations détaillées
+      variants: generateDetailedVariants(product, extractedAttributes),
+      
+      // SEO et marketing
+      tags: extractedAttributes.tags,
+      seo_title: generateSEOTitle(product, extractedAttributes),
+      seo_description: generateSEODescription(product, extractedAttributes),
+      ad_headline: (product.name || product.title || '').substring(0, 25),
+      ad_description: `${extractedAttributes.category} ${extractedAttributes.colors[0] || ''} premium`.substring(0, 80),
+      google_product_category: getGoogleCategory(extractedAttributes.category),
+      google_gender: 'unisex',
+      google_age_group: 'adult',
+      google_condition: 'new',
+      google_custom_labels: [extractedAttributes.category, extractedAttributes.colors[0], extractedAttributes.materials[0]].filter(Boolean),
+      gtin: product.gtin || generateGTIN(),
+      brand: product.vendor || product.brand || 'Decora Home',
+      
+      // Métadonnées IA
+      confidence_score: calculateAdvancedConfidence(extractedAttributes),
+      enriched_at: new Date().toISOString(),
+      enrichment_source: 'Smart AI Engine v2.1',
+      ai_extracted_attributes: {
+        detected_colors: extractedAttributes.colors,
+        detected_materials: extractedAttributes.materials,
+        detected_features: Object.keys(extractedAttributes.features).filter(key => extractedAttributes.features[key]),
+        detailed_dimensions: extractedAttributes.detailed_dimensions,
+        confidence_scores: {
+          category: extractedAttributes.category !== 'Mobilier' ? 90 : 50,
+          color: extractedAttributes.colors.length > 0 ? 85 : 30,
+          material: extractedAttributes.materials.length > 0 ? 80 : 30,
+          dimensions: extractedAttributes.detailed_dimensions.width ? 95 : 20
+        }
+      }
+    };
+  };
+
+  // Fonctions d'extraction avancées
+  const extractAdvancedAttributes = (text: string) => {
+    const lowerText = text.toLowerCase();
+    
+    return {
+      category: extractCategory(lowerText),
+      subcategory: extractSubcategory(lowerText),
+      colors: extractColors(lowerText),
+      materials: extractMaterials(lowerText),
+      fabric: extractFabric(lowerText),
+      style: extractStyle(lowerText),
+      dimensions: extractDimensions(text),
+      detailed_dimensions: extractDetailedDimensions(text),
+      room: extractRoom(lowerText),
+      features: extractFeatures(lowerText),
+      tags: []
+    };
+  };
+
+  const extractCategory = (text: string): string => {
+    if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
+    if (text.includes('table')) return 'Table';
+    if (text.includes('chaise') || text.includes('fauteuil')) return 'Chaise';
+    if (text.includes('lit')) return 'Lit';
+    if (text.includes('armoire') || text.includes('commode')) return 'Rangement';
+    return 'Mobilier';
+  };
+
+  const extractSubcategory = (text: string): string => {
+    if (text.includes('convertible')) return 'Canapé convertible';
+    if (text.includes('angle')) return 'Canapé d\'angle';
+    if (text.includes('basse')) return 'Table basse';
+    if (text.includes('manger')) return 'Table à manger';
+    return '';
+  };
+
+  const extractColors = (text: string): string[] => {
+    const colorPatterns = [
+      'gris moderne', 'beige doux', 'beige chaleureux', 'blanc', 'noir', 'gris', 'beige',
+      'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'taupe'
+    ];
+    return colorPatterns.filter(color => text.includes(color));
+  };
+
+  const extractMaterials = (text: string): string[] => {
+    const materialPatterns = [
+      'tissu dunbar', 'dunbar 25', 'tissu', 'cuir', 'velours', 'lin', 'coton',
+      'bois', 'métal', 'acier', 'verre', 'marbre', 'travertin', 'ressort ondulé'
+    ];
+    return materialPatterns.filter(material => text.includes(material));
+  };
+
+  const extractFabric = (text: string): string => {
+    const fabricPatterns = ['dunbar 25', 'dunbar', 'chenille', 'velours', 'lin', 'coton'];
+    return fabricPatterns.find(fabric => text.includes(fabric)) || '';
+  };
+
+  const extractStyle = (text: string): string => {
+    const stylePatterns = ['moderne', 'contemporain', 'épuré', 'scandinave', 'industriel', 'vintage'];
+    return stylePatterns.find(style => text.includes(style)) || 'Moderne';
+  };
+
+  const extractDimensions = (text: string): string => {
+    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+    return dimensionMatch ? dimensionMatch[0] : '';
+  };
+
+  const extractDetailedDimensions = (text: string) => {
+    return {
+      width: extractSingleDimension(text, ['largeur', 'width', 'l']),
+      depth: extractSingleDimension(text, ['profondeur', 'depth', 'p']),
+      height: extractSingleDimension(text, ['hauteur', 'height', 'h']),
+      seat_height: extractSingleDimension(text, ['hauteur d\'assise', 'seat height', 'assise']),
+      bed_surface: extractBedSurface(text)
+    };
+  };
+
+  const extractSingleDimension = (text: string, keywords: string[]): number | null => {
+    for (const keyword of keywords) {
+      const regex = new RegExp(`${keyword}\\s*:?\\s*(\\d+(?:[.,]\\d+)?)\\s*cm`, 'i');
+      const match = text.match(regex);
+      if (match) {
+        return parseFloat(match[1].replace(',', '.'));
+      }
+    }
+    return null;
+  };
+
+  const extractBedSurface = (text: string): string => {
+    const bedRegex = /(?:couchage|lit|surface).*?(\d+)\s*[x×]\s*(\d+)\s*cm/i;
+    const match = text.match(bedRegex);
+    return match ? `${match[1]}×${match[2]}cm` : '';
+  };
+
+  const extractRoom = (text: string): string[] => {
+    const roomPatterns = ['salon', 'pièce à vivre', 'studio', 'chambre', 'cuisine', 'bureau'];
+    return roomPatterns.filter(room => text.includes(room));
+  };
+
+  const extractFeatures = (text: string) => {
+    return {
+      convertible: text.includes('convertible') || text.includes('couchage'),
+      storage: text.includes('rangement') || text.includes('conteneur') || text.includes('coffre'),
+      adjustable: text.includes('réglable') || text.includes('inclinable'),
+      automatic: text.includes('automatique') || text.includes('mécanisme')
+    };
+  };
+
+  const generateDetailedVariants = (product: any, attributes: any) => {
+    const variants = [];
+    
+    // Si le produit a déjà des variants, les enrichir
+    if (product.variants && Array.isArray(product.variants)) {
+      return product.variants.map((variant: any, index: number) => ({
+        id: variant.id || `${product.id}-var-${index}`,
+        title: variant.title || `Variation ${index + 1}`,
+        price: parseFloat(variant.price) || parseFloat(product.price) || 0,
+        compareAtPrice: parseFloat(variant.compare_at_price) || parseFloat(product.compare_at_price) || null,
+        stock: parseInt(variant.inventory_quantity) || parseInt(variant.stock) || 0,
+        sku: variant.sku || `${product.handle}-${index}`,
+        options: variant.selectedOptions || variant.options || [],
+        image: variant.image || product.image_url
+      }));
+    }
+    
+    // Générer des variations basées sur les couleurs extraites
+    if (attributes.colors.length > 0) {
+      attributes.colors.forEach((color: string, index: number) => {
+        variants.push({
+          id: `${product.id}-${color.toLowerCase().replace(/\s+/g, '-')}`,
+          title: color,
+          price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+          compareAtPrice: parseFloat(product.compare_at_price) || parseFloat(product.variant_compare_at_price) || null,
+          stock: Math.floor((parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0) / Math.max(attributes.colors.length, 1)),
+          sku: `${product.handle || product.id}-${color.toLowerCase().replace(/\s+/g, '-')}`,
+          options: [{ name: 'Couleur', value: color }],
+          image: product.image_url || product.image_src
+        });
+      });
+    } else {
+      // Variation par défaut
+      variants.push({
+        id: `${product.id}-default`,
+        title: 'Default',
+        price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+        compareAtPrice: parseFloat(product.compare_at_price) || parseFloat(product.variant_compare_at_price) || null,
+        stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || parseInt(product.quantityAvailable) || 0,
+        sku: product.sku || product.variant_sku || product.handle || product.id,
+        options: [],
+        image: product.image_url || product.image_src
+      });
+    }
+    
+    return variants;
+  };
+
+  const cleanDescription = (description: string): string => {
+    return description
+      .replace(/<[^>]*>/g, '') // Supprimer HTML
+      .replace(/&[^;]+;/g, ' ') // Supprimer entités HTML
+      .trim();
+  };
+
+  const extractAdditionalImages = (product: any): string[] => {
+    const images = [];
+    
+    // Images depuis le produit Shopify
+    if (product.images && Array.isArray(product.images)) {
+      product.images.forEach((img: any) => {
+        if (img.src) images.push(img.src);
+      });
+    }
+    
+    // Images par défaut si aucune trouvée
+    if (images.length === 0) {
+      images.push(
+        'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        'https://images.pexels.com/photos/1598300/pexels-photo-1598300.jpeg'
+      );
+    }
+    
+    return images;
+  };
+
+  const generateSEOTitle = (product: any, attributes: any): string => {
+    const name = product.name || product.title || 'Produit';
+    const category = attributes.category;
+    const color = attributes.colors[0] || '';
+    return `${name} ${color} ${category} | Decora Home`.substring(0, 60);
+  };
+
+  const generateSEODescription = (product: any, attributes: any): string => {
+    const name = product.name || product.title || 'Produit';
+    const material = attributes.materials[0] || '';
+    const style = attributes.style;
+    return `${name} en ${material} ${style}. ${attributes.features.convertible ? 'Convertible. ' : ''}Livraison gratuite.`.substring(0, 155);
+  };
+
+  const getGoogleCategory = (category: string): string => {
+    const categoryMap: { [key: string]: string } = {
+      'Canapé': '635',
+      'Table': '443',
+      'Chaise': '436',
+      'Lit': '569',
+      'Rangement': '6552'
+    };
+    return categoryMap[category] || '696';
+  };
+
+  const calculateAdvancedConfidence = (attributes: any): number => {
+    let score = 0;
+    if (attributes.category !== 'Mobilier') score += 25;
+    if (attributes.colors.length > 0) score += 20;
+    if (attributes.materials.length > 0) score += 20;
+    if (attributes.detailed_dimensions.width) score += 15;
+    if (attributes.style !== 'Moderne') score += 10;
+    if (attributes.features.convertible || attributes.features.storage) score += 10;
+    return Math.min(score, 100);
+  };
+
+  const generateHandle = (name: string): string => {
+    return name
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 100);
+  };
   const loadCronStatus = async () => {
     try {
       const stored = localStorage.getItem('smart_enrichment_cron_status');
@@ -279,24 +627,44 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       console.log('🧠 Démarrage enrichissement SMART IA...');
       showInfo('🚀 Enrichissement SMART en cours...');
 
-      // Charger les produits Shopify depuis localStorage
-      const shopifyProducts = JSON.parse(localStorage.getItem('shopify_products') || '[]');
+      // Charger les produits depuis toutes les sources
+      const sources = ['shopify_products', 'catalog_products', 'imported_products'];
+      let allProducts: any[] = [];
       
-      if (shopifyProducts.length === 0) {
-        showError('❌ Aucun produit Shopify trouvé. Importez d\'abord depuis Shopify.');
+      for (const source of sources) {
+        const stored = localStorage.getItem(source);
+        if (stored) {
+          try {
+            const data = JSON.parse(stored);
+            if (Array.isArray(data)) {
+              allProducts = [...allProducts, ...data];
+            }
+          } catch (error) {
+            console.error(`❌ Erreur chargement ${source}:`, error);
+          }
+        }
+      }
+      
+      // Supprimer les doublons
+      const uniqueProducts = allProducts.filter((product, index, self) => 
+        index === self.findIndex(p => (p.id || p.handle) === (product.id || product.handle))
+      );
+      
+      if (uniqueProducts.length === 0) {
+        showError('❌ Aucun produit trouvé. Importez d\'abord votre catalogue.');
         return;
       }
 
-      const totalProducts = shopifyProducts.length;
+      const totalProducts = uniqueProducts.length;
       let processedCount = 0;
       const enrichedResults: SmartEnrichedProduct[] = [];
 
-      for (const product of shopifyProducts) {
+      for (const product of uniqueProducts) {
         try {
-          console.log(`🔄 Enrichissement produit: ${product.title}`);
+          console.log(`🔄 Enrichissement produit: ${product.name || product.title}`);
           
-          // Simuler l'enrichissement IA (remplacer par vraie API)
-          const enrichedProduct = await enrichProductWithAI(product);
+          // Enrichissement automatique avancé
+          const enrichedProduct = enrichProductAutomatically(product);
           enrichedResults.push(enrichedProduct);
           
           processedCount++;
