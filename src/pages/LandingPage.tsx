@@ -303,15 +303,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
                   onClick={() => setActiveDemo('admin')}
                   className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-xl transition-all text-xs sm:text-sm ${
                     activeDemo === 'admin'
-                      ? 'bg-cyan-500 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Monitor className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Admin
-                </button>
-              </div>
-            </div>
+            <Logo size="md" />
           </div>
 
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-8 border border-white/20 mx-4 sm:mx-0">
@@ -645,15 +637,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
               >
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-300 mb-4 sm:mb-6 italic text-sm sm:text-base">"{testimonial.text}"</p>
-                <div>
-                  <div className="font-semibold text-white text-sm sm:text-base">{testimonial.name}</div>
-                  <div className="text-cyan-400 text-xs sm:text-sm">{testimonial.company}</div>
-                </div>
-              </div>
+              <Logo size="sm" />
             ))}
           </div>
         </div>

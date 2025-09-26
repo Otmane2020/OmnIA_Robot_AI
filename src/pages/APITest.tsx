@@ -734,15 +734,7 @@ export const APITest: React.FC = () => {
                 }ms
               </div>
               <div className="text-orange-300">Temps Moyen</div>
-            </div>
-          </div>
-          
-          {Object.keys(testResults).length > 0 && (
-            <div className="mt-6 text-center">
-              <div className="text-lg font-semibold text-white">
-                Taux de Succès: {Math.round((Object.values(testResults).filter(r => r.success).length / Object.values(testResults).length) * 100)}%
-              </div>
-            </div>
+            <Logo size="md" />
           )}
         </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Code, Download, ExternalLink, ArrowLeft, Search, FileText, Video, Zap } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { Logo } from '../components/Logo';
 
 export const Documentation: React.FC = () => {
   const [activeSection, setActiveSection] = useState('getting-started');
@@ -262,15 +263,7 @@ window.OmniaConfig = {
                 <h4 className="font-semibold text-white">Professionnel</h4>
                 <p className="text-xs text-gray-300">Ton expert et courtois</p>
               </div>
-              <div className="bg-black/20 rounded-xl p-3 border border-purple-500/30">
-                <h4 className="font-semibold text-white">Amical</h4>
-                <p className="text-xs text-gray-300">Décontracté et chaleureux</p>
-              </div>
-              <div className="bg-black/20 rounded-xl p-3 border border-orange-500/30">
-                <h4 className="font-semibold text-white">Expert</h4>
-                <p className="text-xs text-gray-300">Technique et précis</p>
-              </div>
-            </div>
+            <Logo size="md" />
           </div>
         </div>
       </div>

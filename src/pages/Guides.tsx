@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Video, Download, ExternalLink, ArrowLeft, Clock, User, Star } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { Logo } from '../components/Logo';
 
 export const Guides: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -343,15 +344,7 @@ Accédez aux statistiques détaillées dans votre interface admin :
                 <div className="text-2xl font-bold text-cyan-400">12</div>
                 <div className="text-gray-300">Modules</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">2h30</div>
-                <div className="text-gray-300">Durée totale</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">500+</div>
-                <div className="text-gray-300">Revendeurs formés</div>
-              </div>
-            </div>
+            <Logo size="md" />
             <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-2xl hover:shadow-cyan-500/40">
               Commencer la formation
             </button>

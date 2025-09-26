@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Mail, Clock, Globe, ArrowRight, Home, MessageSquare, FileText } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { Logo } from '../components/Logo';
 
 interface ApplicationData {
   companyName: string;
@@ -74,14 +75,6 @@ export const ThankYou: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <Logo size="md" />
-            <div className="flex items-center space-x-4">
-              <a href="/" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors">
-                <Home className="w-4 h-4" />
-                Accueil
-              </a>
-            </div>
-          </div>
-        </div>
       </header>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
