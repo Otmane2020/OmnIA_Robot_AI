@@ -65,7 +65,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
   try {
     console.log('🔍 Recherche produits pour:', query);
     
-    // NOUVEAU: Essayer d'abord products_enriched, puis fallback vers ai_products
+    // NOUVEAU: Utiliser Smart AI Table pour réponses intelligentes
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -74,10 +74,10 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
     const productIntent = analyzeProductIntent(query);
     const extractedAttributes = extractAttributesFromQuery(query);
 
-    // Recherche dans products_enriched d'abord
+    // Recherche dans products_enriched avec Smart AI
     let qb = supabase
       .from('products_enriched')
-      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
+      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url, tags, confidence_score, enriched_at')
       .gt('stock_qty', 0);
 
     if (productIntent.category) {
@@ -93,7 +93,9 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       qb = qb.or(extractedAttributes.dimensions.map(dim => `dimensions.ilike.%${dim}%`).join(','));
     }
 
-    qb = qb.limit(5);
+    // Ordonner par confiance IA et date d'enrichissement
+    qb = qb.order('confidence_score', { ascending: false }).order('enriched_at', { ascending: false }).limit(5);
+    
     const { data: enrichedData, error: enrichedError } = await qb;
 
     if (enrichedError) {
@@ -101,9 +103,9 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
     }
 
     let products = enrichedData || [];
-    console.log('✅ Produits enrichis trouvés:', products.length);
+    console.log('✅ Produits Smart AI trouvés:', products.length);
 
-    // FALLBACK: Si pas assez de produits enrichis, chercher dans ai_products
+    // FALLBACK: Si pas assez de produits Smart AI, chercher dans ai_products
     if (products.length < 3) {
       console.log('🔄 Fallback vers ai_products...');
       
@@ -120,7 +122,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       const { data: aiData } = await aiQuery;
       
       if (aiData && aiData.length > 0) {
-        // Convertir format ai_products vers format products_enriched
+        // Convertir format ai_products vers format Smart AI
         const convertedProducts = aiData.map(product => ({
           id: product.id,
           handle: product.id,
@@ -137,7 +139,9 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
           price: product.price,
           stock_qty: product.stock,
           image_url: product.image_url,
-          product_url: product.product_url
+          product_url: product.product_url,
+          confidence_score: 50,
+          enriched_at: new Date().toISOString()
         }));
         
         products = [...products, ...convertedProducts];
@@ -145,7 +149,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       }
     }
 
-    console.log('✅ Total produits trouvés:', products.length);
+    console.log('✅ Total produits Smart AI trouvés:', products.length);
     return products;
   } catch (error) {
     console.error('❌ Erreur recherche produits:', error);
