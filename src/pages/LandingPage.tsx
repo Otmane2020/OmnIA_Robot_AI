@@ -5,7 +5,6 @@ import {
   MessageSquare, ShoppingCart, Palette, Brain,
   Smartphone, Monitor, Tablet, User
 } from 'lucide-react';
-import { Logo } from '../components/Logo';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -138,7 +137,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
       <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
           <div className="flex justify-between items-center py-4 sm:py-6">
-            <Logo size="md" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">O</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">OmnIA</h1>
+                <p className="text-cyan-300 text-sm">Robot IA</p>
+              </div>
+            </div>
             
             <nav className="hidden lg:flex space-x-6 xl:space-x-8">
               <a href="/#features" className="text-white hover:text-cyan-300 transition-colors">Fonctionnalités</a>
@@ -684,7 +691,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin 
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div>
-              <Logo size="sm" />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">O</span>
+                </div>
+                <span className="text-white font-bold">OmnIA</span>
+              </div>
               <p className="text-gray-400 mt-4 text-sm sm:text-base">
                 La plateforme IA pour revendeurs de mobilier
               </p>
