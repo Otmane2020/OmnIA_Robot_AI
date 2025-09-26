@@ -18,6 +18,7 @@ import { ThankYou } from './pages/ThankYou';
 import { SuperAdmin } from './pages/SuperAdmin';
 import { SellerRobotInterface } from './pages/SellerRobotInterface';
 import { APITest } from './pages/APITest';
+import { QuickChat } from './pages/QuickChat';
 
 import { QuickChat } from './pages/QuickChat';
 
