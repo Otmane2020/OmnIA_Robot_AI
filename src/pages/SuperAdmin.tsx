@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Users, Store, BarChart3, Settings, Shield, 
-  Search, Filter, Eye, Edit, Trash2, Plus,
-  CheckCircle, XCircle, AlertTriangle, Crown,
-  TrendingUp, DollarSign, Calendar, Mail,
-  FileText
-} from 'lucide-react';
+import { Users, Store, BarChart3, Settings, Shield, Search, Filter, Eye, CreditCard as Edit, Trash2, Plus, CheckCircle, XCircle, AlertTriangle, Crown, TrendingUp, DollarSign, Calendar, Mail, FileText } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 
