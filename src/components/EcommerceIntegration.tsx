@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings, XCircle } from 'lucide-react';
+import { Store, Upload, Link, CheckCircle, AlertCircle, ExternalLink, Settings } from 'lucide-react';
 import { ShopifyCSVImporter } from './ShopifyCSVImporter';
 
 interface EcommerceIntegrationProps {
   onConnected: (platformData: any) => void;
-  retailerId?: string;
 }
 
-export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onConnected, retailerId }) => {
+export const EcommerceIntegration: React.FC<EcommerceIntegrationProps> = ({ onConnected }) => {
   const [activeTab, setActiveTab] = useState('shopify');
   const [isConnecting, setIsConnecting] = useState(false);
   const [shopifyConfig, setShopifyConfig] = useState(() => {

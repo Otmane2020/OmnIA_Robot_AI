@@ -9,8 +9,6 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 interface SellerChatRequest {
   message: string;
   seller_id: string;
-  retailer_id?: string; // Add retailer_id for consistency with other functions
-  retailer_id?: string; // Add retailer_id for consistency with other functions
   seller_subdomain: string;
   session_id?: string;
   conversation_context?: Array<{
@@ -25,7 +23,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { message, seller_id, retailer_id, seller_subdomain, conversation_context = [] }: SellerChatRequest = await req.json();
+    const { message, seller_id, seller_subdomain, conversation_context = [] }: SellerChatRequest = await req.json();
     console.log('🤖 Chat vendeur:', seller_subdomain, '-', message.substring(0, 50) + '...');
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -42,14 +40,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 🔍 ÉTAPE 1: Récupérer les produits du vendeur
-    const isSellerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seller_id || retailer_id);
-    let sellerProducts = [];
-    if ((seller_id || retailer_id) && isSellerIdUuid) {
-      sellerProducts = await getSellerProducts(supabase, seller_id || retailer_id);
-    } else {
-      console.log('⚠️ Non-UUID seller_id, fallback vers localStorage ou produits par défaut:', seller_id);
-      sellerProducts = getSellerProductsFromStorage(seller_id);
-    }
+    const sellerProducts = await getSellerProducts(supabase, seller_id);
     console.log('📦 Produits vendeur trouvés:', sellerProducts.length);
 
     // 🎯 ÉTAPE 2: Filtrer les produits pertinents selon le message
@@ -67,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
     // 💾 ÉTAPE 4: Sauvegarder la conversation
     await saveSellerConversation(supabase, {
-      seller_id: isSellerIdUuid ? (seller_id || retailer_id) : null, // Ensure seller_id is UUID or null
+      seller_id,
       session_id: crypto.randomUUID(),
       user_message: message,
       ai_response: aiResponse.message,
@@ -97,21 +88,11 @@ Deno.serve(async (req: Request) => {
 
 async function getSellerProducts(supabase: any, sellerId: string) {
   try {
-    const isSellerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sellerId);
-    
-    if (!isSellerIdUuid) {
-      // If sellerId is not a UUID, it's likely a demo ID or invalid.
-      // Fallback to local storage or default products without DB query.
-      console.log('⚠️ Non-UUID sellerId, skipping DB query for seller_products:', sellerId);
-      return getSellerProductsFromStorage(sellerId);
-    }
-
-
     // Try to get from seller_products table first
     const { data: sellerProducts, error } = await supabase
       .from('seller_products')
       .select('*')
-      .eq('seller_id', sellerId) // This sellerId is now guaranteed to be UUID or the function would have returned earlier
+      .eq('seller_id', sellerId)
       .eq('status', 'active')
       .gt('stock', 0)
       .limit(20);
@@ -317,18 +298,10 @@ EXEMPLES:
 
 async function saveSellerConversation(supabase: any, conversationData: any) {
   try {
-    if (!conversationData.seller_id) { // seller_id is NOT NULL, so skip if null
-      console.warn('⚠️ Skipping conversation save: seller_id is null or invalid UUID.');
-      return;
-    }
-    if (!conversationData.seller_id) { // seller_id is NOT NULL, so skip if null
-      console.warn('⚠️ Skipping conversation save: seller_id is null or invalid UUID.');
-      return;
-    }
     const { error } = await supabase
       .from('seller_conversations')
       .insert({
-        seller_id: conversationData.seller_id, // This is now guaranteed to be UUID
+        seller_id: conversationData.seller_id,
         session_id: conversationData.session_id,
         user_message: conversationData.user_message,
         ai_response: conversationData.ai_response,
