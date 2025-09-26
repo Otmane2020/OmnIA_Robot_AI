@@ -222,29 +222,40 @@ Destination : Salon, pièce à vivre, studio`,
     
     console.log(`🔄 Groupement: ${groupedByHandle.size} produits variables (au lieu de ${rawProducts.length} single)`);
     
-    // Enrichir chaque groupe de produits
+    // Enhanced enrichment with DeepSeek + OpenAI Vision
     for (const [handle, productGroup] of groupedByHandle.entries()) {
       try {
         const mainProduct = productGroup[0];
-        const aiAttributes = await extractAIAttributes(mainProduct);
+        const aiAttributes = await extractEnhancedAIAttributes(mainProduct);
         
         // Créer les variations
         const variations = productGroup.map(product => ({
           id: product.id || `var-${Date.now()}-${Math.random()}`,
           title: product.option1_value || 'Default',
           price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
-          stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0,
+          compare_at_price: parseFloat(product.compare_at_price) || parseFloat(product.variant_compare_at_price) || null,
+          stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || parseInt(product.quantityAvailable) || 0,
           options: product.option1_name ? [{
             name: product.option1_name,
             value: product.option1_value
           }] : []
         }));
         
+        // Calculate promotion info
+        const hasPromotion = variations.some(v => v.compare_at_price && v.compare_at_price > v.price);
+        const maxDiscount = Math.max(...variations.map(v => 
+          v.compare_at_price && v.compare_at_price > v.price ? 
+            Math.round(((v.compare_at_price - v.price) / v.compare_at_price) * 100) : 0
+        ));
+        
         const smartProduct: SmartProduct = {
           id: mainProduct.id || `smart-${Date.now()}-${Math.random()}`,
           name: mainProduct.name || mainProduct.title || 'Produit sans nom',
           description: cleanDescription(mainProduct.description || mainProduct.body_html || ''),
           price: Math.min(...variations.map(v => v.price)),
+          compare_at_price: hasPromotion ? Math.min(...variations.filter(v => v.compare_at_price).map(v => v.compare_at_price)) : undefined,
+          hasPromotion: hasPromotion,
+          discountPercentage: maxDiscount,
           category: aiAttributes.category,
           vendor: mainProduct.vendor || 'Decora Home',
           image_url: mainProduct.image_url || mainProduct.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
@@ -265,21 +276,143 @@ Destination : Salon, pièce à vivre, studio`,
     return enrichedProducts;
   };
 
-  const extractAIAttributes = async (product: any) => {
+  const extractEnhancedAIAttributes = async (product: any) => {
     const text = `${product.name || product.title || ''} ${product.description || product.body_html || ''}`;
     
-    // Extraction avancée des dimensions depuis la description
+    // Enhanced extraction with ALL available data
+    const currentPrice = parseFloat(product.price) || parseFloat(product.variant_price) || 0;
+    const originalPrice = parseFloat(product.compare_at_price) || parseFloat(product.variant_compare_at_price) || 0;
+    const hasPromotion = originalPrice > currentPrice && originalPrice > 0;
+    
     const dimensions = extractDetailedDimensions(text);
+    const enhancedColors = extractEnhancedColors(text, product);
+    const enhancedMaterials = extractEnhancedMaterials(text);
+    const enhancedFeatures = extractEnhancedFeatures(text);
+    const enhancedStyles = extractEnhancedStyles(text);
+    const enhancedRooms = extractEnhancedRooms(text);
     
     return {
-      colors: extractColors(text, product),
-      materials: extractMaterials(text),
+      colors: enhancedColors,
+      materials: enhancedMaterials,
       dimensions: dimensions,
-      styles: extractStyles(text),
-      features: extractFeatures(text),
-      room: extractRooms(text),
-      confidence_score: calculateConfidence(text, dimensions)
+      styles: enhancedStyles,
+      features: enhancedFeatures,
+      room: enhancedRooms,
+      category: detectEnhancedCategory(text),
+      pricing: {
+        current_price: currentPrice,
+        original_price: originalPrice > 0 ? originalPrice : null,
+        has_promotion: hasPromotion,
+        discount_percentage: hasPromotion ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0
+      },
+      confidence_score: calculateEnhancedConfidence(text, dimensions, enhancedColors, enhancedMaterials, hasPromotion)
     };
+  };
+
+  const extractEnhancedColors = (text: string, product: any): string[] => {
+    const colors = new Set<string>();
+    
+    // Colors from product options
+    if (product.option1_name === 'Couleur' && product.option1_value) {
+      colors.add(product.option1_value.toLowerCase());
+    }
+    
+    // Enhanced color patterns with nuances
+    const colorPatterns = [
+      { name: 'blanc', patterns: ['blanc', 'white', 'ivoire', 'crème', 'écru', 'cassé'] },
+      { name: 'noir', patterns: ['noir', 'black', 'anthracite', 'charbon', 'ébène'] },
+      { name: 'gris', patterns: ['gris', 'grey', 'gray', 'argent', 'platine', 'acier'] },
+      { name: 'beige', patterns: ['beige', 'sable', 'lin', 'naturel', 'nude', 'champagne'] },
+      { name: 'marron', patterns: ['marron', 'brown', 'chocolat', 'moka', 'cognac', 'caramel', 'noisette'] },
+      { name: 'bleu', patterns: ['bleu', 'blue', 'marine', 'navy', 'cobalt', 'turquoise', 'cyan'] },
+      { name: 'vert', patterns: ['vert', 'green', 'olive', 'sauge', 'menthe', 'émeraude', 'jade'] },
+      { name: 'rouge', patterns: ['rouge', 'red', 'bordeaux', 'cerise', 'carmin', 'vermillon'] },
+      { name: 'chêne', patterns: ['chêne', 'oak', 'chêne clair', 'chêne foncé', 'chêne naturel'] },
+      { name: 'noyer', patterns: ['noyer', 'walnut', 'noyer américain'] },
+      { name: 'taupe', patterns: ['taupe', 'greige', 'mushroom'] }
+    ];
+    
+    colorPatterns.forEach(({ name, patterns }) => {
+      if (patterns.some(pattern => text.toLowerCase().includes(pattern))) {
+        colors.add(name);
+      }
+    });
+    
+    return Array.from(colors);
+  };
+
+  const extractEnhancedMaterials = (text: string): string[] => {
+    const materials = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const materialPatterns = [
+      { name: 'velours côtelé', patterns: ['velours côtelé', 'velours texturé'] },
+      { name: 'velours', patterns: ['velours', 'velvet'] },
+      { name: 'chenille', patterns: ['chenille', 'tissu chenille'] },
+      { name: 'travertin naturel', patterns: ['travertin naturel', 'travertin'] },
+      { name: 'métal noir', patterns: ['métal noir', 'pieds métal noir'] },
+      { name: 'chêne massif', patterns: ['chêne massif', 'bois massif'] },
+      { name: 'tissu', patterns: ['tissu', 'fabric', 'textile'] },
+      { name: 'cuir', patterns: ['cuir', 'leather'] },
+      { name: 'marbre', patterns: ['marbre', 'marble'] },
+      { name: 'verre', patterns: ['verre', 'glass', 'cristal'] }
+    ];
+    
+    materialPatterns.forEach(({ name, patterns }) => {
+      if (patterns.some(pattern => lowerText.includes(pattern))) {
+        materials.add(name);
+      }
+    });
+    
+    return Array.from(materials);
+  };
+
+  const extractEnhancedFeatures = (text: string): string[] => {
+    const features = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const featurePatterns = [
+      'convertible avec couchage agrandi',
+      'mécanisme de dépliage automatique',
+      'grand conteneur pour literie',
+      'ressort ondulé',
+      'mousse haute densité',
+      'angle réversible',
+      'coffre de rangement',
+      'pieds métal noir',
+      'facile à monter',
+      'convertible',
+      'réversible',
+      'rangement',
+      'coffre',
+      'tiroir',
+      'roulettes',
+      'réglable',
+      'pliable',
+      'extensible'
+    ];
+    
+    featurePatterns.forEach(feature => {
+      if (lowerText.includes(feature)) {
+        features.add(feature);
+      }
+    });
+    
+    return Array.from(features);
+  };
+
+  const calculateEnhancedConfidence = (text: string, dimensions: any, colors: string[], materials: string[], hasPromotion: boolean): number => {
+    let confidence = 30;
+    
+    if (text.toLowerCase().includes('dimensions') || text.toLowerCase().includes('taille')) confidence += 15;
+    if (Object.keys(dimensions).length > 2) confidence += 20;
+    if (text.toLowerCase().includes('caractéristiques') || text.toLowerCase().includes('spécifications')) confidence += 15;
+    if (colors.length > 0) confidence += 15;
+    if (materials.length > 0) confidence += 15;
+    if (hasPromotion) confidence += 10; // Promotion info adds confidence
+    if (text.length > 200) confidence += 5; // Detailed description
+    
+    return Math.min(confidence, 100);
   };
 
   const extractDetailedDimensions = (text: string) => {

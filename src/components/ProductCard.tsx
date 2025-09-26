@@ -90,10 +90,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                 {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
                   <>
                     <p className="text-base md:text-lg text-gray-500 line-through">{selectedVariant.compareAtPrice}€</p>
-                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold border border-red-200 animate-pulse">
+                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold border border-red-200 animate-pulse shadow-lg">
                       -{Math.round(((selectedVariant.compareAtPrice - selectedVariant.price) / selectedVariant.compareAtPrice) * 100)}%
                     </span>
                   </>
+                )}
+                {/* Enhanced promotion display */}
+                {safeProduct.hasPromotion && (
+                  <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-bounce shadow-lg">
+                    🔥 PROMO !
+                  </div>
                 )}
               </div>
               <p className="text-sm text-gray-600 font-medium">
@@ -102,6 +108,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                   'Rupture de stock'
                 }
               </p>
+              {/* Enhanced promotion message */}
+              {safeProduct.hasPromotion && safeProduct.discountPercentage && (
+                <p className="text-sm text-red-600 font-bold animate-pulse">
+                  💰 Économisez {safeProduct.discountPercentage}% sur ce produit !
+                </p>
+              )}
             </div>
             <div className="flex gap-1 md:gap-2 flex-wrap">
               <button
