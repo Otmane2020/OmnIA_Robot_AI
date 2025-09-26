@@ -91,6 +91,40 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product,
                 />
               </div>
               
+              {/* Affichage des variations détaillées */}
+              {product.variants && product.variants.length > 1 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-3 text-gray-800">Variations disponibles ({product.variants.length})</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {product.variants.map((variant: any) => (
+                      <div key={variant.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{variant.title}</div>
+                          {variant.selectedOptions && variant.selectedOptions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {variant.selectedOptions.map((option: any, optIndex: number) => (
+                                <span key={optIndex} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
+                                  {option.name}: {option.value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-600 mt-1">
+                            SKU: {variant.sku} • Stock: {variant.quantityAvailable || variant.stock || 0}
+                          </div>
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="font-bold text-green-600">{variant.price}€</div>
+                          {variant.compareAtPrice && variant.compareAtPrice > variant.price && (
+                            <div className="text-gray-400 line-through text-sm">{variant.compareAtPrice}€</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-4">
                 <div>
                   <h3 className="text-xl font-bold text-white mb-2">{product.name}</h3>

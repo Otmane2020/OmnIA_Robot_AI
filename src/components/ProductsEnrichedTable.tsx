@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Filter, Eye, Edit, Trash2, ExternalLink, 
-  Package, Tag, DollarSign, Image, BarChart3, Settings,
-  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
-  Brain, Sparkles, Zap, RefreshCw, Download, Upload
-} from 'lucide-react';
+import { Search, Filter, Eye, CreditCard as Edit, Trash2, ExternalLink, Package, Tag, DollarSign, Image, BarChart3, Settings, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, Brain, Sparkles, Zap, RefreshCw, Download, Upload, Loader2 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {
@@ -18,7 +13,16 @@ interface EnrichedProduct {
   material: string;
   fabric: string;
   style: string;
-  dimensions: string;
+  dimensions: {
+    largeur?: number;
+    profondeur?: number;
+    hauteur?: number;
+    hauteur_assise?: number;
+    couchage_largeur?: number;
+    couchage_longueur?: number;
+    diametre?: number;
+    unit: string;
+  };
   room: string;
   price: number;
   stock_qty: number;
@@ -36,13 +40,32 @@ interface EnrichedProduct {
   enriched_at: string;
   enrichment_source: string;
   created_at: string;
+  variations: ProductVariation[];
+  features: string[];
+}
+
+interface ProductVariation {
+  id: string;
+  title: string;
+  price: number;
+  compare_at_price?: number;
+  stock: number;
+  sku: string;
+  options: { name: string; value: string }[];
+  image_url?: string;
 }
 
 interface ProductsEnrichedTableProps {
   vendorId?: string;
+  retailerId?: string;
+  refreshTrigger?: number;
 }
 
-export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ vendorId }) => {
+export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ 
+  vendorId, 
+  retailerId,
+  refreshTrigger = 0 
+}) => {
   const [products, setProducts] = useState<EnrichedProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<EnrichedProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,11 +78,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [isLoading, setIsLoading] = useState(true);
   const [isEnriching, setIsEnriching] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [selectedProduct, setSelectedProduct] = useState<EnrichedProduct | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
     loadEnrichedProducts();
-  }, [vendorId]);
+  }, [vendorId, retailerId, refreshTrigger]);
 
   useEffect(() => {
     // Filtrer les produits
@@ -71,7 +96,8 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.seo_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        product.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        product.variations.some(v => v.title.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -80,7 +106,10 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     }
 
     if (selectedColor !== 'all') {
-      filtered = filtered.filter(product => product.color === selectedColor);
+      filtered = filtered.filter(product => 
+        product.color === selectedColor ||
+        product.variations.some(v => v.options.some(o => o.value === selectedColor))
+      );
     }
 
     if (selectedMaterial !== 'all') {
@@ -97,16 +126,23 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const loadEnrichedProducts = async () => {
     try {
       setIsLoading(true);
+      console.log('🧠 Chargement catalogue enrichi automatique...');
       
-      // Simuler le chargement depuis la base de données
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Charger TOUS les produits depuis toutes les sources
+      const allProducts = await loadAllProductSources();
+      console.log('📦 Total produits trouvés:', allProducts.length);
       
-      // Générer des produits enrichis de démonstration basés sur le catalogue
-      const mockEnrichedProducts = generateMockEnrichedProducts();
+      // Enrichir automatiquement chaque produit
+      const enrichedProducts = allProducts.map(product => enrichProductAdvanced(product));
       
-      console.log('📦 Produits enrichis chargés:', mockEnrichedProducts.length);
-      setProducts(mockEnrichedProducts);
-      setFilteredProducts(mockEnrichedProducts);
+      // Grouper les variations par handle
+      const groupedProducts = groupProductVariations(enrichedProducts);
+      
+      console.log('✅ Produits enrichis:', groupedProducts.length);
+      console.log('📊 Variations totales:', groupedProducts.reduce((sum, p) => sum + p.variations.length, 0));
+      
+      setProducts(groupedProducts);
+      setFilteredProducts(groupedProducts);
       
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
@@ -116,102 +152,408 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     }
   };
 
-  const generateMockEnrichedProducts = (): EnrichedProduct[] => {
-    // Charger les produits du catalogue normal
-    const savedProducts = localStorage.getItem('catalog_products');
-    let baseProducts = [];
+  const loadAllProductSources = async (): Promise<any[]> => {
+    let allProducts: any[] = [];
     
-    if (savedProducts) {
+    // Sources de données possibles
+    const sources = [
+      'catalog_products',
+      'shopify_products', 
+      'imported_products',
+      'vendor_products',
+      'seller_products',
+      `vendor_${vendorId}_products`,
+      `seller_${retailerId}_products`,
+      `retailer_${retailerId}_products`
+    ];
+    
+    for (const source of sources) {
       try {
-        baseProducts = JSON.parse(savedProducts);
+        const savedData = localStorage.getItem(source);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (Array.isArray(parsed)) {
+            console.log(`📦 ${source}: ${parsed.length} produits`);
+            allProducts = [...allProducts, ...parsed];
+          }
+        }
       } catch (error) {
-        console.error('Erreur parsing produits sauvegardés:', error);
+        console.error(`❌ Erreur parsing ${source}:`, error);
       }
     }
     
-    // Produits de base Decora Home
-    const decoraProducts = [
+    // Ajouter les produits Decora Home de base
+    const decoraProducts = getDecoraCatalogWithVariations();
+    allProducts = [...allProducts, ...decoraProducts];
+    
+    // Supprimer les doublons par handle ou ID
+    const uniqueProducts = allProducts.filter((product, index, self) => 
+      index === self.findIndex(p => 
+        (p.handle && product.handle && p.handle === product.handle) ||
+        (p.id === product.id)
+      )
+    );
+    
+    console.log(`📊 Produits uniques: ${uniqueProducts.length} (${allProducts.length - uniqueProducts.length} doublons supprimés)`);
+    return uniqueProducts;
+  };
+
+  const getDecoraCatalogWithVariations = () => {
+    return [
+      // Canapé ALYANA avec 3 variations de couleur
       {
         id: 'decora-canape-alyana-beige',
-        name: 'Canapé ALYANA convertible - Beige',
-        description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
+        handle: 'canape-alyana-convertible',
+        title: 'Canapé ALYANA convertible',
+        description: 'Canapé d\'angle convertible 4 places en velours côtelé avec coffre de rangement. Dimensions: L:280cm × P:180cm × H:85cm × Assise:42cm × Couchage:200×140cm',
         price: 799,
+        compare_at_price: 1399,
         category: 'Canapé',
         vendor: 'Decora Home',
         image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
         product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-        stock: 100
+        stock: 100,
+        option1_name: 'Couleur',
+        option1_value: 'Beige',
+        variant_sku: 'ALYAAVCOTBEI-DH'
       },
       {
+        id: 'decora-canape-alyana-taupe',
+        handle: 'canape-alyana-convertible',
+        title: 'Canapé ALYANA convertible',
+        description: 'Canapé d\'angle convertible 4 places en velours côtelé avec coffre de rangement. Dimensions: L:280cm × P:180cm × H:85cm × Assise:42cm × Couchage:200×140cm',
+        price: 799,
+        compare_at_price: 1399,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_c424b028-7399-4639-ba8f-487e0d71d0f6.png?v=1754406480',
+        product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+        stock: 95,
+        option1_name: 'Couleur',
+        option1_value: 'Taupe',
+        variant_sku: 'ALYAAVCOTTAU-DH'
+      },
+      {
+        id: 'decora-canape-alyana-bleu',
+        handle: 'canape-alyana-convertible',
+        title: 'Canapé ALYANA convertible',
+        description: 'Canapé d\'angle convertible 4 places en velours côtelé avec coffre de rangement. Dimensions: L:280cm × P:180cm × H:85cm × Assise:42cm × Couchage:200×140cm',
+        price: 799,
+        compare_at_price: 1399,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_329df0e2-31cd-4628-a3ac-06213e4e2741.png?v=1754406480',
+        product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+        stock: 88,
+        option1_name: 'Couleur',
+        option1_value: 'Bleu',
+        variant_sku: 'ALYAAVCOTBLF-DH'
+      },
+      // Table AUREA avec 2 variations de taille
+      {
         id: 'decora-table-aurea-100',
-        name: 'Table AUREA Ø100cm - Travertin',
-        description: 'Table ronde en travertin naturel avec pieds métal noir',
+        handle: 'table-aurea-travertin',
+        title: 'Table AUREA travertin naturel',
+        description: 'Table ronde en travertin naturel avec pieds métal noir. Dimensions: Ø100cm × H:75cm',
         price: 499,
+        compare_at_price: 859,
         category: 'Table',
         vendor: 'Decora Home',
         image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
         product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-        stock: 50
+        stock: 50,
+        option1_name: 'Taille',
+        option1_value: 'Ø100cm',
+        variant_sku: 'TB18T100-DH'
       },
       {
+        id: 'decora-table-aurea-120',
+        handle: 'table-aurea-travertin',
+        title: 'Table AUREA travertin naturel',
+        description: 'Table ronde en travertin naturel avec pieds métal noir. Dimensions: Ø120cm × H:75cm',
+        price: 549,
+        compare_at_price: 909,
+        category: 'Table',
+        vendor: 'Decora Home',
+        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/2_89637aec-60b5-403f-9f0f-57c9a2fa42e4.png?v=1754406484',
+        product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
+        stock: 30,
+        option1_name: 'Taille',
+        option1_value: 'Ø120cm',
+        variant_sku: 'TB18T120-DH'
+      },
+      // Chaise INAYA avec 3 variations de couleur
+      {
         id: 'decora-chaise-inaya-gris',
-        name: 'Chaise INAYA - Gris chenille',
-        description: 'Chaise en tissu chenille avec pieds métal noir',
+        handle: 'chaise-inaya-chenille',
+        title: 'Chaise INAYA chenille',
+        description: 'Chaise en tissu chenille avec pieds métal noir. Dimensions: L:45cm × P:55cm × H:85cm × Assise:45cm',
         price: 99,
+        compare_at_price: 149,
         category: 'Chaise',
         vendor: 'Decora Home',
         image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
         product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-        stock: 96
+        stock: 96,
+        option1_name: 'Couleur',
+        option1_value: 'Gris clair',
+        variant_sku: 'DC11PNNCHLG-DH'
+      },
+      {
+        id: 'decora-chaise-inaya-moka',
+        handle: 'chaise-inaya-chenille',
+        title: 'Chaise INAYA chenille',
+        description: 'Chaise en tissu chenille avec pieds métal noir. Dimensions: L:45cm × P:55cm × H:85cm × Assise:45cm',
+        price: 99,
+        compare_at_price: 149,
+        category: 'Chaise',
+        vendor: 'Decora Home',
+        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/1_aae7ccd2-f2cb-4418-8c84-210ace00d753.png?v=1755791319',
+        product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+        stock: 100,
+        option1_name: 'Couleur',
+        option1_value: 'Moka',
+        variant_sku: 'DC11PNNCHMO-DH'
+      },
+      {
+        id: 'decora-chaise-inaya-beige',
+        handle: 'chaise-inaya-chenille',
+        title: 'Chaise INAYA chenille',
+        description: 'Chaise en tissu chenille avec pieds métal noir. Dimensions: L:45cm × P:55cm × H:85cm × Assise:45cm',
+        price: 99,
+        compare_at_price: 149,
+        category: 'Chaise',
+        vendor: 'Decora Home',
+        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/2_f8b8c3d4-e5f6-4a7b-8c9d-1e2f3a4b5c6d.png?v=1755791319',
+        product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+        stock: 85,
+        option1_name: 'Couleur',
+        option1_value: 'Beige',
+        variant_sku: 'DC11PNNCHBE-DH'
       }
     ];
-    
-    // Combiner produits de base + produits importés
-    const allProducts = [...decoraProducts, ...baseProducts];
-    
-    // Enrichir automatiquement chaque produit
-    return allProducts.map(product => enrichProduct(product));
   };
 
-  const enrichProduct = (product: any): EnrichedProduct => {
-    const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
+  const enrichProductAdvanced = (product: any): EnrichedProduct => {
+    const text = `${product.title || product.name || ''} ${product.description || product.body_html || ''} ${product.category || product.productType || ''}`.toLowerCase();
     
-    // Enrichissement automatique basé sur le texte
-    const enriched = {
+    // Extraction avancée des dimensions
+    const dimensions = extractAdvancedDimensions(product.description || product.body_html || '');
+    
+    // Extraction des attributs
+    const attributes = extractAdvancedAttributes(text, product);
+    
+    return {
       id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-      handle: product.handle || product.id || `handle-${Date.now()}`,
-      title: product.name || product.title || 'Produit sans nom',
-      description: product.description || '',
+      handle: product.handle || generateHandle(product.title || product.name),
+      title: product.title || product.name || 'Produit sans nom',
+      description: cleanDescription(product.description || product.body_html || ''),
+      category: attributes.category,
+      subcategory: attributes.subcategory,
+      color: attributes.color,
+      material: attributes.material,
+      fabric: attributes.fabric,
+      style: attributes.style,
+      dimensions: dimensions,
+      room: attributes.room,
+      price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+      stock_qty: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || parseInt(product.quantityAvailable) || 0,
+      image_url: product.image_url || product.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+      product_url: product.product_url || '#',
+      tags: attributes.tags,
+      seo_title: generateAdvancedSEOTitle(product, attributes),
+      seo_description: generateAdvancedSEODescription(product, attributes),
+      ad_headline: generateAdHeadline(product.title || product.name),
+      ad_description: generateAdDescription(product, attributes),
+      google_product_category: getGoogleCategory(attributes.category),
+      gtin: product.gtin || '',
+      brand: product.vendor || product.brand || 'Decora Home',
+      confidence_score: calculateAdvancedConfidence(attributes, dimensions),
+      enriched_at: new Date().toISOString(),
+      enrichment_source: 'auto_advanced',
+      created_at: product.created_at || new Date().toISOString(),
+      variations: [{
+        id: product.id || `var-${Date.now()}`,
+        title: product.option1_value || 'Default',
+        price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+        compare_at_price: product.compare_at_price || product.variant_compare_at_price,
+        stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0,
+        sku: product.variant_sku || product.sku || '',
+        options: product.option1_name ? [{ 
+          name: product.option1_name, 
+          value: product.option1_value 
+        }] : [],
+        image_url: product.image_url || product.image_src
+      }],
+      features: attributes.features
+    };
+  };
+
+  const extractAdvancedDimensions = (description: string) => {
+    const dimensions: any = { unit: 'cm' };
+    
+    // Patterns pour extraire les dimensions
+    const patterns = [
+      // Largeur
+      { key: 'largeur', regex: /(?:largeur|l)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Profondeur
+      { key: 'profondeur', regex: /(?:profondeur|p)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Hauteur
+      { key: 'hauteur', regex: /(?:hauteur|h)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Hauteur d'assise
+      { key: 'hauteur_assise', regex: /(?:hauteur\s+d[\'']?assise|assise)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Diamètre
+      { key: 'diametre', regex: /(?:diamètre|ø)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Couchage
+      { key: 'couchage', regex: /(?:couchage|espace\s+de\s+couchage)\s*:?\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm/gi }
+    ];
+    
+    patterns.forEach(({ key, regex }) => {
+      const matches = [...description.matchAll(regex)];
+      matches.forEach(match => {
+        if (key === 'couchage') {
+          dimensions.couchage_largeur = parseFloat(match[1].replace(',', '.'));
+          dimensions.couchage_longueur = parseFloat(match[2].replace(',', '.'));
+        } else {
+          dimensions[key] = parseFloat(match[1].replace(',', '.'));
+        }
+      });
+    });
+    
+    return dimensions;
+  };
+
+  const extractAdvancedAttributes = (text: string, product: any) => {
+    return {
       category: detectCategory(text),
       subcategory: detectSubcategory(text),
-      color: detectColor(text),
-      material: detectMaterial(text),
+      color: detectAdvancedColor(text, product),
+      material: detectAdvancedMaterial(text),
       fabric: detectFabric(text),
       style: detectStyle(text),
-      dimensions: detectDimensions(text),
       room: detectRoom(text),
-      price: product.price || 0,
-      stock_qty: product.stock || product.quantityAvailable || 0,
-      image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.product_url || '#',
-      tags: generateTags(text),
-      seo_title: generateSEOTitle(product.name || product.title, detectColor(text), detectMaterial(text)),
-      seo_description: generateSEODescription(product.name || product.title, detectStyle(text), detectMaterial(text)),
-      ad_headline: generateAdHeadline(product.name || product.title),
-      ad_description: generateAdDescription(product.name || product.title, detectMaterial(text)),
-      google_product_category: getGoogleCategory(detectCategory(text)),
-      gtin: '',
-      brand: product.vendor || 'Decora Home',
-      confidence_score: calculateConfidence(text),
-      enriched_at: new Date().toISOString(),
-      enrichment_source: 'auto',
-      created_at: product.created_at || new Date().toISOString()
+      tags: generateAdvancedTags(text, product),
+      features: extractFeatures(text)
     };
-    
-    return enriched;
   };
 
-  // Fonctions de détection
+  const detectAdvancedColor = (text: string, product: any): string => {
+    // Priorité aux options de variation
+    if (product.option1_name === 'Couleur' && product.option1_value) {
+      return product.option1_value;
+    }
+    
+    // Couleurs spécifiques dans le texte
+    const specificColors = [
+      'gris moderne', 'beige doux', 'beige chaleureux', 'gris clair',
+      'blanc cassé', 'noir mat', 'bleu marine', 'vert olive'
+    ];
+    
+    for (const color of specificColors) {
+      if (text.includes(color)) return color;
+    }
+    
+    // Couleurs de base
+    const basicColors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+    for (const color of basicColors) {
+      if (text.includes(color)) return color;
+    }
+    
+    return '';
+  };
+
+  const detectAdvancedMaterial = (text: string): string => {
+    const materials = [
+      'tissu dunbar', 'velours côtelé', 'chenille', 'travertin naturel',
+      'métal noir', 'bois massif', 'chêne', 'hêtre', 'pin', 'teck',
+      'acier inoxydable', 'verre trempé', 'cuir véritable', 'simili cuir'
+    ];
+    
+    for (const material of materials) {
+      if (text.includes(material)) return material;
+    }
+    
+    // Matériaux de base
+    const basicMaterials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin'];
+    for (const material of basicMaterials) {
+      if (text.includes(material)) return material;
+    }
+    
+    return '';
+  };
+
+  const extractFeatures = (text: string): string[] => {
+    const features = [];
+    
+    if (text.includes('convertible')) features.push('Convertible');
+    if (text.includes('rangement') || text.includes('coffre')) features.push('Rangement');
+    if (text.includes('réversible')) features.push('Réversible');
+    if (text.includes('angle')) features.push('Angle');
+    if (text.includes('mécanisme automatique') || text.includes('dépliage automatique')) features.push('Mécanisme automatique');
+    if (text.includes('ressort')) features.push('Ressort');
+    if (text.includes('mousse haute densité')) features.push('Mousse haute densité');
+    if (text.includes('facile à monter')) features.push('Montage facile');
+    
+    return features;
+  };
+
+  const groupProductVariations = (products: EnrichedProduct[]): EnrichedProduct[] => {
+    const grouped = new Map<string, EnrichedProduct>();
+    
+    products.forEach(product => {
+      const key = product.handle;
+      
+      if (grouped.has(key)) {
+        // Ajouter cette variation au produit existant
+        const existing = grouped.get(key)!;
+        existing.variations.push(product.variations[0]);
+        
+        // Mettre à jour le prix min/max
+        const allPrices = existing.variations.map(v => v.price);
+        existing.price = Math.min(...allPrices);
+        
+        // Mettre à jour le stock total
+        existing.stock_qty = existing.variations.reduce((sum, v) => sum + v.stock, 0);
+      } else {
+        // Nouveau produit
+        grouped.set(key, { ...product });
+      }
+    });
+    
+    return Array.from(grouped.values());
+  };
+
+  const handleSyncFromCatalog = async () => {
+    setIsEnriching(true);
+    showInfo('Synchronisation en cours', 'Enrichissement automatique du catalogue avec IA...');
+    
+    try {
+      // Simuler l'enrichissement
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Recharger les produits
+      await loadEnrichedProducts();
+      
+      showSuccess(
+        'Synchronisation réussie',
+        `${products.length} produits enrichis avec ${products.reduce((sum, p) => sum + p.variations.length, 0)} variations !`,
+        [
+          {
+            label: 'Voir les variations',
+            action: () => setViewMode('grid'),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+    } catch (error) {
+      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  // Fonctions utilitaires
   const detectCategory = (text: string): string => {
     if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
     if (text.includes('table')) return 'Table';
@@ -231,22 +573,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     return '';
   };
 
-  const detectColor = (text: string): string => {
-    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
-    for (const color of colors) {
-      if (text.includes(color)) return color;
-    }
-    return '';
-  };
-
-  const detectMaterial = (text: string): string => {
-    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
-    for (const material of materials) {
-      if (text.includes(material)) return material;
-    }
-    return '';
-  };
-
   const detectFabric = (text: string): string => {
     const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
     for (const fabric of fabrics) {
@@ -256,48 +582,57 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   };
 
   const detectStyle = (text: string): string => {
-    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème', 'épuré'];
     for (const style of styles) {
       if (text.includes(style)) return style;
     }
     return '';
   };
 
-  const detectDimensions = (text: string): string => {
-    const match = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-    return match ? match[0] : '';
-  };
-
   const detectRoom = (text: string): string => {
-    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
+    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse', 'pièce à vivre', 'studio'];
     for (const room of rooms) {
       if (text.includes(room)) return room;
     }
     return '';
   };
 
-  const generateTags = (text: string): string[] => {
-    const tags = [];
-    if (text.includes('convertible')) tags.push('convertible');
-    if (text.includes('rangement')) tags.push('rangement');
-    if (text.includes('angle')) tags.push('angle');
-    if (text.includes('moderne')) tags.push('moderne');
-    if (text.includes('design')) tags.push('design');
-    return tags;
+  const generateAdvancedTags = (text: string, product: any): string[] => {
+    const tags = new Set<string>();
+    
+    // Tags depuis la catégorie
+    const category = detectCategory(text);
+    if (category !== 'Mobilier') tags.add(category.toLowerCase());
+    
+    // Tags depuis les matériaux et couleurs
+    const material = detectAdvancedMaterial(text);
+    const color = detectAdvancedColor(text, product);
+    if (material) tags.add(material.split(' ')[0]); // Premier mot du matériau
+    if (color) tags.add(color.split(' ')[0]); // Premier mot de la couleur
+    
+    // Tags depuis les fonctionnalités
+    if (text.includes('convertible')) tags.add('convertible');
+    if (text.includes('rangement')) tags.add('rangement');
+    if (text.includes('angle')) tags.add('angle');
+    if (text.includes('design')) tags.add('design');
+    if (text.includes('moderne')) tags.add('moderne');
+    
+    return Array.from(tags).slice(0, 5);
   };
 
-  const generateSEOTitle = (name: string, color: string, material: string): string => {
-    let title = name;
-    if (color) title += ` ${color}`;
-    if (material) title += ` ${material}`;
+  const generateAdvancedSEOTitle = (product: any, attributes: any): string => {
+    let title = product.title || product.name || '';
+    if (attributes.color) title += ` ${attributes.color}`;
+    if (attributes.material) title += ` ${attributes.material}`;
     title += ' - Decora Home';
     return title.substring(0, 70);
   };
 
-  const generateSEODescription = (name: string, style: string, material: string): string => {
-    let desc = `${name}`;
-    if (material) desc += ` en ${material}`;
-    if (style) desc += ` de style ${style}`;
+  const generateAdvancedSEODescription = (product: any, attributes: any): string => {
+    let desc = `${product.title || product.name}`;
+    if (attributes.material) desc += ` en ${attributes.material}`;
+    if (attributes.style) desc += ` de style ${attributes.style}`;
+    if (attributes.features.length > 0) desc += `. ${attributes.features.join(', ')}`;
     desc += '. Livraison gratuite. Garantie qualité Decora Home.';
     return desc.substring(0, 155);
   };
@@ -306,9 +641,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     return name.substring(0, 30);
   };
 
-  const generateAdDescription = (name: string, material: string): string => {
-    let desc = name;
-    if (material) desc += ` ${material}`;
+  const generateAdDescription = (product: any, attributes: any): string => {
+    let desc = product.title || product.name || '';
+    if (attributes.material) desc += ` ${attributes.material}`;
     desc += '. Promo !';
     return desc.substring(0, 90);
   };
@@ -327,125 +662,34 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     return categoryMap[category] || '';
   };
 
-  const calculateConfidence = (text: string): number => {
+  const calculateAdvancedConfidence = (attributes: any, dimensions: any): number => {
     let confidence = 30; // Base
-    if (detectColor(text)) confidence += 20;
-    if (detectMaterial(text)) confidence += 20;
-    if (detectStyle(text)) confidence += 15;
-    if (detectRoom(text)) confidence += 10;
-    if (detectDimensions(text)) confidence += 5;
+    
+    if (attributes.color) confidence += 20;
+    if (attributes.material) confidence += 20;
+    if (attributes.style) confidence += 15;
+    if (attributes.room) confidence += 10;
+    if (Object.keys(dimensions).length > 1) confidence += 15;
+    if (attributes.features.length > 0) confidence += 10;
+    
     return Math.min(confidence, 100);
   };
 
-  const handleEnrichAll = async () => {
-    setIsEnriching(true);
-    showInfo('Enrichissement en cours', 'Analyse IA de tous les produits du catalogue...');
-    
-    try {
-      // Simuler l'enrichissement IA
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Recharger les produits enrichis
-      await loadEnrichedProducts();
-      
-      showSuccess(
-        'Enrichissement terminé',
-        `${products.length} produits enrichis avec succès !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => setViewMode('grid'),
-            variant: 'primary'
-          }
-        ]
-      );
-      
-    } catch (error) {
-      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
-    } finally {
-      setIsEnriching(false);
-    }
+  const cleanDescription = (description: string): string => {
+    return description
+      .replace(/<[^>]*>/g, '') // Supprimer HTML
+      .replace(/&[^;]+;/g, ' ') // Supprimer entités HTML
+      .trim();
   };
 
-  const handleSyncFromCatalog = async () => {
-    showInfo('Synchronisation', 'Synchronisation du catalogue vers les produits enrichis...');
-    
-    try {
-      // Charger les produits du catalogue normal ET imported_products
-      const savedProducts = localStorage.getItem('catalog_products');
-      let allProducts = [];
-      
-      if (savedProducts) {
-        try {
-          const catalogProducts = JSON.parse(savedProducts);
-          allProducts = [...allProducts, ...catalogProducts];
-          console.log('📦 Produits du catalogue chargés:', catalogProducts.length);
-        } catch (error) {
-          console.error('Erreur parsing catalogue:', error);
-        }
-      }
-      
-      // NOUVEAU: Forcer la synchronisation via Supabase
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        
-        if (supabaseUrl && supabaseKey) {
-          console.log('🔄 Déclenchement synchronisation forcée...');
-          
-          const syncResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              retailer_id: 'demo-retailer-id',
-              force_full_enrichment: true,
-              source_filter: null // Tous les produits
-            }),
-          });
-          
-          if (syncResponse.ok) {
-            const syncResult = await syncResponse.json();
-            console.log('✅ Synchronisation forcée réussie:', syncResult);
-            
-            showSuccess(
-              'Synchronisation réussie', 
-              `${syncResult.enriched_products || 0} produits synchronisés vers le catalogue enrichi !`,
-              [
-                {
-                  label: 'Actualiser',
-                  action: () => window.location.reload(),
-                  variant: 'primary'
-                }
-              ]
-            );
-            
-            // Recharger les données
-            await loadEnrichedProducts();
-            return;
-          } else {
-            console.log('⚠️ Synchronisation Supabase échouée, fallback local');
-          }
-        }
-      } catch (error) {
-        console.log('⚠️ Erreur synchronisation Supabase:', error);
-      }
-      
-      // Fallback: enrichissement local
-      if (allProducts.length > 0) {
-        const newEnrichedProducts = allProducts.map((product: any) => enrichProduct(product));
-        
-        setProducts(newEnrichedProducts);
-        showSuccess('Synchronisation locale', `${newEnrichedProducts.length} produits enrichis localement !`);
-      } else {
-        showError('Catalogue vide', 'Aucun produit trouvé dans le catalogue principal.');
-      }
-    } catch (error) {
-      console.error('❌ Erreur synchronisation:', error);
-      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
-    }
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Supprimer accents
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 100);
   };
 
   const categories = [...new Set(products.map(p => p.category))];
@@ -459,13 +703,17 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     return 'bg-red-500/20 text-red-300';
   };
 
-  const getEnrichmentSourceColor = (source: string) => {
-    switch (source) {
-      case 'ai': return 'bg-purple-500/20 text-purple-300';
-      case 'auto': return 'bg-blue-500/20 text-blue-300';
-      case 'manual': return 'bg-orange-500/20 text-orange-300';
-      default: return 'bg-gray-500/20 text-gray-300';
+  const formatDimensions = (dimensions: any): string => {
+    const parts = [];
+    if (dimensions.largeur) parts.push(`L:${dimensions.largeur}cm`);
+    if (dimensions.profondeur) parts.push(`P:${dimensions.profondeur}cm`);
+    if (dimensions.hauteur) parts.push(`H:${dimensions.hauteur}cm`);
+    if (dimensions.diametre) parts.push(`Ø:${dimensions.diametre}cm`);
+    if (dimensions.hauteur_assise) parts.push(`Assise:${dimensions.hauteur_assise}cm`);
+    if (dimensions.couchage_largeur && dimensions.couchage_longueur) {
+      parts.push(`Couchage:${dimensions.couchage_largeur}×${dimensions.couchage_longueur}cm`);
     }
+    return parts.join(' × ');
   };
 
   if (isLoading) {
@@ -474,7 +722,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         <div className="text-center">
           <Brain className="w-16 h-16 text-purple-400 animate-pulse mx-auto mb-4" />
           <p className="text-white text-lg">Chargement du catalogue enrichi...</p>
-          <p className="text-gray-400 text-sm">Analyse IA des attributs produits</p>
+          <p className="text-gray-400 text-sm">Analyse IA des attributs et variations</p>
         </div>
       </div>
     );
@@ -489,32 +737,26 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             <Brain className="w-6 h-6 text-purple-400" />
             Catalogue Enrichi IA
           </h2>
-          <p className="text-gray-300">{filteredProducts.length} produit(s) enrichi(s) sur {products.length}</p>
+          <p className="text-gray-300">
+            {filteredProducts.length} produit(s) • {filteredProducts.reduce((sum, p) => sum + p.variations.length, 0)} variation(s)
+          </p>
         </div>
         
         <div className="flex flex-wrap gap-3">
           <button
             onClick={handleSyncFromCatalog}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Sync depuis catalogue
-          </button>
-          
-          <button
-            onClick={handleEnrichAll}
             disabled={isEnriching}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
           >
             {isEnriching ? (
               <>
-                <Zap className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Enrichissement...
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
-                Enrichir tout
+                <RefreshCw className="w-4 h-4" />
+                Enrichir catalogue
               </>
             )}
           </button>
@@ -532,19 +774,17 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       {/* Barre de recherche et filtres */}
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Recherche */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Rechercher par nom, catégorie, tags, SEO..."
+              placeholder="Rechercher par nom, catégorie, couleur, matériau..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30"
             />
           </div>
           
-          {/* Bouton filtres */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
@@ -555,7 +795,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           </button>
         </div>
 
-        {/* Filtres étendus */}
         {showFilters && (
           <div className="mt-6 pt-6 border-t border-gray-600/50">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -619,7 +858,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         )}
       </div>
 
-      {/* Tableau des produits enrichis */}
+      {/* Tableau enrichi avec variations */}
       {viewMode === 'table' ? (
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
           <div className="overflow-x-auto">
@@ -627,7 +866,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               <thead className="bg-black/20">
                 <tr>
                   <th className="text-left p-4 text-purple-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Variations</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Dimensions IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">SEO</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Confiance</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
@@ -652,8 +893,35 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-white text-sm">{product.title}</div>
                           <div className="text-gray-400 text-xs">{product.brand}</div>
-                          <div className="text-green-400 font-bold">{product.price}€</div>
+                          <div className="text-green-400 font-bold">
+                            {product.variations.length > 1 ? 
+                              `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                              `${product.price}€`
+                            }
+                          </div>
                         </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        <div className="text-cyan-400 text-xs font-medium">
+                          {product.variations.length} variation(s)
+                        </div>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {product.variations.slice(0, 3).map((variation, index) => (
+                            <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                              {variation.options.map(opt => opt.value).join(' ') || variation.title}
+                            </span>
+                          ))}
+                          {product.variations.length > 3 && (
+                            <span className="text-cyan-400 text-xs">+{product.variations.length - 3}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-xs text-gray-300">
+                        {formatDimensions(product.dimensions)}
                       </div>
                     </td>
                     <td className="p-4">
@@ -674,27 +942,22 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                               {product.material}
                             </span>
                           )}
-                          {product.style && (
-                            <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
-                              {product.style}
-                            </span>
-                          )}
                         </div>
-                        {product.room && (
-                          <div className="text-gray-400 text-xs">📍 {product.room}</div>
-                        )}
-                        {product.dimensions && (
-                          <div className="text-gray-400 text-xs">📏 {product.dimensions}</div>
+                        {product.features.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {product.features.slice(0, 2).map((feature, index) => (
+                              <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                                {feature}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="space-y-1">
-                        <div className="text-white text-xs font-medium">{product.seo_title}</div>
+                        <div className="text-white text-xs font-medium line-clamp-1">{product.seo_title}</div>
                         <div className="text-gray-400 text-xs line-clamp-2">{product.seo_description}</div>
-                        {product.google_product_category && (
-                          <div className="text-cyan-400 text-xs">Google: {product.google_product_category}</div>
-                        )}
                       </div>
                     </td>
                     <td className="p-4">
@@ -702,28 +965,29 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getConfidenceColor(product.confidence_score)}`}>
                           {product.confidence_score}%
                         </span>
-                        <div className={`text-xs mt-1 px-2 py-1 rounded ${getEnrichmentSourceColor(product.enrichment_source)}`}>
-                          {product.enrichment_source}
-                        </div>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowDetailModal(true);
+                          }}
+                          className="text-blue-400 hover:text-blue-300 p-1"
+                          title="Voir détails"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <a
                           href={product.product_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 p-1"
+                          className="text-purple-400 hover:text-purple-300 p-1"
                           title="Ouvrir lien externe"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>
-                        <button
-                          className="text-purple-400 hover:text-purple-300 p-1"
-                          title="Modifier enrichissement"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -752,10 +1016,35 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               <p className="text-gray-300 text-sm mb-3">{product.category} • {product.brand}</p>
               
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                <span className="text-xl font-bold text-green-400">
+                  {product.variations.length > 1 ? 
+                    `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                    `${product.price}€`
+                  }
+                </span>
                 <span className={`px-2 py-1 rounded-full text-xs ${getConfidenceColor(product.confidence_score)}`}>
                   {product.confidence_score}%
                 </span>
+              </div>
+              
+              {/* Variations */}
+              <div className="space-y-2 mb-4">
+                <div className="text-cyan-400 text-xs font-medium">
+                  {product.variations.length} variation(s):
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {product.variations.map((variation, index) => (
+                    <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                      {variation.options.map(opt => `${opt.name}: ${opt.value}`).join(' ') || variation.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Dimensions IA */}
+              <div className="bg-black/20 rounded-lg p-3 mb-4">
+                <div className="text-purple-400 text-xs font-medium mb-1">Dimensions IA :</div>
+                <div className="text-white text-xs">{formatDimensions(product.dimensions)}</div>
               </div>
               
               {/* Attributs enrichis */}
@@ -778,36 +1067,37 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                   )}
                 </div>
                 
-                {product.room && (
-                  <div className="text-gray-400 text-xs">📍 {product.room}</div>
+                {product.features.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {product.features.slice(0, 2).map((feature, index) => (
+                      <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                        ⚙️ {feature}
+                      </span>
+                    ))}
+                  </div>
                 )}
-                
-                {product.dimensions && (
-                  <div className="text-gray-400 text-xs">📏 {product.dimensions}</div>
-                )}
-              </div>
-              
-              {/* SEO Preview */}
-              <div className="bg-black/20 rounded-lg p-3 mb-4">
-                <div className="text-cyan-400 text-xs font-medium mb-1">SEO Optimisé :</div>
-                <div className="text-white text-xs font-medium line-clamp-1">{product.seo_title}</div>
-                <div className="text-gray-400 text-xs line-clamp-2">{product.seo_description}</div>
               </div>
               
               <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setShowDetailModal(true);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
+                >
+                  <Eye className="w-3 h-3" />
+                  Détails
+                </button>
                 <a
                   href={product.product_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
                 >
                   <ExternalLink className="w-3 h-3" />
                   Voir
                 </a>
-                <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm">
-                  <Edit className="w-3 h-3" />
-                  Modifier
-                </button>
               </div>
             </div>
           ))}
@@ -824,20 +1114,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               ? 'Aucun produit ne correspond à vos critères de recherche.'
               : 'Votre catalogue enrichi est vide. Synchronisez depuis votre catalogue principal.'}
           </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={handleSyncFromCatalog}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Synchroniser le catalogue
-            </button>
-            <button
-              onClick={handleEnrichAll}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Enrichir avec IA
-            </button>
-          </div>
+          <button
+            onClick={handleSyncFromCatalog}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+          >
+            Enrichir le catalogue
+          </button>
         </div>
       )}
 
@@ -847,10 +1129,16 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
           <BarChart3 className="w-5 h-5 text-purple-400" />
           Statistiques d'enrichissement IA
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-400">{products.length}</div>
             <div className="text-purple-300 text-sm">Produits enrichis</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-cyan-400">
+              {products.reduce((sum, p) => sum + p.variations.length, 0)}
+            </div>
+            <div className="text-cyan-300 text-sm">Variations totales</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-400">
@@ -859,15 +1147,236 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             <div className="text-green-300 text-sm">Confiance moyenne</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-cyan-400">{categories.length}</div>
-            <div className="text-cyan-300 text-sm">Catégories détectées</div>
+            <div className="text-2xl font-bold text-orange-400">{categories.length}</div>
+            <div className="text-orange-300 text-sm">Catégories</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-400">{colors.length + materials.length}</div>
-            <div className="text-orange-300 text-sm">Attributs extraits</div>
+            <div className="text-2xl font-bold text-pink-400">
+              {products.reduce((sum, p) => sum + p.features.length, 0)}
+            </div>
+            <div className="text-pink-300 text-sm">Fonctionnalités</div>
           </div>
         </div>
       </div>
+
+      {/* Modal détails produit */}
+      {showDetailModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h2 className="text-2xl font-bold text-white">Détails produit enrichi</h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Informations principales */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                  <div className="w-full h-80 rounded-2xl overflow-hidden bg-gray-600 mb-6">
+                    <img 
+                      src={selectedProduct.image_url} 
+                      alt={selectedProduct.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">{selectedProduct.title}</h3>
+                      <p className="text-gray-300">{selectedProduct.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Dimensions IA */}
+                  <div className="bg-purple-500/20 rounded-xl p-4 border border-purple-400/50">
+                    <h4 className="font-semibold text-purple-200 mb-3 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Dimensions extraites par IA
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      {selectedProduct.dimensions.largeur && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Largeur :</span>
+                          <span className="text-white font-bold">{selectedProduct.dimensions.largeur}cm</span>
+                        </div>
+                      )}
+                      {selectedProduct.dimensions.profondeur && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Profondeur :</span>
+                          <span className="text-white font-bold">{selectedProduct.dimensions.profondeur}cm</span>
+                        </div>
+                      )}
+                      {selectedProduct.dimensions.hauteur && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Hauteur :</span>
+                          <span className="text-white font-bold">{selectedProduct.dimensions.hauteur}cm</span>
+                        </div>
+                      )}
+                      {selectedProduct.dimensions.hauteur_assise && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Hauteur assise :</span>
+                          <span className="text-white font-bold">{selectedProduct.dimensions.hauteur_assise}cm</span>
+                        </div>
+                      )}
+                      {selectedProduct.dimensions.couchage_largeur && selectedProduct.dimensions.couchage_longueur && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Couchage :</span>
+                          <span className="text-white font-bold">
+                            {selectedProduct.dimensions.couchage_largeur}×{selectedProduct.dimensions.couchage_longueur}cm
+                          </span>
+                        </div>
+                      )}
+                      {selectedProduct.dimensions.diametre && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Diamètre :</span>
+                          <span className="text-white font-bold">Ø{selectedProduct.dimensions.diametre}cm</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Variations détaillées */}
+                  <div className="bg-cyan-500/20 rounded-xl p-4 border border-cyan-400/50">
+                    <h4 className="font-semibold text-cyan-200 mb-3">
+                      Variations ({selectedProduct.variations.length})
+                    </h4>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {selectedProduct.variations.map((variation, index) => (
+                        <div key={index} className="bg-black/20 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="font-medium text-white">{variation.title}</div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {variation.options.map((option, optIndex) => (
+                                  <span key={optIndex} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded-full text-xs">
+                                    {option.name}: {option.value}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-green-400">{variation.price}€</div>
+                              {variation.compare_at_price && (
+                                <div className="text-gray-400 line-through text-sm">{variation.compare_at_price}€</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-400">SKU: {variation.sku}</span>
+                            <span className={`font-semibold ${variation.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              Stock: {variation.stock}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Attributs IA */}
+                  <div className="bg-green-500/20 rounded-xl p-4 border border-green-400/50">
+                    <h4 className="font-semibold text-green-200 mb-3">Attributs IA extraits</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Catégorie :</span>
+                        <span className="text-white">{selectedProduct.category}</span>
+                      </div>
+                      {selectedProduct.subcategory && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Sous-catégorie :</span>
+                          <span className="text-white">{selectedProduct.subcategory}</span>
+                        </div>
+                      )}
+                      {selectedProduct.color && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Couleur :</span>
+                          <span className="text-white">{selectedProduct.color}</span>
+                        </div>
+                      )}
+                      {selectedProduct.material && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Matériau :</span>
+                          <span className="text-white">{selectedProduct.material}</span>
+                        </div>
+                      )}
+                      {selectedProduct.style && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Style :</span>
+                          <span className="text-white">{selectedProduct.style}</span>
+                        </div>
+                      )}
+                      {selectedProduct.room && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Pièce :</span>
+                          <span className="text-white">{selectedProduct.room}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fonctionnalités */}
+              {selectedProduct.features.length > 0 && (
+                <div className="bg-orange-500/20 rounded-xl p-4 border border-orange-400/50">
+                  <h4 className="font-semibold text-orange-200 mb-3">Fonctionnalités détectées</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.features.map((feature, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-3 py-1 rounded-full text-sm">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SEO optimisé */}
+              <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-400/50">
+                <h4 className="font-semibold text-blue-200 mb-3">SEO optimisé par IA</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-blue-300 text-sm">Titre SEO :</label>
+                    <div className="text-white font-medium">{selectedProduct.seo_title}</div>
+                  </div>
+                  <div>
+                    <label className="text-blue-300 text-sm">Description SEO :</label>
+                    <div className="text-gray-300">{selectedProduct.seo_description}</div>
+                  </div>
+                  <div>
+                    <label className="text-blue-300 text-sm">Tags :</label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedProduct.tags.map((tag, index) => (
+                        <span key={index} className="bg-blue-600/30 text-blue-200 px-2 py-1 rounded text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

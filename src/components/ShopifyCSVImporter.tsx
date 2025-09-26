@@ -21,6 +21,31 @@ interface ProductPreview {
   vendor: string;
   description: string;
   isValid: boolean;
+  variants: Array<{
+    id: string;
+    title: string;
+    price: number;
+    compareAtPrice?: number;
+    stock: number;
+    sku: string;
+    options: Array<{ name: string; value: string }>;
+    image_url?: string;
+  }>;
+  dimensions: {
+    largeur?: number;
+    profondeur?: number;
+    hauteur?: number;
+    hauteur_assise?: number;
+    couchage?: { largeur: number; longueur: number };
+    unit: string;
+  };
+  extractedAttributes: {
+    colors: string[];
+    materials: string[];
+    styles: string[];
+    features: string[];
+    room: string[];
+  };
 }
 
 const SHOPIFY_FIELDS: CSVField[] = [
@@ -452,38 +477,94 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
       setCurrentStep(4);
       
       // Sauvegarder directement dans localStorage
-      const transformedProducts = products.map(product => ({
-        id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
-        external_id: product.Handle || `csv-${Date.now()}-${Math.random()}`,
-        name: product.Title || 'Produit sans nom',
-        title: product.Title || 'Produit sans nom',
-        description: product['Body (HTML)'] || '',
-        price: parseFloat(product['Variant Price']) || 0,
-        compare_at_price: product['Variant Compare At Price'] ? parseFloat(product['Variant Compare At Price']) : undefined,
-        category: product.Type || product['Product Category'] || 'Mobilier',
-        productType: product.Type || product['Product Category'] || 'Mobilier',
-        vendor: product.Vendor || 'Decora Home',
-        image_url: product['Image Src'] || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-        product_url: product['Product URL'] || '#',
-        stock: parseInt(product['Variant Inventory Qty']) || 0,
-        status: product.Status || 'active', // Respecter le statut du CSV
-        source_platform: 'csv',
-        sku: product['Variant SKU'] || '',
-        handle: product.Handle || generateHandle(product.Title),
-        availableForSale: true,
-        quantityAvailable: parseInt(product['Variant Inventory Qty']) || 0,
-        variants: [{
-          id: `${product.Handle || 'default'}-variant`,
-          title: 'Default',
+      // Grouper les produits par Handle pour créer des produits avec vraies variations
+      const productGroups = new Map<string, any[]>();
+      
+      products.forEach(product => {
+        const handle = product.Handle || generateHandle(product.Title);
+        if (!productGroups.has(handle)) {
+          productGroups.set(handle, []);
+        }
+        productGroups.get(handle)!.push(product);
+      });
+
+      const transformedProducts = [];
+      
+      productGroups.forEach((productRows, handle) => {
+        const firstProduct = productRows[0];
+        const description = firstProduct['Body (HTML)'] || '';
+        
+        // Extraire les attributs enrichis depuis la description
+        const extractedAttributes = extractAttributesFromDescription(description);
+        const dimensions = extractDimensionsFromDescription(description);
+        
+        // Créer les variations avec tous les détails
+        const variants = productRows.map((product, index) => ({
+          id: `${handle}-variant-${index}`,
+          title: (() => {
+            const options = [];
+            if (product['Option1 Name'] && product['Option1 Value']) {
+              options.push(`${product['Option1 Name']}: ${product['Option1 Value']}`);
+            }
+            if (product['Option2 Name'] && product['Option2 Value']) {
+              options.push(`${product['Option2 Name']}: ${product['Option2 Value']}`);
+            }
+            if (product['Option3 Name'] && product['Option3 Value']) {
+              options.push(`${product['Option3 Name']}: ${product['Option3 Value']}`);
+            }
+            return options.length > 0 ? options.join(' / ') : 'Default';
+          })(),
           price: parseFloat(product['Variant Price']) || 0,
           compareAtPrice: product['Variant Compare At Price'] ? parseFloat(product['Variant Compare At Price']) : undefined,
           availableForSale: true,
           quantityAvailable: parseInt(product['Variant Inventory Qty']) || 0,
-          selectedOptions: []
-        }],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
+          sku: product['Variant SKU'] || '',
+          selectedOptions: (() => {
+            const options = [];
+            if (product['Option1 Name'] && product['Option1 Value']) {
+              options.push({ name: product['Option1 Name'], value: product['Option1 Value'] });
+            }
+            if (product['Option2 Name'] && product['Option2 Value']) {
+              options.push({ name: product['Option2 Name'], value: product['Option2 Value'] });
+            }
+            if (product['Option3 Name'] && product['Option3 Value']) {
+              options.push({ name: product['Option3 Name'], value: product['Option3 Value'] });
+            }
+            return options;
+          })(),
+          image_url: product['Image Src'] || firstProduct['Image Src'] || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg'
+        }));
+
+        const firstVariant = variants[0];
+        
+        transformedProducts.push({
+          id: handle,
+          external_id: handle,
+          name: firstProduct.Title || 'Produit sans nom',
+          title: firstProduct.Title || 'Produit sans nom',
+          description: description,
+          price: firstVariant.price,
+          compare_at_price: firstVariant.compareAtPrice,
+          category: firstProduct.Type || firstProduct['Product Category'] || 'Mobilier',
+          productType: firstProduct.Type || firstProduct['Product Category'] || 'Mobilier',
+          vendor: firstProduct.Vendor || 'Decora Home',
+          image_url: firstVariant.image_url,
+          product_url: firstProduct['Product URL'] || '#',
+          stock: variants.reduce((sum, v) => sum + v.quantityAvailable, 0),
+          status: firstProduct.Status || 'active',
+          source_platform: 'csv',
+          sku: firstVariant.sku,
+          handle: handle,
+          availableForSale: true,
+          quantityAvailable: variants.reduce((sum, v) => sum + v.quantityAvailable, 0),
+          variants: variants,
+          // Ajouter les attributs extraits pour l'IA
+          extractedAttributes: extractedAttributes,
+          dimensions: dimensions,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      });
       
       // Sauvegarder dans localStorage
       const activeProducts = transformedProducts.filter(p => p.status === 'active');
