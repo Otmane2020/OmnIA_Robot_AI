@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
   extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent,
-  detectEnhancedCategory
+  detectEnhancedCategory,
   Package, Tag, DollarSign, Image, Settings, Search,
   Filter, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
