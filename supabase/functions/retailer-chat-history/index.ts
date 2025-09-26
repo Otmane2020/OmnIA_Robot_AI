@@ -39,22 +39,6 @@ Deno.serve(async (req: Request) => {
     const { retailer_id, limit = 100, include_demo_sessions = true }: ChatHistoryRequest = await req.json();
     
     console.log('💬 [chat-history] Récupération historique pour retailer:', retailer_id);
-    
-    // Validate retailer_id as UUID
-    const isRetailerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(retailer_id);
-    if (retailer_id && !isRetailerIdUuid) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Invalid retailer_id format. Must be a valid UUID.',
-          details: `Received retailer_id: ${retailer_id}`
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
-      );
-    }
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');

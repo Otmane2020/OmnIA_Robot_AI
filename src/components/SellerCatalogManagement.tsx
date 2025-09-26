@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Eye, CreditCard as Edit, Trash2, ExternalLink, Package, Tag, DollarSign, Image, BarChart3, Settings, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, Upload, Download } from 'lucide-react';
+import { 
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Package, Tag, DollarSign, Image, BarChart3, Settings,
+  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
+  Upload, Download
+} from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface SellerProduct {
@@ -26,8 +31,7 @@ interface SellerProduct {
 }
 
 interface SellerCatalogManagementProps {
-  sellerId: string; // This should be the UUID
-  sellerSubdomain?: string; // Add subdomain for context
+  sellerId: string;
 }
 
 export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = ({ sellerId }) => {
@@ -79,7 +83,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
       setIsLoading(true);
       
       // Charger UNIQUEMENT les produits de ce vendeur spécifique
-      const sellerProductsKey = `seller_${sellerId}_products`; // Use sellerId (UUID)
+      const sellerProductsKey = `seller_${sellerId}_products`;
       const savedProducts = localStorage.getItem(sellerProductsKey);
       let sellerProducts: SellerProduct[] = [];
       
@@ -119,7 +123,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
   const handleImportProducts = () => {
     showInfo(
       'Import de produits',
-      'Utilisez l\'onglet "Intégration" dans le menu principal pour importer votre catalogue via CSV, Shopify ou XML. Les produits seront automatiquement liés à votre compte.',
+      'Utilisez l\'onglet "Intégration" dans le menu principal pour importer votre catalogue via CSV, Shopify ou XML.',
       [
         {
           label: 'Aller à l\'intégration',
@@ -134,7 +138,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     if (confirm('Supprimer ce produit ?')) {
       const updatedProducts = products.filter(p => p.id !== productId);
       setProducts(updatedProducts);
-      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts)); // Use sellerId (UUID)
+      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts));
       showSuccess('Produit supprimé', 'Le produit a été supprimé avec succès.');
     }
   };
@@ -145,7 +149,7 @@ export const SellerCatalogManagement: React.FC<SellerCatalogManagementProps> = (
     if (confirm(`Supprimer ${selectedProducts.length} produit(s) sélectionné(s) ?`)) {
       const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
       setProducts(updatedProducts);
-      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts)); // Use sellerId (UUID)
+      localStorage.setItem(`seller_${sellerId}_products`, JSON.stringify(updatedProducts));
       setSelectedProducts([]);
       showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
     }
