@@ -104,11 +104,9 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
 
       if (error) {
         console.error('❌ Erreur Supabase products_enriched:', error);
-        // Fallback to mock data if database fails
-        const mockProducts = generateFallbackProducts();
-        setProducts(mockProducts);
-        setFilteredProducts(mockProducts);
-        showError('Base de données', 'Utilisation des données de démonstration.');
+        setProducts([]);
+        setFilteredProducts([]);
+        showError('Erreur base de données', 'Impossible de charger les produits enrichis depuis Supabase.');
         return;
       }
 
@@ -118,242 +116,19 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         setFilteredProducts(enrichedProducts);
       } else {
         console.log('⚠️ Aucun produit enrichi, génération fallback...');
-        const fallbackProducts = generateFallbackProducts();
-        setProducts(fallbackProducts);
-        setFilteredProducts(fallbackProducts);
+        setProducts([]);
+        setFilteredProducts([]);
         showInfo('Catalogue vide', 'Aucun produit enrichi trouvé. Utilisez "Sync depuis catalogue" pour enrichir vos produits.');
       }
       
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
-      const fallbackProducts = generateFallbackProducts();
-      setProducts(fallbackProducts);
-      setFilteredProducts(fallbackProducts);
+      setProducts([]);
+      setFilteredProducts([]);
       showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateFallbackProducts = (): EnrichedProduct[] => {
-    // Charger les produits du catalogue normal
-    const savedProducts = localStorage.getItem('catalog_products');
-    let baseProducts = [];
-    
-    if (savedProducts) {
-      try {
-        baseProducts = JSON.parse(savedProducts);
-      } catch (error) {
-        console.error('Erreur parsing produits sauvegardés:', error);
-      }
-    }
-    
-    // Produits de base Decora Home
-    const decoraProducts = [
-      {
-        id: 'decora-canape-alyana-beige',
-        name: 'Canapé ALYANA convertible - Beige',
-        description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
-        price: 799,
-        category: 'Canapé',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
-        product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
-        stock: 100
-      },
-      {
-        id: 'decora-table-aurea-100',
-        name: 'Table AUREA Ø100cm - Travertin',
-        description: 'Table ronde en travertin naturel avec pieds métal noir',
-        price: 499,
-        category: 'Table',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
-        product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
-        stock: 50
-      },
-      {
-        id: 'decora-chaise-inaya-gris',
-        name: 'Chaise INAYA - Gris chenille',
-        description: 'Chaise en tissu chenille avec pieds métal noir',
-        price: 99,
-        category: 'Chaise',
-        vendor: 'Decora Home',
-        image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
-        product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
-        stock: 96
-      }
-    ];
-    
-    // Combiner produits de base + produits importés
-    const allProducts = [...decoraProducts, ...baseProducts];
-    
-    // Enrichir automatiquement chaque produit
-    return allProducts.map(product => enrichProduct(product));
-  };
-
-  const enrichProduct = (product: any): EnrichedProduct => {
-    const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
-    
-    // Enrichissement automatique basé sur le texte
-    const enriched = {
-      id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-      handle: product.handle || product.id || `handle-${Date.now()}`,
-      title: product.name || product.title || 'Produit sans nom',
-      description: product.description || '',
-      category: detectCategory(text),
-      subcategory: detectSubcategory(text),
-      color: detectColor(text),
-      material: detectMaterial(text),
-      fabric: detectFabric(text),
-      style: detectStyle(text),
-      dimensions: detectDimensions(text),
-      room: detectRoom(text),
-      price: product.price || 0,
-      stock_qty: product.stock || product.quantityAvailable || 0,
-      image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.product_url || '#',
-      tags: generateTags(text),
-      seo_title: generateSEOTitle(product.name || product.title, detectColor(text), detectMaterial(text)),
-      seo_description: generateSEODescription(product.name || product.title, detectStyle(text), detectMaterial(text)),
-      ad_headline: generateAdHeadline(product.name || product.title),
-      ad_description: generateAdDescription(product.name || product.title, detectMaterial(text)),
-      google_product_category: getGoogleCategory(detectCategory(text)),
-      gtin: '',
-      brand: product.vendor || 'Decora Home',
-      confidence_score: calculateConfidence(text),
-      enriched_at: new Date().toISOString(),
-      enrichment_source: 'auto',
-      created_at: product.created_at || new Date().toISOString()
-    };
-    
-    return enriched;
-  };
-
-  // Fonctions de détection
-  const detectCategory = (text: string): string => {
-    if (text.includes('canapé') || text.includes('sofa')) return 'Canapé';
-    if (text.includes('table')) return 'Table';
-    if (text.includes('chaise') || text.includes('fauteuil')) return 'Chaise';
-    if (text.includes('lit')) return 'Lit';
-    if (text.includes('armoire') || text.includes('commode')) return 'Rangement';
-    if (text.includes('meuble tv')) return 'Meuble TV';
-    return 'Mobilier';
-  };
-
-  const detectSubcategory = (text: string): string => {
-    if (text.includes('angle')) return 'Canapé d\'angle';
-    if (text.includes('convertible')) return 'Canapé convertible';
-    if (text.includes('basse')) return 'Table basse';
-    if (text.includes('manger')) return 'Table à manger';
-    if (text.includes('bureau')) return 'Chaise de bureau';
-    return '';
-  };
-
-  const detectColor = (text: string): string => {
-    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
-    for (const color of colors) {
-      if (text.includes(color)) return color;
-    }
-    return '';
-  };
-
-  const detectMaterial = (text: string): string => {
-    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin', 'chenille'];
-    for (const material of materials) {
-      if (text.includes(material)) return material;
-    }
-    return '';
-  };
-
-  const detectFabric = (text: string): string => {
-    const fabrics = ['velours', 'chenille', 'lin', 'coton', 'cuir', 'tissu', 'polyester'];
-    for (const fabric of fabrics) {
-      if (text.includes(fabric)) return fabric;
-    }
-    return '';
-  };
-
-  const detectStyle = (text: string): string => {
-    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
-    for (const style of styles) {
-      if (text.includes(style)) return style;
-    }
-    return '';
-  };
-
-  const detectDimensions = (text: string): string => {
-    const match = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-    return match ? match[0] : '';
-  };
-
-  const detectRoom = (text: string): string => {
-    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée', 'terrasse'];
-    for (const room of rooms) {
-      if (text.includes(room)) return room;
-    }
-    return '';
-  };
-
-  const generateTags = (text: string): string[] => {
-    const tags = [];
-    if (text.includes('convertible')) tags.push('convertible');
-    if (text.includes('rangement')) tags.push('rangement');
-    if (text.includes('angle')) tags.push('angle');
-    if (text.includes('moderne')) tags.push('moderne');
-    if (text.includes('design')) tags.push('design');
-    return tags;
-  };
-
-  const generateSEOTitle = (name: string, color: string, material: string): string => {
-    let title = name;
-    if (color) title += ` ${color}`;
-    if (material) title += ` ${material}`;
-    title += ' - Decora Home';
-    return title.substring(0, 70);
-  };
-
-  const generateSEODescription = (name: string, style: string, material: string): string => {
-    let desc = `${name}`;
-    if (material) desc += ` en ${material}`;
-    if (style) desc += ` de style ${style}`;
-    desc += '. Livraison gratuite. Garantie qualité Decora Home.';
-    return desc.substring(0, 155);
-  };
-
-  const generateAdHeadline = (name: string): string => {
-    return name.substring(0, 30);
-  };
-
-  const generateAdDescription = (name: string, material: string): string => {
-    let desc = name;
-    if (material) desc += ` ${material}`;
-    desc += '. Promo !';
-    return desc.substring(0, 90);
-  };
-
-  const getGoogleCategory = (category: string): string => {
-    const categoryMap: { [key: string]: string } = {
-      'Canapé': '635',
-      'Table': '443', 
-      'Chaise': '436',
-      'Lit': '569',
-      'Rangement': '6552',
-      'Meuble TV': '6552',
-      'Décoration': '696',
-      'Éclairage': '594'
-    };
-    return categoryMap[category] || '';
-  };
-
-  const calculateConfidence = (text: string): number => {
-    let confidence = 30; // Base
-    if (detectColor(text)) confidence += 20;
-    if (detectMaterial(text)) confidence += 20;
-    if (detectStyle(text)) confidence += 15;
-    if (detectRoom(text)) confidence += 10;
-    if (detectDimensions(text)) confidence += 5;
-    return Math.min(confidence, 100);
   };
 
   const handleEnrichAll = async () => {
