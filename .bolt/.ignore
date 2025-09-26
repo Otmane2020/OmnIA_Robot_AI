@@ -2,9 +2,9 @@
 # Ignorer toutes les pages spécifiques
 /src/pages/About.tsx
 /src/pages/AdminDashboard.tsx
-/src/pages/AdminLogin.tsx
+#/src/pages/AdminLogin.tsx
 #/src/pages/APITest.tsx
-/src/pages/ChatInterface.tsx
+#/src/pages/ChatInterface.tsx
 /src/pages/Contact.tsx
 /src/pages/Documentation.tsx
 /src/pages/Guides.tsx
