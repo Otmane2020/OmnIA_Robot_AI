@@ -6,6 +6,7 @@ import {
   Filter, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { extractEnhancedStyles, extractEnhancedColors, extractEnhancedMaterials, extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent } from '../utils/productEnrichmentUtils';
 import { 
   extractEnhancedStyles, 
   extractEnhancedColors, 
