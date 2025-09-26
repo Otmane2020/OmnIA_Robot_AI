@@ -265,7 +265,15 @@ export const Contact: React.FC = () => {
                     <Clock className="w-6 h-6 text-white" />
                   </div>
                   <div>
-            <Logo size="md" />
+                    <div className="font-semibold text-white">Horaires</div>
+                    <div className="text-gray-300">
+                      Lun - Ven : 9h00 - 18h00<br />
+                      Sam : 10h00 - 16h00
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
               <h3 className="text-xl font-bold text-white mb-4">Support Prioritaire</h3>
