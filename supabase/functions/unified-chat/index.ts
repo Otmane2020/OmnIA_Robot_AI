@@ -15,15 +15,13 @@ interface UnifiedChatRequest {
   }>;
 }
 
-const DEFAULT_RETAILER_ID = '00000000-0000-0000-0000-000000000000'; // Placeholder UUID for demo
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { message, conversation_context = [], retailer_id = DEFAULT_RETAILER_ID }: UnifiedChatRequest = await req.json();
+    const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -40,7 +38,7 @@ Deno.serve(async (req: Request) => {
     // Étape 2 : réponse IA
     const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
 
-    // Étape 3 : conversion (forcer l'affichage si on a trouvé des produits)
+    // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
       aiResponse.selectedProducts = relevantProducts.slice(0, 2);
       aiResponse.should_show_products = true;
@@ -67,7 +65,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
   try {
     console.log('🔍 Recherche produits pour:', query);
     
-    // NOUVEAU: Utiliser Smart AI Table pour réponses intelligentes
+    // NOUVEAU: Essayer d'abord products_enriched, puis fallback vers ai_products
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -76,17 +74,13 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
     const productIntent = analyzeProductIntent(query);
     const extractedAttributes = extractAttributesFromQuery(query);
 
-    // Recherche dans products_enriched avec Smart AI
+    // Recherche dans products_enriched d'abord
     let qb = supabase
       .from('products_enriched')
-      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url, tags, confidence_score, enriched_at')
+      .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url')
       .gt('stock_qty', 0);
 
-    // Only apply retailer_id filter if it's a valid UUID, otherwise skip for demo/global products
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(retailerId);
-    if (retailerId && isUuid) {
-      qb = qb.eq('retailer_id', retailerId);
-    } else if (productIntent.category) {
+    if (productIntent.category) {
       qb = qb.or(`category.ilike.%${productIntent.category}%,subcategory.ilike.%${productIntent.category}%`);
     }
     if (extractedAttributes.colors.length > 0) {
@@ -99,9 +93,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       qb = qb.or(extractedAttributes.dimensions.map(dim => `dimensions.ilike.%${dim}%`).join(','));
     }
 
-    // Ordonner par confiance IA et date d'enrichissement
-    qb = qb.order('confidence_score', { ascending: false }).order('enriched_at', { ascending: false }).limit(5);
-    
+    qb = qb.limit(5);
     const { data: enrichedData, error: enrichedError } = await qb;
 
     if (enrichedError) {
@@ -109,9 +101,9 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
     }
 
     let products = enrichedData || [];
-    console.log('✅ Produits Smart AI trouvés:', products.length);
+    console.log('✅ Produits enrichis trouvés:', products.length);
 
-    // FALLBACK: Si pas assez de produits Smart AI, chercher dans ai_products
+    // FALLBACK: Si pas assez de produits enrichis, chercher dans ai_products
     if (products.length < 3) {
       console.log('🔄 Fallback vers ai_products...');
       
@@ -121,10 +113,6 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
         .gt('stock', 0);
 
       if (productIntent.category) {
-        // Apply store_id filter for ai_products if retailerId is a valid UUID
-        if (retailerId && isUuid) {
-          aiQuery = aiQuery.eq('store_id', retailerId);
-        }
         aiQuery = aiQuery.ilike('category', `%${productIntent.category}%`);
       }
 
@@ -132,7 +120,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       const { data: aiData } = await aiQuery;
       
       if (aiData && aiData.length > 0) {
-        // Convertir format ai_products vers format Smart AI
+        // Convertir format ai_products vers format products_enriched
         const convertedProducts = aiData.map(product => ({
           id: product.id,
           handle: product.id,
@@ -149,9 +137,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
           price: product.price,
           stock_qty: product.stock,
           image_url: product.image_url,
-          product_url: product.product_url,
-          confidence_score: 50,
-          enriched_at: new Date().toISOString()
+          product_url: product.product_url
         }));
         
         products = [...products, ...convertedProducts];
@@ -159,7 +145,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       }
     }
 
-    console.log('✅ Total produits Smart AI trouvés:', products.length);
+    console.log('✅ Total produits trouvés:', products.length);
     return products;
   } catch (error) {
     console.error('❌ Erreur recherche produits:', error);
@@ -228,36 +214,4 @@ ${productsContext}`;
     selectedProducts: products.slice(0, 2),
     should_show_products: products.length > 0
   };
-}
-
-async function saveConversation(supabase: any, conversationData: any) {
-  try {
-    const isRetailerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.retailer_id);
-    const isUserIdUuid = conversationData.user_id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.user_id) : false;
-
-    // Sauvegarder le message client
-    await supabase.from('retailer_conversations').insert({
-      user_id: isUserIdUuid ? conversationData.user_id : null, // Set to null if not a valid UUID
-      session_id: conversationData.session_id,
-      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null, // Set to null if not a valid UUID
-      message: conversationData.message,
-      intent: conversationData.intent,
-      ip_address: getClientIP(),
-      timestamp: new Date().toISOString()
-    });
-
-    // Sauvegarder la réponse robot
-    await supabase.from('retailer_conversations').insert({
-      user_id: conversationData.user_id,
-      session_id: conversationData.session_id,
-      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null,
-      response: conversationData.response,
-      products: conversationData.products || [],
-      final_action: detectFinalAction(conversationData.response),
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur sauvegarde conversation:', error);
-  }
 }

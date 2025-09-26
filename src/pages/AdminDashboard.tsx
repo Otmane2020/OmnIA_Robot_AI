@@ -239,10 +239,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
             onClick={() => {
               // Si c'est un vendeur, rediriger vers son robot spécifique
               if (currentVendor) {
-                const robotPath = currentVendor.subdomain || 
-                                currentVendor.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || 
-                                currentVendor.id;
-                window.open(`/robot/${robotPath}`, '_blank');
+                window.open(`/robot/${currentVendor.subdomain || currentVendor.id}`, '_blank');
               } else {
                 window.open('/robot', '_blank');
               }
@@ -252,7 +249,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
             <Eye className="w-8 h-8 text-green-400 mb-3" />
             <h3 className="text-lg font-semibold text-white mb-2">Tester OmnIA</h3>
             <p className="text-gray-300 text-sm">
-              {currentVendor ? `/robot/${currentVendor.subdomain || currentVendor.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '') || currentVendor.id}` : 'Robot global'}
+              {currentVendor ? `/robot/${currentVendor.subdomain || currentVendor.id}` : 'Robot global'}
             </p>
           </button>
         </div>
@@ -357,7 +354,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
       </div>
 
       <EcommerceIntegration onConnected={handlePlatformConnected} />
-      <EcommerceIntegration onConnected={handlePlatformConnected} retailerId={currentVendor?.id} />
     </div>
   );
 

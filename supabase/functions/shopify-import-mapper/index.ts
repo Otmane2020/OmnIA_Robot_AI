@@ -144,21 +144,6 @@ Deno.serve(async (req: Request) => {
     const { products, store_id, import_type, mapping_config }: ShopifyImportRequest = await req.json();
     
     console.log('📦 Import Shopify:', {
-      // Validate store_id as UUID
-      const isStoreIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(store_id);
-      if (store_id && !isStoreIdUuid) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Invalid store_id format. Must be a valid UUID.',
-            details: `Received store_id: ${store_id}`
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          }
-        );
-      }
       products_count: products.length,
       store_id,
       import_type
