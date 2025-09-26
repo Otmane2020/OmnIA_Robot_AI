@@ -1,53 +1,55 @@
 import React from 'react';
-import { User, Bot, Volume2, Zap, ShoppingCart, Sparkles } from 'lucide-react';
+import { User, Bot, Volume2, Zap } from 'lucide-react';
 import { ChatMessage as ChatMessageType } from '../types';
-import { ProductCard } from './ProductCard';
 
 interface ChatMessageProps {
   message: ChatMessageType;
   onAddToCart: (productId: string, variantId: string) => void;
   onSpeak?: (text: string) => void;
   isPlaying?: boolean;
-  onQuickReply?: (text: string) => void;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ 
-  message, 
-  onAddToCart, 
-  onSpeak, 
-  isPlaying,
-  onQuickReply 
-}) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onAddToCart, onSpeak, isPlaying }) => {
   const formatMessage = (content: string) => {
-    const lines = content.split('\n');
-    return lines.map((line, index) => {
-      if (line.startsWith('**') && line.endsWith('**')) {
+    // Séparer le contenu principal et la mention ChatGPT
+    const parts = content.split(/\n\n\*Powered by (?:ChatGPT|DeepSeek)[^*]*\*/);
+    const cleanContent = parts[0].trim();
+    const poweredByMatch = content.match(/\*Powered by (?:ChatGPT|DeepSeek)[^*]*\*/);
+    
+    const lines = cleanContent.split('\n');
+    const formattedLines = lines.map((line, index) => {
+      if (line.startsWith('### ')) {
         return (
-          <h3 key={index} className={`font-bold text-lg mb-2 ${message.isUser ? 'text-blue-100' : 'text-blue-600'}`}>
-            {line.replace(/\*\*/g, '')}
+          <h3 key={index} className={`text-lg font-bold mb-3 mt-4 ${message.isUser ? 'text-white' : 'text-gray-800'}`}>
+            {line.replace('### ', '')}
           </h3>
         );
       }
-      
-      if (line.startsWith('• ')) {
+      if (line.startsWith('## ')) {
         return (
-          <div key={index} className={`flex items-start gap-2 mb-2 ${message.isUser ? 'text-blue-100' : 'text-gray-700'}`}>
-            <span className="text-cyan-400 mt-1">•</span>
-            <span>{line.substring(2)}</span>
-          </div>
+          <h2 key={index} className={`text-xl font-bold mb-3 mt-4 ${message.isUser ? 'text-white' : 'text-gray-800'}`}>
+            {line.replace('## ', '')}
+          </h2>
         );
       }
-      
-      if (line.includes('€')) {
-        const parts = line.split(/(€\d+|\d+€)/);
+      if (line.startsWith('# ')) {
+        return (
+          <h1 key={index} className={`text-2xl font-bold mb-4 mt-4 ${message.isUser ? 'text-white' : 'text-gray-800'}`}>
+            {line.replace('# ', '')}
+          </h1>
+        );
+      }
+
+      if (line.includes('**')) {
+        const parts = line.split(/(\*\*.*?\*\*)/g);
         return (
           <p key={index} className="mb-2">
             {parts.map((part, partIndex) => {
-              if (part.match(/€\d+|\d+€/)) {
+              if (part.startsWith('**') && part.endsWith('**')) {
                 return (
-                  <span key={partIndex} className="font-bold text-green-500">
-                    {part}
-                  </span>
+                  <strong key={partIndex} className={`font-bold ${message.isUser ? 'text-blue-200' : 'text-blue-600'}`}>
+                    {part.slice(2, -2)}
+                  </strong>
                 );
               }
               return part;
@@ -55,9 +57,64 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </p>
         );
       }
-      
-      return line ? <p key={index} className="mb-2">{line}</p> : <br key={index} />;
+
+      if (line.includes('*') && !line.includes('**')) {
+        const parts = line.split(/(\*.*?\*)/g);
+        return (
+          <p key={index} className="mb-2">
+            {parts.map((part, partIndex) => {
+              if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+                return (
+                  <em key={partIndex} className={`italic font-medium ${message.isUser ? 'text-blue-200' : 'text-blue-600'}`}>
+                    {part.slice(1, -1)}
+                  </em>
+                );
+              }
+              return part;
+            })}
+          </p>
+        );
+      }
+
+      if (line.startsWith('• ') || line.startsWith('- ')) {
+        return (
+          <div key={index} className="flex items-start gap-3 mb-2 ml-2">
+            <span className="text-blue-500 mt-1 font-bold text-lg">•</span>
+            <span className={message.isUser ? 'text-blue-100' : 'text-gray-700'}>{line.replace(/^[•-] /, '')}</span>
+          </div>
+        );
+      }
+
+      if (line.trim() === '---' || line.trim() === '___') {
+        return <hr key={index} className="border-gray-200 my-4" />;
+      }
+
+      if (line.trim() === '') {
+        return <br key={index} />;
+      }
+
+      return (
+        <p key={index} className="mb-2">
+          {line}
+        </p>
+      );
     });
+
+    // Ajouter "Powered by ChatGPT" à la fin si présent
+    const hasPoweredBy = poweredByMatch !== null;
+    
+    return (
+      <div>
+        {formattedLines}
+        {hasPoweredBy && (
+          <div className={`mt-3 pt-3 border-t ${message.isUser ? 'border-blue-300' : 'border-gray-200'}`}>
+            <span className={`text-xs italic ${message.isUser ? 'text-blue-200' : 'text-gray-500'}`}>
+              ⚡ {poweredByMatch[0].replace(/\*/g, '').replace('ChatGPT', 'DeepSeek')}
+            </span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -109,37 +166,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               Réécouter
             </button>
           )}
+          
         </div>
-        
-        {/* Products Display */}
-        {message.products && message.products.length > 0 && (
-          <div className="mt-6 space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-cyan-400" />
-              Produits recommandés
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {message.products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={onAddToCart}
-                />
-              ))}
-            </div>
-          </div>
-        )}
         
         <div className="text-xs text-gray-500 mt-2 px-2 md:px-3 py-1 bg-gray-100 rounded-full inline-block border border-gray-200 font-medium">
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
 
-      {/* User avatar */}
-      {message.isUser && (
+      {/* User avatar - only show on desktop and when there's no photo */}
+      {message.isUser && !message.photoUrl && (
         <div className="hidden md:block flex-shrink-0">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-gray-600 to-gray-800 rounded-2xl flex items-center justify-center shadow-lg border-2 border-gray-400/30">
-            <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 font-bold text-sm">U</span>
+            </div>
           </div>
         </div>
       )}
