@@ -263,6 +263,7 @@ window.OmniaConfig = {
                 <h4 className="font-semibold text-white">Professionnel</h4>
                 <p className="text-xs text-gray-300">Ton expert et courtois</p>
               </div>
+            </div>
             <Logo size="md" />
           </div>
         </div>
