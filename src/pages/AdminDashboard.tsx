@@ -10,7 +10,6 @@ import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { ProductsEnrichedTable } from '../components/ProductsEnrichedTable';
-import { SmartAIProductManager } from '../components/SmartAIProductManager';
 import { APITest } from './APITest';
 import { NotificationSystem, useNotifications } from '../components/NotificationSystem';
 import { QrCode } from 'lucide-react';
@@ -75,7 +74,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   const tabs = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'catalogue', label: 'Catalogue', icon: Database },
-    { id: 'smart-ai', label: 'Smart AI Products', icon: Brain },
+    { id: 'enriched', label: 'Catalogue Enrichi', icon: Brain },
     { id: 'integration', label: 'Intégration', icon: Globe },
     { id: 'ml-training', label: 'Entraînement IA', icon: Brain },
     { id: 'robot', label: 'Robot OmnIA', icon: Bot },
@@ -328,14 +327,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
   const renderEnriched = () => (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Smart AI Products</h2>
+        <h2 className="text-2xl font-bold text-white">Catalogue Enrichi IA</h2>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-          <span className="text-purple-300 text-sm">Smart AI Analysis actif</span>
+          <span className="text-purple-300 text-sm">Enrichissement automatique actif</span>
         </div>
       </div>
 
-      <SmartAIProductManager />
+      <ProductsEnrichedTable 
+        vendorId={currentVendor?.id} 
+        retailerId={currentVendor?.id}
+        refreshTrigger={enrichedRefreshTrigger}
+      />
     </div>
   );
   
@@ -534,7 +537,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'catalogue': return renderCatalogue();
-      case 'smart-ai': return renderEnriched();
+      case 'enriched': return renderEnriched();
       case 'integration': return renderIntegration();
       case 'ml-training': return renderMLTraining();
       case 'robot': return renderRobot();
@@ -586,8 +589,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    // Auto-trigger sync when opening "Smart AI Products" tab
-                    if (tab.id === 'smart-ai') {
+                    // Auto-trigger sync when opening "Catalogue Enrichi" tab
+                    if (tab.id === 'enriched') {
                       setEnrichedRefreshTrigger(prev => prev + 1);
                     }
                   }}
