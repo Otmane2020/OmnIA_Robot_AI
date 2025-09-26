@@ -308,7 +308,7 @@ function extractEnhancedAttributes(title: string, description: string, productTy
     { name: 'résine', patterns: ['résine', 'resin'] },
     { name: 'rotin', patterns: ['rotin', 'rattan'] },
     { name: 'osier', patterns: ['osier', 'wicker'] },
-    { name: 'plastique', patterns: ['plastique', 'plastic'] }
+    { name: 'plastique', patterns: ['plastique', 'plastic'] },
     { name: 'liège', patterns: ['liège', 'cork'] },
     { name: 'jonc de mer', patterns: ['jonc de mer', 'seagrass'] },
     { name: 'raphia', patterns: ['raphia', 'raffia'] }
