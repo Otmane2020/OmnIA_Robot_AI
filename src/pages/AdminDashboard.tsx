@@ -5,6 +5,10 @@ import {
   Bot, Globe, FileText, Eye, Settings, Store, LogOut, BarChart3, Brain,
   Clock, Star, X, ShoppingBag
 } from 'lucide-react';
+import { Logo } from '../components/Logo';
+import { SellerDashboard } from '../components/SellerDashboard';
+import { EcommerceIntegration } from '../components/EcommerceIntegration';
+import { AITrainingInterface } from '../components/AITrainingInterface';
 import { OmniaRobotTab } from '../components/OmniaRobotTab';
 import { CatalogManagement } from '../components/CatalogManagement';
 import { MLTrainingDashboard } from '../components/MLTrainingDashboard';

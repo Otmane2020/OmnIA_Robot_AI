@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Book, Code, Download, ExternalLink, ArrowLeft, Search, FileText, Video, Zap } from 'lucide-react';
+import { Logo } from '../components/Logo';
 
 export const Documentation: React.FC = () => {
   const [activeSection, setActiveSection] = useState('getting-started');
@@ -383,15 +384,7 @@ window.OmniaConfig = {
       <header className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">O</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">OmnIA</h1>
-                <p className="text-cyan-300 text-sm">Documentation</p>
-              </div>
-            </div>
+            <Logo size="md" />
             <div className="flex items-center space-x-4">
               <a href="/" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
