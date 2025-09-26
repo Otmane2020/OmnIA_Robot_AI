@@ -376,7 +376,7 @@ async function createProductVariants(products: EnrichedProduct[]) {
 
   for (const product of products) {
     try {
-      // Créer des variantes basées sur les couleurs disponibles
+      // Créer des variantes basées sur les attributs enrichis
       const variants = await generateProductVariants(product);
       
       productsWithVariants.push({
@@ -395,87 +395,86 @@ async function createProductVariants(products: EnrichedProduct[]) {
 }
 
 async function generateProductVariants(product: EnrichedProduct): Promise<ProductVariant[]> {
-  // Exemple pour chaise AVINA avec plusieurs coloris
-  if (product.title.toLowerCase().includes('avina') || product.title.toLowerCase().includes('chaise')) {
-    const basePrice = product.price;
-    const comparePrice = product.compare_at_price;
+  // Générer des variantes basées sur le titre et les attributs enrichis
+  const baseTitle = product.title;
+  const basePrice = product.price;
+  const comparePrice = product.compare_at_price;
+  
+  // Chaises AVINA avec variantes de couleur
+  if (baseTitle.toLowerCase().includes('avina') || baseTitle.toLowerCase().includes('chaise')) {
+    const availableColors = ['Beige', 'Gris', 'Anthracite'];
+    const stockPerVariant = Math.floor(product.stock_qty / availableColors.length) || 10;
     
-    return [
-      {
-        id: `${product.id}-beige`,
-        title: `${product.title} - Beige`,
-        color: 'Beige',
-        price: basePrice,
-        compare_at_price: comparePrice,
-        image_url: product.image_url,
-        stock_qty: Math.floor(product.stock_qty / 3) || 10
-      },
-      {
-        id: `${product.id}-gris`,
-        title: `${product.title} - Gris`,
-        color: 'Gris',
-        price: basePrice,
-        compare_at_price: comparePrice,
-        image_url: product.image_url.replace(/beige/gi, 'gris'),
-        stock_qty: Math.floor(product.stock_qty / 3) || 8
-      },
-      {
-        id: `${product.id}-anthracite`,
-        title: `${product.title} - Anthracite`,
-        color: 'Anthracite',
-        price: basePrice,
-        compare_at_price: comparePrice,
-        image_url: product.image_url.replace(/beige/gi, 'anthracite'),
-        stock_qty: Math.floor(product.stock_qty / 3) || 12
-      }
-    ];
+    return availableColors.map((color, index) => ({
+      id: `${product.id}-${color.toLowerCase()}`,
+      title: `${baseTitle.replace(/\s*-\s*(Beige|Gris|Anthracite|Moka).*$/, '')} - ${color}`,
+      color: color,
+      price: basePrice,
+      compare_at_price: comparePrice,
+      image_url: getVariantImageUrl(product.image_url, color),
+      stock_qty: stockPerVariant
+    }));
   }
 
-  // Pour les canapés ALYANA
-  if (product.title.toLowerCase().includes('alyana') || product.title.toLowerCase().includes('canapé')) {
-    const basePrice = product.price;
+  // Canapés ALYANA avec variantes de couleur
+  if (baseTitle.toLowerCase().includes('alyana') || baseTitle.toLowerCase().includes('canapé')) {
+    const availableColors = ['Beige', 'Taupe', 'Bleu'];
+    const stockPerVariant = Math.floor(product.stock_qty / availableColors.length) || 15;
     
-    return [
-      {
-        id: `${product.id}-beige`,
-        title: `${product.title} - Beige`,
-        color: 'Beige',
-        price: basePrice,
-        compare_at_price: product.compare_at_price,
-        image_url: product.image_url,
-        stock_qty: Math.floor(product.stock_qty / 3) || 15
-      },
-      {
-        id: `${product.id}-taupe`,
-        title: `${product.title} - Taupe`,
-        color: 'Taupe',
-        price: basePrice,
-        compare_at_price: product.compare_at_price,
-        image_url: product.image_url.replace(/beige/gi, 'taupe'),
-        stock_qty: Math.floor(product.stock_qty / 3) || 12
-      },
-      {
-        id: `${product.id}-bleu`,
-        title: `${product.title} - Bleu`,
-        color: 'Bleu',
-        price: basePrice,
-        compare_at_price: product.compare_at_price,
-        image_url: product.image_url.replace(/beige/gi, 'bleu'),
-        stock_qty: Math.floor(product.stock_qty / 3) || 10
-      }
-    ];
+    return availableColors.map((color, index) => ({
+      id: `${product.id}-${color.toLowerCase()}`,
+      title: `${baseTitle.replace(/\s*-\s*(Beige|Taupe|Bleu).*$/, '')} - ${color}`,
+      color: color,
+      price: basePrice,
+      compare_at_price: comparePrice,
+      image_url: getVariantImageUrl(product.image_url, color),
+      stock_qty: stockPerVariant
+    }));
   }
 
-  // Variante par défaut
+  // Tables AUREA avec variantes de taille
+  if (baseTitle.toLowerCase().includes('aurea') || baseTitle.toLowerCase().includes('table')) {
+    const availableSizes = [
+      { size: 'Ø100cm', price: basePrice, title: 'Ø100cm' },
+      { size: 'Ø120cm', price: basePrice + 50, title: 'Ø120cm' }
+    ];
+    const stockPerVariant = Math.floor(product.stock_qty / availableSizes.length) || 20;
+    
+    return availableSizes.map((variant, index) => ({
+      id: `${product.id}-${variant.size.replace(/[^a-z0-9]/gi, '')}`,
+      title: `${baseTitle.replace(/\s*–\s*(Ø100cm|Ø120cm|100cm|120cm).*$/, '')} – ${variant.title}`,
+      color: product.color || 'Naturel',
+      price: variant.price,
+      compare_at_price: comparePrice ? comparePrice + (variant.price - basePrice) : undefined,
+      image_url: product.image_url,
+      stock_qty: stockPerVariant
+    }));
+  }
+
+  // Variante par défaut si aucune logique spécifique
   return [{
     id: `${product.id}-default`,
-    title: product.title,
+    title: baseTitle,
     color: product.color || 'Naturel',
-    price: product.price,
-    compare_at_price: product.compare_at_price,
+    price: basePrice,
+    compare_at_price: comparePrice,
     image_url: product.image_url,
     stock_qty: product.stock_qty
   }];
+}
+
+function getVariantImageUrl(baseImageUrl: string, color: string): string {
+  // Simuler des URLs d'images différentes pour chaque couleur
+  // En production, vous auriez des vraies images pour chaque variante
+  const colorMappings: { [key: string]: string } = {
+    'Beige': baseImageUrl,
+    'Gris': baseImageUrl.replace(/beige/gi, 'gris'),
+    'Anthracite': baseImageUrl.replace(/beige/gi, 'anthracite'),
+    'Taupe': baseImageUrl.replace(/beige/gi, 'taupe'),
+    'Bleu': baseImageUrl.replace(/beige/gi, 'bleu')
+  };
+  
+  return colorMappings[color] || baseImageUrl;
 }
 
 async function generateIntelligentResponse(

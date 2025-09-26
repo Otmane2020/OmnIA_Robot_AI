@@ -248,13 +248,24 @@ async function extractAttributesWithAI(product: any, source: string): Promise<Ex
   }
 
   try {
+    // Exploiter COMPLÈTEMENT le titre, description et image
+    const productTitle = product.title || product.name || '';
+    const productDescription = product.description || product.body_html || '';
+    const productImage = product.image_url || product.featuredImage?.url || '';
+    const productPrice = product.price || product.variant_price || 0;
+    const productTags = Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '');
+    
     const productText = `
-PRODUIT: ${product.title || product.name || ''}
-DESCRIPTION: ${product.description || ''}
-CATÉGORIE: ${product.productType || product.category || ''}
-PRIX: ${product.price || 0}€
-TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : ''}
+TITRE COMPLET: ${productTitle}
+DESCRIPTION DÉTAILLÉE: ${productDescription.replace(/<[^>]*>/g, '').trim()}
+CATÉGORIE: ${product.productType || product.category || product.product_type || ''}
+PRIX: ${productPrice}€
+PRIX COMPARÉ: ${product.compare_at_price || product.variant_compare_at_price || ''}€
+MARQUE/VENDEUR: ${product.vendor || product.brand || ''}
+TAGS: ${productTags}
+URL IMAGE: ${productImage}
 SOURCE: ${source}
+STOCK: ${product.stock || product.quantityAvailable || product.variant_inventory_qty || 0}
     `.trim();
 
     const prompt = `\Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
