@@ -28,7 +28,7 @@ export const useGoogleTTS = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/openai-tts`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-tts`,
         {
           method: 'POST',
           headers: {
@@ -37,7 +37,7 @@ export const useGoogleTTS = () => {
           },
           body: JSON.stringify({ 
             text,
-            voice: 'alloy',
+            voice: 'fr-FR-Wavenet-C',
             speed: 1.0
           }),
         }
@@ -55,19 +55,15 @@ export const useGoogleTTS = () => {
         throw new Error(errorMessage);
       }
 
-      // Get audio blob directly from response
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      const data = await response.json();
       
-      // Play the audio
-      const audio = new Audio(audioUrl);
-      
-      // Clean up the object URL when audio finishes
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      await audio.play();
+      if (data.audioContent) {
+        // Play the audio
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        await audio.play();
+      } else {
+        throw new Error('No audio content received');
+      }
     } catch (error) {
       console.log(`DeepSeek TTS failed, falling back to browser TTS: ${error.message}`);
       throw error;
