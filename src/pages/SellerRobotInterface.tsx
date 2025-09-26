@@ -212,25 +212,51 @@ export const SellerRobotInterface: React.FC = () => {
     setChatMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     
-    // Simuler une réponse du bot
-    // Call the seller-chat Edge Function
+    // Appeler le nouveau système Smart AI pour ce vendeur spécifique
     try {
-    setTimeout(() => {
-      const botResponse = generateBotResponse(newMessage);
-      const botMessage = {
-        id: `bot-${Date.now()}`,
-        type: 'bot' as const,
-        message: botResponse,
-        timestamp: new Date().toISOString()
-      };
-      setChatMessages(prev => [...prev, botMessage]);
-    }, 1000); // Simulate network delay
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/omnia-smart-chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: newMessage,
+          retailer_id: sellerId, // UUID du vendeur
+          session_id: `seller-session-${Date.now()}`,
+          conversation_context: chatMessages.slice(-3).map(m => ({
+            role: m.type === 'user' ? 'user' : 'assistant',
+            content: m.message
+          }))
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const botMessage = {
+          id: `bot-${Date.now()}`,
+          type: 'bot' as const,
+          message: data.message,
+          timestamp: new Date().toISOString()
+        };
+        setChatMessages(prev => [...prev, botMessage]);
+        
+        console.log('🤖 Smart AI Response:', {
+          intent: data.intent_detected,
+          response_time: data.response_time_ms + 'ms',
+          products: data.products?.length || 0
+        });
+      } else {
+        throw new Error('Erreur API Smart AI');
+      }
     } catch (error) {
-      console.error('Error sending message to seller-chat Edge Function:', error);
+      console.error('❌ Erreur Smart AI:', error);
+      
+      // Fallback
       const errorMessage = {
         id: `bot-${Date.now()}`,
         type: 'bot' as const,
-        message: 'Désolé, je rencontre un problème technique. Veuillez réessayer.',
+        message: 'Petit souci technique ! Reformulez ? 🤖',
         timestamp: new Date().toISOString()
       };
       setChatMessages(prev => [...prev, errorMessage]);
