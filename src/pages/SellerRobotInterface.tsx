@@ -35,7 +35,6 @@ export const SellerRobotInterface: React.FC = () => {
   const navigate = useNavigate();
   const [sellerData, setSellerData] = useState<SellerData | null>(null);
   const [robotStats, setRobotStats] = useState<RobotStats | null>(null);
-  const [sellerId, setSellerId] = useState<string | null>(null); // Store the actual UUID seller_id
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [chatMessages, setChatMessages] = useState<Array<{id: string, type: 'user' | 'bot', message: string, timestamp: string}>>([]);
@@ -45,7 +44,6 @@ export const SellerRobotInterface: React.FC = () => {
   useEffect(() => {
     loadSellerData();
     loadRobotStats();
-    fetchSellerIdFromSubdomain(); // Fetch actual seller_id (UUID)
     initializeChatBot();
   }, [sellerIdentifier]);
 
@@ -55,7 +53,6 @@ export const SellerRobotInterface: React.FC = () => {
       
       // Rechercher le vendeur par différents critères
       const seller = await findSellerByIdentifier(sellerIdentifier || '');
-      setSellerId(seller?.id || null); // Set the actual UUID seller_id
       
       if (seller) {
         setSellerData(seller);
@@ -65,7 +62,7 @@ export const SellerRobotInterface: React.FC = () => {
         // Créer un vendeur par défaut pour la démo
         const defaultSeller: SellerData = {
           id: 'demo-seller',
-          company_name: sellerIdentifier ? `Entreprise ${sellerIdentifier}` : 'Entreprise Demo',
+          company_name: sellerIdentifier || 'Entreprise Demo',
           subdomain: sellerIdentifier || 'demo',
           contact_email: 'contact@demo.com',
           phone: '+33 1 23 45 67 89',
@@ -74,7 +71,6 @@ export const SellerRobotInterface: React.FC = () => {
           status: 'active',
           created_at: new Date().toISOString()
         };
-        setSellerId(null); // Explicitly set to null if it's a demo non-UUID
         setSellerData(defaultSeller);
       }
       
@@ -83,29 +79,6 @@ export const SellerRobotInterface: React.FC = () => {
       showError('Erreur', 'Impossible de charger les données du vendeur.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchSellerIdFromSubdomain = async () => {
-    if (!sellerIdentifier) return;
-    
-    // In a real app, this would be an API call to get the seller's UUID from their subdomain
-    // For this demo, we'll check validated_retailers in localStorage
-    try {
-      const validatedRetailers = JSON.parse(localStorage.getItem('validated_retailers') || '[]');
-      const foundSeller = validatedRetailers.find((r: any) => 
-        r.subdomain === sellerIdentifier || r.id === sellerIdentifier
-      );
-      
-      if (foundSeller) {
-        setSellerId(foundSeller.id); // This is the actual UUID
-        console.log('✅ Seller UUID fetched:', foundSeller.id);
-      } else {
-        setSellerId(null); // No UUID found for this subdomain
-        console.log('⚠️ No UUID found for subdomain:', sellerIdentifier);
-      }
-    } catch (error) {
-      console.error('Error fetching seller ID from subdomain:', error);
     }
   };
 
@@ -213,8 +186,6 @@ export const SellerRobotInterface: React.FC = () => {
     setNewMessage('');
     
     // Simuler une réponse du bot
-    // Call the seller-chat Edge Function
-    try {
     setTimeout(() => {
       const botResponse = generateBotResponse(newMessage);
       const botMessage = {
@@ -224,30 +195,7 @@ export const SellerRobotInterface: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       setChatMessages(prev => [...prev, botMessage]);
-    }, 1000); // Simulate network delay
-    } catch (error) {
-      console.error('Error sending message to seller-chat Edge Function:', error);
-      const errorMessage = {
-        id: `bot-${Date.now()}`,
-        type: 'bot' as const,
-        message: 'Désolé, je rencontre un problème technique. Veuillez réessayer.',
-        timestamp: new Date().toISOString()
-      };
-      setChatMessages(prev => [...prev, errorMessage]);
-    }
-  };
-
-  const handleSendMessageToEdge = async (message: string) => {
-    // This function would call the actual seller-chat Edge Function
-    // For now, it's a placeholder
-    console.log('Sending message to seller-chat Edge Function:', message);
-    // Example of how it would be called:
-    /*
-    const response = await fetch('/api/seller-chat', {
-      method: 'POST',
-      body: JSON.stringify({ message, seller_id: sellerId, seller_subdomain: sellerIdentifier }),
-    });
-    */
+    }, 1000);
   };
 
   const generateBotResponse = (userMessage: string): string => {
@@ -272,7 +220,7 @@ export const SellerRobotInterface: React.FC = () => {
     return 'Je comprends votre demande. Laissez-moi analyser vos données pour vous fournir la meilleure réponse possible. Que souhaitez-vous faire précisément ?';
   };
 
-  const handleEnrichProducts = async () => { // This function is not used in this component
+  const handleEnrichProducts = async () => {
     showInfo('Enrichissement en cours', 'Le robot IA analyse et enrichit vos produits...');
     
     // Simuler l'enrichissement
@@ -326,7 +274,7 @@ export const SellerRobotInterface: React.FC = () => {
                 <h1 className="text-xl font-bold text-white">
                   Robot IA - {sellerData?.company_name}
                 </h1>
-                <p className="text-sm text-gray-300 flex items-center gap-1">
+                <p className="text-sm text-gray-300">
                   Interface intelligente • {sellerData?.subdomain}.omnia.sale
                 </p>
               </div>
@@ -337,7 +285,7 @@ export const SellerRobotInterface: React.FC = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                 Robot actif
               </div>
-              <button // This button should navigate to /admin, not just settings
+              <button
                 onClick={() => navigate('/admin')}
                 className="text-gray-400 hover:text-white transition-colors"
               >

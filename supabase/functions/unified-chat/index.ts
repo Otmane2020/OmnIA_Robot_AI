@@ -15,15 +15,13 @@ interface UnifiedChatRequest {
   }>;
 }
 
-const DEFAULT_RETAILER_ID = '00000000-0000-0000-0000-000000000000'; // Placeholder UUID for demo
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { message, conversation_context = [], retailer_id = DEFAULT_RETAILER_ID }: UnifiedChatRequest = await req.json();
+    const { message, conversation_context = [], retailer_id = 'demo-retailer-id' }: UnifiedChatRequest = await req.json();
     console.log('🤖 OmnIA reçoit:', message.substring(0, 50) + '...');
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -40,7 +38,7 @@ Deno.serve(async (req: Request) => {
     // Étape 2 : réponse IA
     const aiResponse = await generateExpertResponse(message, relevantProducts, conversation_context, openaiApiKey);
 
-    // Étape 3 : conversion (forcer l'affichage si on a trouvé des produits)
+    // Étape 3 : conversion (forcer l’affichage si on a trouvé des produits)
     if (aiResponse.selectedProducts.length === 0 && relevantProducts.length > 0) {
       aiResponse.selectedProducts = relevantProducts.slice(0, 2);
       aiResponse.should_show_products = true;
@@ -82,11 +80,7 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
       .select('id, handle, title, description, category, subcategory, color, material, fabric, style, dimensions, room, price, stock_qty, image_url, product_url, tags, confidence_score, enriched_at')
       .gt('stock_qty', 0);
 
-    // Only apply retailer_id filter if it's a valid UUID, otherwise skip for demo/global products
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(retailerId);
-    if (retailerId && isUuid) {
-      qb = qb.eq('retailer_id', retailerId);
-    } else if (productIntent.category) {
+    if (productIntent.category) {
       qb = qb.or(`category.ilike.%${productIntent.category}%,subcategory.ilike.%${productIntent.category}%`);
     }
     if (extractedAttributes.colors.length > 0) {
@@ -121,10 +115,6 @@ async function getRelevantProductsForQuery(query: string, retailerId: string) {
         .gt('stock', 0);
 
       if (productIntent.category) {
-        // Apply store_id filter for ai_products if retailerId is a valid UUID
-        if (retailerId && isUuid) {
-          aiQuery = aiQuery.eq('store_id', retailerId);
-        }
         aiQuery = aiQuery.ilike('category', `%${productIntent.category}%`);
       }
 
@@ -228,36 +218,4 @@ ${productsContext}`;
     selectedProducts: products.slice(0, 2),
     should_show_products: products.length > 0
   };
-}
-
-async function saveConversation(supabase: any, conversationData: any) {
-  try {
-    const isRetailerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.retailer_id);
-    const isUserIdUuid = conversationData.user_id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationData.user_id) : false;
-
-    // Sauvegarder le message client
-    await supabase.from('retailer_conversations').insert({
-      user_id: isUserIdUuid ? conversationData.user_id : null, // Set to null if not a valid UUID
-      session_id: conversationData.session_id,
-      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null, // Set to null if not a valid UUID
-      message: conversationData.message,
-      intent: conversationData.intent,
-      ip_address: getClientIP(),
-      timestamp: new Date().toISOString()
-    });
-
-    // Sauvegarder la réponse robot
-    await supabase.from('retailer_conversations').insert({
-      user_id: conversationData.user_id,
-      session_id: conversationData.session_id,
-      retailer_id: isRetailerIdUuid ? conversationData.retailer_id : null,
-      response: conversationData.response,
-      products: conversationData.products || [],
-      final_action: detectFinalAction(conversationData.response),
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur sauvegarde conversation:', error);
-  }
 }
