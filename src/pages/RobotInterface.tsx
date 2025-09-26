@@ -788,11 +788,18 @@ export const RobotInterface: React.FC = () => {
                   ref={inputRef}
                   type="text"
                   value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                   placeholder="Écrivez votre message..."
-                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
+                  className={`w-full bg-slate-700/50 border border-slate-600/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
+                    isPreparingResponse ? 'border-yellow-400/50' : ''
+                  }`}
                 />
+                {isPreparingResponse && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
               </div>
               
               {/* QR Code à côté du champ de saisie comme demandé */}
