@@ -344,7 +344,15 @@ Accédez aux statistiques détaillées dans votre interface admin :
                 <div className="text-2xl font-bold text-cyan-400">12</div>
                 <div className="text-gray-300">Modules</div>
               </div>
-            <Logo size="md" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-cyan-400">3h</div>
+                <div className="text-gray-300">Durée</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-cyan-400">Gratuit</div>
+                <div className="text-gray-300">Prix</div>
+              </div>
+            </div>
             <button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-2xl hover:shadow-cyan-500/40">
               Commencer la formation
             </button>
