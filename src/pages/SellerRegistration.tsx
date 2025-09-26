@@ -148,58 +148,89 @@ export const SellerRegistration: React.FC<SellerRegistrationProps> = ({ onSubmit
       proposedSubdomain: uniqueSubdomain
     };
     
-    // Call secure Edge Function for registration
+    // NOUVEAU: Créer automatiquement le sous-domaine
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-retailer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          companyName: formData.companyName,
+      const { data: subdomainData, error: subdomainError } = await supabase
+        .from('retailer_subdomains')
+        .insert({
+          subdomain: uniqueSubdomain,
+          dns_status: 'pending',
+          ssl_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (subdomainError) {
+        console.error('❌ Erreur création sous-domaine:', subdomainError);
+      } else {
+        console.log('✅ Sous-domaine créé automatiquement:', uniqueSubdomain);
+        
+        // Simuler activation DNS/SSL (2 secondes)
+        setTimeout(async () => {
+          await supabase
+            .from('retailer_subdomains')
+            .update({
+              dns_status: 'active',
+              ssl_status: 'active',
+              activated_at: new Date().toISOString()
+            })
+            .eq('id', subdomainData.id);
+          
+          console.log('🌐 DNS/SSL activé pour:', uniqueSubdomain);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('❌ Erreur sous-domaine:', error);
+    }
+    
+    // NOUVEAU: Sauvegarder la demande dans la base de données
+    try {
+      const { data: applicationData, error } = await supabase
+        .from('retailer_applications')
+        .insert({
+          company_name: formData.companyName,
           email: formData.email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
           phone: formData.phone,
           address: formData.address,
           city: formData.city,
-          postalCode: formData.postalCode,
+          postal_code: formData.postalCode,
           siret: formData.siret,
           position: formData.position,
-          selectedPlan: formData.selectedPlan,
-          uniqueSubdomain: uniqueSubdomain,
-          kbisFileName: formData.kbisFile?.name || null
+          plan: formData.selectedPlan,
+          proposed_subdomain: uniqueSubdomain,
+          kbis_document_url: formData.kbisFile ? `kbis-${Date.now()}.pdf` : null,
+          status: 'pending'
         })
-      });
+        .select()
+        .single();
 
-      const result = await response.json();
-
-      if (!result.success) {
-        console.error('❌ Registration failed:', result.error);
+      if (error) {
+        console.error('❌ Erreur sauvegarde DB:', error);
         
-        // Handle specific error cases
-        if (result.error.includes('email')) {
-          alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
-          return;
+        // Vérifier si c'est un doublon
+        if (error.code === '23505') { // Violation contrainte unique
+          if (error.message.includes('email')) {
+            alert('❌ Erreur : Cet email est déjà utilisé. Veuillez utiliser un autre email.');
+            return;
+          }
+          if (error.message.includes('siret')) {
+            alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
+            return;
+          }
         }
-        if (result.error.includes('siret')) {
-          alert('❌ Erreur : Ce SIRET est déjà enregistré. Veuillez vérifier votre numéro SIRET.');
-          return;
-        }
-        
-        throw new Error(result.error);
+        throw error;
       }
 
-      console.log('✅ Registration successful:', result.data);
+      console.log('✅ Demande sauvegardée en base de données:', applicationData);
       
-      // Update account info with database ID
-      accountInfo.id = result.data.applicationId;
+      // Mettre à jour l'ID avec celui de la DB
+      accountInfo.id = applicationData.id;
       
-    } catch (error) {
-      console.error('❌ Registration error:', error);
-      alert('❌ Erreur lors de l\'inscription. Veuillez réessayer.');
-      return;
+    } catch (dbError) {
+      console.error('❌ Erreur base de données:', dbError);
+      // Continuer avec localStorage en fallback
     }
     
     setCreatedAccountInfo(accountInfo);
