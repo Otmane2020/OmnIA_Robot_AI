@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
-  Package, Tag, DollarSign, Image, BarChart3, Settings,
-  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
-  Sparkles, Brain, Zap, RefreshCw, Download, Upload, Loader2,
-  Info
-} from 'lucide-react';
+import { Search, Filter, Plus, Eye, CreditCard as Edit, Trash2, ExternalLink, Package, Tag, DollarSign, Image, BarChart3, Settings, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle, Sparkles, Brain, Zap, RefreshCw, Download, Upload, Loader2, Info } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { supabase } from '../lib/supabase';
 import {
