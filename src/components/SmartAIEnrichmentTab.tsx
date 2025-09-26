@@ -476,25 +476,12 @@ Destination : Salon, pièce à vivre, studio`,
     showInfo('Enrichissement IA', 'Analyse avancée de tous les produits avec extraction d\'attributs...');
     
     try {
-      // Charger les produits depuis toutes les sources
-      const allProducts = await loadAllProductSources();
-      
-      if (allProducts.length === 0) {
-        showError('Aucun produit', 'Aucun produit trouvé à enrichir. Importez d\'abord votre catalogue.');
-        return;
-      }
-      
-      // Enrichir avec IA
-      const enrichedProducts = await enrichProductsWithAdvancedAI(allProducts);
-      
-      // Sauvegarder les produits enrichis
-      localStorage.setItem('smart_ai_products', JSON.stringify(enrichedProducts));
-      
-      setProducts(enrichedProducts);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await loadSmartProducts();
       
       showSuccess(
         'Enrichissement terminé',
-        `${enrichedProducts.length} produits analysés avec IA avancée !`,
+        `${products.length} produits analysés avec IA avancée !`,
         [
           {
             label: 'Voir les résultats',
@@ -505,24 +492,12 @@ Destination : Salon, pièce à vivre, studio`,
       );
       
     } catch (error) {
-      console.error('Erreur enrichissement:', error);
       showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
     } finally {
       setIsEnriching(false);
     }
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedProducts.length === 0) return;
-    
-    if (confirm(`Supprimer ${selectedProducts.length} produit(s) sélectionné(s) ?`)) {
-      const updatedProducts = products.filter(p => !selectedProducts.includes(p.id));
-      setProducts(updatedProducts);
-      localStorage.setItem('smart_ai_products', JSON.stringify(updatedProducts));
-      setSelectedProducts([]);
-      showSuccess('Produits supprimés', `${selectedProducts.length} produit(s) supprimé(s) avec succès.`);
-    }
-  };
   const filteredProducts = products.filter(product => {
     const matchesSearch = searchTerm === '' || 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -584,16 +559,6 @@ Destination : Salon, pièce à vivre, studio`,
             <BarChart3 className="w-4 h-4" />
             {viewMode === 'table' ? 'Vue grille' : 'Vue liste'}
           </button>
-          
-          {selectedProducts.length > 0 && (
-            <button
-              onClick={handleDeleteSelected}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-            >
-              <Trash2 className="w-4 h-4" />
-              Supprimer ({selectedProducts.length})
-            </button>
-          )}
           
           <button
             onClick={handleEnrichAll}
