@@ -4,7 +4,7 @@ import {
   Database, Brain, Mic, Volume2, Image, Globe, Zap,
   Server, Key, Clock, AlertTriangle, Info, Eye
 } from 'lucide-react';
-import { Logo } from '../components/Logo.tsx';
+import { Logo } from '../components/Logo';
 
 interface APITestResult {
   success: boolean;
