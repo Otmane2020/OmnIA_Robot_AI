@@ -367,20 +367,33 @@ ${productsContext}`;
   ];
 
   // Use DeepSeek for faster responses
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+  const apiUrl = deepseekApiKey ? 'https://api.deepseek.com/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+  const apiKey = deepseekApiKey || apiKey;
+  const model = deepseekApiKey ? 'deepseek-chat' : 'gpt-4o-mini';
+  
+  console.log('🚀 Utilisation API:', deepseekApiKey ? 'DeepSeek' : 'OpenAI');
+  
+  const resp = await fetch(apiUrl, {
     method: 'POST',
     headers: { 
-      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY') || apiKey}`, 
+      'Authorization': `Bearer ${apiKey}`, 
       'Content-Type': 'application/json' 
     },
     body: JSON.stringify({ 
-      model: 'deepseek-chat', 
+      model: model, 
       messages, 
-      max_tokens: 80, // Plus long pour réponses humaines
+      max_tokens: 60, // Optimisé pour rapidité
       temperature: 0.8, // Équilibré créatif/cohérent
-      stream: false // Pas de streaming pour rapidité
+      stream: false, // Pas de streaming pour simplicité
+      top_p: 0.9 // Améliore la cohérence
     })
   });
+
+  if (!resp.ok) {
+    console.error('❌ Erreur API:', resp.status);
+    throw new Error(`API Error: ${resp.status}`);
+  }
 
   const data = await resp.json();
   const msg = data.choices?.[0]?.message?.content || "Pouvez-vous préciser ?";

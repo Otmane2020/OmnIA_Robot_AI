@@ -682,7 +682,18 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
   let productType = 'Mobilier';
   let subcategory = '';
   
-  if (text.includes('canapé') || text.includes('sofa')) {
+  // Enhanced category detection with priority for specific types
+  if (text.includes('lit') || text.includes('bed') || text.includes('sommier')) {
+    productType = 'Lit';
+    const features = [];
+    if (text.includes('métal') || text.includes('acier')) features.push('en métal');
+    if (text.includes('sommier')) features.push('avec sommier');
+    if (text.includes('90x190') || text.includes('140x190') || text.includes('160x200')) features.push('multi-tailles');
+    if (text.includes('noir') && text.includes('blanc')) features.push('noir/blanc');
+    if (text.includes('minimaliste')) features.push('design minimaliste');
+    
+    subcategory = features.length > 0 ? `Lit ${features.join(' ')}` : 'Lit en métal';
+  } else if (text.includes('canapé') || text.includes('sofa')) {
     productType = 'Canapé';
     // Enhanced subcategory detection
     const features = [];
@@ -741,9 +752,10 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
   ];
 
   const materialPatterns = [
+    { name: 'acier', patterns: ['acier', 'steel', 'métal', 'metal'] },
     { name: 'bois', patterns: ['bois', 'wood', 'massif'] },
     { name: 'chêne', patterns: ['chêne', 'oak'] },
-    { name: 'métal', patterns: ['métal', 'metal', 'acier', 'fer'] },
+    { name: 'métal', patterns: ['métal', 'metal', 'fer'] },
     { name: 'verre', patterns: ['verre', 'glass', 'cristal'] },
     { name: 'tissu', patterns: ['tissu', 'fabric', 'textile'] },
     { name: 'cuir', patterns: ['cuir', 'leather'] },
@@ -755,25 +767,36 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
 
   const stylePatterns = [
     { name: 'moderne', patterns: ['moderne', 'modern', 'contemporain'] },
+    { name: 'minimaliste', patterns: ['minimaliste', 'minimal', 'épuré', 'simple'] },
     { name: 'scandinave', patterns: ['scandinave', 'scandinavian', 'nordique'] },
     { name: 'industriel', patterns: ['industriel', 'industrial', 'loft'] },
     { name: 'vintage', patterns: ['vintage', 'rétro', 'ancien'] },
     { name: 'classique', patterns: ['classique', 'classic', 'traditionnel'] },
-    { name: 'minimaliste', patterns: ['minimaliste', 'minimal', 'épuré'] }
+    { name: 'contemporain', patterns: ['contemporain', 'contemporary'] }
   ];
 
   const detectedColor = colorPatterns.find(cp => cp.patterns.some(p => text.includes(p)))?.name || '';
   const detectedMaterial = materialPatterns.find(mp => mp.patterns.some(p => text.includes(p)))?.name || '';
   const detectedStyle = stylePatterns.find(sp => sp.patterns.some(p => text.includes(p)))?.name || '';
   
-  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
+  // Enhanced room detection with priority for beds
+  const rooms = productType === 'Lit' ? ['chambre'] : ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
   const detectedRoom = rooms.find(room => text.includes(room)) || '';
 
   // Extract dimensions
-  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-  const dimensions = dimensionMatch ? 
-    (dimensionMatch[3] ? `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm x H:${dimensionMatch[3]}cm` : 
-     `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm`) : '';
+  let dimensions = '';
+  
+  // Bed dimension patterns (90x190, 140x190, 160x200)
+  const bedDimensionMatch = text.match(/(\d+)x(\d+)\s*cm/g);
+  if (bedDimensionMatch && productType === 'Lit') {
+    dimensions = bedDimensionMatch.join(', ');
+  } else {
+    // Standard dimension patterns
+    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+    dimensions = dimensionMatch ? 
+      (dimensionMatch[3] ? `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm x H:${dimensionMatch[3]}cm` : 
+       `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm`) : '';
+  }
 
   // Enhanced feature detection
   const features = {
@@ -787,7 +810,10 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
     wheels: text.includes('roulettes') || text.includes('roulant'),
     stackable: text.includes('empilable'),
     modular: text.includes('modulaire') || text.includes('modulable'),
-    eco_friendly: text.includes('écologique') || text.includes('durable') || text.includes('fsc')
+    eco_friendly: text.includes('écologique') || text.includes('durable') || text.includes('fsc'),
+    assembly_required: text.includes('monter') || text.includes('assemblage') || text.includes('montage'),
+    integrated_base: text.includes('sommier') || text.includes('base intégrée'),
+    metal_frame: text.includes('structure') && (text.includes('métal') || text.includes('acier'))
   };
 
   // Generate SEO content
@@ -805,6 +831,9 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
     detectedColor ? `Couleur ${detectedColor}` : null,
     features.convertible ? 'Convertible' : null,
     features.storage ? 'Avec rangement' : null,
+    features.assembly_required ? 'Montage facile' : null,
+    features.integrated_base ? 'Sommier intégré' : null,
+    features.metal_frame ? 'Structure robuste' : null,
     'Livraison gratuite',
     'Garantie qualité'
   ].filter(Boolean);
@@ -855,6 +884,8 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
         detectedRoom,
         hasPromotion ? 'promotion' : null,
         hasPromotion ? 'promo' : null,
+        productType === 'Lit' ? 'chambre' : null,
+        features.assembly_required ? 'montage' : null,
         'livraison gratuite'
       ].filter(Boolean),
       google_product_category: getGoogleCategory(productType),
@@ -864,16 +895,17 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
         detectedColor,
         detectedMaterial,
         detectedStyle,
+        detectedRoom,
         brand.toLowerCase()
       ].filter(Boolean)
     },
     ai_confidence: {
-      overall: 70,
-      color: detectedColor ? 80 : 30,
-      style: detectedStyle ? 75 : 30,
-      dimensions: dimensions ? 90 : 20,
-      material: detectedMaterial ? 80 : 30,
-      category: 85,
+      overall: Math.min(85, 50 + (detectedColor ? 10 : 0) + (detectedMaterial ? 15 : 0) + (dimensions ? 15 : 0) + (detectedStyle ? 5 : 0)),
+      color: detectedColor ? 90 : 30,
+      style: detectedStyle ? 85 : 30,
+      dimensions: dimensions ? 95 : 20,
+      material: detectedMaterial ? 90 : 30,
+      category: productType !== 'Mobilier' ? 95 : 60,
       pricing: hasPromotion ? 95 : 80,
       features: Object.values(features).some(Boolean) ? 85 : 40
     }

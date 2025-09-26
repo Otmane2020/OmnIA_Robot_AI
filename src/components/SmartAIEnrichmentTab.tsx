@@ -4,6 +4,8 @@ import { useNotifications } from './NotificationSystem';
 import { 
   extractEnhancedStyles, 
   extractEnhancedColors,
+import { useNotifications } from './NotificationSystem';
+import { supabase } from '../lib/supabase';
   extractEnhancedMaterials,
   extractEnhancedRooms,
   extractDimensions,
@@ -73,16 +75,33 @@ export const SmartAIEnrichmentTab: React.FC = () => {
     try {
       setIsLoading(true);
       console.log('🧠 Chargement Smart AI Products...');
+      console.log('📦 Chargement produits enrichis depuis Supabase...');
       
-      // Charger depuis toutes les sources de produits
-      const allProducts = await loadAllProductSources();
-      console.log('📦 Produits bruts chargés:', allProducts.length);
-      
-      // Enrichir automatiquement avec IA avancée
-      const smartProducts = await enrichProductsWithAdvancedAI(allProducts);
-      console.log('🤖 Produits enrichis par IA:', smartProducts.length);
-      
-      setProducts(smartProducts);
+      // Fetch from products_enriched table
+      const { data: enrichedProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .gt('stock_qty', 0)
+        .order('enriched_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('❌ Erreur Supabase products_enriched:', error);
+        showError('Base de données', 'Impossible de charger les produits enrichis.');
+        return;
+      }
+
+      if (enrichedProducts && enrichedProducts.length > 0) {
+        console.log('✅ Produits enrichis Supabase:', enrichedProducts.length);
+        setProducts(enrichedProducts);
+        setFilteredProducts(enrichedProducts);
+        showSuccess('Produits chargés', `${enrichedProducts.length} produits enrichis par IA chargés !`);
+      } else {
+        console.log('⚠️ Aucun produit enrichi trouvé');
+        setProducts([]);
+        setFilteredProducts([]);
+        showInfo('Catalogue vide', 'Aucun produit enrichi. Utilisez "Enrichir catalogue" pour analyser vos produits avec IA.');
+      }
       
     } catch (error) {
       console.error('❌ Erreur chargement Smart AI:', error);

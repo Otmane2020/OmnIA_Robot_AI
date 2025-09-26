@@ -6,6 +6,7 @@ import {
   Brain, Sparkles, Zap, RefreshCw, Download, Upload
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { supabase } from '../lib/supabase';
 
 interface EnrichedProduct {
   id: string;
@@ -97,26 +98,49 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const loadEnrichedProducts = async () => {
     try {
       setIsLoading(true);
+      console.log('📦 Chargement produits enrichis depuis Supabase...');
       
-      // Simuler le chargement depuis la base de données
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Générer des produits enrichis de démonstration basés sur le catalogue
-      const mockEnrichedProducts = generateMockEnrichedProducts();
-      
-      console.log('📦 Produits enrichis chargés:', mockEnrichedProducts.length);
-      setProducts(mockEnrichedProducts);
-      setFilteredProducts(mockEnrichedProducts);
+      // Fetch from products_enriched table
+      const { data: enrichedProducts, error } = await supabase
+        .from('products_enriched')
+        .select('*')
+        .gt('stock_qty', 0)
+        .order('enriched_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erreur Supabase products_enriched:', error);
+        // Fallback to mock data if database fails
+        const mockProducts = generateFallbackProducts();
+        setProducts(mockProducts);
+        setFilteredProducts(mockProducts);
+        showError('Base de données', 'Utilisation des données de démonstration.');
+        return;
+      }
+
+      if (enrichedProducts && enrichedProducts.length > 0) {
+        console.log('✅ Produits enrichis Supabase:', enrichedProducts.length);
+        setProducts(enrichedProducts);
+        setFilteredProducts(enrichedProducts);
+      } else {
+        console.log('⚠️ Aucun produit enrichi, génération fallback...');
+        const fallbackProducts = generateFallbackProducts();
+        setProducts(fallbackProducts);
+        setFilteredProducts(fallbackProducts);
+        showInfo('Catalogue vide', 'Aucun produit enrichi trouvé. Utilisez "Sync depuis catalogue" pour enrichir vos produits.');
+      }
       
     } catch (error) {
       console.error('❌ Erreur chargement produits enrichis:', error);
+      const fallbackProducts = generateFallbackProducts();
+      setProducts(fallbackProducts);
+      setFilteredProducts(fallbackProducts);
       showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateMockEnrichedProducts = (): EnrichedProduct[] => {
+  const generateFallbackProducts = (): EnrichedProduct[] => {
     // Charger les produits du catalogue normal
     const savedProducts = localStorage.getItem('catalog_products');
     let baseProducts = [];
@@ -393,16 +417,18 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
         if (supabaseUrl && supabaseKey) {
           console.log('🔄 Déclenchement synchronisation forcée...');
           
-          const syncResponse = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+          const syncResponse = await fetch(`${supabaseUrl}/functions/v1/advanced-product-enricher`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${supabaseKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              retailer_id: 'demo-retailer-id',
-              force_full_enrichment: true,
-              source_filter: null // Tous les produits
+              products: allProducts,
+              retailer_id: vendorId || 'demo-retailer-id',
+              source: 'catalog',
+              enable_image_analysis: true,
+              batch_size: 5
             }),
           });
           
@@ -412,7 +438,7 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             
             showSuccess(
               'Synchronisation réussie', 
-              `${syncResult.enriched_products || 0} produits synchronisés vers le catalogue enrichi !`,
+              `${syncResult.stats?.enriched_products || 0} produits enrichis avec IA !`,
               [
                 {
                   label: 'Actualiser',
