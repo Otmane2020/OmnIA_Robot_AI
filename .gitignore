@@ -47,7 +47,7 @@ coverage/
 ./node_modules
 #/src/components/AddProductModal.tsx
 /src/components/AITrainingInterface.tsx
-/src/components/CartButton.tsx
+#/src/components/CartButton.tsx
 #/src/components/CatalogManagement.tsx
 #/src/components/ChatMessage.tsx
 /src/components/ConversationHistory.tsx
