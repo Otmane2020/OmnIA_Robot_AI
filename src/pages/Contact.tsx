@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, ArrowLeft, MessageSquare, Users, Briefcase } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { Logo } from '../components/Logo';
 
 export const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -267,7 +266,7 @@ export const Contact: React.FC = () => {
                   <div>
                     <div className="font-semibold text-white">Horaires</div>
                     <div className="text-gray-300">
-                      Lun - Ven : 9h00 - 18h00<br />
+                      Lun-Ven : 9h00 - 18h00<br />
                       Sam : 10h00 - 16h00
                     </div>
                   </div>
