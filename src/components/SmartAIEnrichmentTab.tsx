@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Sparkles, Zap, RefreshCw, Download, Upload, Package, Tag, DollarSign, Image, Settings, Search, Filter, ChevronDown, ChevronUp, ExternalLink, Eye, CreditCard as Edit, Trash2, BarChart3 } from 'lucide-react';
+import { useNotifications } from './NotificationSystem';
 import { 
   extractEnhancedStyles, 
   extractEnhancedColors,
