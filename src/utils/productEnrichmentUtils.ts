@@ -106,6 +106,34 @@ export function extractEnhancedMaterials(text: string): string[] {
   return [...new Set(materials)]; // Remove duplicates
 }
 
+export function extractEnhancedRooms(text: string): string[] {
+  const lowerText = text.toLowerCase();
+  const rooms: string[] = [];
+  
+  const roomPatterns = [
+    { name: 'salon', patterns: ['salon', 'living', 'séjour', 'living room'] },
+    { name: 'chambre', patterns: ['chambre', 'bedroom', 'chambre à coucher'] },
+    { name: 'cuisine', patterns: ['cuisine', 'kitchen', 'coin repas'] },
+    { name: 'bureau', patterns: ['bureau', 'office', 'espace de travail', 'télétravail'] },
+    { name: 'salle à manger', patterns: ['salle à manger', 'dining room', 'salle de repas'] },
+    { name: 'entrée', patterns: ['entrée', 'entrance', 'hall', 'vestibule'] },
+    { name: 'terrasse', patterns: ['terrasse', 'terrace', 'balcon', 'patio'] },
+    { name: 'jardin', patterns: ['jardin', 'garden', 'extérieur', 'outdoor'] },
+    { name: 'salle de bain', patterns: ['salle de bain', 'bathroom', 'sdb'] },
+    { name: 'dressing', patterns: ['dressing', 'walk-in closet', 'penderie'] },
+    { name: 'cave', patterns: ['cave', 'cellar', 'sous-sol', 'basement'] },
+    { name: 'grenier', patterns: ['grenier', 'attic', 'combles'] }
+  ];
+
+  roomPatterns.forEach(({ name, patterns }) => {
+    if (patterns.some(pattern => lowerText.includes(pattern))) {
+      rooms.push(name);
+    }
+  });
+
+  return [...new Set(rooms)]; // Remove duplicates
+}
+
 export function extractDimensions(text: string): string {
   const dimensionPatterns = [
     // Format: LxlxH
