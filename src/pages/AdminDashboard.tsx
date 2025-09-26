@@ -357,6 +357,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
       </div>
 
       <EcommerceIntegration onConnected={handlePlatformConnected} />
+      <EcommerceIntegration onConnected={handlePlatformConnected} retailerId={currentVendor?.id} />
     </div>
   );
 
