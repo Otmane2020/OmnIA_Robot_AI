@@ -11,7 +11,6 @@ import {
   generateSEOContent,
   detectEnhancedCategory
 } from '../utils/productEnrichmentUtils';
-import { extractEnhancedStyles, extractEnhancedColors, extractEnhancedMaterials, extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent } from '../utils/productEnrichmentUtils';
 
 interface SmartProduct {
   id: string;
