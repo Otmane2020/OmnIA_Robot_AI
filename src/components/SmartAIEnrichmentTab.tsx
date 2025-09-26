@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Brain, Zap, Eye, CheckCircle, Loader2, BarChart3, Camera, Edit, Save, X, AlertTriangle, Star, Target, Palette, Ruler, Package, Tag, Globe, TrendingUp
-} from "lucide-react";
+import { Brain, Zap, Eye, CheckCircle, Loader2, BarChart3, Camera, CreditCard as Edit, Save, X, AlertTriangle, Star, Target, Palette, Ruler, Package, Tag, Globe, TrendingUp } from "lucide-react";
 import { useNotifications } from "./NotificationSystem";
 
 interface EnrichmentStats {
