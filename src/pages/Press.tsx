@@ -1,7 +1,6 @@
 import React from 'react';
 import { Newspaper, Download, ExternalLink, ArrowLeft, Calendar, Award, Users } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { Logo } from '../components/Logo';
 
 export const Press: React.FC = () => {
   const pressReleases = [
@@ -96,6 +95,12 @@ export const Press: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <Logo size="md" />
+            <div className="flex items-center space-x-4">
+              <a href="/" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                Retour à l'accueil
+              </a>
+            </div>
           </div>
         </div>
       </header>
