@@ -232,46 +232,66 @@ async function extractAttributesWithAI(product: any, source: string): Promise<Ex
   }
 
   try {
+    // Enhanced product text preparation with better context
     const productText = `
 PRODUIT: ${product.title || product.name || ''}
 DESCRIPTION: ${product.description || ''}
 CATÉGORIE: ${product.productType || product.category || ''}
 PRIX: ${product.price || 0}€
 TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : ''}
+MARQUE: ${product.vendor || product.brand || ''}
+VARIANTES: ${product.variants ? JSON.stringify(product.variants.slice(0, 3)) : 'Aucune'}
 SOURCE: ${source}
     `.trim();
 
-    const prompt = `\Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
+    const prompt = `Analyse ce produit mobilier avec PRÉCISION MAXIMALE et extrait les attributs au format JSON strict.
 
 ${productText}
 
-EXTRAIT ces attributs au format JSON exact :
+EXTRAIT avec PRÉCISION MAXIMALE ces attributs au format JSON exact :
 {
   "colors": ["couleur1", "couleur2"],
   "materials": ["matériau1", "matériau2"], 
-  "subcategory": "Description précise du type (ex: Canapé d'angle convertible, Table basse ronde)",
+  "subcategory": "Description TRÈS précise du type avec toutes les caractéristiques (ex: Canapé d'angle convertible 4 places avec coffre rangement, Table basse ronde travertin pieds métal)",
   "dimensions": {
     "length": 200,
     "width": 100,
     "height": 75,
+    "depth": 90,
+    "seat_height": 45,
+    "diameter": 100,
     "unit": "cm"
   },
   "styles": ["style1", "style2"],
   "categories": ["catégorie1"],
   "features": ["fonctionnalité1", "fonctionnalité2"],
   "room": ["salon", "chambre"],
+  "capacity": {
+    "seats": 4,
+    "storage_volume": "200L",
+    "weight_capacity": "120kg"
+  },
+  "technical_details": {
+    "assembly_required": true,
+    "warranty": "2 ans",
+    "origin": "France",
+    "certifications": ["FSC", "PEFC"]
+  },
   "confidence_score": 85
 }
 
-RÈGLES STRICTES:
+RÈGLES ULTRA-STRICTES POUR PRÉCISION MAXIMALE:
 - Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, jaune, orange, rose, violet, crème, naturel, anthracite, taupe, ivoire, chêne, noyer, teck
-- Matériaux: chêne, hêtre, pin, teck, noyer, bois massif, métal, acier, verre, tissu, cuir, velours, travertin, marbre, plastique, rotin
+- Matériaux: chêne massif, hêtre, pin, teck, noyer, bois massif, métal noir, acier inoxydable, verre trempé, tissu chenille, cuir véritable, velours côtelé, travertin naturel, marbre blanc, plastique ABS, rotin naturel, osier
 - Styles: moderne, contemporain, scandinave, industriel, vintage, rustique, classique, minimaliste, bohème, baroque
-- Subcategory: Description précise et spécifique du produit (ex: "Canapé d'angle convertible", "Table basse ronde", "Chaise de bureau ergonomique")
+- Subcategory: Description ULTRA-précise avec TOUS les détails (matériau + forme + fonctionnalités + capacité)
 - Dimensions en cm uniquement si mentionnées
+- Extraire TOUTES les dimensions disponibles (L, l, H, P, diamètre, hauteur assise)
 - Pièces: salon, chambre, cuisine, bureau, salle à manger, entrée
-- Fonctionnalités: convertible, réversible, pliable, extensible, rangement, tiroir, roulettes, réglable
-- confidence_score: 0-100 basé sur la qualité des informations
+- Fonctionnalités: convertible, réversible, pliable, extensible, rangement intégré, tiroirs, roulettes, réglable en hauteur, pivotant, déhoussable, empilable
+- confidence_score: 0-100 basé sur la RICHESSE et PRÉCISION des informations extraites
+- Si informations manquantes ou floues, réduire le score de confiance
+- Privilégier la PRÉCISION sur la quantité
 
 RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
 
@@ -286,15 +306,15 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON avec sous-catégories précises. Aucun texte supplémentaire.'
+            content: 'Tu es un EXPERT SENIOR en mobilier et design d\'intérieur avec 20 ans d\'expérience. Tu extrais des attributs avec PRÉCISION MAXIMALE au format JSON. Analyse CHAQUE détail du produit. Aucun texte supplémentaire.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 700,
-        temperature: 0.1,
+        max_tokens: 1000,
+        temperature: 0.05,
         stream: false
       }),
     });
@@ -306,17 +326,22 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
       if (content) {
         try {
           const extracted = JSON.parse(content);
+          
+          // Enhanced validation and scoring
+          const validatedExtracted = validateAndEnhanceExtraction(extracted, product);
+          
           console.log('✅ [auto-ai-trainer] IA extraction réussie:', {
             product: product.title?.substring(0, 30),
-            colors: extracted.colors?.length || 0,
-            materials: extracted.materials?.length || 0,
-            subcategory: extracted.subcategory || 'Non définie',
-            confidence: extracted.confidence_score || 0
+            colors: validatedExtracted.colors?.length || 0,
+            materials: validatedExtracted.materials?.length || 0,
+            subcategory: validatedExtracted.subcategory || 'Non définie',
+            confidence: validatedExtracted.confidence_score || 0,
+            dimensions_count: Object.keys(validatedExtracted.dimensions || {}).length
           });
           
           return {
-            ...extracted,
-            confidence_score: extracted.confidence_score || 50
+            ...validatedExtracted,
+            confidence_score: validatedExtracted.confidence_score || 50
           };
         } catch (parseError) {
           console.log('⚠️ [auto-ai-trainer] JSON invalide, fallback basique pour:', product.title?.substring(0, 30));
@@ -332,34 +357,125 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
   return extractAttributesBasic(product);
 }
 
+function validateAndEnhanceExtraction(extracted: any, product: any): ExtractedAttributes {
+  // Enhanced validation and confidence adjustment
+  const validated = { ...extracted };
+  
+  // Validate colors against known color palette
+  const validColors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'crème', 'naturel', 'anthracite', 'taupe', 'ivoire', 'chêne', 'noyer', 'teck'];
+  if (validated.colors) {
+    validated.colors = validated.colors.filter((color: string) => 
+      validColors.some(validColor => 
+        color.toLowerCase().includes(validColor) || validColor.includes(color.toLowerCase())
+      )
+    );
+  }
+  
+  // Validate materials
+  const validMaterials = ['chêne massif', 'hêtre', 'pin', 'teck', 'noyer', 'bois massif', 'métal noir', 'acier inoxydable', 'verre trempé', 'tissu chenille', 'cuir véritable', 'velours côtelé', 'travertin naturel', 'marbre blanc', 'plastique', 'rotin naturel'];
+  if (validated.materials) {
+    validated.materials = validated.materials.filter((material: string) =>
+      validMaterials.some(validMaterial =>
+        material.toLowerCase().includes(validMaterial.toLowerCase()) || 
+        validMaterial.toLowerCase().includes(material.toLowerCase())
+      )
+    );
+  }
+  
+  // Enhanced subcategory validation and enrichment
+  if (validated.subcategory) {
+    const productText = `${product.title || ''} ${product.description || ''}`.toLowerCase();
+    
+    // Add missing details to subcategory if found in text
+    if (productText.includes('convertible') && !validated.subcategory.toLowerCase().includes('convertible')) {
+      validated.subcategory += ' convertible';
+    }
+    if (productText.includes('rangement') && !validated.subcategory.toLowerCase().includes('rangement')) {
+      validated.subcategory += ' avec rangement';
+    }
+    if (productText.includes('angle') && !validated.subcategory.toLowerCase().includes('angle')) {
+      validated.subcategory += ' d\'angle';
+    }
+  }
+  
+  // Enhanced confidence scoring based on data richness
+  let enhancedConfidence = 20; // Base score
+  
+  if (validated.colors && validated.colors.length > 0) enhancedConfidence += 15;
+  if (validated.materials && validated.materials.length > 0) enhancedConfidence += 20;
+  if (validated.dimensions && Object.keys(validated.dimensions).length > 2) enhancedConfidence += 25;
+  if (validated.subcategory && validated.subcategory.length > 20) enhancedConfidence += 15;
+  if (validated.styles && validated.styles.length > 0) enhancedConfidence += 10;
+  if (validated.features && validated.features.length > 0) enhancedConfidence += 10;
+  if (validated.capacity) enhancedConfidence += 10;
+  if (validated.technical_details) enhancedConfidence += 5;
+  
+  // Bonus for rich product descriptions
+  const descriptionLength = (product.description || '').length;
+  if (descriptionLength > 500) enhancedConfidence += 10;
+  else if (descriptionLength > 200) enhancedConfidence += 5;
+  
+  // Penalty for missing critical info
+  if (!validated.colors || validated.colors.length === 0) enhancedConfidence -= 10;
+  if (!validated.materials || validated.materials.length === 0) enhancedConfidence -= 15;
+  if (!validated.dimensions || Object.keys(validated.dimensions).length < 2) enhancedConfidence -= 10;
+  
+  validated.confidence_score = Math.max(10, Math.min(enhancedConfidence, 100));
+  
+  return validated;
+}
 function extractAttributesBasic(product: any): ExtractedAttributes {
   const text = `${product.title || product.name || ''} ${product.description || ''} ${product.productType || product.category || ''}`.toLowerCase();
   
-  // Detect category and subcategory
+  // Enhanced category and subcategory detection
   let category = 'Mobilier';
   let subcategory = '';
   
   if (text.includes('canapé') || text.includes('sofa')) {
     category = 'Canapé';
-    if (text.includes('angle')) subcategory = 'Canapé d\'angle';
-    else if (text.includes('convertible')) subcategory = 'Canapé convertible';
-    else if (text.includes('lit')) subcategory = 'Canapé-lit';
-    else subcategory = 'Canapé fixe';
+    // Build detailed subcategory
+    subcategory = 'Canapé';
+    if (text.includes('angle')) subcategory += ' d\'angle';
+    if (text.includes('convertible')) subcategory += ' convertible';
+    if (text.includes('places')) {
+      const placesMatch = text.match(/(\d+)\s*places?/);
+      if (placesMatch) subcategory += ` ${placesMatch[1]} places`;
+    }
+    if (text.includes('rangement') || text.includes('coffre')) subcategory += ' avec rangement';
+    if (text.includes('velours')) subcategory += ' en velours';
+    if (text.includes('côtelé')) subcategory += ' côtelé';
   } else if (text.includes('table')) {
     category = 'Table';
+    subcategory = 'Table';
     if (text.includes('basse')) subcategory = 'Table basse';
     else if (text.includes('manger') || text.includes('repas')) subcategory = 'Table à manger';
     else if (text.includes('bureau')) subcategory = 'Bureau';
     else if (text.includes('console')) subcategory = 'Console';
-    else if (text.includes('ronde')) subcategory = 'Table ronde';
-    else if (text.includes('rectangulaire')) subcategory = 'Table rectangulaire';
-    else subcategory = 'Table';
+    
+    // Add shape details
+    if (text.includes('ronde')) subcategory += ' ronde';
+    else if (text.includes('rectangulaire')) subcategory += ' rectangulaire';
+    else if (text.includes('carrée')) subcategory += ' carrée';
+    
+    // Add material details
+    if (text.includes('travertin')) subcategory += ' en travertin';
+    else if (text.includes('bois')) subcategory += ' en bois';
+    else if (text.includes('verre')) subcategory += ' en verre';
+    
+    // Add size if mentioned
+    const diameterMatch = text.match(/ø\s*(\d+)\s*cm/);
+    if (diameterMatch) subcategory += ` Ø${diameterMatch[1]}cm`;
   } else if (text.includes('chaise') || text.includes('fauteuil')) {
     category = 'Chaise';
-    if (text.includes('bureau')) subcategory = 'Chaise de bureau';
-    else if (text.includes('fauteuil')) subcategory = 'Fauteuil';
+    subcategory = text.includes('fauteuil') ? 'Fauteuil' : 'Chaise';
+    if (text.includes('bureau')) subcategory += ' de bureau';
     else if (text.includes('bar')) subcategory = 'Tabouret de bar';
-    else subcategory = 'Chaise de salle à manger';
+    else if (text.includes('salle à manger')) subcategory += ' de salle à manger';
+    
+    // Add material and style details
+    if (text.includes('chenille')) subcategory += ' en tissu chenille';
+    if (text.includes('métal noir')) subcategory += ' pieds métal noir';
+    if (text.includes('ergonomique')) subcategory += ' ergonomique';
   } else if (text.includes('lit')) {
     category = 'Lit';
     if (text.includes('simple')) subcategory = 'Lit simple';
@@ -375,47 +491,53 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     else subcategory = 'Meuble de rangement';
   }
 
-  // Extract colors with comprehensive patterns
+  // Enhanced color extraction with better pattern matching
   const colorPatterns = [
-    { name: 'blanc', patterns: ['blanc', 'white', 'ivoire', 'crème', 'cream'] },
-    { name: 'noir', patterns: ['noir', 'black', 'anthracite', 'charbon'] },
-    { name: 'gris', patterns: ['gris', 'grey', 'gray', 'argent', 'silver'] },
-    { name: 'beige', patterns: ['beige', 'sable', 'sand', 'lin', 'écru'] },
-    { name: 'marron', patterns: ['marron', 'brown', 'chocolat', 'café', 'moka', 'cognac'] },
-    { name: 'bleu', patterns: ['bleu', 'blue', 'marine', 'navy', 'cobalt', 'turquoise'] },
-    { name: 'vert', patterns: ['vert', 'green', 'olive', 'sauge', 'menthe'] },
-    { name: 'rouge', patterns: ['rouge', 'red', 'bordeaux', 'cerise', 'carmin'] },
-    { name: 'jaune', patterns: ['jaune', 'yellow', 'moutarde', 'citron'] },
-    { name: 'orange', patterns: ['orange', 'corail', 'abricot', 'mandarine'] },
-    { name: 'rose', patterns: ['rose', 'pink', 'fuchsia', 'magenta'] },
-    { name: 'violet', patterns: ['violet', 'purple', 'mauve', 'lilas', 'prune'] },
-    { name: 'chêne', patterns: ['chêne', 'oak', 'chêne clair', 'chêne foncé'] },
-    { name: 'noyer', patterns: ['noyer', 'walnut', 'noyer américain'] },
-    { name: 'teck', patterns: ['teck', 'teak'] },
-    { name: 'naturel', patterns: ['naturel', 'natural', 'brut', 'raw'] },
-    { name: 'taupe', patterns: ['taupe', 'greige'] }
+    { name: 'blanc', patterns: ['blanc', 'white', 'ivoire', 'crème', 'cream', 'écru', 'cassé', 'lait'] },
+    { name: 'noir', patterns: ['noir', 'black', 'anthracite', 'charbon', 'ébène', 'jais', 'carbone'] },
+    { name: 'gris', patterns: ['gris', 'grey', 'gray', 'argent', 'silver', 'platine', 'acier', 'souris'] },
+    { name: 'beige', patterns: ['beige', 'sable', 'sand', 'lin', 'écru', 'nude', 'champagne', 'vanille'] },
+    { name: 'marron', patterns: ['marron', 'brown', 'chocolat', 'café', 'moka', 'cognac', 'caramel', 'noisette', 'châtaigne'] },
+    { name: 'bleu', patterns: ['bleu', 'blue', 'marine', 'navy', 'cobalt', 'turquoise', 'cyan', 'azur', 'indigo', 'pétrole'] },
+    { name: 'vert', patterns: ['vert', 'green', 'olive', 'sauge', 'menthe', 'émeraude', 'jade', 'kaki', 'forest'] },
+    { name: 'rouge', patterns: ['rouge', 'red', 'bordeaux', 'cerise', 'carmin', 'vermillon', 'grenat', 'rubis'] },
+    { name: 'jaune', patterns: ['jaune', 'yellow', 'moutarde', 'citron', 'or', 'gold', 'ocre', 'soleil'] },
+    { name: 'orange', patterns: ['orange', 'corail', 'abricot', 'mandarine', 'cuivre', 'rouille', 'terre cuite'] },
+    { name: 'rose', patterns: ['rose', 'pink', 'fuchsia', 'magenta', 'saumon', 'poudré', 'bonbon'] },
+    { name: 'violet', patterns: ['violet', 'purple', 'mauve', 'lilas', 'prune', 'aubergine', 'lavande'] },
+    { name: 'chêne', patterns: ['chêne', 'oak', 'chêne clair', 'chêne foncé', 'chêne naturel', 'chêne blanchi'] },
+    { name: 'noyer', patterns: ['noyer', 'walnut', 'noyer américain', 'noyer européen'] },
+    { name: 'teck', patterns: ['teck', 'teak', 'teck huilé'] },
+    { name: 'naturel', patterns: ['naturel', 'natural', 'brut', 'raw', 'authentique'] },
+    { name: 'taupe', patterns: ['taupe', 'greige', 'mushroom', 'pierre'] }
   ];
   
   const colors = colorPatterns
     .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
     .map(({ name }) => name);
 
-  // Extract materials with comprehensive patterns
+  // Enhanced material extraction with more precision
   const materialPatterns = [
-    { name: 'chêne', patterns: ['chêne', 'oak'] },
+    { name: 'chêne massif', patterns: ['chêne massif', 'chêne', 'oak', 'solid oak'] },
     { name: 'hêtre', patterns: ['hêtre', 'beech'] },
     { name: 'pin', patterns: ['pin', 'pine'] },
     { name: 'teck', patterns: ['teck', 'teak'] },
     { name: 'noyer', patterns: ['noyer', 'walnut'] },
-    { name: 'bois massif', patterns: ['bois massif', 'solid wood', 'massif'] },
-    { name: 'métal', patterns: ['métal', 'metal', 'acier', 'steel', 'fer', 'iron'] },
+    { name: 'bois massif', patterns: ['bois massif', 'solid wood', 'massif', 'bois véritable'] },
+    { name: 'métal noir', patterns: ['métal noir', 'black metal', 'acier noir'] },
+    { name: 'acier inoxydable', patterns: ['acier inoxydable', 'inox', 'stainless steel'] },
+    { name: 'verre trempé', patterns: ['verre trempé', 'tempered glass', 'verre sécurit'] },
     { name: 'verre', patterns: ['verre', 'glass', 'cristal'] },
+    { name: 'tissu chenille', patterns: ['tissu chenille', 'chenille', 'chenille fabric'] },
     { name: 'tissu', patterns: ['tissu', 'fabric', 'textile'] },
+    { name: 'cuir véritable', patterns: ['cuir véritable', 'genuine leather', 'cuir pleine fleur'] },
     { name: 'cuir', patterns: ['cuir', 'leather'] },
-    { name: 'velours', patterns: ['velours', 'velvet', 'côtelé'] },
-    { name: 'travertin', patterns: ['travertin', 'travertine'] },
+    { name: 'velours côtelé', patterns: ['velours côtelé', 'corduroy velvet', 'côtelé'] },
+    { name: 'velours', patterns: ['velours', 'velvet'] },
+    { name: 'travertin naturel', patterns: ['travertin naturel', 'travertin', 'travertine natural'] },
+    { name: 'marbre blanc', patterns: ['marbre blanc', 'white marble'] },
     { name: 'marbre', patterns: ['marbre', 'marble'] },
-    { name: 'chenille', patterns: ['chenille'] },
+    { name: 'rotin naturel', patterns: ['rotin naturel', 'natural rattan'] },
     { name: 'rotin', patterns: ['rotin', 'rattan', 'osier', 'wicker'] }
   ];
   
@@ -423,57 +545,110 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
     .map(({ name }) => name);
 
-  // Extract dimensions
+  // Enhanced dimensions extraction with multiple formats
   const dimensions: any = { unit: 'cm' };
   const dimPatterns = [
+    // Combined formats
+    { key: 'combined_lxwxh', regex: /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+    { key: 'combined_lxw', regex: /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+    // Individual dimensions
     { key: 'length', regex: /(?:longueur|length|l)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
     { key: 'width', regex: /(?:largeur|width|w)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
     { key: 'height', regex: /(?:hauteur|height|h)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+    { key: 'depth', regex: /(?:profondeur|depth|p)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
     { key: 'diameter', regex: /(?:diamètre|diameter|ø)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
-    { key: 'depth', regex: /(?:profondeur|depth|p)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi }
+    { key: 'seat_height', regex: /(?:hauteur\s+d?[\'']?assise|seat\s+height)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi }
   ];
   
   dimPatterns.forEach(({ key, regex }) => {
     const match = regex.exec(text);
     if (match) {
-      dimensions[key] = parseFloat(match[1].replace(',', '.'));
+      if (key === 'combined_lxwxh') {
+        dimensions.length = parseFloat(match[1].replace(',', '.'));
+        dimensions.width = parseFloat(match[2].replace(',', '.'));
+        dimensions.height = parseFloat(match[3].replace(',', '.'));
+      } else if (key === 'combined_lxw') {
+        dimensions.length = parseFloat(match[1].replace(',', '.'));
+        dimensions.width = parseFloat(match[2].replace(',', '.'));
+      } else {
+        dimensions[key] = parseFloat(match[1].replace(',', '.'));
+      }
     }
   });
 
-  // Extract styles
+  // Enhanced style extraction
   const stylePatterns = [
-    'moderne', 'modern', 'contemporain', 'contemporary', 'scandinave', 'scandinavian',
-    'industriel', 'industrial', 'vintage', 'rustique', 'rustic', 'classique', 'classic',
-    'minimaliste', 'minimalist', 'bohème', 'boho', 'baroque'
+    { name: 'moderne', patterns: ['moderne', 'modern', 'design moderne'] },
+    { name: 'contemporain', patterns: ['contemporain', 'contemporary', 'design contemporain'] },
+    { name: 'scandinave', patterns: ['scandinave', 'scandinavian', 'nordique', 'nordic'] },
+    { name: 'industriel', patterns: ['industriel', 'industrial', 'loft', 'factory'] },
+    { name: 'vintage', patterns: ['vintage', 'rétro', 'retro', 'années'] },
+    { name: 'rustique', patterns: ['rustique', 'rustic', 'campagne', 'country'] },
+    { name: 'classique', patterns: ['classique', 'classic', 'traditionnel', 'traditional'] },
+    { name: 'minimaliste', patterns: ['minimaliste', 'minimalist', 'épuré', 'simple'] },
+    { name: 'bohème', patterns: ['bohème', 'boho', 'bohemian', 'ethnique'] }
   ];
   
-  const styles = stylePatterns.filter(style => text.includes(style));
+  const styles = stylePatterns
+    .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
+    .map(({ name }) => name);
 
-  // Extract room types
+  // Enhanced room detection
   const roomPatterns = [
-    'salon', 'living', 'chambre', 'bedroom', 'cuisine', 'kitchen',
-    'bureau', 'office', 'salle à manger', 'dining', 'entrée', 'entrance'
+    { name: 'salon', patterns: ['salon', 'living', 'séjour', 'pièce à vivre'] },
+    { name: 'chambre', patterns: ['chambre', 'bedroom', 'chambre à coucher'] },
+    { name: 'cuisine', patterns: ['cuisine', 'kitchen', 'coin repas'] },
+    { name: 'bureau', patterns: ['bureau', 'office', 'espace de travail'] },
+    { name: 'salle à manger', patterns: ['salle à manger', 'dining', 'coin repas'] },
+    { name: 'entrée', patterns: ['entrée', 'entrance', 'hall', 'vestibule'] }
   ];
   
-  const room = roomPatterns.filter(r => text.includes(r));
+  const room = roomPatterns
+    .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
+    .map(({ name }) => name);
 
-  // Extract features
+  // Enhanced features extraction
   const featurePatterns = [
-    'convertible', 'réversible', 'reversible', 'pliable', 'foldable',
-    'extensible', 'extendable', 'rangement', 'storage', 'tiroir', 'drawer',
-    'roulettes', 'wheels', 'réglable', 'adjustable'
+    { name: 'convertible', patterns: ['convertible', 'couchage', 'lit d\'appoint'] },
+    { name: 'réversible', patterns: ['réversible', 'reversible', 'angle réversible'] },
+    { name: 'rangement intégré', patterns: ['rangement', 'storage', 'coffre', 'compartiment'] },
+    { name: 'tiroirs', patterns: ['tiroir', 'tiroirs', 'drawer', 'drawers'] },
+    { name: 'roulettes', patterns: ['roulettes', 'wheels', 'roulant', 'mobile'] },
+    { name: 'réglable en hauteur', patterns: ['réglable', 'adjustable', 'hauteur variable'] },
+    { name: 'pivotant', patterns: ['pivotant', 'swivel', 'rotatif'] },
+    { name: 'déhoussable', patterns: ['déhoussable', 'removable cover', 'housse amovible'] },
+    { name: 'empilable', patterns: ['empilable', 'stackable', 'empilage'] },
+    { name: 'pliable', patterns: ['pliable', 'foldable', 'pliant'] },
+    { name: 'extensible', patterns: ['extensible', 'extendable', 'rallonge'] }
   ];
   
-  const features = featurePatterns.filter(feature => text.includes(feature));
+  const features = featurePatterns
+    .filter(({ patterns }) => patterns.some(pattern => text.includes(pattern)))
+    .map(({ name }) => name);
 
-  // Calculate confidence score
-  let confidence = 0;
+  // Enhanced confidence calculation
+  let confidence = 20; // Base score
   if (colors.length > 0) confidence += 20;
   if (materials.length > 0) confidence += 25;
   if (Object.keys(dimensions).length > 1) confidence += 20;
   if (styles.length > 0) confidence += 15;
   if (features.length > 0) confidence += 10;
   if (room.length > 0) confidence += 10;
+  
+  // Bonus for detailed subcategory
+  if (subcategory.length > 20) confidence += 10;
+  
+  // Bonus for rich description
+  const descriptionLength = (product.description || '').length;
+  if (descriptionLength > 300) confidence += 5;
+  
+  // Extract capacity information
+  const capacity: any = {};
+  const seatsMatch = text.match(/(\d+)\s*places?/);
+  if (seatsMatch) capacity.seats = parseInt(seatsMatch[1]);
+  
+  const storageMatch = text.match(/(\d+)\s*l(?:itres?)?/i);
+  if (storageMatch) capacity.storage_volume = `${storageMatch[1]}L`;
 
   return {
     colors: [...new Set(colors)],
@@ -489,6 +664,37 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
     },
     features: [...new Set(features)],
     room: [...new Set(room)],
+    capacity: Object.keys(capacity).length > 0 ? capacity : undefined,
+    technical_details: extractTechnicalDetails(text),
     confidence_score: Math.min(confidence, 100)
   };
+}
+function extractTechnicalDetails(text: string): any {
+  const details: any = {};
+  
+  // Assembly
+  if (text.includes('montage') || text.includes('assemblage')) {
+    details.assembly_required = true;
+  }
+  
+  // Warranty
+  const warrantyMatch = text.match(/(?:garantie|warranty)\s*:?\s*(\d+)\s*(ans?|years?)/i);
+  if (warrantyMatch) {
+    details.warranty = `${warrantyMatch[1]} ans`;
+  }
+  
+  // Origin
+  const originMatch = text.match(/(?:fabriqué en|made in|origine)\s*:?\s*([a-zA-ZÀ-ÿ\s]+)/i);
+  if (originMatch) {
+    details.origin = originMatch[1].trim();
+  }
+  
+  // Certifications
+  const certifications = [];
+  if (text.includes('fsc')) certifications.push('FSC');
+  if (text.includes('pefc')) certifications.push('PEFC');
+  if (text.includes('oeko-tex')) certifications.push('OEKO-TEX');
+  if (certifications.length > 0) details.certifications = certifications;
+  
+  return Object.keys(details).length > 0 ? details : undefined;
 }
