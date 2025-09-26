@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt,
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, 
-  Tag, BookOpen, Zap, Loader2, Package, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play, 
-  Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase,
-  ChevronDown, ChevronUp, X, Save, ExternalLink, DollarSign, Filter, Plus, Eye,
-  Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, CheckCircle,
-  LayoutDashboard, ShoppingCart, Users, Mail, Mic, FileText, AlertCircle
-} from 'lucide-react';
+import { Users, Database, CheckCircle, AlertCircle, CreditCard, Receipt, Megaphone, Palette, Monitor, Smartphone, Tablet, CreditCard as Edit, Trash2, Clock, Battery, Signal, RefreshCw, Tag, BookOpen, Zap, Loader2, Package, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play, Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase, ChevronDown, ChevronUp, X, Save, ExternalLink, DollarSign, Filter, Plus, Eye, Megaphone, Palette, Monitor, Smartphone, Tablet, CreditCard as Edit, Trash2, Clock, Battery, Signal, RefreshCw, CheckCircle, LayoutDashboard, ShoppingCart, Users, Mail, Mic, FileText, AlertCircle } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
 import { ShopifyAdminConnector } from '../components/ShopifyAdminConnector';
