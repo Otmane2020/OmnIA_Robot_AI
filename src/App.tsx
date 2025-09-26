@@ -22,6 +22,7 @@ import { APITest } from './pages/APITest';
 import { QuickChat } from './pages/QuickChat';
 
 interface User {
+}
 interface User {
   id: string;
   email: string;
