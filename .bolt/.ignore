@@ -20,5 +20,5 @@
 /src/components/SellerDashboard.tsx
 /src/components/SellerSettings.tsx
 /src/components/SellerSubscriptionManager.tsx
-#/src/components/ShopifyCSVImporter.tsx
+/src/components/ShopifyCSVImporter.tsx
 #/src/components/SmartAIEnrichmentTab.tsx
