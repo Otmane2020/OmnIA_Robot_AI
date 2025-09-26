@@ -612,7 +612,7 @@ function getVariantImageUrl(baseImageUrl: string, color: string): string {
 
 async function generateIntelligentResponse(
   message: string, 
-  products: EnrichedProduct[], 
+  productsWithVariants: EnrichedProduct[], 
   intent: any, 
   photoAnalysis: any,
   history: any[]
@@ -620,7 +620,7 @@ async function generateIntelligentResponse(
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
   if (!deepseekApiKey) {
-    return generateFallbackResponse(message, products, intent);
+    return generateFallbackResponse(message, productsWithVariants, intent);
   }
 
   try {
@@ -630,7 +630,7 @@ async function generateIntelligentResponse(
           ` (${p.variants.length} variantes: ${p.variants.map(v => v.color).join(', ')})` : '';
         const priceInfo = p.compare_at_price ? 
           ` (était ${p.compare_at_price}€, -${Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%)` : '';
-        return `• ${p.title} - ${p.price}€${priceInfo} - ${p.subcategory || p.category} - ${p.color} ${p.material} - Style ${p.style} - Dimensions: ${p.dimensions} - Stock: ${p.stock_qty}${variantInfo} - Smart AI: ${p.confidence_score}%`;
+        return `• ${p.title} - ${p.price}€${priceInfo} - ${p.subcategory || p.category} - Couleur: ${p.color} - Matériau: ${p.material} - Style: ${p.style} - Dimensions: ${p.dimensions} - Pièce: ${p.room} - Stock: ${p.stock_qty}${variantInfo} - Smart AI: ${p.confidence_score}%`;
       }).join('\n') : 'Aucun produit correspondant trouvé dans le catalogue Smart AI.';
 
     const photoContext = photoAnalysis ? 
@@ -658,8 +658,8 @@ ${productsContext}
 
 ${photoContext}
 
-INTENTION CLIENT ANALYSÉE: ${searchIntent.design_context || 'Recherche mobilier'}
-CONTEXTE CONVERSATION: ${conversation_history.length > 0 ? 'Suite de conversation' : 'Première interaction'}
+INTENTION CLIENT ANALYSÉE: ${intent.design_context || 'Recherche mobilier'}
+CONTEXTE CONVERSATION: ${history.length > 0 ? 'Suite de conversation' : 'Première interaction'}
 
 PERSONNALITÉ:
 - Conseiller déco passionné et expert
@@ -685,7 +685,7 @@ RÈGLES:
 - Exploiter les promotions et prix barrés
 
 EXEMPLE:
-"Super ! Pour accompagner votre chaise AVINA beige, voici mes coups de cœur **tables basses sous 100€** :
+"Super ! Pour accompagner votre style, voici mes coups de cœur **Smart AI** :
 
 **TOP 2 SMART AI** :
 • **Table basse LINA** (89€) - Plateau bois chêne clair, design épuré
@@ -726,7 +726,7 @@ Les deux existent en plusieurs finitions pour s'accorder avec votre style. La LI
     console.error('❌ [quickchat] Erreur DeepSeek response:', error);
   }
 
-  return generateFallbackResponse(message, products, intent);
+  return generateFallbackResponse(message, productsWithVariants, intent);
 }
 
 function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedProduct[] {
@@ -739,26 +739,55 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
     demoProducts.push({
       id: 'demo-avina-enriched',
       handle: 'chaise-avina-tissu-effet-lin',
-      title: 'Chaise AVINA',
-      description: 'Chaise en tissu effet lin avec pieds en métal noir, design moderne et épuré',
+      title: 'Chaise AVINA - Tissu effet lin avec pieds métal noir',
+      description: 'Chaise moderne en tissu effet lin beige avec pieds en métal noir mat. Design épuré et contemporain, parfaite pour salon ou salle à manger. Structure solide et confortable.',
       price: 79,
       compare_at_price: 99,
       category: 'Chaise',
-      subcategory: 'Chaise en tissu effet lin avec pieds métal',
-      color: photoAnalysis?.dominant_colors?.[0] || intent.target_colors?.[0] || 'beige',
+      subcategory: 'Chaise de salle à manger en tissu effet lin avec pieds métal noir',
+      color: 'beige',
       material: 'tissu effet lin',
       fabric: 'tissu effet lin',
-      style: photoAnalysis?.style_detected || intent.target_styles?.[0] || 'moderne',
+      style: 'moderne',
       dimensions: '45x52x82cm',
-      room: photoAnalysis?.room_type || intent.target_room || 'salon',
+      room: 'salon',
       image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
       product_url: '#chaise-avina',
       stock_qty: 96,
-      tags: ['moderne', 'tissu', 'métal', 'design'],
-      seo_title: 'Chaise AVINA - Tissu effet lin et métal noir',
-      seo_description: 'Chaise moderne en tissu effet lin avec pieds métal noir. Design épuré et confortable.',
+      tags: ['chaise', 'tissu effet lin', 'métal noir', 'moderne', 'beige', 'salon', 'salle à manger'],
+      seo_title: 'Chaise AVINA - Tissu effet lin beige avec pieds métal noir',
+      seo_description: 'Chaise moderne AVINA en tissu effet lin beige avec pieds métal noir. Design épuré pour salon et salle à manger.',
       brand: 'Decora Home',
-      confidence_score: 92
+      confidence_score: 92,
+      variants: [
+        {
+          id: 'avina-beige',
+          title: 'Beige',
+          color: 'beige',
+          price: 79,
+          compare_at_price: 99,
+          image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          stock_qty: 32
+        },
+        {
+          id: 'avina-gris',
+          title: 'Gris',
+          color: 'gris',
+          price: 79,
+          compare_at_price: 99,
+          image_url: 'https://images.pexels.com/photos/586763/pexels-photo-586763.jpeg',
+          stock_qty: 28
+        },
+        {
+          id: 'avina-anthracite',
+          title: 'Anthracite',
+          color: 'anthracite',
+          price: 79,
+          compare_at_price: 99,
+          image_url: 'https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg',
+          stock_qty: 36
+        }
+      ]
     });
   }
   
@@ -768,26 +797,46 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
     demoProducts.push({
       id: 'demo-lina-enriched',
       handle: 'table-basse-lina-chene-clair',
-      title: 'Table basse LINA',
-      description: 'Table basse en chêne clair avec plateau épuré et pieds fuselés, design scandinave',
+      title: 'Table basse LINA - Chêne clair design scandinave',
+      description: 'Table basse ronde LINA en chêne clair massif avec plateau épuré et pieds fuselés. Design scandinave authentique, finition naturelle huilée. Parfaite pour salon moderne.',
       price: 89,
       compare_at_price: 119,
       category: 'Table',
-      subcategory: 'Table basse ronde en chêne clair',
+      subcategory: 'Table basse ronde en chêne clair massif avec pieds fuselés',
       color: 'chêne clair',
-      material: 'chêne',
+      material: 'chêne massif',
       fabric: '',
-      style: photoAnalysis?.style_detected || 'scandinave',
+      style: 'scandinave',
       dimensions: '90x90x40cm',
-      room: photoAnalysis?.room_type || 'salon',
+      room: 'salon',
       image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
       product_url: '#table-lina',
       stock_qty: 45,
-      tags: ['scandinave', 'chêne', 'épuré', 'naturel'],
-      seo_title: 'Table basse LINA - Chêne clair design scandinave',
-      seo_description: 'Table basse ronde en chêne clair, design scandinave épuré avec pieds fuselés.',
+      tags: ['table basse', 'chêne clair', 'scandinave', 'ronde', 'salon', 'naturel', 'épuré'],
+      seo_title: 'Table basse LINA ronde - Chêne clair massif design scandinave',
+      seo_description: 'Table basse LINA ronde en chêne clair massif. Design scandinave avec pieds fuselés. Finition naturelle.',
       brand: 'Decora Home',
-      confidence_score: 88
+      confidence_score: 88,
+      variants: [
+        {
+          id: 'lina-chene-clair',
+          title: 'Chêne clair',
+          color: 'chêne clair',
+          price: 89,
+          compare_at_price: 119,
+          image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
+          stock_qty: 25
+        },
+        {
+          id: 'lina-chene-fonce',
+          title: 'Chêne foncé',
+          color: 'chêne foncé',
+          price: 89,
+          compare_at_price: 119,
+          image_url: 'https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg',
+          stock_qty: 20
+        }
+      ]
     });
   }
   
@@ -797,26 +846,46 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
     demoProducts.push({
       id: 'demo-noa-enriched',
       handle: 'table-basse-noa-verre-metal',
-      title: 'Table basse NOA',
-      description: 'Table basse en verre trempé et métal noir, effet aérien et moderne',
+      title: 'Table basse NOA - Verre trempé et métal noir effet aérien',
+      description: 'Table basse rectangulaire NOA en verre trempé transparent avec structure métal noir mat. Design moderne et aérien, parfaite pour salon contemporain. Verre sécurisé 8mm.',
       price: 79,
       compare_at_price: 109,
       category: 'Table',
-      subcategory: 'Table basse rectangulaire verre et métal',
+      subcategory: 'Table basse rectangulaire en verre trempé avec structure métal noir',
       color: 'transparent',
       material: 'verre trempé',
       fabric: '',
       style: 'moderne',
       dimensions: '100x50x35cm',
-      room: photoAnalysis?.room_type || 'salon',
+      room: 'salon',
       image_url: 'https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg',
       product_url: '#table-noa',
       stock_qty: 32,
-      tags: ['moderne', 'verre', 'métal', 'aérien'],
-      seo_title: 'Table basse NOA - Verre trempé et métal noir',
-      seo_description: 'Table basse moderne en verre trempé avec structure métal noir, effet aérien.',
+      tags: ['table basse', 'verre trempé', 'métal noir', 'moderne', 'rectangulaire', 'salon', 'aérien'],
+      seo_title: 'Table basse NOA rectangulaire - Verre trempé et métal noir moderne',
+      seo_description: 'Table basse NOA en verre trempé transparent avec métal noir. Design moderne aérien pour salon.',
       brand: 'Decora Home',
-      confidence_score: 85
+      confidence_score: 85,
+      variants: [
+        {
+          id: 'noa-verre-noir',
+          title: 'Verre + Métal noir',
+          color: 'transparent',
+          price: 79,
+          compare_at_price: 109,
+          image_url: 'https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg',
+          stock_qty: 18
+        },
+        {
+          id: 'noa-verre-chrome',
+          title: 'Verre + Chrome',
+          color: 'transparent',
+          price: 89,
+          compare_at_price: 119,
+          image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
+          stock_qty: 14
+        }
+      ]
     });
   }
   

@@ -243,11 +243,31 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
     return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
   };
 
+  const handleProductClick = (product: EnrichedProduct) => {
+    // Ouvrir la fiche produit dans un nouvel onglet
+    window.open(product.product_url, '_blank');
+  };
+
+  const handleAddToCart = (product: EnrichedProduct, variant?: any) => {
+    const selectedVariant = variant || product.variants?.[0];
+    const cartMessage = `✅ **${product.title}** ${selectedVariant ? `(${selectedVariant.color})` : ''} ajouté au panier ! Autre chose vous intéresse ?`;
+    
+    // Ajouter message de confirmation
+    const confirmMessage: ChatMessage = {
+      id: (Date.now() + Math.random()).toString(),
+      content: cartMessage,
+      isUser: false,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, confirmMessage]);
+    speak(cartMessage);
+  };
   const renderProductCard = (product: EnrichedProduct) => (
-    <div key={product.id} className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200 hover:shadow-xl transition-all hover:scale-[1.02] group">
+    <div key={product.id} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all hover:scale-[1.02] group cursor-pointer">
       <div className="flex gap-4">
         {/* Image principale */}
-        <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+        <div className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 shadow-md">
           <img 
             src={product.image_url} 
             alt={product.title}
@@ -260,21 +280,21 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2">
+          <h3 className="font-bold text-gray-800 text-lg mb-2 line-clamp-2">
             {product.title}
             {product.subcategory && (
-              <span className="block text-xs text-blue-600 font-medium">{product.subcategory}</span>
+              <span className="block text-sm text-blue-600 font-medium mt-1">{product.subcategory}</span>
             )}
           </h3>
-          <p className="text-blue-600 text-xs font-medium mb-2">{product.brand} • {product.category}</p>
+          <p className="text-blue-600 text-sm font-medium mb-3">{product.brand} • {product.category}</p>
           
           {/* Prix et promotion */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg font-bold text-green-600">{product.price}€</span>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl font-bold text-green-600">{product.price}€</span>
             {product.compare_at_price && product.compare_at_price > product.price && (
               <>
-                <span className="text-sm text-gray-500 line-through">{product.compare_at_price}€</span>
-                <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">
+                <span className="text-lg text-gray-500 line-through">{product.compare_at_price}€</span>
+                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold animate-pulse">
                   -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
                 </span>
               </>
@@ -282,43 +302,48 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
           </div>
 
           {/* Attributs Smart AI */}
-          <div className="flex flex-wrap gap-1 mb-3">
+          <div className="flex flex-wrap gap-2 mb-4">
             {product.color && (
-              <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm flex items-center gap-1 font-medium">
                 <Palette className="w-3 h-3" />
                 {product.color}
               </span>
             )}
             {product.material && (
-              <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm flex items-center gap-1 font-medium">
                 <Tag className="w-3 h-3" />
                 {product.material}
               </span>
             )}
             {product.dimensions && (
-              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm flex items-center gap-1 font-medium">
                 <Ruler className="w-3 h-3" />
                 {product.dimensions}
               </span>
             )}
             {product.style && (
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm flex items-center gap-1 font-medium">
                 <Sparkles className="w-3 h-3" />
                 {product.style}
+              </span>
+            )}
+            {product.room && (
+              <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm flex items-center gap-1 font-medium">
+                🏠 {product.room}
               </span>
             )}
           </div>
 
           {/* Variantes de couleur si disponibles */}
           {product.variants && product.variants.length > 1 && (
-            <div className="mb-3">
-              <p className="text-xs text-gray-600 mb-1">
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2 font-medium">
                 {product.variants.length} variante{product.variants.length > 1 ? 's' : ''} disponible{product.variants.length > 1 ? 's' : ''} :
               </p>
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 {product.variants.slice(0, 4).map((variant, index) => (
                   <div key={index} className="relative group">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 cursor-pointer transition-all hover:scale-110">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 cursor-pointer transition-all hover:scale-110 shadow-sm">
                       <img 
                         src={variant.image_url} 
                         alt={variant.color}
@@ -330,14 +355,14 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
                         }}
                       />
                     </div>
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
                       {variant.color} - {variant.price}€
-                      {variant.material && <div className="text-xs text-gray-300">{variant.material}</div>}
+                      <div className="text-xs text-gray-300">Stock: {variant.stock_qty}</div>
                     </div>
                   </div>
                 ))}
                 {product.variants.length > 4 && (
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 border-2 border-gray-200 flex items-center justify-center text-xs text-gray-600">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 border-2 border-gray-200 flex items-center justify-center text-sm text-gray-600 font-medium">
                     +{product.variants.length - 4}
                   </div>
                 )}
@@ -346,47 +371,50 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
           )}
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+          <div className="flex gap-3">
+            <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105">
               <Eye className="w-3 h-3" />
               Voir
             </button>
-            <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+            <button 
+              onClick={() => handleAddToCart(product)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105"
+            >
               <ShoppingCart className="w-3 h-3" />
               Panier
             </button>
             <button 
               onClick={() => window.open(generateQRCode(product.product_url), '_blank')}
-              className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg"
+              className="p-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all hover:scale-105"
               title="QR Code"
             >
-              <QrCode className="w-3 h-3" />
+              <QrCode className="w-4 h-4" />
             </button>
             <a
               href={product.product_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"
+              className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all hover:scale-105"
               title="Voir sur le site"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-4 h-4" />
             </a>
           </div>
         </div>
       </div>
 
       {/* Confiance IA */}
-      <div className="mt-3 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1">
+      <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2">
           <Sparkles className="w-3 h-3 text-purple-500" />
-          <span className="text-purple-600 font-medium">Smart AI: {product.confidence_score}%</span>
+          <span className="text-purple-600 font-semibold">Smart AI: {product.confidence_score}%</span>
           {product.subcategory && (
-            <span className="text-gray-500">• {product.subcategory.substring(0, 20)}...</span>
+            <span className="text-gray-500 ml-2">• {product.subcategory.substring(0, 30)}...</span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Package className="w-3 h-3 text-green-500" />
-          <span className="text-green-600 font-medium">{product.stock_qty} en stock</span>
+          <span className="text-green-600 font-semibold">{product.stock_qty} en stock</span>
         </div>
       </div>
     </div>
@@ -455,15 +483,15 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
                 
                 {/* Affichage des produits enrichis */}
                 {message.products && message.products.length > 0 && (
-                  <div className="mt-4 space-y-4">
-                    <h3 className="text-white font-bold flex items-center gap-2">
+                  <div className="mt-6 space-y-6">
+                    <h3 className="text-white font-bold text-xl flex items-center gap-3">
                       <Sparkles className="w-5 h-5 text-cyan-400" />
                       Mes recommandations Smart AI
-                      <span className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full text-sm">
+                      <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full text-base font-semibold">
                         {message.products.length} produit{message.products.length > 1 ? 's' : ''}
                       </span>
                     </h3>
-                    <div className="grid gap-4">
+                    <div className="grid gap-6">
                       {message.products.map(renderProductCard)}
                     </div>
                   </div>
