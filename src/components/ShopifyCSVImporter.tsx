@@ -251,10 +251,42 @@ export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImport
 
       setProcessingStep('Sauvegarde en cours...');
       
-      // Sauvegarder dans localStorage
-      localStorage.setItem('shopify_products', JSON.stringify(processedProducts));
-      localStorage.setItem('catalog_products', JSON.stringify(processedProducts));
-      localStorage.setItem('imported_products', JSON.stringify(processedProducts));
+      // Sauvegarder dans localStorage avec gestion des erreurs de quota
+      try {
+        localStorage.setItem('shopify_products', JSON.stringify(processedProducts));
+        localStorage.setItem('catalog_products', JSON.stringify(processedProducts));
+        localStorage.setItem('imported_products', JSON.stringify(processedProducts));
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          console.warn('LocalStorage quota exceeded, attempting to clear temporary data...');
+          
+          // Nettoyer les données temporaires CSV pour libérer de l'espace
+          localStorage.removeItem('csv_file_data');
+          localStorage.removeItem('last_csv_filename');
+          localStorage.removeItem('last_csv_size');
+          
+          // Tentative de sauvegarde après nettoyage
+          try {
+            localStorage.setItem('shopify_products', JSON.stringify(processedProducts));
+            localStorage.setItem('catalog_products', JSON.stringify(processedProducts));
+            localStorage.setItem('imported_products', JSON.stringify(processedProducts));
+            
+            showInfo(
+              'Espace libéré',
+              'Données temporaires supprimées pour faire de la place aux produits importés.'
+            );
+          } catch (retryError) {
+            console.error('Failed to save after clearing temporary data:', retryError);
+            showError(
+              'Stockage local saturé',
+              'Le jeu de données est trop volumineux pour le stockage local. Les produits sont chargés mais ne seront pas sauvegardés.'
+            );
+          }
+        } else {
+          console.error('Error saving to localStorage:', error);
+          showError('Erreur de sauvegarde', 'Impossible de sauvegarder les produits localement.');
+        }
+      }
 
       setProcessingStep('Import terminé');
       
