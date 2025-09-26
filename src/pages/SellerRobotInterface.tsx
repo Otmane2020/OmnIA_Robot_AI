@@ -6,7 +6,7 @@ import {
   ShoppingCart, Eye, ExternalLink, Zap, Brain,
   RefreshCw, Download, Upload, Filter, Search
 } from 'lucide-react';
-import { useNotifications } from '../components/NotificationSystem';
+import { useNotifications } from '../components/NotificationSystem.tsx';
 
 interface SellerData {
   id: string;

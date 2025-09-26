@@ -4,10 +4,10 @@ import {
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock, Battery, Signal, RefreshCw, 
   Tag, BookOpen, Zap, Loader2, Package, Target, Search, Image, Sparkles, Upload, QrCode, Bot, Play, 
   Pause, RotateCcw, Move, Music, Wifi, Award, Globe, Lightbulb, Heart, ArrowLeft, Send, Briefcase,
-  ChevronDown, ChevronUp, X, Save, CheckCircle, ExternalLink, DollarSign, Filter, Plus, Eye
+  ChevronDown, ChevronUp, X, Save, ExternalLink, DollarSign, Filter, Plus, Eye,
   Megaphone, Palette, Monitor, Smartphone, Tablet, Edit, Trash2, Clock,
-  Battery, Signal, RefreshCw, Tag, BookOpen, Zap,
-  LayoutDashboard, ShoppingCart, Users, MessageSquare, Settings, BarChart3, Brain, Mail, Mic, FileText, AlertCircle
+  Battery, Signal, RefreshCw, CheckCircle,
+  LayoutDashboard, ShoppingCart, Users, Mail, Mic, FileText, AlertCircle
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { EcommerceIntegration } from '../components/EcommerceIntegration';
