@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
-  extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent,
-  detectEnhancedCategory,
-  Package, Tag, DollarSign, Image, Settings, Search,
-  Filter, ChevronDown, ChevronUp, ExternalLink
-} from 'lucide-react';
+import { Brain, Sparkles, Zap, RefreshCw, Download, Upload, Braces as extractEnhancedRooms, Construction as extractDimensions, InspectionPanel as detectPromotions, Component as generateSEOContent, BluetoothConnected as detectEnhancedCategory, Package, Tag, DollarSign, Image, Settings, Search, Filter, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { extractEnhancedStyles, extractEnhancedColors, extractEnhancedMaterials, extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent } from '../utils/productEnrichmentUtils';
 
