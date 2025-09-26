@@ -245,7 +245,7 @@ Destination : Salon, pièce à vivre, studio`,
           name: mainProduct.name || mainProduct.title || 'Produit sans nom',
           description: cleanDescription(mainProduct.description || mainProduct.body_html || ''),
           price: Math.min(...variations.map(v => v.price)),
-          category: aiAttributes.category,
+          category: aiAttributes.category || 'Non catégorisé',
           vendor: mainProduct.vendor || 'Decora Home',
           image_url: mainProduct.image_url || mainProduct.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
           stock: variations.reduce((sum, v) => sum + v.stock, 0),
@@ -278,7 +278,8 @@ Destination : Salon, pièce à vivre, studio`,
       styles: extractStyles(text),
       features: extractFeatures(text),
       room: extractRooms(text),
-      confidence_score: calculateConfidence(text, dimensions)
+      confidence_score: calculateConfidence(text, dimensions),
+      category: product.category || product.product_category || product.product_type || 'Non catégorisé'
     };
   };
 
@@ -500,17 +501,17 @@ Destination : Salon, pièce à vivre, studio`,
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = searchTerm === '' || 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.ai_attributes.colors.some(color => color.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      product.ai_attributes.materials.some(material => material.toLowerCase().includes(searchTerm.toLowerCase()));
+      (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.ai_attributes.colors.some(color => (color || '').toLowerCase().includes(searchTerm.toLowerCase())) ||
+      product.ai_attributes.materials.some(material => (material || '').toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || (product.category || '') === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
 
-  const categories = [...new Set(products.map(p => p.category))];
+  const categories = [...new Set(products.map(p => p.category || 'Non catégorisé'))];
 
   const formatDimensions = (dimensions: any): string => {
     const parts = [];
