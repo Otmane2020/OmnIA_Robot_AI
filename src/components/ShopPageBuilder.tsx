@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Eye, CreditCard as Edit, Save, RefreshCw, Palette, Type, Image, LayoutGrid as Layout, Settings, Monitor, Smartphone, Tablet } from 'lucide-react';
+import { Store, Eye, CreditCard as Edit, Save, RefreshCw, Palette, Type, Image, LayoutGrid as Layout, Settings, Monitor, Smartphone, Tablet, TrendingUp } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface ShopPageBuilderProps {
