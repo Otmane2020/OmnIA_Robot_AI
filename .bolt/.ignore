@@ -1,14 +1,14 @@
 ./node_modules
-# Ignorer toutes les pages spécifiques
+ Ignorer toutes les pages spécifiques
 /src/pages/About.tsx
 /src/pages/AdminDashboard.tsx
-#/src/pages/AdminLogin.tsx
-#/src/pages/APITest.tsx
-#/src/pages/ChatInterface.tsx
+/src/pages/AdminLogin.tsx
+/src/pages/APITest.tsx
+/src/pages/ChatInterface.tsx
 /src/pages/Contact.tsx
 /src/pages/Documentation.tsx
 /src/pages/Guides.tsx
-#/src/pages/LandingPage.tsx
+/src/pages/LandingPage.tsx
 /src/pages/Partnerships.tsx
 /src/pages/Press.tsx
 #/src/pages/RobotInterface.tsx
