@@ -73,9 +73,9 @@ Deno.serve(async (req: Request) => {
     if (action === 'get') {
       // Get current settings
       const { data: currentSettings } = await supabase
-        .from('seller_settings')
+        .from('retailer_settings')
         .select('*')
-        .eq('seller_id', retailer_id)
+        .eq('retailer_id', retailer_id)
         .single();
 
       const responseSettings = {
@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
         siret: retailer.siret,
         position: retailer.position,
         
-        // Robot settings from seller_settings table or defaults
+        // Robot settings from retailer_settings table or defaults
         robot_name: currentSettings?.robot_name || 'OmnIA',
         robot_personality: currentSettings?.robot_personality || 'commercial',
         language: currentSettings?.language || 'fr',
@@ -145,9 +145,9 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Update robot settings in seller_settings table
+      // Update robot settings in retailer_settings table
       const robotSettings: any = {
-        seller_id: retailer_id,
+        retailer_id,
         updated_at: new Date().toISOString()
       };
       
@@ -161,8 +161,8 @@ Deno.serve(async (req: Request) => {
       if (settings.auto_training !== undefined) robotSettings.auto_training = settings.auto_training;
 
       const { error: settingsError } = await supabase
-        .from('seller_settings')
-        .upsert(robotSettings, { onConflict: 'seller_id' });
+        .from('retailer_settings')
+        .upsert(robotSettings, { onConflict: 'retailer_id' });
 
       if (settingsError) {
         console.error('❌ [retailer-settings] Erreur mise à jour settings:', settingsError);

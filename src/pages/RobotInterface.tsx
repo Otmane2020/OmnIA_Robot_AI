@@ -133,8 +133,7 @@ export const RobotInterface: React.FC = () => {
     setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Analyse de votre demande...' }));
 
     try {
-      // Utiliser la recherche intelligente avec produits enrichis
-      const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-product-search`, {
+      const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -143,10 +142,7 @@ export const RobotInterface: React.FC = () => {
         body: JSON.stringify({ 
           message: messageText,
           retailer_id: 'demo-retailer-id',
-          conversation_context: messages.slice(-3).map(m => ({
-            role: m.isUser ? 'user' : 'assistant',
-            content: m.content
-          }))
+          questioning_mode: questioningMode
         }),
       });
 
@@ -157,27 +153,19 @@ export const RobotInterface: React.FC = () => {
         const searchData = await searchResponse.json();
         aiResponse = searchData.message;
         foundProducts = searchData.products || [];
-      } else {
-        // Fallback vers unified-chat si intelligent-search échoue
-        const fallbackResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            message: messageText,
-            retailer_id: 'demo-retailer-id'
-          }),
-        });
         
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          aiResponse = fallbackData.message;
-          foundProducts = fallbackData.products || [];
-        } else {
-          aiResponse = "Je rencontre des difficultés techniques. Pouvez-vous reformuler ?";
+        if (foundProducts.length === 0 && messageText.toLowerCase().includes('canapé')) {
+          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Canapé').slice(0, 2);
+          aiResponse += " Voici nos canapés disponibles :";
+        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('table')) {
+          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Table').slice(0, 2);
+          aiResponse += " Découvrez nos tables :";
+        } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('chaise')) {
+          foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Chaise').slice(0, 2);
+          aiResponse += " Voici nos chaises :";
         }
+      } else {
+        aiResponse = "Je rencontre des difficultés techniques. Pouvez-vous reformuler ?";
       }
 
       const botMessage: ChatMessageType = {
@@ -396,10 +384,6 @@ export const RobotInterface: React.FC = () => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   };
 
-  const handleInputChange = (value: string) => {
-    setInputMessage(value);
-  };
-
   const handleCheckout = () => {
     const checkoutMessage: ChatMessageType = {
       id: Date.now().toString(),
@@ -419,6 +403,77 @@ export const RobotInterface: React.FC = () => {
     handleSendMessage(suggestion);
   };
 
+  const getDecoraFallbackProducts = () => [
+    {
+      id: 'decora-canape-alyana-beige',
+      handle: 'canape-alyana-beige',
+      title: 'Canapé ALYANA convertible - Beige',
+      productType: 'Canapé',
+      vendor: 'Decora Home',
+      tags: ['convertible', 'velours', 'beige'],
+      price: 799,
+      compareAtPrice: 1399,
+      availableForSale: true,
+      quantityAvailable: 100,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/7_23a97631-68d2-4f3e-8f78-b26c7cd4c2ae.png?v=1754406480',
+      product_url: 'https://decorahome.fr/products/canape-dangle-convertible-et-reversible-4-places-en-velours-cotele',
+      description: 'Canapé d\'angle convertible 4 places en velours côtelé beige avec coffre de rangement',
+      variants: [{
+        id: 'variant-beige',
+        title: 'Beige',
+        price: 799,
+        availableForSale: true,
+        quantityAvailable: 100,
+        selectedOptions: [{ name: 'Couleur', value: 'Beige' }]
+      }]
+    },
+    {
+      id: 'decora-table-aurea-100',
+      handle: 'table-aurea-100',
+      title: 'Table AUREA Ø100cm - Travertin',
+      productType: 'Table',
+      vendor: 'Decora Home',
+      tags: ['travertin', 'ronde', 'naturel'],
+      price: 499,
+      compareAtPrice: 859,
+      availableForSale: true,
+      quantityAvailable: 50,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_e80b9a50-b032-4267-8f5b-f9130153e3be.png?v=1754406484',
+      product_url: 'https://decorahome.fr/products/table-a-manger-ronde-plateau-en-travertin-naturel-100-120-cm',
+      description: 'Table ronde en travertin naturel avec pieds métal noir',
+      variants: [{
+        id: 'variant-100cm',
+        title: 'Ø100cm',
+        price: 499,
+        availableForSale: true,
+        quantityAvailable: 50,
+        selectedOptions: [{ name: 'Taille', value: '100cm' }]
+      }]
+    },
+    {
+      id: 'decora-chaise-inaya-gris',
+      handle: 'chaise-inaya-gris',
+      title: 'Chaise INAYA - Gris chenille',
+      productType: 'Chaise',
+      vendor: 'Decora Home',
+      tags: ['chenille', 'métal', 'gris'],
+      price: 99,
+      compareAtPrice: 149,
+      availableForSale: true,
+      quantityAvailable: 96,
+      image_url: 'https://cdn.shopify.com/s/files/1/0903/7578/2665/files/3_3f11d1af-8ce5-4d2d-a435-cd0a78eb92ee.png?v=1755791319',
+      product_url: 'https://decorahome.fr/products/chaise-en-tissu-serge-chenille-pieds-metal-noir-gris-clair-moka-et-beige',
+      description: 'Chaise en tissu chenille avec pieds métal noir',
+      variants: [{
+        id: 'variant-gris',
+        title: 'Gris clair',
+        price: 99,
+        availableForSale: true,
+        quantityAvailable: 96,
+        selectedOptions: [{ name: 'Couleur', value: 'Gris clair' }]
+      }]
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 flex">
@@ -733,18 +788,11 @@ export const RobotInterface: React.FC = () => {
                   ref={inputRef}
                   type="text"
                   value={inputMessage}
-                  onChange={(e) => handleInputChange(e.target.value)}
+                  onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputMessage)}
                   placeholder="Écrivez votre message..."
-                  className={`w-full bg-slate-700/50 border border-slate-600/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 ${
-                    isTyping ? 'border-yellow-400/50' : ''
-                  }`}
+                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                 />
-                {isTyping && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
               </div>
               
               {/* QR Code à côté du champ de saisie comme demandé */}

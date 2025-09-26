@@ -1,11 +1,6 @@
 ./node_modules
-
-
-
-
-# --- Ignorer tous les components ---
 /src/components/AddProductModal.tsx
-#/src/components/AITrainingInterface.tsx
+/src/components/AITrainingInterface.tsx
 /src/components/CartButton.tsx
 #/src/components/CatalogManagement.tsx
 /src/components/ChatMessage.tsx
@@ -15,8 +10,8 @@
 /src/components/MLTrainingDashboard.tsx
 /src/components/NotificationSystem.tsx
 /src/components/OmniaRobotTab.tsx
-#/src/components/ProductCard.tsx
-#/src/components/ProductDetailModal.tsx
+/src/components/ProductCard.tsx
+/src/components/ProductDetailModal.tsx
 #/src/components/ProductsEnrichedTable.tsx
 /src/components/RobotAvatar.tsx
 /src/components/SellerAnalytics.tsx
