@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, Zap, RefreshCw, Download, Upload, Package, Tag, DollarSign, Image, Settings, Search, Filter, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-  Search, Filter, Eye, Edit, Trash2, ExternalLink, BarChart3,
+import { 
+  Brain, Sparkles, Zap, RefreshCw, Download, Upload, Package, Tag, 
+  DollarSign, Image, Settings, Search, Filter, ChevronDown, ChevronUp, 
+  ExternalLink, Eye, Edit, Trash2, BarChart3
+} from 'lucide-react';
 import { 
   extractEnhancedStyles, 
-  extractEnhancedColors, 
-  extractEnhancedMaterials, 
-  extractEnhancedRooms, 
-  extractDimensions, 
-  detectPromotions, 
+  extractEnhancedColors,
+  extractEnhancedMaterials,
+  extractEnhancedRooms,
+  extractDimensions,
+  detectPromotions,
   generateSEOContent,
   detectEnhancedCategory
 } from '../utils/productEnrichmentUtils';
-
 interface SmartProduct {
   id: string;
   name: string;
