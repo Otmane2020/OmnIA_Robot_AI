@@ -18,7 +18,10 @@ import { ThankYou } from './pages/ThankYou';
 import { SuperAdmin } from './pages/SuperAdmin';
 import { SellerRobotInterface } from './pages/SellerRobotInterface';
 import { APITest } from './pages/APITest';
+import { QuickChat } from './pages/QuickChat';
 
+interface User {
+}
 interface User {
   id: string;
   email: string;
@@ -238,6 +241,12 @@ function App() {
       <Route path="/partnerships" element={<Partnerships />} />
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/testapi" element={<APITest />} />
+      
+      {/* Quick Chat intelligent */}
+      <Route path="/quickchat" element={<QuickChat />} />
+      
+      {/* Quick Chat intelligent */}
+      <Route path="/quickchat" element={<QuickChat />} />
       
       {/* Registration */}
       <Route 

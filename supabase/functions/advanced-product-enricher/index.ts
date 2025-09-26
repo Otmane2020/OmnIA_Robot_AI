@@ -285,13 +285,30 @@ async function extractTextAttributes(product: any): Promise<EnrichedAttributes> 
   }
 
   try {
+    // Exploiter COMPLÈTEMENT titre, description et image pour enrichissement optimal
+    const productTitle = product.name || product.title || '';
+    const productDescription = product.description || product.body_html || '';
+    const productImage = product.image_url || product.featuredImage?.url || '';
+    const productPrice = product.price || product.variant_price || 0;
+    const productComparePrice = product.compare_at_price || product.variant_compare_at_price || '';
+    const productBrand = product.vendor || product.brand || '';
+    const productTags = Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '');
+    const productStock = product.stock || product.quantityAvailable || product.variant_inventory_qty || 0;
+    
     const productText = `
-PRODUIT: ${product.name || product.title || ''}
-DESCRIPTION: ${product.description || ''}
-CATÉGORIE: ${product.category || product.productType || ''}
-PRIX: ${product.price || 0}€
-MARQUE: ${product.vendor || product.brand || ''}
-TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || ''}
+TITRE PRODUIT: ${productTitle}
+DESCRIPTION COMPLÈTE: ${productDescription.replace(/<[^>]*>/g, '').trim()}
+CATÉGORIE: ${product.category || product.productType || product.product_type || ''}
+PRIX ACTUEL: ${productPrice}€
+PRIX BARRÉ: ${productComparePrice}€
+MARQUE/VENDEUR: ${productBrand}
+TAGS PRODUIT: ${productTags}
+URL IMAGE: ${productImage}
+STOCK DISPONIBLE: ${productStock}
+SOUS-CATÉGORIE DÉTECTÉE: ${product.subcategory || ''}
+MATÉRIAU DÉTECTÉ: ${product.material || ''}
+COULEUR DÉTECTÉE: ${product.color || ''}
+STYLE DÉTECTÉ: ${product.style || ''}
     `.trim();
 
     const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
