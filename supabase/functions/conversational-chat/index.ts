@@ -14,55 +14,48 @@ interface ChatRequest {
   model?: string;
   temperature?: number;
   max_tokens?: number;
+  stream?: boolean; // NOUVEAU: support du streaming
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
     if (req.method !== "POST") {
-      return new Response(
-        JSON.stringify({ error: "Method not allowed" }),
-        {
-          status: 405,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { messages, model = "gpt-4o-mini", temperature = 0.7, max_tokens = 300 }: ChatRequest = await req.json();
+    const {
+      messages,
+      model = "gpt-4o-mini",
+      temperature = 0.7,
+      max_tokens = 500,
+      stream = false,
+    }: ChatRequest = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Messages array is required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Messages array is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Get OpenAI API key from environment
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "OpenAI API key not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`📡 Calling OpenAI API with ${messages.length} messages`);
+    console.log(`📡 Calling OpenAI (${model}) | messages: ${messages.length}`);
 
-    // Call OpenAI API
+    // Appel OpenAI
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -74,16 +67,18 @@ Deno.serve(async (req: Request) => {
         messages,
         temperature,
         max_tokens,
+        stream,
       }),
     });
 
     if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
-      console.error("❌ OpenAI API Error:", errorData);
-      
+      const errorText = await openaiResponse.text();
+      console.error("❌ OpenAI API Error:", openaiResponse.status, errorText);
+
       return new Response(
-        JSON.stringify({ 
-          error: `OpenAI API Error: ${errorData.error?.message || "Unknown error"}` 
+        JSON.stringify({
+          error: `OpenAI API Error (${openaiResponse.status})`,
+          details: errorText,
         }),
         {
           status: openaiResponse.status,
@@ -92,28 +87,44 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const data = await openaiResponse.json();
-    const aiMessage = data.choices?.[0]?.message?.content || "Je n'ai pas pu comprendre votre demande.";
+    // --- Mode streaming ---
+    if (stream) {
+      const { readable, writable } = new TransformStream();
+      openaiResponse.body?.pipeTo(writable);
+      return new Response(readable, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
-    console.log("✅ OpenAI response received");
+    // --- Mode classique ---
+    const data = await openaiResponse.json();
+    const aiMessage = data.choices?.[0]?.message?.content?.trim() || "Je n’ai pas compris.";
+
+    console.log("✅ OpenAI response OK");
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         message: aiMessage,
-        usage: data.usage 
+        usage: data.usage || {},
+        model,
       }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-
   } catch (error) {
     console.error("❌ Conversational chat error:", error);
-    
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message || "Internal server error" 
+      JSON.stringify({
+        error: error.message || "Internal server error",
+        fallback: true,
       }),
       {
         status: 500,
