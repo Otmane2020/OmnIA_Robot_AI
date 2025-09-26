@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Clock,
-  ChevronDown, ChevronUp, X, Save, Info, Tag, DollarSign
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Package, Tag, DollarSign, Image, BarChart3, Settings,
+  ChevronDown, ChevronUp, X, Save, Info, Sparkles, Brain,
+  Zap, RefreshCw, Download, Upload, CheckCircle, AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { supabase } from '../lib/supabase';
@@ -18,6 +20,7 @@ import {
 interface SmartProduct {
   id: string;
   name: string;
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   description: string;
   price: number;
   category: string;
@@ -60,6 +63,9 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [products, setProducts] = useState<SmartProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEnriching, setIsEnriching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
