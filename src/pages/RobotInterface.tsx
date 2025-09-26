@@ -396,6 +396,10 @@ export const RobotInterface: React.FC = () => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const handleInputChange = (value: string) => {
+    setInputMessage(value);
+  };
+
   const handleCheckout = () => {
     const checkoutMessage: ChatMessageType = {
       id: Date.now().toString(),
