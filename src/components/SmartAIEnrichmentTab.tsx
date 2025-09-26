@@ -7,14 +7,6 @@ import {
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import { extractEnhancedStyles, extractEnhancedColors, extractEnhancedMaterials, extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent } from '../utils/productEnrichmentUtils';
-import { 
-  extractEnhancedStyles, 
-  extractEnhancedColors, 
-  extractEnhancedMaterials,
-  extractDimensions,
-  detectPromotions,
-  generateSEOContent
-} from '../utils/productEnrichmentUtils';
 
 interface SmartProduct {
   id: string;
