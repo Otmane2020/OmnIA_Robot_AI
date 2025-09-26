@@ -3,6 +3,132 @@ import { Search, Filter, Eye, CreditCard as Edit, Trash2, ExternalLink, Package,
 import { useNotifications } from './NotificationSystem';
 import { supabase } from '../lib/supabase';
 
+// Helper function to enrich a product locally
+const enrichProduct = (product: any): EnrichedProduct => {
+  const text = `${product.name || product.title || ''} ${product.description || ''}`.toLowerCase();
+  
+  // Detect category
+  let category = 'Mobilier';
+  if (text.includes('canapé') || text.includes('sofa')) category = 'Canapé';
+  else if (text.includes('table')) category = 'Table';
+  else if (text.includes('chaise') || text.includes('fauteuil')) category = 'Chaise';
+  else if (text.includes('lit')) category = 'Lit';
+  else if (text.includes('armoire') || text.includes('commode')) category = 'Rangement';
+  
+  // Detect color
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'chêne', 'noyer', 'taupe'];
+  const detectedColor = colors.find(color => text.includes(color)) || '';
+  
+  // Detect material
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'chenille'];
+  const detectedMaterial = materials.find(material => text.includes(material)) || '';
+  
+  // Detect style
+  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique', 'minimaliste'];
+  const detectedStyle = styles.find(style => text.includes(style)) || '';
+  
+  // Detect room
+  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
+  const detectedRoom = rooms.find(room => text.includes(room)) || '';
+  
+  // Extract dimensions
+  const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
+  const dimensions = dimensionMatch ? 
+    (dimensionMatch[3] ? `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm x H:${dimensionMatch[3]}cm` : 
+     `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm`) : '';
+  
+  // Generate tags
+  const tags = [category.toLowerCase(), detectedColor, detectedMaterial, detectedStyle, detectedRoom]
+    .filter(Boolean);
+  
+  // Calculate confidence
+  let confidence = 50;
+  if (detectedColor) confidence += 15;
+  if (detectedMaterial) confidence += 20;
+  if (detectedStyle) confidence += 10;
+  if (dimensions) confidence += 5;
+  
+  return {
+    id: product.id || `enriched-${Date.now()}`,
+    handle: product.handle || product.id || generateHandle(product.name || product.title),
+    title: product.name || product.title || 'Produit sans nom',
+    description: product.description || '',
+    category: category,
+    subcategory: generateSubcategory(text, category),
+    color: detectedColor,
+    material: detectedMaterial,
+    fabric: extractFabric(detectedMaterial),
+    style: detectedStyle,
+    dimensions: dimensions,
+    room: detectedRoom,
+    price: parseFloat(product.price) || 0,
+    stock_qty: parseInt(product.stock) || parseInt(product.quantityAvailable) || 0,
+    image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+    product_url: product.product_url || '#',
+    tags: tags,
+    seo_title: generateSEOTitle(product.name || product.title, detectedColor, detectedMaterial),
+    seo_description: generateSEODescription(product.name || product.title, detectedMaterial, detectedColor),
+    ad_headline: (product.name || product.title || '').substring(0, 30),
+    ad_description: `${product.name || product.title || ''} ${detectedMaterial ? 'en ' + detectedMaterial : ''}`.substring(0, 90),
+    google_product_category: getGoogleCategory(category),
+    gtin: '',
+    brand: product.vendor || 'Decora Home',
+    confidence_score: Math.min(confidence, 100),
+    enriched_at: new Date().toISOString(),
+    enrichment_source: 'local',
+    created_at: product.created_at || new Date().toISOString()
+  };
+};
+
+// Helper functions
+const generateHandle = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .substring(0, 100);
+};
+
+const generateSubcategory = (text: string, category: string): string => {
+  if (category === 'Canapé') {
+    const features = [];
+    if (text.includes('angle')) features.push('d\'angle');
+    if (text.includes('convertible')) features.push('convertible');
+    return features.length > 0 ? `Canapé ${features.join(' ')}` : 'Canapé';
+  }
+  return category;
+};
+
+const extractFabric = (material: string): string => {
+  const fabrics = ['velours', 'tissu', 'cuir', 'chenille'];
+  return fabrics.find(fabric => material.includes(fabric)) || '';
+};
+
+const generateSEOTitle = (name: string, color: string, material: string): string => {
+  const colorText = color ? ` ${color}` : '';
+  const materialText = material ? ` en ${material}` : '';
+  return `${name}${colorText}${materialText} - Decora Home`.substring(0, 70);
+};
+
+const generateSEODescription = (name: string, material: string, color: string): string => {
+  const materialText = material ? ` en ${material}` : '';
+  const colorText = color ? ` ${color}` : '';
+  return `${name}${materialText}${colorText}. Livraison gratuite. Decora Home.`.substring(0, 155);
+};
+
+const getGoogleCategory = (category: string): string => {
+  const mappings: { [key: string]: string } = {
+    'Canapé': '635',
+    'Table': '443',
+    'Chaise': '436',
+    'Lit': '569',
+    'Rangement': '6552'
+  };
+  return mappings[category] || '696';
+};
+
 interface EnrichedProduct {
   id: string;
   handle: string;
