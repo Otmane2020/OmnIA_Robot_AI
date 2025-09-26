@@ -25,6 +25,22 @@ Deno.serve(async (req: Request) => {
     const { message, retailer_id, session_id, conversation_context = [] }: RetailerChatRequest = await req.json();
     
     console.log('🤖 [retailer-chat] Chat isolé pour retailer:', retailer_id, '-', message.substring(0, 50) + '...');
+    
+    // Validate retailer_id as UUID
+    const isRetailerIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(retailer_id);
+    if (retailer_id && !isRetailerIdUuid) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Invalid retailer_id format. Must be a valid UUID.',
+          details: `Received retailer_id: ${retailer_id}`
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');

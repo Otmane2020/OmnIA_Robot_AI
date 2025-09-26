@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Eye, CreditCard as Edit, Trash2, ExternalLink, Package, Tag, DollarSign, Image, BarChart3, Settings, ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { 
+  Search, Filter, Plus, Eye, Edit, Trash2, ExternalLink, 
+  Package, Tag, DollarSign, Image, BarChart3, Settings,
+  ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle
+} from 'lucide-react';
 import { ProductDetailModal } from './ProductDetailModal';
 import { AddProductModal } from './AddProductModal';
 import { useNotifications } from './NotificationSystem';
@@ -734,26 +738,6 @@ export const CatalogManagement: React.FC = () => {
                             <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
                             <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
                               -{calculateDiscount(product.price, product.compare_at_price)}%
-                        
-                        {/* Affichage des variations */}
-                        {product.variants && product.variants.length > 1 && (
-                          <div className="mt-2">
-                            <div className="text-cyan-300 text-xs font-medium mb-1">
-                              {product.variants.length} variations:
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {product.variants.slice(0, 3).map((variant: any, vIndex: number) => (
-                                <span key={vIndex} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full text-xs">
-                                  {variant.title}
-                                </span>
-                              ))}
-                              {product.variants.length > 3 && (
-                                <span className="text-cyan-400 text-xs">+{product.variants.length - 3}</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
                             </span>
                           </>
                         )}

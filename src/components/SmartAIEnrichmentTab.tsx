@@ -900,34 +900,6 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                         <span className="ml-2 font-medium">{selectedProduct.room}</span>
                       </div>
                     </div>
-                    
-                    {/* Affichage des attributs IA extraits */}
-                    {selectedProduct.ai_extracted_attributes && (
-                      <div className="mt-4 pt-4 border-t border-purple-200">
-                        <h5 className="font-semibold text-purple-700 mb-2">🧠 Analyse IA détaillée:</h5>
-                        <div className="grid grid-cols-1 gap-2 text-xs">
-                          {selectedProduct.ai_extracted_attributes.detected_colors?.length > 0 && (
-                            <div>
-                              <span className="text-gray-600">Couleurs détectées:</span>
-                              <span className="ml-2 font-medium">{selectedProduct.ai_extracted_attributes.detected_colors.join(', ')}</span>
-                            </div>
-                          )}
-                          {selectedProduct.ai_extracted_attributes.detected_materials?.length > 0 && (
-                            <div>
-                              <span className="text-gray-600">Matériaux détectés:</span>
-                              <span className="ml-2 font-medium">{selectedProduct.ai_extracted_attributes.detected_materials.join(', ')}</span>
-                            </div>
-                          )}
-                          {selectedProduct.ai_extracted_attributes.detected_features?.length > 0 && (
-                            <div>
-                              <span className="text-gray-600">Fonctionnalités:</span>
-                              <span className="ml-2 font-medium">{selectedProduct.ai_extracted_attributes.detected_features.join(', ')}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
                     <div className="mt-3 pt-3 border-t border-purple-200">
                       <span className="text-gray-600">Confiance IA:</span>
                       <span className="ml-2 font-bold text-purple-700">
@@ -936,43 +908,6 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Variations détaillées */}
-                  {selectedProduct.variants.length > 1 && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        Variations disponibles ({selectedProduct.variants.length})
-                      </h4>
-                      <div className="space-y-3 max-h-40 overflow-y-auto">
-                        {selectedProduct.variants.map((variant) => (
-                          <div key={variant.id} className="bg-white rounded-lg p-3 border border-blue-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="font-medium text-gray-800">{variant.title}</h5>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-green-600">{variant.price}€</span>
-                                {variant.compareAtPrice && variant.compareAtPrice > variant.price && (
-                                  <span className="text-gray-400 line-through text-sm">{variant.compareAtPrice}€</span>
-                                )}
-                              </div>
-                            </div>
-                            {variant.options.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                {variant.options.map((option, optIndex) => (
-                                  <span key={optIndex} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
-                                    {option.name}: {option.value}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between text-xs text-gray-600">
-                              <span>SKU: {variant.sku}</span>
-                              <span>Stock: {variant.stock}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   {/* SEO optimisé */}
                   <div className="bg-green-50 rounded-lg p-4">
                     <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
