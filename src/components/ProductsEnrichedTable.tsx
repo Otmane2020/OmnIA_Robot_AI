@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, Edit, Trash2, Download, RefreshCw, Brain, Zap, CheckCircle, AlertCircle, Star, Package, TrendingUp } from 'lucide-react';
+import { Search, Filter, Eye, CreditCard as Edit, Trash2, Download, RefreshCw, Brain, Zap, CheckCircle, AlertCircle, Star, Package, TrendingUp } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface EnrichedProduct {

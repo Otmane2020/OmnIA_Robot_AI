@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, TrendingUp, DollarSign, Eye, Edit, Download, RefreshCw, BarChart3, Zap, CheckCircle, AlertCircle } from 'lucide-react';
+import { Target, TrendingUp, DollarSign, Eye, CreditCard as Edit, Download, RefreshCw, BarChart3, Zap, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface GoogleAdsTabProps {

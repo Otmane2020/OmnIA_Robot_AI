@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, Eye, Edit, Save, RefreshCw, BarChart3, Globe, Target, Zap, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, TrendingUp, Eye, CreditCard as Edit, Save, RefreshCw, BarChart3, Globe, Target, Zap, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface SEOOptimizationTabProps {
