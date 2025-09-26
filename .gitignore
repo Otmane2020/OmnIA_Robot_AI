@@ -49,7 +49,7 @@ coverage/
 /src/components/AITrainingInterface.tsx
 /src/components/CartButton.tsx
 #/src/components/CatalogManagement.tsx
-/src/components/ChatMessage.tsx
+#/src/components/ChatMessage.tsx
 /src/components/ConversationHistory.tsx
 #/src/components/EcommerceIntegration.tsx
 #/src/components/Logo.tsx
