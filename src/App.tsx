@@ -227,7 +227,7 @@ function App() {
       <Route path="/" element={<LandingPage onGetStarted={() => window.location.href = '/register'} onLogin={() => window.location.href = '/admin'} />} />
       <Route path="/chat" element={<ChatInterface />} />
       <Route path="/robot" element={<RobotInterface />} />
-      <Route path="/robot/:sellerSubdomain" element={<SellerRobotInterface sellerSubdomain={location.pathname.split('/')[2]} />} />
+      <Route path="/robot/:sellerSubdomain" element={<SellerRobotInterface sellerSubdomain={location.pathname.split('/')[2] || ''} />} />
       <Route path="/upload" element={<UploadPage />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
