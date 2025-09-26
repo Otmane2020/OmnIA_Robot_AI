@@ -223,6 +223,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, curren
           
           <button
             onClick={() => setActiveTab('robot')}
+            }
+  )
+}
             className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 rounded-xl p-6 text-left transition-all"
           >
             <Bot className="w-8 h-8 text-purple-400 mb-3" />
