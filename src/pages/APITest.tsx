@@ -734,8 +734,8 @@ export const APITest: React.FC = () => {
                 }ms
               </div>
               <div className="text-orange-300">Temps Moyen</div>
-            <Logo size="md" />
-          )}
+            </div>
+          </div>
         </div>
 
         {/* Instructions */}
