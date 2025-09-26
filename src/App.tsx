@@ -20,6 +20,8 @@ import { SellerRobotInterface } from './pages/SellerRobotInterface';
 import { APITest } from './pages/APITest';
 import { QuickChat } from './pages/QuickChat';
 
+import { QuickChat } from './pages/QuickChat';
+
 interface User {
 }
 interface User {
@@ -241,9 +243,6 @@ function App() {
       <Route path="/partnerships" element={<Partnerships />} />
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/testapi" element={<APITest />} />
-      
-      {/* Quick Chat intelligent */}
-      <Route path="/quickchat" element={<QuickChat />} />
       
       {/* Quick Chat intelligent */}
       <Route path="/quickchat" element={<QuickChat />} />
