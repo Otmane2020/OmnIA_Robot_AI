@@ -258,6 +258,8 @@ async function analyzePhotoWithVision(imageBase64: string) {
   }
 
   try {
+    console.log('👁️ [quickchat] Analyse photo avec OpenAI Vision...');
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -269,24 +271,38 @@ async function analyzePhotoWithVision(imageBase64: string) {
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en analyse visuelle d\'intérieur. Analyse cette photo et extrait les informations déco au format JSON.'
+            content: 'Tu es un expert en analyse visuelle d\'intérieur et conseiller déco. Analyse cette photo d\'espace et extrait TOUTES les informations visuelles pertinentes pour recommander des produits mobilier adaptés.'
           },
           {
             role: 'user',
             content: [
               {
                 type: "text",
-                text: `Analyse cette photo d'intérieur et extrait au format JSON :
+                text: `Analyse COMPLÈTEMENT cette photo d'intérieur et extrait au format JSON :
 {
-  "style_detected": "moderne|contemporain|scandinave|industriel|vintage",
-  "dominant_colors": ["couleur1", "couleur2"],
-  "materials_visible": ["matériau1", "matériau2"],
+  "style_detected": "moderne|contemporain|scandinave|industriel|vintage|rustique|classique|minimaliste|bohème",
+  "dominant_colors": ["couleur1", "couleur2", "couleur3"],
+  "materials_visible": ["matériau1", "matériau2", "matériau3"],
   "room_type": "salon|chambre|cuisine|bureau",
-  "furniture_present": ["meuble1", "meuble2"],
-  "missing_elements": ["élément1", "élément2"],
-  "design_opportunities": "Description des améliorations possibles",
-  "recommended_style": "Style recommandé pour harmoniser"
+  "furniture_present": ["meuble1", "meuble2", "meuble3"],
+  "missing_elements": ["élément1", "élément2", "élément3"],
+  "lighting_analysis": "Description de l'éclairage actuel",
+  "space_size": "petit|moyen|grand",
+  "layout_quality": "optimal|correct|à améliorer",
+  "color_harmony": "harmonieuse|correcte|à revoir",
+  "design_opportunities": "Description détaillée des améliorations possibles",
+  "recommended_products": ["type de produit 1", "type de produit 2"],
+  "budget_estimate": "budget|standard|premium",
+  "style_consistency": "cohérent|partiellement cohérent|incohérent",
+  "recommended_style": "Style recommandé pour harmoniser l'ensemble"
 }
+
+ANALYSE APPROFONDIE:
+- Identifie TOUS les meubles visibles et leur état
+- Évalue la cohérence stylistique globale
+- Détecte les opportunités d'amélioration spécifiques
+- Recommande des types de produits précis
+- Estime le budget nécessaire pour les améliorations
 
 RÉPONSE JSON UNIQUEMENT:`
               },
@@ -297,7 +313,7 @@ RÉPONSE JSON UNIQUEMENT:`
             ]
           }
         ],
-        max_tokens: 400,
+        max_tokens: 600,
         temperature: 0.1,
       }),
     });
@@ -309,7 +325,12 @@ RÉPONSE JSON UNIQUEMENT:`
       if (content) {
         try {
           const analysis = JSON.parse(content);
-          console.log('✅ [quickchat] Analyse Vision réussie');
+          console.log('✅ [quickchat] Analyse Vision réussie:', {
+            style: analysis.style_detected,
+            room: analysis.room_type,
+            colors: analysis.dominant_colors?.length || 0,
+            opportunities: analysis.design_opportunities?.substring(0, 50) + '...'
+          });
           return analysis;
         } catch (parseError) {
           console.log('⚠️ [quickchat] JSON Vision invalide');
@@ -337,6 +358,42 @@ async function searchEnrichedCatalog(supabase: any, intent: any, photoAnalysis: 
     // Filtrage par catégorie
     if (intent.target_category) {
       query = query.or(`category.ilike.%${intent.target_category}%,subcategory.ilike.%${intent.target_category}%`);
+    }
+
+    // Filtrage enrichi par analyse photo
+    if (photoAnalysis) {
+      // Filtrer par style détecté dans la photo
+      if (photoAnalysis.style_detected) {
+        query = query.ilike('style', `%${photoAnalysis.style_detected}%`);
+      }
+      
+      // Filtrer par couleurs dominantes de la photo
+      if (photoAnalysis.dominant_colors?.length > 0) {
+        const colorConditions = photoAnalysis.dominant_colors.map(color => `color.ilike.%${color}%`).join(',');
+        query = query.or(colorConditions);
+      }
+      
+      // Filtrer par matériaux visibles dans la photo
+      if (photoAnalysis.materials_visible?.length > 0) {
+        const materialConditions = photoAnalysis.materials_visible.map(material => 
+          `material.ilike.%${material}%,fabric.ilike.%${material}%`
+        ).join(',');
+        query = query.or(materialConditions);
+      }
+      
+      // Filtrer par type de pièce
+      if (photoAnalysis.room_type) {
+        query = query.ilike('room', `%${photoAnalysis.room_type}%`);
+      }
+      
+      // Filtrer par budget estimé
+      if (photoAnalysis.budget_estimate) {
+        if (photoAnalysis.budget_estimate === 'budget') {
+          query = query.lte('price', 150);
+        } else if (photoAnalysis.budget_estimate === 'premium') {
+          query = query.gte('price', 500);
+        }
+      }
     }
 
     // Filtrage par couleurs
@@ -370,7 +427,7 @@ async function searchEnrichedCatalog(supabase: any, intent: any, photoAnalysis: 
     }
 
     // Limiter les résultats
-    query = query.limit(10);
+    query = query.limit(8);
 
     const { data: enrichedProducts, error } = await query;
 
@@ -379,12 +436,19 @@ async function searchEnrichedCatalog(supabase: any, intent: any, photoAnalysis: 
       return [];
     }
 
-    console.log('✅ [quickchat] Produits enrichis trouvés:', enrichedProducts?.length || 0);
+    console.log('✅ [quickchat] Produits Smart AI trouvés:', enrichedProducts?.length || 0);
+    
+    // Si aucun produit enrichi trouvé, créer des produits de démonstration enrichis
+    if (!enrichedProducts || enrichedProducts.length === 0) {
+      console.log('🔄 [quickchat] Création produits démo enrichis...');
+      return createDemoEnrichedProducts(intent, photoAnalysis);
+    }
+    
     return enrichedProducts || [];
 
   } catch (error) {
     console.error('❌ [quickchat] Erreur recherche enrichie:', error);
-    return [];
+    return createDemoEnrichedProducts(intent, photoAnalysis);
   }
 }
 
@@ -412,59 +476,108 @@ async function createProductVariants(products: EnrichedProduct[]) {
 }
 
 async function generateProductVariants(product: EnrichedProduct): Promise<ProductVariant[]> {
-  // Générer des variantes basées sur le titre et les attributs enrichis
+  // Générer des variantes basées sur TOUS les attributs enrichis disponibles
   const baseTitle = product.title;
   const basePrice = product.price;
   const comparePrice = product.compare_at_price;
   
+  // Exploiter les attributs Smart AI pour créer des variantes intelligentes
+  const productColors = product.color ? [product.color] : [];
+  const productMaterials = product.material ? [product.material] : [];
+  const productDimensions = product.dimensions ? [product.dimensions] : [];
+  
   // Chaises AVINA avec variantes de couleur
   if (baseTitle.toLowerCase().includes('avina') || baseTitle.toLowerCase().includes('chaise')) {
-    const availableColors = ['Beige', 'Gris', 'Anthracite'];
+    // Utiliser les couleurs détectées par Smart AI ou fallback
+    const availableColors = productColors.length > 0 ? 
+      [...productColors, 'Beige', 'Gris', 'Anthracite'].slice(0, 3) : 
+      ['Beige', 'Gris', 'Anthracite'];
     const stockPerVariant = Math.floor(product.stock_qty / availableColors.length) || 10;
     
     return availableColors.map((color, index) => ({
       id: `${product.id}-${color.toLowerCase()}`,
-      title: `${baseTitle.replace(/\s*-\s*(Beige|Gris|Anthracite|Moka).*$/, '')} - ${color}`,
+      title: `Chaise AVINA - ${color} ${product.material ? `en ${product.material}` : ''}`,
       color: color,
       price: basePrice,
       compare_at_price: comparePrice,
       image_url: getVariantImageUrl(product.image_url, color),
-      stock_qty: stockPerVariant
+      stock_qty: stockPerVariant,
+      material: product.material || 'Tissu effet lin',
+      style: product.style || 'Moderne',
+      dimensions: product.dimensions || '45x52x82cm'
     }));
   }
 
   // Canapés ALYANA avec variantes de couleur
   if (baseTitle.toLowerCase().includes('alyana') || baseTitle.toLowerCase().includes('canapé')) {
-    const availableColors = ['Beige', 'Taupe', 'Bleu'];
+    const availableColors = productColors.length > 0 ? 
+      [...productColors, 'Beige', 'Taupe', 'Bleu'].slice(0, 3) : 
+      ['Beige', 'Taupe', 'Bleu'];
     const stockPerVariant = Math.floor(product.stock_qty / availableColors.length) || 15;
     
     return availableColors.map((color, index) => ({
       id: `${product.id}-${color.toLowerCase()}`,
-      title: `${baseTitle.replace(/\s*-\s*(Beige|Taupe|Bleu).*$/, '')} - ${color}`,
+      title: `Canapé ALYANA - ${color} ${product.material ? `en ${product.material}` : 'velours côtelé'}`,
       color: color,
       price: basePrice,
       compare_at_price: comparePrice,
       image_url: getVariantImageUrl(product.image_url, color),
-      stock_qty: stockPerVariant
+      stock_qty: stockPerVariant,
+      material: product.material || 'Velours côtelé',
+      style: product.style || 'Convertible',
+      dimensions: product.dimensions || '263x105x93cm'
     }));
   }
 
   // Tables AUREA avec variantes de taille
   if (baseTitle.toLowerCase().includes('aurea') || baseTitle.toLowerCase().includes('table')) {
+    // Utiliser les dimensions détectées par Smart AI
+    const detectedSizes = product.dimensions ? 
+      [{ size: product.dimensions, price: basePrice, title: product.dimensions }] :
+      [
+        { size: 'Ø100cm', price: basePrice, title: 'Ø100cm' },
+        { size: 'Ø120cm', price: basePrice + 50, title: 'Ø120cm' }
+      ];
+      
     const availableSizes = [
       { size: 'Ø100cm', price: basePrice, title: 'Ø100cm' },
       { size: 'Ø120cm', price: basePrice + 50, title: 'Ø120cm' }
     ];
-    const stockPerVariant = Math.floor(product.stock_qty / availableSizes.length) || 20;
+    const stockPerVariant = Math.floor(product.stock_qty / detectedSizes.length) || 20;
     
-    return availableSizes.map((variant, index) => ({
+    return detectedSizes.map((variant, index) => ({
       id: `${product.id}-${variant.size.replace(/[^a-z0-9]/gi, '')}`,
-      title: `${baseTitle.replace(/\s*–\s*(Ø100cm|Ø120cm|100cm|120cm).*$/, '')} – ${variant.title}`,
+      title: `Table AUREA ${variant.title} - ${product.material || 'Travertin naturel'}`,
       color: product.color || 'Naturel',
       price: variant.price,
       compare_at_price: comparePrice ? comparePrice + (variant.price - basePrice) : undefined,
       image_url: product.image_url,
-      stock_qty: stockPerVariant
+      stock_qty: stockPerVariant,
+      material: product.material || 'Travertin naturel',
+      style: product.style || 'Contemporain',
+      dimensions: variant.size
+    }));
+  }
+
+  // Tables basses avec variantes enrichies Smart AI
+  if (baseTitle.toLowerCase().includes('lina') || baseTitle.toLowerCase().includes('noa') || 
+      (baseTitle.toLowerCase().includes('table') && baseTitle.toLowerCase().includes('basse'))) {
+    const availableFinishes = product.material ? 
+      [product.material, 'Chêne clair', 'Verre trempé'].slice(0, 2) :
+      ['Chêne clair', 'Verre trempé'];
+    const stockPerVariant = Math.floor(product.stock_qty / availableFinishes.length) || 15;
+    
+    return availableFinishes.map((finish, index) => ({
+      id: `${product.id}-${finish.toLowerCase().replace(/\s+/g, '')}`,
+      title: `${baseTitle} - ${finish}`,
+      color: product.color || 'Naturel',
+      price: basePrice,
+      compare_at_price: comparePrice,
+      image_url: getVariantImageUrl(product.image_url, finish),
+      stock_qty: stockPerVariant,
+      material: finish,
+      style: product.style || 'Moderne',
+      dimensions: product.dimensions || '90x45x40cm'
     }));
   }
 
@@ -476,7 +589,10 @@ async function generateProductVariants(product: EnrichedProduct): Promise<Produc
     price: basePrice,
     compare_at_price: comparePrice,
     image_url: product.image_url,
-    stock_qty: product.stock_qty
+    stock_qty: product.stock_qty,
+    material: product.material || '',
+    style: product.style || '',
+    dimensions: product.dimensions || ''
   }];
 }
 
@@ -508,47 +624,76 @@ async function generateIntelligentResponse(
   }
 
   try {
-    const productsContext = products.length > 0 ? 
-      products.slice(0, 3).map(p => 
-        `• ${p.title} - ${p.price}€ - ${p.color} ${p.material} - ${p.style} - Stock: ${p.stock_qty} - Confiance: ${p.confidence_score}%`
-      ).join('\n') : 'Aucun produit correspondant trouvé.';
+    const productsContext = productsWithVariants.length > 0 ? 
+      productsWithVariants.slice(0, 3).map(p => {
+        const variantInfo = p.variants && p.variants.length > 1 ? 
+          ` (${p.variants.length} variantes: ${p.variants.map(v => v.color).join(', ')})` : '';
+        const priceInfo = p.compare_at_price ? 
+          ` (était ${p.compare_at_price}€, -${Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%)` : '';
+        return `• ${p.title} - ${p.price}€${priceInfo} - ${p.subcategory || p.category} - ${p.color} ${p.material} - Style ${p.style} - Dimensions: ${p.dimensions} - Stock: ${p.stock_qty}${variantInfo} - Smart AI: ${p.confidence_score}%`;
+      }).join('\n') : 'Aucun produit correspondant trouvé dans le catalogue Smart AI.';
 
     const photoContext = photoAnalysis ? 
-      `ANALYSE PHOTO: Style ${photoAnalysis.style_detected}, couleurs ${photoAnalysis.dominant_colors?.join(', ')}, pièce ${photoAnalysis.room_type}` : '';
+      `ANALYSE PHOTO OPENAI VISION:
+Style détecté: ${photoAnalysis.style_detected}
+Couleurs dominantes: ${photoAnalysis.dominant_colors?.join(', ')}
+Matériaux visibles: ${photoAnalysis.materials_visible?.join(', ')}
+Type de pièce: ${photoAnalysis.room_type}
+Meubles présents: ${photoAnalysis.furniture_present?.join(', ')}
+Éléments manquants: ${photoAnalysis.missing_elements?.join(', ')}
+Opportunités déco: ${photoAnalysis.design_opportunities}
+Taille espace: ${photoAnalysis.space_size}
+Qualité aménagement: ${photoAnalysis.layout_quality}
+Harmonie couleurs: ${photoAnalysis.color_harmony}
+Budget estimé: ${photoAnalysis.budget_estimate}
+Cohérence style: ${photoAnalysis.style_consistency}
+Style recommandé: ${photoAnalysis.recommended_style}` : '';
 
-    const systemPrompt = `Tu es OmnIA, conseiller déco expert et vendeur intelligent chez Decora Home.
+    const systemPrompt = `Tu es OmnIA, conseiller déco expert et vendeur intelligent chez Decora Home avec Smart AI.
 
-MISSION: Conseiller comme un humain passionné de déco, comprendre le projet client, proposer intelligemment.
+MISSION: Conseiller comme un humain passionné de déco, exploiter l'analyse photo OpenAI Vision et les attributs Smart AI pour proposer intelligemment.
 
-CATALOGUE SMART AI DISPONIBLE:
+CATALOGUE SMART AI ENRICHI DISPONIBLE:
 ${productsContext}
 
 ${photoContext}
 
-INTENTION CLIENT: ${intent.design_context || 'Recherche mobilier'}
+INTENTION CLIENT ANALYSÉE: ${searchIntent.design_context || 'Recherche mobilier'}
+CONTEXTE CONVERSATION: ${conversation_history.length > 0 ? 'Suite de conversation' : 'Première interaction'}
 
 PERSONNALITÉ:
 - Conseiller déco passionné et expert
-- Comprend les projets d'aménagement
-- Propose des solutions harmonieuses
+- Exploite l'analyse photo pour comprendre l'espace
+- Utilise les attributs Smart AI (couleur, matériau, style, dimensions, sous-catégorie)
+- Propose des solutions harmonieuses et personnalisées
 - Ton chaleureux et professionnel
-- Réponses courtes et engageantes (3-4 phrases max)
+- Réponses courtes et engageantes (2-3 phrases max)
 
 APPROCHE:
-1. Comprendre le projet déco global
-2. Proposer 1-2 produits les plus pertinents avec variantes
-3. Donner conseil déco personnalisé
+1. Comprendre le projet déco global (photo + intention)
+2. Proposer 1-2 produits Smart AI les plus pertinents avec variantes et attributs
+3. Donner conseil déco personnalisé basé sur l'analyse
 4. Poser question de suivi engageante
 
 RÈGLES:
-- Si produits trouvés → Recommander avec prix, couleurs, arguments déco
-- Si aucun produit → Conseils généraux et questions pour préciser
-- Mentionner les variantes de couleur disponibles
-- Utiliser les scores de confiance Smart AI
+- Si produits Smart AI trouvés → Recommander avec prix, variantes, attributs enrichis (couleur, matériau, style, dimensions)
+- Si analyse photo → Intégrer les insights visuels dans les recommandations
+- Si aucun produit → Conseils généraux basés sur l'analyse photo
+- Mentionner les variantes disponibles avec leurs spécificités
+- Utiliser les scores de confiance Smart AI et sous-catégories
 - Toujours finir par une question
+- Exploiter les promotions et prix barrés
 
 EXEMPLE:
-"Parfait pour votre salon ! Notre chaise AVINA en tissu effet lin (79€) existe en beige, gris et anthracite. Le beige s'harmoniserait parfaitement avec votre style moderne. Quelle couleur vous inspire le plus ?"`;
+"Super ! Pour accompagner votre chaise AVINA beige, voici mes coups de cœur **tables basses sous 100€** :
+
+**TOP 2 SMART AI** :
+• **Table basse LINA** (89€) - Plateau bois chêne clair, design épuré
+• **Table basse NOA** (79€) - Verre trempé et métal, effet aérien
+
+Les deux existent en plusieurs finitions pour s'accorder avec votre style. La LINA apporterait une touche naturelle très tendance !
+
+**Petite question** : Préférez-vous une table ronde ou rectangulaire pour votre espace ?"`;
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -563,7 +708,7 @@ EXEMPLE:
           ...history.slice(-2),
           { role: 'user', content: message }
         ],
-        max_tokens: 200,
+        max_tokens: 250,
         temperature: 0.8,
       }),
     });
@@ -574,7 +719,7 @@ EXEMPLE:
       
       return {
         message: aiMessage,
-        thinking_process: 'DeepSeek + Smart AI + Vision'
+        thinking_process: 'DeepSeek + Smart AI + OpenAI Vision + Attributs enrichis'
       };
     }
   } catch (error) {
@@ -584,32 +729,137 @@ EXEMPLE:
   return generateFallbackResponse(message, products, intent);
 }
 
+function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedProduct[] {
+  // Créer des produits démo enrichis basés sur l'intention et l'analyse photo
+  const demoProducts: EnrichedProduct[] = [];
+  
+  // Chaise AVINA enrichie
+  if (!intent.target_category || intent.target_category === 'chaise' || 
+      (photoAnalysis?.missing_elements?.includes('chaise') || photoAnalysis?.recommended_products?.includes('chaise'))) {
+    demoProducts.push({
+      id: 'demo-avina-enriched',
+      handle: 'chaise-avina-tissu-effet-lin',
+      title: 'Chaise AVINA',
+      description: 'Chaise en tissu effet lin avec pieds en métal noir, design moderne et épuré',
+      price: 79,
+      compare_at_price: 99,
+      category: 'Chaise',
+      subcategory: 'Chaise en tissu effet lin avec pieds métal',
+      color: photoAnalysis?.dominant_colors?.[0] || intent.target_colors?.[0] || 'beige',
+      material: 'tissu effet lin',
+      fabric: 'tissu effet lin',
+      style: photoAnalysis?.style_detected || intent.target_styles?.[0] || 'moderne',
+      dimensions: '45x52x82cm',
+      room: photoAnalysis?.room_type || intent.target_room || 'salon',
+      image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+      product_url: '#chaise-avina',
+      stock_qty: 96,
+      tags: ['moderne', 'tissu', 'métal', 'design'],
+      seo_title: 'Chaise AVINA - Tissu effet lin et métal noir',
+      seo_description: 'Chaise moderne en tissu effet lin avec pieds métal noir. Design épuré et confortable.',
+      brand: 'Decora Home',
+      confidence_score: 92
+    });
+  }
+  
+  // Table basse LINA enrichie
+  if (!intent.target_category || intent.target_category === 'table' || 
+      (photoAnalysis?.missing_elements?.includes('table') || photoAnalysis?.recommended_products?.includes('table basse'))) {
+    demoProducts.push({
+      id: 'demo-lina-enriched',
+      handle: 'table-basse-lina-chene-clair',
+      title: 'Table basse LINA',
+      description: 'Table basse en chêne clair avec plateau épuré et pieds fuselés, design scandinave',
+      price: 89,
+      compare_at_price: 119,
+      category: 'Table',
+      subcategory: 'Table basse ronde en chêne clair',
+      color: 'chêne clair',
+      material: 'chêne',
+      fabric: '',
+      style: photoAnalysis?.style_detected || 'scandinave',
+      dimensions: '90x90x40cm',
+      room: photoAnalysis?.room_type || 'salon',
+      image_url: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg',
+      product_url: '#table-lina',
+      stock_qty: 45,
+      tags: ['scandinave', 'chêne', 'épuré', 'naturel'],
+      seo_title: 'Table basse LINA - Chêne clair design scandinave',
+      seo_description: 'Table basse ronde en chêne clair, design scandinave épuré avec pieds fuselés.',
+      brand: 'Decora Home',
+      confidence_score: 88
+    });
+  }
+  
+  // Table basse NOA enrichie
+  if (!intent.target_category || intent.target_category === 'table' || 
+      (photoAnalysis?.style_detected === 'moderne' || photoAnalysis?.materials_visible?.includes('verre'))) {
+    demoProducts.push({
+      id: 'demo-noa-enriched',
+      handle: 'table-basse-noa-verre-metal',
+      title: 'Table basse NOA',
+      description: 'Table basse en verre trempé et métal noir, effet aérien et moderne',
+      price: 79,
+      compare_at_price: 109,
+      category: 'Table',
+      subcategory: 'Table basse rectangulaire verre et métal',
+      color: 'transparent',
+      material: 'verre trempé',
+      fabric: '',
+      style: 'moderne',
+      dimensions: '100x50x35cm',
+      room: photoAnalysis?.room_type || 'salon',
+      image_url: 'https://images.pexels.com/photos/1866149/pexels-photo-1866149.jpeg',
+      product_url: '#table-noa',
+      stock_qty: 32,
+      tags: ['moderne', 'verre', 'métal', 'aérien'],
+      seo_title: 'Table basse NOA - Verre trempé et métal noir',
+      seo_description: 'Table basse moderne en verre trempé avec structure métal noir, effet aérien.',
+      brand: 'Decora Home',
+      confidence_score: 85
+    });
+  }
+  
+  console.log('✅ [quickchat] Produits démo enrichis créés:', demoProducts.length);
+  return demoProducts;
+}
+
 function generateFallbackResponse(message: string, products: EnrichedProduct[], intent: any) {
   if (products.length === 0) {
     if (intent.target_category) {
       return {
-        message: `Je n'ai pas de ${intent.target_category} correspondant à vos critères actuellement. Voulez-vous que je vous propose des alternatives ou ajuster vos critères ?`,
+        message: `Je n'ai pas de ${intent.target_category} correspondant à vos critères dans notre catalogue Smart AI actuellement. Voulez-vous que je vous propose des alternatives ou ajuster vos critères ?`,
         thinking_process: 'Fallback - aucun produit'
       };
     }
     return {
-      message: "Pouvez-vous me préciser votre recherche ? Je suis là pour vous conseiller dans votre projet déco !",
+      message: "Pouvez-vous me préciser votre recherche ? Je suis là pour vous conseiller dans votre projet déco avec Smart AI !",
       thinking_process: 'Fallback - demande générale'
     };
   }
 
   const product = products[0];
   const variantCount = product.variants?.length || 1;
+  const hasPromotion = product.compare_at_price && product.compare_at_price > product.price;
+  const discountPercent = hasPromotion ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100) : 0;
   
   if (variantCount > 1) {
-    const colors = product.variants?.map(v => v.color).join(', ') || '';
+    const colors = product.variants?.map(v => `${v.color} (${v.price}€)`).join(', ') || '';
     return {
-      message: `Parfait ! Notre ${product.title} à ${product.price}€ existe en ${variantCount} coloris : ${colors}. Quelle couleur préférez-vous ?`,
+      message: `Parfait ! Notre **${product.title}** ${hasPromotion ? `(${product.price}€, était ${product.compare_at_price}€, -${discountPercent}%)` : `à ${product.price}€`} existe en ${variantCount} variantes : ${colors}. 
+      
+**Smart AI** : ${product.subcategory} - ${product.material} ${product.color} - Style ${product.style}
+
+Quelle variante vous inspire le plus ?`,
       thinking_process: 'Fallback - produit avec variantes'
     };
   } else {
     return {
-      message: `Excellent choix ! Notre ${product.title} à ${product.price}€ correspond parfaitement. Voulez-vous voir les détails ?`,
+      message: `Excellent choix ! Notre **${product.title}** ${hasPromotion ? `(${product.price}€, était ${product.compare_at_price}€, -${discountPercent}%)` : `à ${product.price}€`} correspond parfaitement.
+      
+**Smart AI** : ${product.subcategory} - ${product.material} ${product.color} - Dimensions: ${product.dimensions}
+
+Voulez-vous voir les détails ou ajouter au panier ?`,
       thinking_process: 'Fallback - produit simple'
     };
   }

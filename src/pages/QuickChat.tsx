@@ -260,7 +260,12 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2">{product.title}</h3>
+          <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2">
+            {product.title}
+            {product.subcategory && (
+              <span className="block text-xs text-blue-600 font-medium">{product.subcategory}</span>
+            )}
+          </h3>
           <p className="text-blue-600 text-xs font-medium mb-2">{product.brand} • {product.category}</p>
           
           {/* Prix et promotion */}
@@ -296,25 +301,38 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
                 {product.dimensions}
               </span>
             )}
+            {product.style && (
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {product.style}
+              </span>
+            )}
           </div>
 
           {/* Variantes de couleur si disponibles */}
           {product.variants && product.variants.length > 1 && (
             <div className="mb-3">
-              <p className="text-xs text-gray-600 mb-1">Couleurs disponibles :</p>
+              <p className="text-xs text-gray-600 mb-1">
+                {product.variants.length} variante{product.variants.length > 1 ? 's' : ''} disponible{product.variants.length > 1 ? 's' : ''} :
+              </p>
               <div className="flex gap-1">
                 {product.variants.slice(0, 4).map((variant, index) => (
                   <div key={index} className="relative group">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 cursor-pointer">
+                    <div className="w-8 h-8 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 cursor-pointer transition-all hover:scale-110">
                       <img 
                         src={variant.image_url} 
                         alt={variant.color}
                         className="w-full h-full object-cover"
                         title={`${variant.color} - ${variant.price}€`}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                        }}
                       />
                     </div>
-                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {variant.color}
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                      {variant.color} - {variant.price}€
+                      {variant.material && <div className="text-xs text-gray-300">{variant.material}</div>}
                     </div>
                   </div>
                 ))}
@@ -362,6 +380,9 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
         <div className="flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-purple-500" />
           <span className="text-purple-600 font-medium">Smart AI: {product.confidence_score}%</span>
+          {product.subcategory && (
+            <span className="text-gray-500">• {product.subcategory.substring(0, 20)}...</span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Package className="w-3 h-3 text-green-500" />
