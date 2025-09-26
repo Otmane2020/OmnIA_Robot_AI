@@ -134,6 +134,29 @@ export function extractEnhancedRooms(text: string): string[] {
   return [...new Set(rooms)]; // Remove duplicates
 }
 
+export function detectEnhancedCategory(text: string): string {
+  const lowerText = text.toLowerCase();
+  
+  const categoryPatterns = [
+    { name: 'Canapé', patterns: ['canapé', 'canapés', 'sofa', 'sofas', 'banquette'] },
+    { name: 'Table', patterns: ['table', 'tables', 'bureau', 'console', 'desserte'] },
+    { name: 'Chaise', patterns: ['chaise', 'chaises', 'fauteuil', 'fauteuils', 'siège', 'tabouret'] },
+    { name: 'Lit', patterns: ['lit', 'lits', 'matelas', 'sommier', 'tête de lit'] },
+    { name: 'Rangement', patterns: ['armoire', 'commode', 'bibliothèque', 'étagère', 'vitrine', 'buffet'] },
+    { name: 'Meuble TV', patterns: ['meuble tv', 'meuble télé', 'tv stand', 'support tv'] },
+    { name: 'Décoration', patterns: ['miroir', 'tableau', 'vase', 'sculpture', 'objet déco'] },
+    { name: 'Éclairage', patterns: ['lampe', 'luminaire', 'applique', 'suspension', 'plafonnier'] }
+  ];
+
+  for (const { name, patterns } of categoryPatterns) {
+    if (patterns.some(pattern => lowerText.includes(pattern))) {
+      return name;
+    }
+  }
+
+  return 'Mobilier';
+}
+
 export function extractDimensions(text: string): string {
   const dimensionPatterns = [
     // Format: LxlxH

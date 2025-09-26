@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
-  BarChart3, CheckCircle, AlertCircle, Loader2, Eye,
+  extractEnhancedRooms, extractDimensions, detectPromotions, generateSEOContent,
+  detectEnhancedCategory
   Package, Tag, DollarSign, Image, Settings, Search,
   Filter, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
