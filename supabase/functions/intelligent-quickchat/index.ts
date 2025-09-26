@@ -15,6 +15,21 @@ interface QuickChatRequest {
   photo_context?: string; // base64 image
 }
 
+interface MessageAnalysis {
+  intent: 'product_search' | 'chat' | 'faq';
+  attributes: {
+    category?: string;
+    color?: string;
+    material?: string;
+    style?: string;
+    room?: string;
+    price_max?: number;
+    dimensions?: string;
+  };
+  response: string;
+  confidence: number;
+}
+
 interface EnrichedProduct {
   id: string;
   handle: string;
@@ -56,7 +71,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  console.log('🚀 [quickchat] Function called');
+  console.log('🚀 [intelligent-quickchat] Function called');
 
   try {
     const { message, conversation_history = [], photo_context }: QuickChatRequest = await req.json();
@@ -79,40 +94,54 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 🧠 ÉTAPE 1: Analyser l'intention avec DeepSeek
-    const searchIntent = await analyzeIntentWithDeepSeek(message, conversation_history);
-    console.log('🎯 [quickchat] Intention:', searchIntent);
+    const messageAnalysis = await analyzeMessage(message, conversation_history);
+    console.log('🎯 [quickchat] Intention:', messageAnalysis.intent, messageAnalysis.attributes);
 
     // 📸 ÉTAPE 2: Analyser la photo si fournie avec OpenAI Vision
     let photoAnalysis = null;
     if (photo_context) {
       photoAnalysis = await analyzePhotoWithVision(photo_context);
-      console.log('👁️ [quickchat] Analyse photo:', photoAnalysis?.style || 'Aucune');
+      console.log('👁️ [quickchat] Analyse photo:', photoAnalysis?.style_detected || 'Aucune');
     }
 
-    // 🔍 ÉTAPE 3: Rechercher dans le catalogue enrichi Smart AI
-    const enrichedProducts = await searchEnrichedCatalog(supabase, searchIntent, photoAnalysis);
-    console.log('📦 [quickchat] Produits enrichis trouvés:', enrichedProducts.length);
+    // 🔍 ÉTAPE 3: Traitement selon l'intention
+    let finalResponse;
+    
+    if (messageAnalysis.intent === 'product_search') {
+      // Rechercher dans le catalogue enrichi Smart AI
+      const enrichedProducts = await searchProductsEnriched(supabase, messageAnalysis.attributes, photoAnalysis);
+      console.log('📦 [quickchat] Produits enrichis trouvés:', enrichedProducts.length);
 
-    // 🎨 ÉTAPE 4: Créer des variantes pour les produits variables
-    const productsWithVariants = await createProductVariants(enrichedProducts);
-    console.log('🎨 [quickchat] Produits avec variantes:', productsWithVariants.length);
+      // Créer des variantes pour les produits variables
+      const productsWithVariants = await createProductVariants(enrichedProducts);
+      console.log('🎨 [quickchat] Produits avec variantes:', productsWithVariants.length);
 
-    // 🧠 ÉTAPE 5: Générer réponse intelligente avec DeepSeek
-    const aiResponse = await generateIntelligentResponse(
-      message, 
-      productsWithVariants, 
-      searchIntent, 
-      photoAnalysis,
-      conversation_history
-    );
+      finalResponse = {
+        message: messageAnalysis.response,
+        products: productsWithVariants.slice(0, 6),
+        intent: messageAnalysis.intent,
+        photo_analysis: photoAnalysis
+      };
+    } else if (messageAnalysis.intent === 'faq') {
+      // Rechercher dans la FAQ
+      const faqResponse = await searchFAQ(message);
+      finalResponse = {
+        message: faqResponse || messageAnalysis.response,
+        products: [],
+        intent: messageAnalysis.intent
+      };
+    } else {
+      // Chat général - pas de produits
+      finalResponse = {
+        message: messageAnalysis.response,
+        products: [],
+        intent: messageAnalysis.intent
+      };
+    }
 
-    return new Response(JSON.stringify({
-      message: aiResponse.message,
-      products: productsWithVariants.slice(0, 6), // Max 6 produits
-      intent: searchIntent,
-      photo_analysis: photoAnalysis,
-      thinking_process: aiResponse.thinking_process
-    }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    return new Response(JSON.stringify(finalResponse), { 
+      headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+    });
 
   } catch (error) {
     console.error('❌ [quickchat] Erreur complète:', error);
@@ -129,45 +158,51 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function analyzeIntentWithDeepSeek(message: string, history: any[]) {
+async function analyzeMessage(message: string, history: any[]): Promise<MessageAnalysis> {
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
   if (!deepseekApiKey) {
-    return analyzeIntentBasic(message);
+    return analyzeMessageBasic(message);
   }
 
   try {
     const historyContext = history.length > 0 ? 
       `CONTEXTE CONVERSATION:\n${history.slice(-2).map(h => `${h.role}: ${h.content}`).join('\n')}\n\n` : '';
 
-    const prompt = `${historyContext}Analyse cette demande déco/mobilier et extrait l'intention au format JSON :
+    const prompt = `${historyContext}Analyse ce message et détermine l'intention au format JSON strict :
 
 MESSAGE: "${message}"
 
 Extrait au format JSON strict :
 {
-  "intent_type": "product_search|style_advice|room_planning|color_harmony|dimension_help",
-  "target_category": "canapé|table|chaise|lit|rangement|decoration",
-  "target_colors": ["beige", "gris", "blanc"],
-  "target_materials": ["tissu", "bois", "métal", "travertin"],
-  "target_styles": ["moderne", "scandinave", "contemporain"],
-  "target_room": "salon|chambre|cuisine|bureau",
-  "price_range": {"max": 800, "min": 100},
-  "size_preference": "compact|standard|genereux",
-  "special_features": ["convertible", "rangement", "modulaire"],
-  "design_context": "Description du projet déco",
+  "intent": "product_search|chat|faq",
+  "attributes": {
+    "category": "canapé|table|chaise|lit|rangement|decoration",
+    "color": "beige|gris|blanc|noir|bleu|vert|rouge|taupe|naturel",
+    "material": "tissu|bois|métal|travertin|velours|cuir|verre",
+    "style": "moderne|scandinave|contemporain|industriel|vintage",
+    "room": "salon|chambre|cuisine|bureau",
+    "price_max": 500,
+    "dimensions": "dimensions mentionnées"
+  },
+  "response": "Réponse appropriée selon l'intention",
   "confidence": 85
 }
 
-RÈGLES:
-- intent_type: Type principal de demande
-- target_category: Catégorie de mobilier recherchée
-- target_colors: Couleurs mentionnées ou souhaitées
-- target_materials: Matériaux spécifiés
-- target_styles: Styles décoratifs demandés
-- target_room: Pièce de destination
-- design_context: Résumé du projet déco en une phrase
-- confidence: 0-100 basé sur la clarté
+RÈGLES D'INTENTION:
+- **product_search**: Mention de meubles (canapé, table, chaise), couleurs, matériaux, styles, "je cherche", "je veux"
+- **faq**: Questions sur livraison, garantie, retour, paiement, magasin, horaires, "comment", "où", "quand"
+- **chat**: Salutations, questions générales, compliments, "bonjour", "merci", "qui êtes-vous"
+
+RÉPONSES SELON INTENTION:
+- product_search: "Parfait ! Voici nos [catégorie] [attributs] 👇" (court, max 15 mots)
+- chat: Réponse conversationnelle chaleureuse (50-80 mots max)
+- faq: Réponse informative pratique (40-60 mots)
+
+EXEMPLES:
+- "Je cherche un canapé beige" → intent: product_search, response: "Parfait ! Voici nos canapés beiges 👇"
+- "Bonjour, comment allez-vous ?" → intent: chat, response: "Bonjour ! Je suis OmnIA 🤖 votre conseiller mobilier chez Decora Home. Ravi de vous rencontrer ! Comment puis-je vous aider pour votre projet déco ?"
+- "La livraison est gratuite ?" → intent: faq, response: "Oui ! Livraison gratuite en France métropolitaine sous 7-10 jours 🚚"
 
 RÉPONSE JSON UNIQUEMENT:`;
 
@@ -182,7 +217,7 @@ RÉPONSE JSON UNIQUEMENT:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en analyse d\'intention déco et mobilier. Réponds uniquement en JSON valide.'
+            content: 'Tu es un expert en analyse d\'intention pour assistant mobilier. Réponds uniquement en JSON valide.'
           },
           {
             role: 'user',
@@ -201,8 +236,13 @@ RÉPONSE JSON UNIQUEMENT:`;
       if (content) {
         try {
           const parsed = JSON.parse(content);
-          console.log('✅ [quickchat] Intention DeepSeek extraite');
-          return parsed;
+          console.log('✅ [quickchat] Intention DeepSeek extraite:', parsed.intent);
+          return {
+            intent: parsed.intent,
+            attributes: parsed.attributes || {},
+            response: parsed.response || '',
+            confidence: parsed.confidence || 50
+          };
         } catch (parseError) {
           console.log('⚠️ [quickchat] JSON invalide, fallback basique');
         }
@@ -212,41 +252,289 @@ RÉPONSE JSON UNIQUEMENT:`;
     console.log('⚠️ [quickchat] Erreur DeepSeek, fallback basique');
   }
 
-  return analyzeIntentBasic(message);
+  return analyzeMessageBasic(message);
 }
 
-function analyzeIntentBasic(message: string) {
+function analyzeMessageBasic(message: string): MessageAnalysis {
   const lowerMessage = message.toLowerCase();
   
-  // Détecter catégorie
-  let target_category = null;
-  if (lowerMessage.includes('canapé') || lowerMessage.includes('sofa')) target_category = 'canapé';
-  else if (lowerMessage.includes('table')) target_category = 'table';
-  else if (lowerMessage.includes('chaise') || lowerMessage.includes('avina')) target_category = 'chaise';
-  else if (lowerMessage.includes('lit')) target_category = 'lit';
-
-  // Détecter couleurs
-  const colors = ['beige', 'gris', 'blanc', 'noir', 'bleu', 'vert', 'rouge', 'taupe', 'naturel'];
-  const target_colors = colors.filter(color => lowerMessage.includes(color));
-
-  // Détecter matériaux
-  const materials = ['tissu', 'lin', 'bois', 'métal', 'travertin', 'marbre', 'velours', 'cuir'];
-  const target_materials = materials.filter(material => lowerMessage.includes(material));
-
-  // Détecter styles
-  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage'];
-  const target_styles = styles.filter(style => lowerMessage.includes(style));
-
+  // Détection FAQ
+  const faqKeywords = [
+    'livraison', 'delivery', 'gratuite', 'délai', 'transport',
+    'garantie', 'warranty', 'retour', 'échange', 'remboursement',
+    'paiement', 'payment', 'carte', 'paypal', 'virement',
+    'magasin', 'showroom', 'adresse', 'horaires', 'ouvert',
+    'comment', 'où', 'quand', 'combien de temps'
+  ];
+  
+  if (faqKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return {
+      intent: 'faq',
+      attributes: {},
+      response: generateFAQResponse(lowerMessage),
+      confidence: 80
+    };
+  }
+  
+  // Détection salutations et chat général
+  const chatKeywords = [
+    'bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey',
+    'merci', 'thank', 'au revoir', 'bye',
+    'qui êtes-vous', 'qui es-tu', 'comment allez-vous',
+    'ça va', 'comment ça va', 'quoi de neuf'
+  ];
+  
+  if (chatKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return {
+      intent: 'chat',
+      attributes: {},
+      response: generateChatResponse(lowerMessage),
+      confidence: 90
+    };
+  }
+  
+  // Détection recherche produit
+  const productKeywords = [
+    'canapé', 'sofa', 'table', 'chaise', 'fauteuil', 'lit', 'matelas',
+    'armoire', 'commode', 'meuble', 'mobilier',
+    'je cherche', 'je veux', 'j\'aimerais', 'montrez-moi',
+    'avez-vous', 'proposez-vous', 'vendez-vous'
+  ];
+  
+  if (productKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    const attributes = extractAttributesBasic(lowerMessage);
+    return {
+      intent: 'product_search',
+      attributes,
+      response: generateProductSearchResponse(attributes),
+      confidence: 75
+    };
+  }
+  
+  // Par défaut = chat
   return {
-    intent_type: target_category ? 'product_search' : 'style_advice',
-    target_category,
-    target_colors,
-    target_materials,
-    target_styles,
-    target_room: lowerMessage.includes('salon') ? 'salon' : lowerMessage.includes('chambre') ? 'chambre' : null,
-    design_context: `Recherche ${target_category || 'mobilier'} ${target_colors.join(' ')} ${target_styles.join(' ')}`,
-    confidence: target_category ? 80 : 50
+    intent: 'chat',
+    attributes: {},
+    response: "Avec plaisir ! Comment puis-je vous aider pour votre projet déco ? 😊",
+    confidence: 50
   };
+}
+
+function extractAttributesBasic(message: string) {
+  const attributes: any = {};
+  
+  // Catégories
+  if (message.includes('canapé') || message.includes('sofa')) attributes.category = 'canapé';
+  else if (message.includes('table')) attributes.category = 'table';
+  else if (message.includes('chaise') || message.includes('fauteuil')) attributes.category = 'chaise';
+  else if (message.includes('lit')) attributes.category = 'lit';
+  
+  // Couleurs
+  const colors = ['beige', 'gris', 'blanc', 'noir', 'bleu', 'vert', 'rouge', 'taupe', 'naturel'];
+  const foundColor = colors.find(color => message.includes(color));
+  if (foundColor) attributes.color = foundColor;
+  
+  // Matériaux
+  const materials = ['tissu', 'bois', 'métal', 'travertin', 'velours', 'cuir', 'verre'];
+  const foundMaterial = materials.find(material => message.includes(material));
+  if (foundMaterial) attributes.material = foundMaterial;
+  
+  // Styles
+  const styles = ['moderne', 'scandinave', 'contemporain', 'industriel', 'vintage'];
+  const foundStyle = styles.find(style => message.includes(style));
+  if (foundStyle) attributes.style = foundStyle;
+  
+  // Pièces
+  if (message.includes('salon')) attributes.room = 'salon';
+  else if (message.includes('chambre')) attributes.room = 'chambre';
+  else if (message.includes('cuisine')) attributes.room = 'cuisine';
+  else if (message.includes('bureau')) attributes.room = 'bureau';
+  
+  // Prix
+  const priceMatch = message.match(/sous (\d+)/);
+  if (priceMatch) attributes.price_max = parseInt(priceMatch[1]);
+  
+  return attributes;
+}
+
+function generateChatResponse(message: string): string {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('bonjour') || lowerMessage.includes('salut') || lowerMessage.includes('hello')) {
+    return "Bonjour ! Je suis OmnIA 🤖 votre conseiller mobilier chez Decora Home. Ravi de vous rencontrer ! Comment puis-je vous aider pour votre projet déco ?";
+  }
+  
+  if (lowerMessage.includes('merci')) {
+    return "Avec grand plaisir ! 😊 C'est un bonheur de vous accompagner dans votre projet déco. Autre chose pour embellir votre intérieur ?";
+  }
+  
+  if (lowerMessage.includes('qui êtes-vous') || lowerMessage.includes('qui es-tu')) {
+    return "Je suis OmnIA 🤖 votre assistant robot spécialisé en mobilier et décoration chez Decora Home ! Je connais parfaitement notre catalogue et je suis là pour vous conseiller. Quel est votre projet ?";
+  }
+  
+  if (lowerMessage.includes('comment allez-vous') || lowerMessage.includes('ça va')) {
+    return "Ça va très bien, merci ! 😊 Je suis en pleine forme pour vous aider à créer l'intérieur de vos rêves. Parlez-moi de votre projet déco !";
+  }
+  
+  return "Avec plaisir ! Je suis là pour vous accompagner dans tous vos projets mobilier et déco. Que puis-je faire pour vous aujourd'hui ? 😊";
+}
+
+function generateFAQResponse(message: string): string {
+  if (message.includes('livraison')) {
+    return "Livraison gratuite en France métropolitaine sous 7-10 jours ouvrés 🚚 Express 48h disponible. Montage inclus sur demande !";
+  }
+  
+  if (message.includes('garantie')) {
+    return "Tous nos meubles sont garantis 2 ans pièces et main d'œuvre 🛡️ Extension possible jusqu'à 5 ans. SAV réactif !";
+  }
+  
+  if (message.includes('retour') || message.includes('échange')) {
+    return "Retour gratuit sous 30 jours si non satisfait 📦 Échange possible selon stock. Remboursement intégral garanti !";
+  }
+  
+  if (message.includes('paiement')) {
+    return "Paiement sécurisé : CB, PayPal, virement 💳 Facilités 3x sans frais dès 300€. Paiement à la livraison possible !";
+  }
+  
+  if (message.includes('magasin') || message.includes('showroom')) {
+    return "Showroom Paris 15ème, ouvert Mar-Sam 10h-19h 🏪 Rendez-vous conseiller gratuit. Adresse : 123 rue de Vaugirard !";
+  }
+  
+  return "Je peux vous renseigner sur la livraison, garantie, retours, paiement ou nos showrooms 👍 Que souhaitez-vous savoir ?";
+}
+
+function generateProductSearchResponse(attributes: any): string {
+  const { category, color, material, style } = attributes;
+  
+  if (category && color) {
+    return `Parfait ! Voici nos ${category}s ${color}s ${material ? `en ${material}` : ''} 👇`;
+  }
+  
+  if (category) {
+    return `Excellent choix ! Voici notre sélection ${category}s ${style ? style : ''} 👇`;
+  }
+  
+  if (color || material) {
+    return `Super ! Voici nos meubles ${color || ''} ${material ? `en ${material}` : ''} 👇`;
+  }
+  
+  return "Voici ce que j'ai trouvé pour vous 👇";
+}
+
+async function searchProductsEnriched(supabase: any, attributes: any, photoAnalysis: any) {
+  try {
+    console.log('🔍 [quickchat] Recherche dans catalogue enrichi...');
+
+    // Construire la requête Smart AI
+    let query = supabase
+      .from('products_enriched')
+      .select('*')
+      .gt('stock_qty', 0)
+      .order('confidence_score', { ascending: false });
+
+    // Filtrage par catégorie
+    if (attributes.category) {
+      query = query.or(`category.ilike.%${attributes.category}%,subcategory.ilike.%${attributes.category}%`);
+    }
+
+    // Filtrage enrichi par analyse photo
+    if (photoAnalysis) {
+      if (photoAnalysis.style_detected) {
+        query = query.ilike('style', `%${photoAnalysis.style_detected}%`);
+      }
+      
+      if (photoAnalysis.dominant_colors?.length > 0) {
+        const colorConditions = photoAnalysis.dominant_colors.map(color => `color.ilike.%${color}%`).join(',');
+        query = query.or(colorConditions);
+      }
+      
+      if (photoAnalysis.materials_visible?.length > 0) {
+        const materialConditions = photoAnalysis.materials_visible.map(material => 
+          `material.ilike.%${material}%,fabric.ilike.%${material}%`
+        ).join(',');
+        query = query.or(materialConditions);
+      }
+      
+      if (photoAnalysis.room_type) {
+        query = query.ilike('room', `%${photoAnalysis.room_type}%`);
+      }
+    }
+
+    // Filtrage par couleurs
+    if (attributes.color) {
+      query = query.ilike('color', `%${attributes.color}%`);
+    }
+
+    // Filtrage par matériaux
+    if (attributes.material) {
+      query = query.or(`material.ilike.%${attributes.material}%,fabric.ilike.%${attributes.material}%`);
+    }
+
+    // Filtrage par styles
+    if (attributes.style) {
+      query = query.ilike('style', `%${attributes.style}%`);
+    }
+
+    // Filtrage par pièce
+    if (attributes.room) {
+      query = query.ilike('room', `%${attributes.room}%`);
+    }
+
+    // Filtrage par prix
+    if (attributes.price_max) {
+      query = query.lte('price', attributes.price_max);
+    }
+
+    // Limiter les résultats
+    query = query.limit(8);
+
+    const { data: enrichedProducts, error } = await query;
+
+    if (error) {
+      console.error('❌ [quickchat] Erreur DB enriched:', error);
+      return [];
+    }
+
+    console.log('✅ [quickchat] Produits Smart AI trouvés:', enrichedProducts?.length || 0);
+    
+    // Si aucun produit enrichi trouvé, créer des produits de démonstration enrichis
+    if (!enrichedProducts || enrichedProducts.length === 0) {
+      console.log('🔄 [quickchat] Création produits démo enrichis...');
+      return createDemoEnrichedProducts(attributes, photoAnalysis);
+    }
+    
+    return enrichedProducts || [];
+
+  } catch (error) {
+    console.error('❌ [quickchat] Erreur recherche enrichie:', error);
+    return createDemoEnrichedProducts(attributes, photoAnalysis);
+  }
+}
+
+async function searchFAQ(message: string): Promise<string> {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('livraison')) {
+    return "Livraison gratuite en France métropolitaine sous 7-10 jours ouvrés 🚚 Express 48h disponible (+19€). Montage inclus sur demande !";
+  }
+  
+  if (lowerMessage.includes('garantie')) {
+    return "Tous nos meubles sont garantis 2 ans pièces et main d'œuvre 🛡️ Extension possible jusqu'à 5 ans. SAV réactif et efficace !";
+  }
+  
+  if (lowerMessage.includes('retour') || lowerMessage.includes('échange')) {
+    return "Retour gratuit sous 30 jours si non satisfait 📦 Échange possible selon stock disponible. Remboursement intégral garanti !";
+  }
+  
+  if (lowerMessage.includes('paiement')) {
+    return "Paiement 100% sécurisé : CB, PayPal, virement 💳 Facilités 3x sans frais dès 300€. Paiement à la livraison possible !";
+  }
+  
+  if (lowerMessage.includes('magasin') || lowerMessage.includes('showroom')) {
+    return "Showroom Paris 15ème, ouvert Mar-Sam 10h-19h 🏪 Rendez-vous conseiller gratuit. Adresse : 123 rue de Vaugirard, métro Vaugirard !";
+  }
+  
+  return "Je peux vous renseigner sur la livraison, garantie, retours, paiement ou nos showrooms 👍 Que souhaitez-vous savoir précisément ?";
 }
 
 async function analyzePhotoWithVision(imageBase64: string) {
@@ -344,114 +632,6 @@ RÉPONSE JSON UNIQUEMENT:`
   return null;
 }
 
-async function searchEnrichedCatalog(supabase: any, intent: any, photoAnalysis: any) {
-  try {
-    console.log('🔍 [quickchat] Recherche dans catalogue enrichi...');
-
-    // Construire la requête Smart AI
-    let query = supabase
-      .from('products_enriched')
-      .select('*')
-      .gt('stock_qty', 0)
-      .order('confidence_score', { ascending: false });
-
-    // Filtrage par catégorie
-    if (intent.target_category) {
-      query = query.or(`category.ilike.%${intent.target_category}%,subcategory.ilike.%${intent.target_category}%`);
-    }
-
-    // Filtrage enrichi par analyse photo
-    if (photoAnalysis) {
-      // Filtrer par style détecté dans la photo
-      if (photoAnalysis.style_detected) {
-        query = query.ilike('style', `%${photoAnalysis.style_detected}%`);
-      }
-      
-      // Filtrer par couleurs dominantes de la photo
-      if (photoAnalysis.dominant_colors?.length > 0) {
-        const colorConditions = photoAnalysis.dominant_colors.map(color => `color.ilike.%${color}%`).join(',');
-        query = query.or(colorConditions);
-      }
-      
-      // Filtrer par matériaux visibles dans la photo
-      if (photoAnalysis.materials_visible?.length > 0) {
-        const materialConditions = photoAnalysis.materials_visible.map(material => 
-          `material.ilike.%${material}%,fabric.ilike.%${material}%`
-        ).join(',');
-        query = query.or(materialConditions);
-      }
-      
-      // Filtrer par type de pièce
-      if (photoAnalysis.room_type) {
-        query = query.ilike('room', `%${photoAnalysis.room_type}%`);
-      }
-      
-      // Filtrer par budget estimé
-      if (photoAnalysis.budget_estimate) {
-        if (photoAnalysis.budget_estimate === 'budget') {
-          query = query.lte('price', 150);
-        } else if (photoAnalysis.budget_estimate === 'premium') {
-          query = query.gte('price', 500);
-        }
-      }
-    }
-
-    // Filtrage par couleurs
-    if (intent.target_colors?.length > 0) {
-      const colorConditions = intent.target_colors.map(color => `color.ilike.%${color}%`).join(',');
-      query = query.or(colorConditions);
-    }
-
-    // Filtrage par matériaux
-    if (intent.target_materials?.length > 0) {
-      const materialConditions = intent.target_materials.map(material => 
-        `material.ilike.%${material}%,fabric.ilike.%${material}%`
-      ).join(',');
-      query = query.or(materialConditions);
-    }
-
-    // Filtrage par styles
-    if (intent.target_styles?.length > 0) {
-      const styleConditions = intent.target_styles.map(style => `style.ilike.%${style}%`).join(',');
-      query = query.or(styleConditions);
-    }
-
-    // Filtrage par pièce
-    if (intent.target_room) {
-      query = query.ilike('room', `%${intent.target_room}%`);
-    }
-
-    // Filtrage par prix
-    if (intent.price_range?.max) {
-      query = query.lte('price', intent.price_range.max);
-    }
-
-    // Limiter les résultats
-    query = query.limit(8);
-
-    const { data: enrichedProducts, error } = await query;
-
-    if (error) {
-      console.error('❌ [quickchat] Erreur DB enriched:', error);
-      return [];
-    }
-
-    console.log('✅ [quickchat] Produits Smart AI trouvés:', enrichedProducts?.length || 0);
-    
-    // Si aucun produit enrichi trouvé, créer des produits de démonstration enrichis
-    if (!enrichedProducts || enrichedProducts.length === 0) {
-      console.log('🔄 [quickchat] Création produits démo enrichis...');
-      return createDemoEnrichedProducts(intent, photoAnalysis);
-    }
-    
-    return enrichedProducts || [];
-
-  } catch (error) {
-    console.error('❌ [quickchat] Erreur recherche enrichie:', error);
-    return createDemoEnrichedProducts(intent, photoAnalysis);
-  }
-}
-
 async function createProductVariants(products: EnrichedProduct[]) {
   const productsWithVariants = [];
 
@@ -539,10 +719,6 @@ async function generateProductVariants(product: EnrichedProduct): Promise<Produc
         { size: 'Ø120cm', price: basePrice + 50, title: 'Ø120cm' }
       ];
       
-    const availableSizes = [
-      { size: 'Ø100cm', price: basePrice, title: 'Ø100cm' },
-      { size: 'Ø120cm', price: basePrice + 50, title: 'Ø120cm' }
-    ];
     const stockPerVariant = Math.floor(product.stock_qty / detectedSizes.length) || 20;
     
     return detectedSizes.map((variant, index) => ({
@@ -610,131 +786,12 @@ function getVariantImageUrl(baseImageUrl: string, color: string): string {
   return colorMappings[color] || baseImageUrl;
 }
 
-async function generateIntelligentResponse(
-  message: string, 
-  productsWithVariants: EnrichedProduct[], 
-  intent: any, 
-  photoAnalysis: any,
-  history: any[]
-) {
-  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-  
-  if (!deepseekApiKey) {
-    return generateFallbackResponse(message, productsWithVariants, intent);
-  }
-
-  try {
-    const productsContext = productsWithVariants.length > 0 ? 
-      productsWithVariants.slice(0, 3).map(p => {
-        const variantInfo = p.variants && p.variants.length > 1 ? 
-          ` (${p.variants.length} variantes: ${p.variants.map(v => v.color).join(', ')})` : '';
-        const priceInfo = p.compare_at_price ? 
-          ` (était ${p.compare_at_price}€, -${Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%)` : '';
-        return `• ${p.title} - ${p.price}€${priceInfo} - ${p.subcategory || p.category} - Couleur: ${p.color} - Matériau: ${p.material} - Style: ${p.style} - Dimensions: ${p.dimensions} - Pièce: ${p.room} - Stock: ${p.stock_qty}${variantInfo} - Smart AI: ${p.confidence_score}%`;
-      }).join('\n') : 'Aucun produit correspondant trouvé dans le catalogue Smart AI.';
-
-    const photoContext = photoAnalysis ? 
-      `ANALYSE PHOTO OPENAI VISION:
-Style détecté: ${photoAnalysis.style_detected}
-Couleurs dominantes: ${photoAnalysis.dominant_colors?.join(', ')}
-Matériaux visibles: ${photoAnalysis.materials_visible?.join(', ')}
-Type de pièce: ${photoAnalysis.room_type}
-Meubles présents: ${photoAnalysis.furniture_present?.join(', ')}
-Éléments manquants: ${photoAnalysis.missing_elements?.join(', ')}
-Opportunités déco: ${photoAnalysis.design_opportunities}
-Taille espace: ${photoAnalysis.space_size}
-Qualité aménagement: ${photoAnalysis.layout_quality}
-Harmonie couleurs: ${photoAnalysis.color_harmony}
-Budget estimé: ${photoAnalysis.budget_estimate}
-Cohérence style: ${photoAnalysis.style_consistency}
-Style recommandé: ${photoAnalysis.recommended_style}` : '';
-
-    const systemPrompt = `Tu es OmnIA, conseiller déco expert et vendeur intelligent chez Decora Home avec Smart AI.
-
-MISSION: Conseiller comme un humain passionné de déco, exploiter l'analyse photo OpenAI Vision et les attributs Smart AI pour proposer intelligemment.
-
-CATALOGUE SMART AI ENRICHI DISPONIBLE:
-${productsContext}
-
-${photoContext}
-
-INTENTION CLIENT ANALYSÉE: ${intent.design_context || 'Recherche mobilier'}
-CONTEXTE CONVERSATION: ${history.length > 0 ? 'Suite de conversation' : 'Première interaction'}
-
-PERSONNALITÉ:
-- Conseiller déco passionné et expert
-- Exploite l'analyse photo pour comprendre l'espace
-- Utilise les attributs Smart AI (couleur, matériau, style, dimensions, sous-catégorie)
-- Propose des solutions harmonieuses et personnalisées
-- Ton chaleureux et professionnel
-- Réponses courtes et engageantes (2-3 phrases max)
-
-APPROCHE:
-1. Comprendre le projet déco global (photo + intention)
-2. Proposer 1-2 produits Smart AI les plus pertinents avec variantes et attributs
-3. Donner conseil déco personnalisé basé sur l'analyse
-4. Poser question de suivi engageante
-
-RÈGLES:
-- Si produits Smart AI trouvés → Recommander avec prix, variantes, attributs enrichis (couleur, matériau, style, dimensions)
-- Si analyse photo → Intégrer les insights visuels dans les recommandations
-- Si aucun produit → Conseils généraux basés sur l'analyse photo
-- Mentionner les variantes disponibles avec leurs spécificités
-- Utiliser les scores de confiance Smart AI et sous-catégories
-- Toujours finir par une question
-- Exploiter les promotions et prix barrés
-
-EXEMPLE:
-"Super ! Pour accompagner votre style, voici mes coups de cœur **Smart AI** :
-
-**TOP 2 SMART AI** :
-• **Table basse LINA** (89€) - Plateau bois chêne clair, design épuré
-• **Table basse NOA** (79€) - Verre trempé et métal, effet aérien
-
-Les deux existent en plusieurs finitions pour s'accorder avec votre style. La LINA apporterait une touche naturelle très tendance !
-
-**Petite question** : Préférez-vous une table ronde ou rectangulaire pour votre espace ?"`;
-
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${deepseekApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...history.slice(-2),
-          { role: 'user', content: message }
-        ],
-        max_tokens: 250,
-        temperature: 0.8,
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const aiMessage = data.choices[0]?.message?.content || 'Comment puis-je vous aider ?';
-      
-      return {
-        message: aiMessage,
-        thinking_process: 'DeepSeek + Smart AI + OpenAI Vision + Attributs enrichis'
-      };
-    }
-  } catch (error) {
-    console.error('❌ [quickchat] Erreur DeepSeek response:', error);
-  }
-
-  return generateFallbackResponse(message, productsWithVariants, intent);
-}
-
-function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedProduct[] {
+function createDemoEnrichedProducts(attributes: any, photoAnalysis: any): EnrichedProduct[] {
   // Créer des produits démo enrichis basés sur l'intention et l'analyse photo
   const demoProducts: EnrichedProduct[] = [];
   
   // Chaise AVINA enrichie
-  if (!intent.target_category || intent.target_category === 'chaise' || 
+  if (!attributes.category || attributes.category === 'chaise' || 
       (photoAnalysis?.missing_elements?.includes('chaise') || photoAnalysis?.recommended_products?.includes('chaise'))) {
     demoProducts.push({
       id: 'demo-avina-enriched',
@@ -792,7 +849,7 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
   }
   
   // Table basse LINA enrichie
-  if (!intent.target_category || intent.target_category === 'table' || 
+  if (!attributes.category || attributes.category === 'table' || 
       (photoAnalysis?.missing_elements?.includes('table') || photoAnalysis?.recommended_products?.includes('table basse'))) {
     demoProducts.push({
       id: 'demo-lina-enriched',
@@ -841,7 +898,7 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
   }
   
   // Table basse NOA enrichie
-  if (!intent.target_category || intent.target_category === 'table' || 
+  if (!attributes.category || attributes.category === 'table' || 
       (photoAnalysis?.style_detected === 'moderne' || photoAnalysis?.materials_visible?.includes('verre'))) {
     demoProducts.push({
       id: 'demo-noa-enriched',
@@ -891,45 +948,4 @@ function createDemoEnrichedProducts(intent: any, photoAnalysis: any): EnrichedPr
   
   console.log('✅ [quickchat] Produits démo enrichis créés:', demoProducts.length);
   return demoProducts;
-}
-
-function generateFallbackResponse(message: string, products: EnrichedProduct[], intent: any) {
-  if (products.length === 0) {
-    if (intent.target_category) {
-      return {
-        message: `Je n'ai pas de ${intent.target_category} correspondant à vos critères dans notre catalogue Smart AI actuellement. Voulez-vous que je vous propose des alternatives ou ajuster vos critères ?`,
-        thinking_process: 'Fallback - aucun produit'
-      };
-    }
-    return {
-      message: "Pouvez-vous me préciser votre recherche ? Je suis là pour vous conseiller dans votre projet déco avec Smart AI !",
-      thinking_process: 'Fallback - demande générale'
-    };
-  }
-
-  const product = products[0];
-  const variantCount = product.variants?.length || 1;
-  const hasPromotion = product.compare_at_price && product.compare_at_price > product.price;
-  const discountPercent = hasPromotion ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100) : 0;
-  
-  if (variantCount > 1) {
-    const colors = product.variants?.map(v => `${v.color} (${v.price}€)`).join(', ') || '';
-    return {
-      message: `Parfait ! Notre **${product.title}** ${hasPromotion ? `(${product.price}€, était ${product.compare_at_price}€, -${discountPercent}%)` : `à ${product.price}€`} existe en ${variantCount} variantes : ${colors}. 
-      
-**Smart AI** : ${product.subcategory} - ${product.material} ${product.color} - Style ${product.style}
-
-Quelle variante vous inspire le plus ?`,
-      thinking_process: 'Fallback - produit avec variantes'
-    };
-  } else {
-    return {
-      message: `Excellent choix ! Notre **${product.title}** ${hasPromotion ? `(${product.price}€, était ${product.compare_at_price}€, -${discountPercent}%)` : `à ${product.price}€`} correspond parfaitement.
-      
-**Smart AI** : ${product.subcategory} - ${product.material} ${product.color} - Dimensions: ${product.dimensions}
-
-Voulez-vous voir les détails ou ajouter au panier ?`,
-      thinking_process: 'Fallback - produit simple'
-    };
-  }
 }
