@@ -1,11 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, Loader2, Eye, X, Package, BarChart3 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
-import { supabase } from '../lib/supabase';
 
 interface ShopifyCSVImporterProps {
   onImportComplete: (data: any) => void;
-  retailerId?: string;
 }
 
 interface CSVProduct {
@@ -26,7 +24,7 @@ interface CSVProduct {
   'Variant SKU': string;
 }
 
-export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImportComplete, retailerId }) => {
+export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImportComplete }) => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -48,7 +46,7 @@ export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImport
 
     setCsvFile(file);
     setIsProcessing(true);
-    setProcessingStep('Lecture du fichier CSV...');
+    setProcessingStep('Lecture du fich ier CSV...');
 
     try {
       const text = await file.text();
@@ -253,49 +251,10 @@ export const ShopifyCSVImporter: React.FC<ShopifyCSVImporterProps> = ({ onImport
 
       setProcessingStep('Sauvegarde en cours...');
       
-      // Sauvegarder via Supabase Edge Function pour éviter les limites localStorage
-      try {
-        if (retailerId) {
-          // Utiliser Supabase pour les gros volumes
-          const { data, error } = await supabase.functions.invoke('save-imported-products', {
-            body: {
-              products: processedProducts.map(product => ({
-                external_id: product.id,
-                retailer_id: retailerId,
-                name: product.title,
-                description: product.description,
-                price: product.price,
-                compare_at_price: product.compare_at_price,
-                category: product.category,
-                vendor: product.vendor,
-                image_url: product.image_url,
-                product_url: `#${product.handle}`,
-                stock: product.stock,
-                source_platform: 'csv',
-                status: 'active',
-                extracted_attributes: {},
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })),
-              retailer_id: retailerId,
-              source: 'csv'
-            }
-          });
-
-          if (error) {
-            throw new Error(`Erreur Supabase: ${error.message}`);
-          }
-
-          console.log('✅ Produits sauvegardés via Supabase:', data?.saved_count || 0);
-        } else {
-          // Fallback localStorage pour les petits volumes ou mode démo
-          localStorage.setItem('catalog_products', JSON.stringify(processedProducts));
-        }
-      } catch (error) {
-        console.error('Erreur sauvegarde:', error);
-        showError('Erreur de sauvegarde', 'Impossible de sauvegarder les produits. Veuillez réessayer.');
-        return;
-      }
+      // Sauvegarder dans localStorage
+      localStorage.setItem('shopify_products', JSON.stringify(processedProducts));
+      localStorage.setItem('catalog_products', JSON.stringify(processedProducts));
+      localStorage.setItem('imported_products', JSON.stringify(processedProducts));
 
       setProcessingStep('Import terminé');
       
