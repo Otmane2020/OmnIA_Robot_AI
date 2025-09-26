@@ -111,10 +111,17 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
 
     try {
       // Appel à l'API chat intelligent avec DeepSeek + OpenAI Vision
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligent-quickchat`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Configuration Supabase manquante');
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/intelligent-quickchat`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -127,7 +134,13 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
         }),
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur API Response:', response.status, errorText);
+        throw new Error(`Erreur API: ${response.status}`);
+      }
+
+      try {
         const data = await response.json();
         
         const botMessage: ChatMessage = {
@@ -140,15 +153,16 @@ J'ai analysé notre catalogue enrichi avec **Smart AI** et je peux vous aider à
 
         setMessages(prev => [...prev, botMessage]);
         speak(data.message);
-      } else {
-        throw new Error('Erreur API');
+      } catch (parseError) {
+        console.error('❌ Erreur parsing JSON:', parseError);
+        throw new Error('Réponse API invalide');
       }
     } catch (error) {
-      console.error('❌ Erreur chat:', error);
+      console.error('❌ Erreur chat complète:', error);
       
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: "Désolé, petit souci technique 🤖 Pouvez-vous reformuler ?",
+        content: `Désolé, problème de connexion 🤖 ${error instanceof Error ? error.message : 'Erreur inconnue'}. Pouvez-vous réessayer ?`,
         isUser: false,
         timestamp: new Date()
       };

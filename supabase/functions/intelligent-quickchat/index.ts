@@ -56,14 +56,26 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  console.log('🚀 [quickchat] Function called');
+
   try {
     const { message, conversation_history = [], photo_context }: QuickChatRequest = await req.json();
     
-    console.log('🤖 [quickchat] Message reçu:', message.substring(0, 50) + '...');
+    console.log('🤖 [quickchat] Message reçu:', message?.substring(0, 50) + '...');
+
+    if (!message || typeof message !== 'string') {
+      throw new Error('Message invalide');
+    }
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ [quickchat] Configuration Supabase manquante');
+      throw new Error('Configuration serveur manquante');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 🧠 ÉTAPE 1: Analyser l'intention avec DeepSeek
@@ -103,12 +115,17 @@ Deno.serve(async (req: Request) => {
     }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error) {
-    console.error('❌ [quickchat] Erreur:', error);
+    console.error('❌ [quickchat] Erreur complète:', error);
+    
     return new Response(JSON.stringify({
-      message: "Désolé, je rencontre des difficultés techniques. Pouvez-vous reformuler ?",
+      message: `Désolé, erreur technique: ${error instanceof Error ? error.message : 'Erreur inconnue'}. Pouvez-vous reformuler ?`,
       products: [],
-      fallback: true
-    }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      fallback: true,
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+    });
   }
 });
 
