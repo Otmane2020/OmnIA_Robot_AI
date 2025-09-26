@@ -1,3 +1,4 @@
+@@ .. @@
 interface ExtractedAttributes {
   colors: string[];
   materials: string[];
@@ -56,27 +57,27 @@ Deno.serve(async (req: Request) => {
     const { products, source, store_id, trigger_type }: AutoTrainingRequest = await req.json();
     
     console.log('🤖 [auto-ai-trainer] Auto-training déclenché:', {
+      // Validate store_id as UUID
+      const isStoreIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(store_id);
+      if (store_id && !isStoreIdUuid) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Invalid store_id format. Must be a valid UUID.',
+            details: `Received store_id: ${store_id}`
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          }
+        );
+      }
+
       source,
       products_count: products.length,
       trigger_type,
       store_id
     });
-
-    // Validate store_id as UUID
-    const isStoreIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(store_id);
-    if (store_id && !isStoreIdUuid) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Invalid store_id format. Must be a valid UUID.',
-          details: `Received store_id: ${store_id}`
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
-      );
-    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -247,78 +248,53 @@ async function extractAttributesWithAI(product: any, source: string): Promise<Ex
   }
 
   try {
-    // Exploiter COMPLÈTEMENT toutes les données disponibles
-    const productTitle = product.title || product.name || '';
-    const productDescription = product.description || product.body_html || '';
-    const productImage = product.image_url || product.featuredImage?.url || '';
-    const productPrice = product.price || product.variant_price || 0;
-    const productComparePrice = product.compare_at_price || product.variant_compare_at_price || '';
-    const productBrand = product.vendor || product.brand || '';
-    const productTags = Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '');
-    const productStock = product.stock || product.quantityAvailable || product.variant_inventory_qty || 0;
-    const productSKU = product.sku || product.variant_sku || '';
-    const productCategory = product.category || product.productType || product.product_type || '';
-    
     const productText = `
-TITRE COMPLET: ${productTitle}
-DESCRIPTION DÉTAILLÉE: ${productDescription.replace(/<[^>]*>/g, '').trim()}
-CATÉGORIE DÉTECTÉE: ${productCategory}
-PRIX: ${productPrice}€
-PRIX BARRÉ: ${productComparePrice}€
-PROMOTION: ${productComparePrice && productPrice ? Math.round(((parseFloat(productComparePrice) - productPrice) / parseFloat(productComparePrice)) * 100) + '% de réduction' : 'Aucune'}
-MARQUE/VENDEUR: ${productBrand}
-TAGS: ${productTags}
-URL IMAGE: ${productImage}
+PRODUIT: ${product.title || product.name || ''}
+DESCRIPTION: ${product.description || ''}
+CATÉGORIE: ${product.productType || product.category || ''}
+PRIX: ${product.price || 0}€
+TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : ''}
 SOURCE: ${source}
-STOCK: ${productStock}
-SKU: ${productSKU}
     `.trim();
 
-    const prompt = \`Analyse COMPLÈTEMENT ce produit mobilier en exploitant TOUTES les informations disponibles et extrait les attributs au format JSON strict.
+    const prompt = `\Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
 
 ${productText}
 
-EXPLOITE TOUTES les informations (titre, description, prix, promotion, marque, tags, image) pour extraire ces attributs au format JSON exact :
+EXTRAIT ces attributs au format JSON exact :
 {
   "colors": ["couleur1", "couleur2"],
   "materials": ["matériau1", "matériau2"], 
-  "subcategory": "Description précise et spécifique du produit (ex: Chaise en tissu effet lin, Table basse ronde chêne, Canapé d'angle convertible)",
+  "subcategory": "Description précise du type (ex: Canapé d'angle convertible, Table basse ronde)",
   "dimensions": {
     "length": 200,
     "width": 100,
     "height": 75,
-    "diameter": 100,
     "unit": "cm"
   },
   "styles": ["style1", "style2"],
   "categories": ["catégorie1"],
   "features": ["fonctionnalité1", "fonctionnalité2"],
   "room": ["salon", "chambre"],
-  "price_analysis": {
-    "base_price": 79,
-    "compare_price": 99,
-    "discount_percent": 20,
-    "price_range": "budget|standard|premium"
-  },
   "confidence_score": 85
 }
 
 RÈGLES STRICTES:
-- Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, jaune, orange, rose, violet, crème, naturel, anthracite, taupe, ivoire, chêne, noyer, teck, moka
-- Matériaux: chêne, hêtre, pin, teck, noyer, bois massif, métal, acier, verre, tissu, cuir, velours, travertin, marbre, plastique, rotin, tissu effet lin, chenille, bois clair, verre trempé
+- Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, jaune, orange, rose, violet, crème, naturel, anthracite, taupe, ivoire, chêne, noyer, teck
+- Matériaux: chêne, hêtre, pin, teck, noyer, bois massif, métal, acier, verre, tissu, cuir, velours, travertin, marbre, plastique, rotin
 - Styles: moderne, contemporain, scandinave, industriel, vintage, rustique, classique, minimaliste, bohème, baroque
-- Subcategory: Description précise et spécifique du produit avec matériau (ex: "Chaise en tissu effet lin avec pieds métal", "Table basse ronde en chêne clair", "Canapé d'angle convertible velours côtelé")
+- Subcategory: Description précise et spécifique du produit (ex: "Canapé d'angle convertible", "Table basse ronde", "Chaise de bureau ergonomique")
 - Dimensions en cm uniquement si mentionnées
 - Pièces: salon, chambre, cuisine, bureau, salle à manger, entrée
 - Fonctionnalités: convertible, réversible, pliable, extensible, rangement, tiroir, roulettes, réglable
-- Price_analysis: Analyser le prix de base, prix barré, pourcentage de réduction et gamme de prix
 - confidence_score: 0-100 basé sur la qualité des informations
+
 RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': \`Bearer ${deepseekApiKey}`,
+        'Authorization': `Bearer ${deepseekApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -326,14 +302,14 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu EXPLOITES COMPLÈTEMENT toutes les informations disponibles (titre, description, prix, promotion, marque, tags, image) pour extraire des attributs structurés au format JSON avec sous-catégories précises et détaillées. Aucun texte supplémentaire.'
+            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON avec sous-catégories précises. Aucun texte supplémentaire.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 800,
+        max_tokens: 700,
         temperature: 0.1,
         stream: false
       }),
@@ -351,18 +327,11 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
             colors: extracted.colors?.length || 0,
             materials: extracted.materials?.length || 0,
             subcategory: extracted.subcategory || 'Non définie',
-            price_analysis: extracted.price_analysis || 'Non analysé',
             confidence: extracted.confidence_score || 0
           });
           
           return {
             ...extracted,
-            price_analysis: extracted.price_analysis || {
-              base_price: productPrice,
-              compare_price: parseFloat(productComparePrice) || null,
-              discount_percent: productComparePrice ? Math.round(((parseFloat(productComparePrice) - productPrice) / parseFloat(productComparePrice)) * 100) : 0,
-              price_range: productPrice < 100 ? 'budget' : productPrice < 500 ? 'standard' : 'premium'
-            },
             confidence_score: extracted.confidence_score || 50
           };
         } catch (parseError) {
@@ -380,7 +349,7 @@ RÉPONSE JSON UNIQUEMENT, AUCUN TEXTE:`;
 }
 
 function extractAttributesBasic(product: any): ExtractedAttributes {
-  const text = \`${product.title || product.name || ''} ${product.description || ''} ${product.productType || product.category || ''}`.toLowerCase();
+  const text = `${product.title || product.name || ''} ${product.description || ''} ${product.productType || product.category || ''}`.toLowerCase();
   
   // Detect category and subcategory
   let category = 'Mobilier';

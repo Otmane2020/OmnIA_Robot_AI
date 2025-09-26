@@ -285,52 +285,16 @@ async function extractTextAttributes(product: any): Promise<EnrichedAttributes> 
   }
 
   try {
-    // Exploiter COMPLÈTEMENT titre, description et image pour enrichissement optimal
-    const productTitle = product.name || product.title || '';
-    const productDescription = product.description || product.body_html || '';
-    const productImage = product.image_url || product.featuredImage?.url || '';
-    const productPrice = product.price || product.variant_price || 0;
-    const productComparePrice = product.compare_at_price || product.variant_compare_at_price || '';
-    const productBrand = product.vendor || product.brand || '';
-    const productTags = Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '');
-    const productStock = product.stock || product.quantityAvailable || product.variant_inventory_qty || 0;
-    
     const productText = `
-TITRE PRODUIT: ${productTitle}
-DESCRIPTION COMPLÈTE: ${productDescription.replace(/<[^>]*>/g, '').trim()}
-CATÉGORIE: ${product.category || product.productType || product.product_type || ''}
-PRIX ACTUEL: ${productPrice}€
-PRIX BARRÉ: ${productComparePrice}€
-MARQUE/VENDEUR: ${productBrand}
-    // Exploiter COMPLÈTEMENT titre, description et image pour enrichissement optimal
-    const productTitle = product.name || product.title || '';
-    const productDescription = product.description || product.body_html || '';
-    const productImage = product.image_url || product.featuredImage?.url || '';
-    const productPrice = product.price || product.variant_price || 0;
-    const productComparePrice = product.compare_at_price || product.variant_compare_at_price || '';
-    const productBrand = product.vendor || product.brand || '';
-    const productTags = Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '');
-    const productStock = product.stock || product.quantityAvailable || product.variant_inventory_qty || 0;
-    
-    const productText = `
-  }
-}
-TITRE PRODUIT: ${productTitle}
-DESCRIPTION COMPLÈTE: ${productDescription.replace(/<[^>]*>/g, '').trim()}
-CATÉGORIE: ${product.category || product.productType || product.product_type || ''}
-PRIX ACTUEL: ${productPrice}€
-PRIX BARRÉ: ${productComparePrice}€
-MARQUE/VENDEUR: ${productBrand}
-TAGS PRODUIT: ${productTags}
-URL IMAGE: ${productImage}
-STOCK DISPONIBLE: ${productStock}
-SOUS-CATÉGORIE DÉTECTÉE: ${product.subcategory || ''}
-MATÉRIAU DÉTECTÉ: ${product.material || ''}
-COULEUR DÉTECTÉE: ${product.color || ''}
-STYLE DÉTECTÉ: ${product.style || ''}
+PRODUIT: ${product.name || product.title || ''}
+DESCRIPTION: ${product.description || ''}
+CATÉGORIE: ${product.category || product.productType || ''}
+PRIX: ${product.price || 0}€
+MARQUE: ${product.vendor || product.brand || ''}
+TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || ''}
     `.trim();
 
-    const prompt = \`Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
+    const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
 
 ${productText}
 
@@ -393,7 +357,7 @@ RÉPONSE JSON UNIQUEMENT:`;
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': \`Bearer ${deepseekApiKey}`,
+        'Authorization': `Bearer ${deepseekApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -452,7 +416,7 @@ async function extractImageAttributes(imageUrl: string, textAttributes: Enriched
   try {
     console.log('👁️ [advanced-enricher] Analyse image avec OpenAI Vision...');
 
-    const prompt = \`Analyse cette image de produit mobilier et extrait les attributs visuels au format JSON :
+    const prompt = `Analyse cette image de produit mobilier et extrait les attributs visuels au format JSON :
 
 Contexte du produit (depuis le texte) :
 - Type: ${textAttributes.general_info.product_type}
@@ -491,7 +455,7 @@ RÉPONSE JSON UNIQUEMENT:`;
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': \`Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -580,7 +544,7 @@ function mergeAttributes(textAttributes: EnrichedAttributes, imageAttributes: an
 }
 
 function extractBasicAttributes(product: any): EnrichedAttributes {
-  const text = \`${product.name || product.title || ''} ${product.description || ''} ${product.category || product.productType || ''}`.toLowerCase();
+  const text = `${product.name || product.title || ''} ${product.description || ''} ${product.category || product.productType || ''}`.toLowerCase();
   
   // Detect category and subcategory
   let productType = 'Mobilier';
@@ -620,8 +584,8 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
   // Extract dimensions
   const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
   const dimensions = dimensionMatch ? 
-    (dimensionMatch[3] ? \`L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm x H:${dimensionMatch[3]}cm` : 
-     \`L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm`) : '';
+    (dimensionMatch[3] ? `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm x H:${dimensionMatch[3]}cm` : 
+     `L:${dimensionMatch[1]}cm x l:${dimensionMatch[2]}cm`) : '';
 
   // Generate SEO content
   const productName = product.name || product.title || 'Produit';
@@ -650,10 +614,10 @@ function extractBasicAttributes(product: any): EnrichedAttributes {
       extendable: text.includes('extensible')
     },
     seo_marketing: {
-      seo_title: \`${productName} ${detectedColor ? detectedColor : ''} - ${brand}`.substring(0, 70),
-      seo_description: \`${productName} ${detectedMaterial ? 'en ' + detectedMaterial : ''} ${detectedColor ? detectedColor : ''}. ${detectedStyle ? 'Style ' + detectedStyle : ''}. Livraison gratuite.`.substring(0, 155),
+      seo_title: `${productName} ${detectedColor ? detectedColor : ''} - ${brand}`.substring(0, 70),
+      seo_description: `${productName} ${detectedMaterial ? 'en ' + detectedMaterial : ''} ${detectedColor ? detectedColor : ''}. ${detectedStyle ? 'Style ' + detectedStyle : ''}. Livraison gratuite.`.substring(0, 155),
       ad_headline: productName.substring(0, 30),
-      ad_description: \`${productName} ${detectedMaterial ? detectedMaterial : ''}. ${detectedStyle ? detectedStyle : ''}. Promo !`.substring(0, 90),
+      ad_description: `${productName} ${detectedMaterial ? detectedMaterial : ''}. ${detectedStyle ? detectedStyle : ''}. Promo !`.substring(0, 90),
       tags: [productType.toLowerCase(), detectedColor, detectedMaterial, detectedStyle].filter(Boolean),
       google_product_category: getGoogleCategory(productType)
     },
@@ -715,7 +679,7 @@ async function updateEnrichmentMetadata(supabase: any, metadata: any) {
         id: 'singleton',
         last_training: metadata.execution_time,
         products_count: metadata.products_processed,
-        training_type: \`enrichment_${metadata.source}`,
+        training_type: `enrichment_${metadata.source}`,
         model_version: '2.1-advanced',
         updated_at: metadata.execution_time
       }, { onConflict: 'id' });

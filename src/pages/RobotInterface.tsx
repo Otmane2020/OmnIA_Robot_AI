@@ -133,7 +133,8 @@ export const RobotInterface: React.FC = () => {
     setRobotState(prev => ({ ...prev, mood: 'thinking', currentTask: 'Analyse de votre demande...' }));
 
     try {
-      const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-chat`, {
+      // Utiliser le nouveau système Smart AI optimisé
+      const searchResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/omnia-smart-chat`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -141,8 +142,12 @@ export const RobotInterface: React.FC = () => {
         },
         body: JSON.stringify({ 
           message: messageText,
-          retailer_id: 'demo-retailer-id',
-          questioning_mode: questioningMode
+          retailer_id: 'demo-retailer-id', // Global OmnIA
+          session_id: `session-${Date.now()}`,
+          conversation_context: messages.slice(-3).map(m => ({
+            role: m.isUser ? 'user' : 'assistant',
+            content: m.content
+          }))
         }),
       });
 
@@ -154,18 +159,24 @@ export const RobotInterface: React.FC = () => {
         aiResponse = searchData.message;
         foundProducts = searchData.products || [];
         
+        console.log('🤖 Smart AI Response:', {
+          intent: searchData.intent_detected,
+          products_count: foundProducts.length,
+          response_time: searchData.response_time_ms + 'ms'
+        });
+        
         if (foundProducts.length === 0 && messageText.toLowerCase().includes('canapé')) {
           foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Canapé').slice(0, 2);
-          aiResponse += " Voici nos canapés disponibles :";
+          aiResponse = "🛋️ Voici nos canapés Decora Home disponibles :";
         } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('table')) {
           foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Table').slice(0, 2);
-          aiResponse += " Découvrez nos tables :";
+          aiResponse = "🪑 Découvrez nos tables élégantes :";
         } else if (foundProducts.length === 0 && messageText.toLowerCase().includes('chaise')) {
           foundProducts = getDecoraFallbackProducts().filter(p => p.productType === 'Chaise').slice(0, 2);
-          aiResponse += " Voici nos chaises :";
+          aiResponse = "💺 Voici nos chaises design :";
         }
       } else {
-        aiResponse = "Je rencontre des difficultés techniques. Pouvez-vous reformuler ?";
+        aiResponse = "Petit souci technique ! Pouvez-vous reformuler ? 🤖";
       }
 
       const botMessage: ChatMessageType = {
@@ -191,7 +202,7 @@ export const RobotInterface: React.FC = () => {
       
       const errorMessage: ChatMessageType = {
         id: (Date.now() + 1).toString(),
-        content: "Désolé, je rencontre des difficultés techniques. Pouvez-vous reformuler ?",
+        content: "Oups ! Petit problème technique. Reformulez ? 🤖",
         isUser: false,
         timestamp: new Date(),
         products: []
