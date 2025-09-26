@@ -6,6 +6,14 @@ import {
   Filter, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { 
+  extractEnhancedStyles, 
+  extractEnhancedColors, 
+  extractEnhancedMaterials,
+  extractDimensions,
+  detectPromotions,
+  generateSEOContent
+} from '../utils/productEnrichmentUtils';
 
 interface SmartProduct {
   id: string;
