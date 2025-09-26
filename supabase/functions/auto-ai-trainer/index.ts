@@ -1,4 +1,3 @@
-@@ .. @@
 interface ExtractedAttributes {
   colors: string[];
   materials: string[];
