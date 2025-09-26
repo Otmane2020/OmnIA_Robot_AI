@@ -4,252 +4,196 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-interface VisionAnalysisRequest {
-  image_url: string;
-  image_base64?: string;
-  analysis_type?: 'interior_design' | 'product_identification' | 'style_analysis';
-  context?: {
-    room_type?: string;
-    budget?: string;
-    style_preference?: string;
-  };
-}
+import { createClient } from "npm:@supabase/supabase-js@2";
 
+// ============ ENTRYPOINT ============
 Deno.serve(async (req: Request) => {
+  // Healthcheck
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({
+        status: "OK",
+        message: "Edge Function gpt-vision-analyzer is running",
+        timestamp: new Date().toISOString(),
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { image_url, image_base64, analysis_type = 'interior_design', context }: VisionAnalysisRequest = await req.json();
+    console.log("🤖 CRON VISION QUOTIDIEN: démarrage...");
+    const startTime = Date.now();
 
-    console.log('👁️ Analyse GPT Vision demandée:', analysis_type);
+    // Init Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    
-    if (!openaiApiKey) {
-      console.log('❌ Clé API OpenAI manquante');
-      return new Response(
-        JSON.stringify({ 
-          error: "Clé API OpenAI non configurée pour Vision",
-          fallback_analysis: generateFallbackAnalysis(analysis_type)
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Récupérer les retailers actifs
+    const { data: retailers, error: retailersError } = await supabase
+      .from("retailers")
+      .select("id, company_name, email, plan")
+      .eq("status", "active");
+
+    if (retailersError) throw retailersError;
+    console.log("🏪 Retailers actifs:", retailers?.length || 0);
+
+    let totalProducts = 0;
+    let totalAnalyzed = 0;
+    const results = [];
+
+    for (const retailer of retailers || []) {
+      try {
+        console.log(`🔄 Retailer ${retailer.company_name} (${retailer.id})`);
+
+        // Produits modifiés depuis 24h
+        const { data: products } = await supabase
+          .from("retailer_products")
+          .select("*")
+          .eq("retailer_id", retailer.id)
+          .eq("status", "active")
+          .gte("updated_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+        if (!products || products.length === 0) {
+          console.log(`⚠️ Aucun produit récent pour ${retailer.company_name}`);
+          continue;
         }
-      );
+
+        totalProducts += products.length;
+
+        const analyzedProducts = [];
+        for (const product of products) {
+          if (!product.image_url) continue;
+
+          const vision = await analyzeProductImage(product.image_url, product);
+          analyzedProducts.push({ ...product, vision });
+          totalAnalyzed++;
+        }
+
+        // Conversations récentes
+        const { data: conversations } = await supabase
+          .from("retailer_conversations")
+          .select("*")
+          .eq("retailer_id", retailer.id)
+          .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+        // Entraînement
+        const trainerRes = await fetch(`${supabaseUrl}/functions/v1/auto-ai-trainer`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            products: analyzedProducts,
+            conversations: conversations || [],
+            source: "cron-vision",
+            store_id: retailer.id,
+            trigger_type: "daily_cron",
+            cron_time: new Date().toISOString(),
+          }),
+        });
+
+        if (trainerRes.ok) {
+          const trainerData = await trainerRes.json();
+          results.push({
+            retailer_id: retailer.id,
+            company_name: retailer.company_name,
+            success: true,
+            products_processed: trainerData.stats?.products_processed || products.length,
+            vision_used: analyzedProducts.length,
+            conversations: conversations?.length || 0,
+          });
+          console.log(`✅ ${retailer.company_name}: ${analyzedProducts.length} images analysées`);
+        } else {
+          results.push({ retailer_id: retailer.id, company_name: retailer.company_name, success: false });
+        }
+
+        await new Promise((res) => setTimeout(res, 800)); // pause API
+
+      } catch (err) {
+        console.error(`❌ Retailer ${retailer.company_name}:`, err);
+        results.push({
+          retailer_id: retailer.id,
+          company_name: retailer.company_name,
+          success: false,
+          error: err.message,
+        });
+      }
     }
 
-    // Construire le prompt selon le type d'analyse
-    const analysisPrompt = buildAnalysisPrompt(analysis_type, context);
-
-    // Préparer l'image pour GPT Vision
-    const imageContent = image_base64 ? 
-      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image_base64}` } } :
-      { type: "image_url", image_url: { url: image_url } };
-
-    console.log('🔄 Envoi à GPT Vision...');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o', // GPT-4 avec Vision
-        messages: [
-          {
-            role: 'system',
-            content: analysisPrompt.system
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: "text",
-                text: analysisPrompt.user
-              },
-              imageContent
-            ]
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
+    // Sauvegarde log
+    await supabase.from("training_logs").insert({
+      status: results.some((r) => r.success) ? "success" : "failed",
+      log: JSON.stringify({
+        type: "cron-vision",
+        execution_time: new Date().toISOString(),
+        retailers_processed: results.length,
+        total_products: totalProducts,
+        total_analyzed: totalAnalyzed,
+        results,
       }),
+      products_processed: totalProducts,
+      conversations_analyzed: totalAnalyzed,
+      trigger_type: "daily_cron",
+      created_at: new Date().toISOString(),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Erreur GPT Vision:', response.status, errorText);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: "Erreur GPT Vision API",
-          details: errorText,
-          fallback_analysis: generateFallbackAnalysis(analysis_type)
-        }),
-        {
-          status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const data = await response.json();
-    const analysis = data.choices[0]?.message?.content || generateFallbackAnalysis(analysis_type);
-
-    console.log('✅ Analyse GPT Vision réussie:', analysis.substring(0, 100) + '...');
-
+    const duration = Date.now() - startTime;
     return new Response(
-      JSON.stringify({ 
-        analysis: analysis,
-        analysis_type: analysis_type,
-        confidence: 'high',
-        processed_at: new Date().toISOString()
+      JSON.stringify({
+        success: true,
+        message: "CRON vision terminé",
+        stats: { retailers: results.length, products: totalProducts, analyzed: totalAnalyzed, duration_ms: duration },
+        results,
       }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-
   } catch (error) {
-    console.error('❌ Erreur serveur GPT Vision:', error);
-    
+    console.error("❌ Erreur CRON Vision:", error);
     return new Response(
-      JSON.stringify({ 
-        error: "Erreur serveur lors de l'analyse visuelle",
-        details: error.message,
-        fallback_analysis: generateFallbackAnalysis('interior_design')
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });
 
-function buildAnalysisPrompt(analysisType: string, context?: any) {
-  const baseSystem = `Tu es OmnIA, décorateur d'intérieur expert et vendeur chez Decora Home. 
+// ============ GPT VISION ============
+async function analyzeProductImage(imageUrl: string, product: any) {
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) return null;
 
-CATALOGUE DECORA HOME :
-- Canapés ALYANA convertibles velours côtelé (799€) - Beige, Taupe, Bleu
-- Tables AUREA travertin naturel (499-549€) - Ø100cm, Ø120cm  
-- Chaises INAYA chenille + métal noir (99€) - Gris clair, Moka
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4-vision-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Analyse cette image de mobilier. Réponds en JSON strict :
+{ "color": "string", "material": "string", "style": "string", "room": "string" }` },
+              { type: "image_url", image_url: { url: imageUrl, detail: "low" } },
+            ],
+          },
+        ],
+        max_tokens: 300,
+      }),
+    });
 
-TON STYLE DE RÉPONSE :
-- Commence TOUJOURS par "J'aime bien cette photo !" ou variante
-- Analyse le style existant avec expertise
-- Propose 1-2 produits Decora Home pertinents avec prix
-- Donne un conseil déco bonus
-- Termine par une question engageante
-- Ton chaleureux de décorateur passionné
-- Maximum 100 mots
-
-EXEMPLE DE RÉPONSE :
-"J'aime bien cette photo ! Votre salon est moderne avec de belles proportions. 
-
-💡 Mes suggestions Decora Home :
-• Table AUREA Ø100cm (499€) - Le travertin apporterait élégance
-• Chaises INAYA (99€) - Design parfait avec votre style
-
-🎨 Conseil déco : Ajoutez des coussins colorés pour réchauffer !
-
-Que souhaitez-vous modifier dans cet espace ?"`;
-
-  switch (analysisType) {
-    case 'interior_design':
-      return {
-        system: baseSystem,
-        user: `Analyse cette photo d'intérieur comme un décorateur expert. 
-        
-Identifie :
-- Le style déco actuel
-- Les couleurs dominantes  
-- L'aménagement et circulation
-- Les opportunités d'amélioration
-- Les meubles manquants ou à remplacer
-
-Propose des produits Decora Home adaptés avec arguments déco précis.`
-      };
-      
-    case 'product_identification':
-      return {
-        system: baseSystem,
-        user: `Identifie les meubles visibles dans cette photo.
-        
-Analyse :
-- Types de meubles présents
-- Styles et matériaux
-- État et qualité apparente
-- Harmonie générale
-- Suggestions de remplacement ou complément
-
-Recommande des alternatives Decora Home si pertinent.`
-      };
-      
-    case 'style_analysis':
-      return {
-        system: baseSystem,
-        user: `Analyse le style décoratif de cet espace.
-        
-Détermine :
-- Style principal (moderne, scandinave, industriel...)
-- Palette de couleurs
-- Matériaux dominants
-- Ambiance générale
-- Cohérence stylistique
-
-Conseille des ajouts Decora Home pour renforcer le style.`
-      };
-      
-    default:
-      return {
-        system: baseSystem,
-        user: `Analyse cette photo d'intérieur et donne tes conseils de décorateur expert.`
-      };
-  }
-}
-
-function generateFallbackAnalysis(analysisType: string): string {
-  switch (analysisType) {
-    case 'interior_design':
-      return `J'aime bien cette photo ! Votre espace a un style moderne très réussi.
-
-🎨 L'aménagement est bien pensé et les proportions harmonieuses.
-
-💡 Mes suggestions Decora Home :
-• **Table AUREA Ø100cm** (499€) - Le travertin naturel apporterait une touche minérale élégante
-• **Chaises INAYA** (99€) - Design contemporain parfait avec votre style
-
-Que souhaitez-vous modifier dans cet espace ?`;
-      
-    case 'product_identification':
-      return `J'aime bien cette photo ! Je vois un espace bien aménagé avec du potentiel.
-
-🛋️ Mobilier moderne avec lignes épurées, palette neutre bien maîtrisée.
-
-💡 Suggestions d'amélioration :
-• **Canapé ALYANA** (799€) - Convertible velours côtelé pour optimiser l'espace
-
-Quels meubles souhaitez-vous remplacer ?`;
-      
-    default:
-      return `J'aime bien cette photo ! Votre intérieur a beaucoup de charme.
-
-🎨 Style moderne et épuré avec une base neutre bien équilibrée.
-
-💡 Mes recommandations :
-• **Collection AUREA** - Travertin naturel pour apporter caractère
-
-Quelle ambiance souhaitez-vous créer ?`;
+    if (!res.ok) throw new Error(`Vision API status ${res.status}`);
+    const data = await res.json();
+    const content = data.choices[0]?.message?.content;
+    const match = content?.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch (err) {
+    console.warn("⚠️ Vision fail:", err);
+    return null;
   }
 }
