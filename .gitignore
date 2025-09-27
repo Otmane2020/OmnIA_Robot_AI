@@ -53,3 +53,47 @@ coverage/
 *.tar
 *.zip
 *.rar
+ ./node_modules
+# /src/components/AddProductModal.tsx
+# /src/components/AITrainingInterface.tsx
+# /src/components/CartButton.tsx
+# /src/components/CatalogManagement.tsx
+# /src/components/ChatMessage.tsx
+ /src/components/ConversationHistory.tsx
+ /src/components/EcommerceIntegration.tsx
+# /src/components/Logo.tsx
+# /src/components/MLTrainingDashboard.tsx
+# /src/components/NotificationSystem.tsx
+# /src/components/OmniaRobotTab.tsx
+ /src/components/ProductCard.tsx
+ /src/components/ProductDetailModal.tsx
+ /src/components/ProductsEnrichedTable.tsx
+# /src/components/RobotAvatar.tsx
+ /src/components/SellerAnalytics.tsx
+# /src/components/SellerCatalogManagement.tsx
+ /src/components/SellerConversationHistory.tsx
+ /src/components/SellerDashboard.tsx
+ /src/components/SellerSettings.tsx
+# /src/components/SellerSubscriptionManager.tsx
+# /src/components/ShopifyCSVImporter.tsx
+# /src/components/SmartAIEnrichmentTab.tsx
+
+
+/src/pages/About.tsx
+#/src/pages/AdminDashboard.tsx
+#/src/pages/AdminLogin.tsx
+#/src/pages/APITest.tsx
+/src/pages/ChatInterface.tsx
+/src/pages/Contact.tsx
+/src/pages/Documentation.tsx
+/src/pages/Guides.tsx
+/src/pages/LandingPage.tsx
+/src/pages/Partnerships.tsx
+/src/pages/Press.tsx
+#/src/pages/RobotInterface.tsx
+#/src/pages/SellerRegistration.tsx
+#/src/pages/SellerRobotInterface.tsx
+/src/pages/SuperAdmin.tsx
+/src/pages/Support.tsx
+/src/pages/ThankYou.tsx
+/src/pages/upload.tsx

@@ -625,8 +625,9 @@ Destination : Salon, pièce à vivre, studio`,
                   <th className="text-left p-4 text-purple-300 font-semibold">Produit Smart AI</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Prix</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Variations</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Dimensions IA</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Fonctionnalités & Pièces IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">SEO Optimisé IA</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Confiance</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
                 </tr>
@@ -661,6 +662,10 @@ Destination : Salon, pièce à vivre, studio`,
                           <div className="text-gray-500 text-xs mt-1 line-clamp-2">
                             {product.description.substring(0, 100)}...
                           </div>
+                          {/* Dimensions IA */}
+                          <div className="text-purple-300 text-xs mt-1">
+                            📏 {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -687,30 +692,101 @@ Destination : Salon, pièce à vivre, studio`,
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="text-purple-300 text-xs font-medium">
-                        {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
-                      </div>
-                    </td>
-                    <td className="p-4">
                       <div className="space-y-1">
+                        {/* Couleurs IA */}
                         {product.ai_attributes.colors.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div>
+                            <div className="text-pink-300 text-xs font-semibold mb-1">🎨 Couleurs IA:</div>
+                            <div className="flex flex-wrap gap-1">
                             {product.ai_attributes.colors.slice(0, 2).map((color, index) => (
                               <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
                                 {color}
                               </span>
                             ))}
+                            </div>
                           </div>
                         )}
+                        {/* Matériaux IA */}
                         {product.ai_attributes.materials.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div>
+                            <div className="text-green-300 text-xs font-semibold mb-1">🏗️ Matériaux IA:</div>
+                            <div className="flex flex-wrap gap-1">
                             {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
                               <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
                                 {material}
                               </span>
                             ))}
+                            </div>
                           </div>
                         )}
+                        {/* Styles IA */}
+                        {product.ai_attributes.styles.length > 0 && (
+                          <div>
+                            <div className="text-blue-300 text-xs font-semibold mb-1">✨ Styles IA:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.styles.slice(0, 2).map((style, index) => (
+                                <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                                  {style}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {/* Fonctionnalités IA */}
+                        {product.ai_attributes.features.length > 0 && (
+                          <div>
+                            <div className="text-orange-300 text-xs font-semibold mb-1">⚙️ Fonctionnalités:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.features.slice(0, 3).map((feature, index) => (
+                                <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Pièces IA */}
+                        {product.ai_attributes.room.length > 0 && (
+                          <div>
+                            <div className="text-indigo-300 text-xs font-semibold mb-1">🏠 Pièces:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.room.slice(0, 2).map((room, index) => (
+                                <span key={index} className="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs">
+                                  {room}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-2">
+                        {/* Titre SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">📝 Titre SEO:</div>
+                          <div className="text-white text-xs font-medium line-clamp-1">{product.seo_optimized.title}</div>
+                        </div>
+                        {/* Description SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">📄 Description SEO:</div>
+                          <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
+                        </div>
+                        {/* Tags SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">🏷️ Tags SEO:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {product.seo_optimized.tags.slice(0, 3).map((tag, index) => (
+                              <span key={index} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded-full text-xs">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="p-4">
@@ -811,8 +887,104 @@ Destination : Salon, pièce à vivre, studio`,
                 </div>
               </div>
 
-              {/* Attributs IA */}
+              {/* Couleurs IA */}
+              {product.ai_attributes.colors.length > 0 && (
+                <div className="bg-pink-500/20 rounded-xl p-3 mb-3 border border-pink-400/30">
+                  <div className="text-pink-300 text-sm font-semibold mb-2">🎨 Couleurs IA ({product.ai_attributes.colors.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.colors.map((color, index) => (
+                      <span key={index} className="bg-pink-600/30 text-pink-200 px-2 py-1 rounded-full text-xs">
+                        {color}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Matériaux IA */}
+              {product.ai_attributes.materials.length > 0 && (
+                <div className="bg-green-500/20 rounded-xl p-3 mb-3 border border-green-400/30">
+                  <div className="text-green-300 text-sm font-semibold mb-2">🏗️ Matériaux IA ({product.ai_attributes.materials.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.materials.map((material, index) => (
+                      <span key={index} className="bg-green-600/30 text-green-200 px-2 py-1 rounded-full text-xs">
+                        {material}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Styles IA */}
+              {product.ai_attributes.styles.length > 0 && (
+                <div className="bg-blue-500/20 rounded-xl p-3 mb-3 border border-blue-400/30">
+                  <div className="text-blue-300 text-sm font-semibold mb-2">✨ Styles IA ({product.ai_attributes.styles.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.styles.map((style, index) => (
+                      <span key={index} className="bg-blue-600/30 text-blue-200 px-2 py-1 rounded-full text-xs">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fonctionnalités IA */}
+              {product.ai_attributes.features.length > 0 && (
+                <div className="bg-orange-500/20 rounded-xl p-3 mb-3 border border-orange-400/30">
+                  <div className="text-orange-300 text-sm font-semibold mb-2">⚙️ Fonctionnalités IA ({product.ai_attributes.features.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.features.map((feature, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-2 py-1 rounded-full text-xs">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pièces IA */}
+              {product.ai_attributes.room.length > 0 && (
+                <div className="bg-indigo-500/20 rounded-xl p-3 mb-3 border border-indigo-400/30">
+                  <div className="text-indigo-300 text-sm font-semibold mb-2">🏠 Pièces IA ({product.ai_attributes.room.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.room.map((room, index) => (
+                      <span key={index} className="bg-indigo-600/30 text-indigo-200 px-2 py-1 rounded-full text-xs">
+                        {room}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SEO optimisé par IA */}
+              <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
+                <div className="text-cyan-300 text-sm font-semibold mb-2">🔍 SEO Optimisé IA:</div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-cyan-300 text-xs">📝 Titre SEO:</label>
+                    <div className="text-white text-xs font-medium line-clamp-1">{product.seo_optimized.title}</div>
+                  </div>
+                  <div>
+                    <label className="text-cyan-300 text-xs">📄 Description SEO:</label>
+                    <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
+                  </div>
+                  <div>
+                    <label className="text-cyan-300 text-xs">🏷️ Tags SEO:</label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {product.seo_optimized.tags.map((tag, index) => (
+                        <span key={index} className="bg-cyan-600/30 text-cyan-200 px-1 py-0.5 rounded text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attributs IA détaillés - Section supprimée car maintenant affichée séparément */}
               <div className="space-y-3 mb-4">
+                {/* Cette section a été remplacée par les sections individuelles ci-dessus */}
                 {/* Couleurs */}
                 {product.ai_attributes.colors.length > 0 && (
                   <div>
@@ -856,12 +1028,6 @@ Destination : Salon, pièce à vivre, studio`,
                 )}
               </div>
 
-              {/* SEO optimisé */}
-              <div className="bg-blue-500/20 rounded-xl p-3 mb-4 border border-blue-400/30">
-                <div className="text-blue-300 text-xs font-semibold mb-1">SEO IA:</div>
-                <div className="text-white text-xs font-medium line-clamp-1 mb-1">{product.seo_optimized.title}</div>
-                <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
-              </div>
 
               {/* Actions */}
               <div className="flex gap-2">
