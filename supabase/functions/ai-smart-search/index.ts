@@ -53,7 +53,25 @@ Deno.serve(async (req: Request) => {
     // Get all products from database
     const { data: products, error } = await supabase
       .from('ai_products')
-      .select('*');
+      .select(`
+        id,
+        name,
+        description,
+        price,
+        compare_at_price,
+        category,
+        vendor,
+        image_url,
+        product_url,
+        stock,
+        source_platform,
+        store_id,
+        extracted_attributes,
+        confidence_score,
+        processed_at,
+        created_at,
+        updated_at
+      `);
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
@@ -356,5 +374,47 @@ function calculateRelevanceScore(product: any, intent: any, filters: any): any {
     total: totalScore,
     matches,
     reasoning: reasoning.join(' • ')
+  };
+}
+
+async function generateExpertResponse(message: string, relevantProducts: any[], context: any[], apiKey: string) {
+  const productsContext = relevantProducts.length > 0 ? 
+    relevantProducts.map(p => {
+      let productInfo = `• ${p.name} - ${p.price}€`;
+      if (p.compare_at_price && p.compare_at_price > p.price) {
+        const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
+        productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
+      }
+      if (p.category) productInfo += ` - ${p.category}`;
+      if (p.extracted_attributes?.subcategory) productInfo += ` (${p.extracted_attributes.subcategory})`;
+      if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
+      return productInfo;
+    }).join('\n') : 'Aucun produit trouvé.';
+
+  const systemPrompt = `Tu es OmnIA, conseiller déco Decora Home.
+Réponds court (2 phrases max), engageant et humain.
+Toujours proposer 1–2 produits si disponibles.
+Utilise les informations de prix, catégories et Vision IA disponibles.
+Produits dispo :
+${productsContext}`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...context.slice(-2),
+    { role: 'user', content: query }
+  ];
+
+  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 100, temperature: 0.8 })
+  });
+
+  const data = await resp.json();
+  const msg = data.choices?.[0]?.message?.content || "Pouvez-vous préciser ?";
+  return {
+    message: msg,
+    selectedProducts: products.slice(0, 2),
+    should_show_products: products.length > 0
   };
 }

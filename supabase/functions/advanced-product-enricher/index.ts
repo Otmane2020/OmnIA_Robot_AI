@@ -330,7 +330,7 @@ Extrait TOUS ces attributs au format JSON exact :
     "seo_description": "Meta description ≤155 caractères",
     "ad_headline": "Titre publicitaire ≤30 caractères",
     "ad_description": "Description pub ≤90 caractères",
-    "tags": ["tag1", "tag2", "tag3"],
+    "tags": ["mot-clé1", "mot-clé2", "mot-clé3"],
     "google_product_category": "ID Google Shopping (635=Canapés, 443=Tables, 436=Chaises)"
   },
   "ai_confidence": {
@@ -349,9 +349,10 @@ RÈGLES STRICTES:
 - subcategory: Description spécifique et détaillée
 - seo_title: Inclure marque et bénéfices clés
 - seo_description: Inclure USP, livraison, promo si applicable
-- tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION
-- Pour les tags, inclure: nom du produit, catégorie, couleur, matériau, style, fonctionnalités
+- tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION du produit
+- Pour les tags, inclure: nom exact du produit, catégorie, couleur, matériau, style, fonctionnalités
 - Exemple pour "Canapé VENTU convertible": ["canapé", "ventu", "convertible", "design", "contemporain"]
+- Utiliser les mots exacts du titre quand pertinents (VENTU, ALYANA, AUREA, INAYA, etc.)
 - ai_confidence: Scores 0-100 pour chaque attribut
 
 RÉPONSE JSON UNIQUEMENT:`;
@@ -367,7 +368,7 @@ RÉPONSE JSON UNIQUEMENT:`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu enrichis COMPLÈTEMENT les produits au format JSON strict avec tous les attributs demandés. Aucun texte supplémentaire.'
+            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu enrichis COMPLÈTEMENT les produits au format JSON strict avec tous les attributs demandés. Pour les tags, utilise les mots exacts du titre et description. Aucun texte supplémentaire.'
           },
           {
             role: 'user',
@@ -387,10 +388,25 @@ RÉPONSE JSON UNIQUEMENT:`;
       if (content) {
         try {
           const enriched = JSON.parse(content);
+          
+          // Ajouter l'analyse Vision IA si image disponible et activée
+          if (enableImageAnalysis && product.image_url && product.image_url !== 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg') {
+            try {
+              console.log('👁️ [advanced-enricher] Analyse Vision IA pour:', (product.name || product.title)?.substring(0, 30));
+              const visionAnalysis = await analyzeProductImageWithAI(product.image_url, enriched);
+              if (visionAnalysis) {
+                enriched.ai_vision_summary = visionAnalysis;
+              }
+            } catch (visionError) {
+              console.warn('⚠️ [advanced-enricher] Vision IA échouée:', visionError);
+            }
+          }
+          
           console.log('✅ [advanced-enricher] Extraction DeepSeek réussie:', {
             product: (product.name || product.title)?.substring(0, 30),
             category: enriched.general_info?.product_type,
             subcategory: enriched.general_info?.subcategory,
+            tags: enriched.seo_marketing?.tags?.length || 0,
             confidence: enriched.ai_confidence?.overall
           });
           
@@ -405,6 +421,81 @@ RÉPONSE JSON UNIQUEMENT:`;
   }
 
   return extractBasicAttributes(product);
+}
+
+async function analyzeProductImageWithAI(imageUrl: string, textAttributes: any): Promise<string | null> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openaiApiKey) {
+    console.log('⚠️ [advanced-enricher] OpenAI non configuré pour Vision IA');
+    return null;
+  }
+
+  try {
+    const prompt = `Analyse cette image de produit mobilier et génère une synthèse courte (50 mots max) focalisée UNIQUEMENT sur le produit visible.
+
+Contexte du produit (depuis le texte) :
+- Type: ${textAttributes.general_info?.product_type || 'Mobilier'}
+- Couleurs détectées: ${textAttributes.technical_specs?.color || 'Non spécifiées'}
+- Matériaux détectés: ${textAttributes.technical_specs?.material || 'Non spécifiés'}
+- Style détecté: ${textAttributes.technical_specs?.style || 'Non spécifié'}
+
+Décris UNIQUEMENT le produit visible :
+- Couleurs réelles observées
+- Matériaux et finitions visibles
+- Style et design apparent
+- Qualité et finition perçue
+- Fonctionnalités visibles
+
+Focus sur le PRODUIT, pas l'environnement. Ton professionnel et descriptif.
+Exemple : "Canapé d'angle en velours côtelé beige avec finition soignée. Design contemporain aux lignes épurées. Mécanisme convertible visible. Qualité premium avec coutures précises."`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert en analyse visuelle de mobilier. Tu décris uniquement le produit visible dans l\'image avec précision et professionnalisme.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: { url: imageUrl }
+              }
+            ]
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.3,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const analysis = data.choices[0]?.message?.content?.trim();
+      
+      if (analysis) {
+        console.log('✅ [advanced-enricher] Vision IA réussie');
+        return analysis;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ [advanced-enricher] Erreur Vision IA:', error);
+  }
+
+  return null;
 }
 
 async function extractImageAttributes(imageUrl: string, textAttributes: EnrichedAttributes) {

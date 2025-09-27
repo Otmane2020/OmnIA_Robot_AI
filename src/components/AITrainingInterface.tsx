@@ -2,6 +2,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Clock } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
+interface ProductPreview {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  compare_at_price?: number;
+  category?: string;
+  subcategory?: string;
+  vendor: string;
+  image_url: string;
+  product_url: string;
+  stock: number;
+  ai_vision_summary?: string;
+  tags?: string[];
+  confidence_score?: number;
+}
+
 interface AITrainingInterfaceProps {
   onTrainingComplete?: (stats: any) => void;
 }
@@ -14,7 +31,7 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
   const [trainingStats, setTrainingStats] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductPreview[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [cronStatus, setCronStatus] = useState<any>(null);
   const [cronLoading, setCronLoading] = useState(false);
@@ -25,6 +42,12 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
   useEffect(() => {
     loadCronStatus();
   }, []);
+
+  // Fonction utilitaire pour calculer le pourcentage de réduction
+  const calculateDiscount = (price: number, compareAtPrice?: number): number => {
+    if (!compareAtPrice || compareAtPrice <= price) return 0;
+    return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
+  };
 
   const loadCronStatus = async () => {
     setCronLoading(true);
@@ -112,7 +135,7 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
       return;
     }
 
-    showInfo('Entraînement démarré', `Analyse IA ${isIncremental ? 'incrémentale' : 'complète'} en cours...`);
+    showInfo('Entraînement démarré', `Analyse IA ${isIncremental ? 'incrémentale' : 'complète'} avec Vision IA automatique en cours...`);
     setIsTraining(true);
     setTrainingStatus('training');
     setTrainingProgress(0);
@@ -144,7 +167,8 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
         },
         body: JSON.stringify({
           csvData: csvContent,
-          isIncremental
+          isIncremental,
+          enable_vision_ai: true
         }),
       });
 
@@ -163,7 +187,7 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
         
         showSuccess(
           'Entraînement terminé',
-          `${result.stats.products_processed} produits analysés avec ${result.stats.attributes_extracted} attributs extraits !`,
+          `${result.stats.products_processed} produits analysés avec Vision IA ! ${result.stats.attributes_extracted} attributs extraits et ${result.stats.vision_analyses || 0} analyses visuelles !`,
           [
             {
               label: 'Tester la recherche',
@@ -225,7 +249,26 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
         const result = await response.json();
         console.log('🔍 Résultats recherche:', result);
         showSuccess('Recherche terminée', `${result.results?.length || 0} produits trouvés avec l'IA !`);
-        setSearchResults(result.results || []);
+        
+        // Transformer les résultats pour inclure les nouvelles données
+        const transformedResults = (result.results || []).map((product: any) => ({
+          id: product.id,
+          name: product.name || product.title,
+          description: product.description || '',
+          price: product.price || 0,
+          compare_at_price: product.compare_at_price,
+          category: product.category || 'Mobilier',
+          subcategory: product.subcategory || '',
+          vendor: product.vendor || 'Boutique',
+          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          product_url: product.product_url || '#',
+          stock: product.stock || 0,
+          ai_vision_summary: product.extracted_attributes?.ai_vision_summary || '',
+          tags: product.extracted_attributes?.tags || [],
+          confidence_score: product.confidence_score || 0
+        }));
+        
+        setSearchResults(transformedResults);
       } else {
         const error = await response.json();
         showError('Recherche échouée', 'Erreur lors de la recherche intelligente.');
@@ -254,10 +297,10 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
           <Brain className="w-8 h-8 text-cyan-400" />
-          Entraînement IA Catalogue
+          Entraînement IA Catalogue avec Vision IA
         </h2>
         <p className="text-gray-300 text-lg">
-          Transformez votre catalogue en assistant intelligent
+          Transformez votre catalogue en assistant intelligent avec analyse visuelle automatique
         </p>
       </div>
 
@@ -415,12 +458,15 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
           <div className="bg-black/40 rounded-xl p-4 border border-cyan-500/30">
             <h4 className="font-semibold text-cyan-300 mb-2">📋 Format CSV attendu :</h4>
             <code className="text-cyan-400 text-sm block">
-              nom,prix,description,categorie,image_url,vendor,stock
+              nom,prix,prix_barre,description,categorie,image_url,vendor,stock
             </code>
             <div className="mt-2 text-xs text-gray-400">
               <p>• <strong>nom</strong> : Nom du produit</p>
+              <p>• <strong>prix</strong> : Prix de vente actuel</p>
+              <p>• <strong>prix_barre</strong> : Prix avant solde (optionnel)</p>
               <p>• <strong>description</strong> : Description détaillée (couleurs, matériaux, dimensions)</p>
               <p>• <strong>categorie</strong> : Type de produit (canapé, table, chaise...)</p>
+              <p>• <strong>image_url</strong> : URL de l'image pour analyse Vision IA</p>
             </div>
           </div>
         </div>
@@ -430,13 +476,13 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
           <Brain className="w-6 h-6 text-purple-400" />
-          2. Entraînement du modèle IA
+          2. Entraînement du modèle IA avec Vision IA
         </h3>
 
         {trainingStatus === 'idle' && (
           <div className="space-y-4">
             <p className="text-gray-300">
-              L'IA va analyser chaque produit pour extraire automatiquement :
+              L'IA va analyser chaque produit (texte + image) pour extraire automatiquement :
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="bg-black/20 rounded-lg p-3">
@@ -455,14 +501,32 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
                 <div className="text-purple-400 font-semibold">✨ Styles</div>
                 <div className="text-gray-300">moderne, scandinave...</div>
               </div>
+              <div className="bg-black/20 rounded-lg p-3">
+                <div className="text-pink-400 font-semibold">👁️ Vision IA</div>
+                <div className="text-gray-300">analyse visuelle...</div>
+              </div>
+              <div className="bg-black/20 rounded-lg p-3">
+                <div className="text-orange-400 font-semibold">🏷️ Tags IA</div>
+                <div className="text-gray-300">mots-clés extraits...</div>
+              </div>
+              <div className="bg-black/20 rounded-lg p-3">
+                <div className="text-red-400 font-semibold">💰 Promotions</div>
+                <div className="text-gray-300">prix, réductions...</div>
+              </div>
+              <div className="bg-black/20 rounded-lg p-3">
+                <div className="text-cyan-400 font-semibold">📂 Catégories</div>
+                <div className="text-gray-300">type, sous-type...</div>
+              </div>
             </div>
             
             <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-4">
-              <h4 className="font-semibold text-blue-200 mb-2">🤖 Entraînement automatique :</h4>
+              <h4 className="font-semibold text-blue-200 mb-2">🤖 Entraînement automatique avec Vision IA :</h4>
               <ul className="text-blue-300 text-sm space-y-1">
                 <li>• Déclenchement automatique après chaque import</li>
+                <li>• Analyse visuelle automatique de chaque image produit</li>
                 <li>• Cron quotidien à 2h du matin pour mise à jour</li>
                 <li>• Analyse IA de tous les nouveaux produits</li>
+                <li>• Extraction tags depuis titre et description</li>
                 <li>• Amélioration continue des réponses OmnIA</li>
               </ul>
             </div>
@@ -474,7 +538,7 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Brain className="w-5 h-5" />
-                Entraînement complet
+                Entraînement complet + Vision IA
               </button>
               
               <button
@@ -493,10 +557,10 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
           <div className="text-center py-8">
             <Loader className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
             <h4 className="text-lg font-semibold text-white mb-2">
-              🤖 Entraînement IA en cours...
+              🤖 Entraînement IA + Vision IA en cours...
             </h4>
             <p className="text-purple-300 mb-4">
-              Nettoyage HTML et extraction des attributs avec IA
+              Analyse texte + images et extraction des attributs avec IA
             </p>
             <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
               <div 
@@ -511,7 +575,7 @@ export const AITrainingInterface: React.FC<AITrainingInterfaceProps> = ({ onTrai
         {trainingStatus === 'success' && trainingStats && (
           <div className="text-center py-8">
             <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
-            <h4 className="text-lg font-semibold text-white mb-2">✅ Entraînement terminé !</h4>
+            <h4 className="text-lg font-semibold text-white mb-2">✅ Entraînement + Vision IA terminé !</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               <div className="bg-green-500/20 rounded-xl p-4">
                 <div className="text-2xl font-bold text-green-400">{trainingStats.products_processed}</div>

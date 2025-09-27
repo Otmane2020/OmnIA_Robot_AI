@@ -243,9 +243,10 @@ Catégorie: ${product.category || ''}
 Prix: ${product.price || 0}€
 
 EXTRAIT UNIQUEMENT ces attributs au format JSON :
-{
+    const prompt = `Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
   "colors": ["couleur1", "couleur2"],
   "materials": ["matériau1", "matériau2"], 
+  "subcategory": "Description précise du type (ex: Canapé d'angle convertible, Table basse ronde)",
   "dimensions": {
     "length": 200,
     "width": 100,
@@ -256,16 +257,20 @@ EXTRAIT UNIQUEMENT ces attributs au format JSON :
   "categories": ["catégorie1"],
   "features": ["fonctionnalité1", "fonctionnalité2"],
   "room": ["salon", "chambre"]
+  "tags": ["mot-clé1", "mot-clé2", "mot-clé3"],
 }
 
 RÈGLES:
+- Subcategory: Description précise et spécifique du produit (ex: "Canapé d'angle convertible", "Table basse ronde", "Chaise de bureau ergonomique")
 - Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, etc.
 - Matériaux: bois, métal, verre, tissu, cuir, velours, travertin, etc.
 - Styles: moderne, scandinave, industriel, vintage, minimaliste, etc.
+- Tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION (ex: pour "Canapé VENTU convertible" → ["canapé", "ventu", "convertible", "design", "contemporain"])
 - Dimensions en cm uniquement
 - Pièces: salon, chambre, cuisine, bureau, salle à manger
 - Réponse JSON uniquement, pas de texte`;
 
+    // Appel à DeepSeek pour extraction textuelle
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -277,7 +282,7 @@ RÈGLES:
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en mobilier. Réponds uniquement en JSON valide, sans texte supplémentaire.'
+            content: 'Tu es un expert en mobilier et design d\'intérieur. Tu extrais UNIQUEMENT des attributs structurés au format JSON avec sous-catégories précises et tags basés sur le titre et description. Aucun texte supplémentaire.'
           },
           {
             role: 'user',
@@ -296,6 +301,21 @@ RÈGLES:
       if (content) {
         try {
           const extracted = JSON.parse(content);
+          
+          // Ajouter l'analyse Vision IA si image disponible
+          if (product.image_url && product.image_url !== 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg') {
+            try {
+              console.log('👁️ [auto-ai-trainer] Analyse Vision IA pour:', product.title?.substring(0, 30));
+              const visionAnalysis = await analyzeProductImageWithAI(product.image_url, extracted);
+              if (visionAnalysis) {
+                extracted.ai_vision_summary = visionAnalysis;
+              }
+            } catch (visionError) {
+              console.warn('⚠️ [auto-ai-trainer] Vision IA échouée:', visionError);
+            }
+            tags: extracted.tags?.length || 0,
+          }
+          
           console.log('✅ Attributs IA extraits:', Object.keys(extracted));
           return {
             ...extracted,
@@ -317,9 +337,107 @@ RÈGLES:
   return extractAttributesBasic(product);
 }
 
+async function analyzeProductImageWithAI(imageUrl: string, textAttributes: any): Promise<string | null> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openaiApiKey) {
+    console.log('⚠️ [auto-ai-trainer] OpenAI non configuré pour Vision IA');
+    return null;
+  }
+
+  try {
+    const prompt = `Analyse cette image de produit mobilier et génère une synthèse focalisée sur le PRODUIT uniquement.
+
+Contexte du produit (depuis le texte) :
+- Type: ${textAttributes.categories?.[0] || 'Mobilier'}
+- Couleurs détectées: ${textAttributes.colors?.join(', ') || 'Non spécifiées'}
+- Matériaux détectés: ${textAttributes.materials?.join(', ') || 'Non spécifiés'}
+- Style détecté: ${textAttributes.styles?.[0] || 'Non spécifié'}
+
+Génère une synthèse courte (50 mots max) qui décrit UNIQUEMENT le produit visible :
+- Couleurs réelles observées
+- Matériaux et finitions visibles
+- Style et design apparent
+- Qualité et finition perçue
+- Fonctionnalités visibles
+
+Focus sur le PRODUIT, pas l'environnement. Ton professionnel et descriptif.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert en analyse visuelle de mobilier. Tu décris uniquement le produit visible dans l\'image, pas l\'environnement.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: { url: imageUrl }
+              }
+            ]
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.3,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const analysis = data.choices[0]?.message?.content?.trim();
+      
+      if (analysis) {
+        console.log('✅ [auto-ai-trainer] Vision IA réussie');
+        return analysis;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ [auto-ai-trainer] Erreur Vision IA:', error);
+  }
+
+  return null;
+}
+
 function extractAttributesBasic(product: any): ExtractedAttributes {
   const text = `${product.name || ''} ${product.description || ''} ${product.category || ''}`.toLowerCase();
   
+  // Générer tags basiques à partir du titre et description
+  const generateBasicTags = (title: string, description: string): string[] => {
+    const text = `${title} ${description}`.toLowerCase();
+    const words = text.split(/\s+/).filter(word => word.length > 2);
+    
+    // Mots vides à exclure
+    const stopWords = ['le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'avec', 'sans', 'pour', 'par', 'sur', 'dans'];
+    
+    // Mots-clés mobilier prioritaires
+    const furnitureKeywords = ['canapé', 'ventu', 'alyana', 'aurea', 'inaya', 'convertible', 'angle', 'places', 'velours', 'tissu', 'cuir'];
+    
+    const validWords = words.filter(word => 
+      !stopWords.includes(word) && 
+      !/^\d+$/.test(word) &&
+      word.length > 2
+    );
+    
+    // Prioriser les mots-clés mobilier
+    const priorityTags = validWords.filter(word => furnitureKeywords.includes(word));
+    const regularTags = validWords.filter(word => !furnitureKeywords.includes(word));
+    
+    return [...priorityTags.slice(0, 3), ...regularTags.slice(0, 2)].slice(0, 5);
+  };
+
   // Extract colors
   const colorPatterns = [
     'blanc', 'white', 'noir', 'black', 'gris', 'grey', 'gray', 'beige',
@@ -386,6 +504,7 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
   return {
     colors: [...new Set(colors)],
     materials: [...new Set(materials)],
+    subcategory: detectSubcategory(text),
     dimensions,
     styles: [...new Set(styles)],
     categories: [product.category || 'mobilier'].filter(Boolean),
@@ -395,8 +514,20 @@ function extractAttributesBasic(product: any): ExtractedAttributes {
       currency: 'EUR'
     },
     features: [...new Set(features)],
-    room: [...new Set(room)]
+    room: [...new Set(room)],
+    tags: generateBasicTags(product.title || product.name || '', product.description || ''),
+    confidence_score: 60
   };
+}
+
+function detectSubcategory(text: string): string {
+  if (text.includes('angle') && text.includes('convertible')) return 'Canapé d\'angle convertible';
+  if (text.includes('angle')) return 'Canapé d\'angle';
+  if (text.includes('convertible')) return 'Canapé convertible';
+  if (text.includes('basse')) return 'Table basse';
+  if (text.includes('manger')) return 'Table à manger';
+  if (text.includes('bureau')) return 'Chaise de bureau';
+  return '';
 }
 
 function calculateConfidenceScore(attributes: ExtractedAttributes): number {
