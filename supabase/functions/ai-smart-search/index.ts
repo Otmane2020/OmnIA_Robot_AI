@@ -378,28 +378,18 @@ function calculateRelevanceScore(product: any, intent: any, filters: any): any {
 }
 
 async function generateExpertResponse(message: string, relevantProducts: any[], context: any[], apiKey: string) {
-  const productsContext = relevantProducts.length > 0 ? 
+  const productsContext = relevantProducts.length > 0 
     ? relevantProducts.map(p => {
-        let productInfo = `• ${p.title} - ${p.price}€`;
+        let productInfo = `• ${p.name} - ${p.price}€`;
         if (p.compare_at_price && p.compare_at_price > p.price) {
           const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
           productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
         }
         if (p.category) productInfo += ` - ${p.category}`;
-        if (p.subcategory) productInfo += ` (${p.subcategory})`;
-        if (p.tags && p.tags.length > 0) productInfo += ` - Tags: ${p.tags.slice(0, 3).join(', ')}`;
+        if (p.extracted_attributes?.subcategory) productInfo += ` (${p.extracted_attributes.subcategory})`;
+        if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
         return productInfo;
-      }).join('\n')
-      let productInfo = `• ${p.name} - ${p.price}€`;
-      if (p.compare_at_price && p.compare_at_price > p.price) {
-        const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
-        productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
-      }
-      if (p.category) productInfo += ` - ${p.category}`;
-      if (p.extracted_attributes?.subcategory) productInfo += ` (${p.extracted_attributes.subcategory})`;
-      if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
-      return productInfo;
-    }).join('\n') : 'Aucun produit trouvé.';
+      }).join('\n') : 'Aucun produit trouvé.';
 
   const systemPrompt = `Tu es OmnIA, conseiller déco Decora Home.
 Réponds court (2 phrases max), engageant et humain.
@@ -411,7 +401,7 @@ ${productsContext}`;
   const messages = [
     { role: 'system', content: systemPrompt },
     ...context.slice(-2),
-    { role: 'user', content: query }
+    { role: 'user', content: message }
   ];
 
   const resp = await fetch('https://api.deepseek.com/chat/completions', {
@@ -424,7 +414,7 @@ ${productsContext}`;
   const msg = data.choices?.[0]?.message?.content || "Pouvez-vous préciser ?";
   return {
     message: msg,
-    selectedProducts: products.slice(0, 2),
-    should_show_products: products.length > 0
+    selectedProducts: relevantProducts.slice(0, 2),
+    should_show_products: relevantProducts.length > 0
   };
 }
