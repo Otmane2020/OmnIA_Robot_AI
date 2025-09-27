@@ -1,3 +1,9 @@
+import { 
+  Search, Package, Eye, Edit, Trash2, Plus, Download, Upload, 
+  Filter, ChevronDown, ChevronUp, ExternalLink, Target,
+  RefreshCw, Brain, Zap, CheckCircle, AlertCircle, Loader2
+} from 'lucide-react';
+import { useNotifications } from './NotificationSystem';
 import React, { useState, useEffect } from 'react';
 import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw } from 'lucide-react';
   Package, Search, Eye, Edit, Trash2, Plus, Brain, RefreshCw, Loader2, CheckCircle, AlertCircle,
@@ -1428,10 +1434,5 @@ Destination : Salon, pièce à vivre, studio`,
             </table>
           </div>
         </div>
+import React, { useState, useEffect } from 'react';
       )}
-
-      {/* Modal de détail */}
-      {selectedProduct && <ProductDetailModal />}
-    </div>
-  );
-};
