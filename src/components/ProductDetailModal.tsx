@@ -268,7 +268,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product,
             </a>
             
             <button
-             type="button"
+              type="button"
               onClick={onClose}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
             >
