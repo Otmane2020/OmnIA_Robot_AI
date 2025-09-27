@@ -582,8 +582,8 @@ Destination : Salon, pièce à vivre, studio`,
         };
         
         enrichedProducts.push(smartProduct);
-        
-      } catch (error) {
+      
+    } catch (error) {
         console.error('❌ Erreur enrichissement produit:', error);
       }
     }
