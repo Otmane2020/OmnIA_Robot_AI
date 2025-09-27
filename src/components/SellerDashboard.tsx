@@ -10,7 +10,7 @@ import { SellerSettings } from './SellerSettings';
 import { SellerSubscriptionManager } from './SellerSubscriptionManager';
 import { ProductsEnrichedTable } from './ProductsEnrichedTable';
 import { EcommerceIntegration } from './EcommerceIntegration';
-import SmartAIEnrichmentTab from './SmartAIEnrichmentTab';
+import { SmartAIEnrichmentTab } from './SmartAIEnrichmentTab';
 import { NotificationSystem, useNotifications } from './NotificationSystem';
 
 interface Seller {
