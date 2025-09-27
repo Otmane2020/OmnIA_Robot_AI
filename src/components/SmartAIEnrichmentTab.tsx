@@ -343,41 +343,56 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
     try {
       showInfo('Ré-enrichissement démarré', `Ré-enrichissement IA de ${enrichedProducts.length} produits avec Vision IA...`);
 
-      // Simuler le ré-enrichissement local
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Améliorer les attributs existants
-      const reEnrichedProducts = enrichedProducts.map(product => ({
-        ...product,
-        confidence_score: Math.min((product.confidence_score || 50) + 10, 100),
-        ai_vision_summary: product.ai_vision_summary || generateVisionSummary(product.title),
-        tags: [...(product.tags || []), 'premium', 'qualité'],
-        enriched_at: new Date().toISOString(),
-        enrichment_source: 'local_re_enrichment'
-      }));
-      
-      // Sauvegarder les améliorations
-      const enrichedKey = `seller_${retailerId}_enriched_products`;
-      localStorage.setItem(enrichedKey, JSON.stringify(reEnrichedProducts));
-      
-      showSuccess(
-        'Ré-enrichissement terminé !',
-        `${reEnrichedProducts.length} produits ré-enrichis avec IA locale !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => loadCatalogData(),
-            variant: 'primary'
-          }
-        ]
-      );
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      // Recharger les données
-      await loadCatalogData();
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase non configuré');
+      }
+
+      // Use default UUID for non-UUID retailer IDs (demo accounts)
+      const effectiveRetailerId = isValidUUID(retailerId) ? retailerId : '00000000-0000-0000-0000-000000000000';
+      console.log('🔧 Ré-enrichissement avec retailer_id:', effectiveRetailerId, '(original:', retailerId, ')');
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: enrichedProducts,
+          retailer_id: effectiveRetailerId,
+          force_full_enrichment: true,
+          enable_image_analysis: true
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Ré-enrichissement réussi:', result.stats);
+        
+        showSuccess(
+          'Ré-enrichissement terminé !',
+          `${result.enriched_products || enrichedProducts.length} produits ré-enrichis avec Vision IA !`,
+          [
+            {
+              label: 'Voir les résultats',
+              action: () => loadCatalogData(),
+              variant: 'primary'
+            }
+          ]
+        );
+
+        // Recharger les données
+        await loadCatalogData();
+      } else {
+        const error = await response.json();
+        throw new Error(error.details || 'Erreur ré-enrichissement');
+      }
 
     } catch (error) {
       console.error('❌ Erreur ré-enrichissement:', error);
-      showError('Erreur de ré-enrichissement', 'Ré-enrichissement local appliqué en fallback.');
+      showError('Erreur de ré-enrichissement', error.message || 'Impossible de ré-enrichir les produits.');
     } finally {
       setIsEnriching(false);
     }
@@ -390,66 +405,31 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
     setSearchResults([]);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase non configuré');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/ai-smart-search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: searchQuery,
-          retailer_id: isValidUUID(retailerId) ? retailerId : '00000000-0000-0000-0000-000000000000',
-          limit: 10
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('🔍 Résultats recherche SMART AI:', result);
+      // Recherche locale intelligente
+      const allProducts = [...enrichedProducts, ...rawProducts];
+      const lowerQuery = searchQuery.toLowerCase();
+      
+      const localResults = allProducts.filter(product => {
+        const searchText = `${product.title} ${product.description} ${product.category} ${product.color || ''} ${product.material || ''} ${product.style || ''}`.toLowerCase();
         
-        const transformedResults = (result.results || []).map((product: any) => ({
-          id: product.id,
-          handle: product.handle || product.id,
-          title: product.name || product.title,
-          description: product.description || '',
-          price: product.price || 0,
-          compare_at_price: product.compare_at_price,
-          category: product.category || 'Mobilier',
-          subcategory: product.subcategory || '',
-          color: product.color || '',
-          material: product.material || '',
-          style: product.style || '',
-          dimensions: product.dimensions || '',
-          room: product.room || '',
-          vendor: product.vendor || product.brand || 'Boutique',
-          image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-          product_url: product.product_url || '#',
-          stock_qty: product.stock || product.stock_qty || 0,
-          confidence_score: product.confidence_score || 0,
-          ai_vision_summary: product.ai_vision_summary || '',
-          tags: product.tags || [],
-          relevance_score: product.relevance_score,
-          matched_attributes: product.matched_attributes,
-          ai_reasoning: product.ai_reasoning
-        }));
+        // Recherche par mots-clés
+        const queryWords = lowerQuery.split(' ').filter(word => word.length > 2);
+        const matchCount = queryWords.filter(word => searchText.includes(word)).length;
         
-        setSearchResults(transformedResults);
-        showSuccess('Recherche terminée', `${transformedResults.length} produits trouvés avec l'IA !`);
-      } else {
-        const error = await response.json();
-        throw new Error(error.details || 'Erreur recherche');
-      }
+        return matchCount > 0;
+      }).map(product => ({
+        ...product,
+        relevance_score: calculateLocalRelevance(product, lowerQuery),
+        matched_attributes: getLocalMatches(product, lowerQuery),
+        ai_reasoning: `Correspondance locale: ${getLocalMatches(product, lowerQuery).join(', ')}`
+      })).sort((a, b) => (b as any).relevance_score - (a as any).relevance_score);
+      
+      setSearchResults(localResults.slice(0, 10));
+      showSuccess('Recherche terminée', `${localResults.length} produits trouvés avec recherche locale !`);
 
     } catch (error) {
       console.error('❌ Erreur recherche:', error);
-      showError('Erreur de recherche', error.message || 'Impossible d\'effectuer la recherche intelligente.');
+      showError('Erreur de recherche', 'Recherche locale appliquée en fallback.');
     } finally {
       setIsSearching(false);
     }
@@ -1116,3 +1096,100 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
     </div>
   );
 };
+
+// Fonctions utilitaires pour l'enrichissement local
+function detectColor(text: string): string {
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 'taupe'];
+  const lowerText = text.toLowerCase();
+  return colors.find(color => lowerText.includes(color)) || '';
+}
+
+function detectMaterial(text: string): string {
+  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'chenille', 'plastique', 'rotin'];
+  const lowerText = text.toLowerCase();
+  return materials.find(material => lowerText.includes(material)) || '';
+}
+
+function detectStyle(text: string): string {
+  const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'rustique', 'classique', 'minimaliste', 'bohème'];
+  const lowerText = text.toLowerCase();
+  return styles.find(style => lowerText.includes(style)) || '';
+}
+
+function detectSubcategory(text: string): string {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('angle') && lowerText.includes('convertible')) return 'Canapé d\'angle convertible';
+  if (lowerText.includes('angle')) return 'Canapé d\'angle';
+  if (lowerText.includes('convertible')) return 'Canapé convertible';
+  if (lowerText.includes('basse')) return 'Table basse';
+  if (lowerText.includes('manger')) return 'Table à manger';
+  if (lowerText.includes('bureau')) return 'Chaise de bureau';
+  return '';
+}
+
+function generateTags(text: string): string[] {
+  const lowerText = text.toLowerCase();
+  const tags = [];
+  
+  // Catégories
+  if (lowerText.includes('canapé')) tags.push('canapé');
+  if (lowerText.includes('table')) tags.push('table');
+  if (lowerText.includes('chaise')) tags.push('chaise');
+  
+  // Fonctionnalités
+  if (lowerText.includes('convertible')) tags.push('convertible');
+  if (lowerText.includes('angle')) tags.push('angle');
+  if (lowerText.includes('rangement')) tags.push('rangement');
+  
+  // Styles
+  if (lowerText.includes('moderne')) tags.push('moderne');
+  if (lowerText.includes('design')) tags.push('design');
+  
+  return tags.slice(0, 5);
+}
+
+function generateVisionSummary(title: string): string {
+  const lowerTitle = title.toLowerCase();
+  
+  if (lowerTitle.includes('canapé')) {
+    return 'Canapé aux lignes contemporaines avec finition soignée. Design moderne et confortable avec structure robuste visible.';
+  }
+  if (lowerTitle.includes('table')) {
+    return 'Table au design épuré avec matériaux nobles. Finition de qualité et proportions harmonieuses.';
+  }
+  if (lowerTitle.includes('chaise')) {
+    return 'Chaise au design contemporain avec structure métallique. Finition soignée et ergonomie étudiée.';
+  }
+  
+  return 'Produit de qualité avec finition soignée. Design contemporain aux lignes épurées.';
+}
+
+function calculateLocalRelevance(product: any, query: string): number {
+  let score = 0;
+  const productText = `${product.title} ${product.description} ${product.category}`.toLowerCase();
+  
+  // Correspondance titre
+  if (productText.includes(query)) score += 50;
+  
+  // Correspondance mots-clés
+  const queryWords = query.split(' ').filter(word => word.length > 2);
+  const matchingWords = queryWords.filter(word => productText.includes(word));
+  score += matchingWords.length * 10;
+  
+  // Bonus catégorie
+  if (product.category && query.includes(product.category.toLowerCase())) score += 30;
+  
+  return Math.min(score, 100);
+}
+
+function getLocalMatches(product: any, query: string): string[] {
+  const matches = [];
+  const productText = `${product.title} ${product.description}`.toLowerCase();
+  
+  if (productText.includes(query)) matches.push('titre');
+  if (product.category && query.includes(product.category.toLowerCase())) matches.push('catégorie');
+  if (product.color && query.includes(product.color.toLowerCase())) matches.push('couleur');
+  if (product.material && query.includes(product.material.toLowerCase())) matches.push('matériau');
+  
+  return matches;
+}
