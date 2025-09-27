@@ -100,8 +100,11 @@ export const SmartAIEnrichmentTab: React.FC = () => {
           } catch (error) {
             console.error(`❌ Erreur parsing ${storageKey}:`, error);
           }
+        }
+      }
+      
       // Récupérer les produits depuis TOUS les emplacements possibles
-      const storageKeys = [
+      const storageKeys2 = [
         'catalog_products',
         'vendor_demo-retailer-id_products',
         'seller_demo-retailer-id_products',
@@ -111,7 +114,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       let allProducts: any[] = [];
       
       // Essayer chaque clé de stockage
-      for (const storageKey of storageKeys) {
+      for (const storageKey of storageKeys2) {
         const savedProducts = localStorage.getItem(storageKey);
         if (savedProducts) {
           try {
@@ -136,8 +139,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
               status: p.status || 'active',
               source_platform: p.source_platform || 'csv',
               sku: p.sku || p.variant_sku || '',
-              created_at: p.created_at || new Date().toISOString(),
-              updated_at: p.updated_at || new Date().toISOString()
+              created_at: p.created_at || new Date().toISOString()
             }));
             
             allProducts = [...allProducts, ...validProducts];
@@ -166,7 +168,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       
       for (const [index, product] of uniqueProducts.entries()) {
         try {
-          console.log(`🔄 [${index + 1}/${uniqueProducts.length}] Enrichissement: ${product.name?.substring(0, 30)}...`);
+          console.log(`🔄 [${index + 1}/${uniqueProducts.length}] Enrichissement: ${product.name?.substring(0, 50)}...`);
           
           // Simuler l'enrichissement IA (vous pouvez remplacer par un vrai appel API)
           const enrichedProduct = await enrichProductWithAI(product);
@@ -582,8 +584,8 @@ Destination : Salon, pièce à vivre, studio`,
         };
         
         enrichedProducts.push(smartProduct);
-      
-    } catch (error) {
+        
+      } catch (error) {
         console.error('❌ Erreur enrichissement produit:', error);
       }
     }
