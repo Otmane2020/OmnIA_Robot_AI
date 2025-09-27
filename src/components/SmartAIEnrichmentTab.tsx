@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw } from 'lucide-react';
-import {
+  Search, Package, Eye, Edit, Trash2, Plus,
   Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
   BarChart3, CheckCircle, AlertCircle, Loader2, Eye,
   Package, Tag, DollarSign, Image, Settings, Search,
-  Filter, ChevronDown, ChevronUp, ExternalLink, Target
+  RefreshCw, Loader2, CheckCircle, AlertCircle, Zap, BarChart3, TrendingUp, DollarSign, Brain
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
