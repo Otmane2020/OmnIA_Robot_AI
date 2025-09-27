@@ -379,7 +379,17 @@ function calculateRelevanceScore(product: any, intent: any, filters: any): any {
 
 async function generateExpertResponse(message: string, relevantProducts: any[], context: any[], apiKey: string) {
   const productsContext = relevantProducts.length > 0 ? 
-    relevantProducts.map(p => {
+    ? relevantProducts.map(p => {
+        let productInfo = `• ${p.title} - ${p.price}€`;
+        if (p.compare_at_price && p.compare_at_price > p.price) {
+          const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
+          productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
+        }
+        if (p.category) productInfo += ` - ${p.category}`;
+        if (p.subcategory) productInfo += ` (${p.subcategory})`;
+        if (p.tags && p.tags.length > 0) productInfo += ` - Tags: ${p.tags.slice(0, 3).join(', ')}`;
+        return productInfo;
+      }).join('\n')
       let productInfo = `• ${p.name} - ${p.price}€`;
       if (p.compare_at_price && p.compare_at_price > p.price) {
         const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
