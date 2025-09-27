@@ -10,10 +10,6 @@ import {
   Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw, Edit, Trash2, Plus, Loader2,
   Filter, ChevronDown, ChevronUp, ExternalLink, Target
 } from 'lucide-react';
-import { useNotifications } from './NotificationSystem';
-
-interface SmartProduct {
-  id: string;
   name: string;
   description: string;
   price: number;
