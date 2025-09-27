@@ -227,22 +227,6 @@ Détermine :
 Conseille des ajouts Decora Home pour renforcer le style.`
       };
       
-      case 'product_focused':
-        return {
-          system: 'Tu es un expert en analyse visuelle de mobilier. Tu décris uniquement le produit visible dans l\'image avec précision et professionnalisme.',
-          user: `Analyse cette image de produit mobilier et génère une synthèse courte (50 mots max) focalisée UNIQUEMENT sur le produit visible.
-        
-Décris :
-- Couleurs réelles observées
-- Matériaux et finitions visibles  
-- Style et design apparent
-- Qualité et finition perçue
-- Fonctionnalités visibles (convertible, rangement, etc.)
-
-Focus sur le PRODUIT uniquement, pas l'environnement. Ton professionnel et descriptif.
-Exemple : "Canapé d'angle en velours côtelé beige avec finition soignée. Design contemporain aux lignes épurées. Mécanisme convertible visible. Qualité premium avec coutures précises."`
-        };
-      
     default:
       return {
         system: baseSystem,
@@ -276,9 +260,6 @@ Que souhaitez-vous modifier dans cet espace ?`;
 • **Canapé ALYANA** (799€) - Convertible velours côtelé pour optimiser l'espace
 
 Quels meubles souhaitez-vous remplacer ?`;
-      
-      case 'product_focused':
-        return `Produit de qualité avec finition soignée. Design contemporain aux lignes épurées. Matériaux nobles et assemblage précis. Fonctionnalités bien intégrées.`;
       
     default:
       return `J'aime bien cette photo ! Votre intérieur a beaucoup de charme.

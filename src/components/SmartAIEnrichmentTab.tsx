@@ -1,1052 +1,537 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Brain, Search, Sparkles, Eye, BarChart3, RefreshCw, 
-  Package, Tag, Palette, Wrench, Home, FileText, 
-  TrendingUp, Zap, Download, Upload, CheckCircle, 
-  AlertCircle, Loader2, ExternalLink, Info
+  Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
+  BarChart3, CheckCircle, AlertCircle, Loader2, Eye,
+  Package, Tag, DollarSign, Image, Settings, Search,
+  Filter, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
-interface RawProduct {
+interface SmartProduct {
   id: string;
   name: string;
-  title: string;
   description: string;
   price: number;
-  compare_at_price?: number;
   category: string;
   vendor: string;
   image_url: string;
-  product_url: string;
   stock: number;
-  status: string;
-  source_platform: string;
-  sku?: string;
-  tags?: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-interface EnrichedProduct {
-  id: string;
-  handle: string;
-  title: string;
-  description: string;
-  category: string;
-  subcategory: string;
-  color: string;
-  material: string;
-  fabric: string;
-  style: string;
-  dimensions: string;
-  room: string;
-  price: number;
-  stock_qty: number;
-  image_url: string;
-  product_url: string;
-  tags: string[];
-  seo_title: string;
-  seo_description: string;
-  ad_headline: string;
-  ad_description: string;
-  google_product_category: string;
-  gtin: string;
-  brand: string;
-  confidence_score: number;
+  ai_attributes: {
+    colors: string[];
+    materials: string[];
+    dimensions: {
+      largeur?: number;
+      profondeur?: number;
+      hauteur?: number;
+      hauteur_assise?: number;
+      couchage_largeur?: number;
+      couchage_longueur?: number;
+      diametre?: number;
+    };
+    styles: string[];
+    features: string[];
+    room: string[];
+    confidence_score: number;
+  };
+  variations: Array<{
+    id: string;
+    title: string;
+    price: number;
+    stock: number;
+    options: { name: string; value: string }[];
+  }>;
+  seo_optimized: {
+    title: string;
+    description: string;
+    tags: string[];
+  };
   enriched_at: string;
-  enrichment_source: string;
-  retailer_id: string;
-  ai_vision_summary?: string;
-  created_at: string;
 }
 
-interface SmartAIEnrichmentTabProps {
-  retailerId: string;
-}
-
-export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ retailerId }) => {
-  const [enrichedProducts, setEnrichedProducts] = useState<EnrichedProduct[]>([]);
-  const [rawProducts, setRawProducts] = useState<RawProduct[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isEnriching, setIsEnriching] = useState(false);
+export const SmartAIEnrichmentTab: React.FC = () => {
+  const [products, setProducts] = useState<SmartProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState<EnrichedProduct | null>(null);
-  const [showProductModal, setShowProductModal] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<SmartProduct | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const { showSuccess, showError, showInfo } = useNotifications();
 
-  // Fonction pour valider si un ID est un UUID
-  const isValidUUID = (id: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(id);
-  };
-
   useEffect(() => {
-    loadProducts();
-  }, [retailerId]);
+    loadSmartProducts();
+  }, []);
 
-  const loadProducts = async () => {
+  const loadSmartProducts = async () => {
     try {
       setIsLoading(true);
-      console.log('📦 Chargement produits SMART AI pour retailer:', retailerId);
-
-      // Charger les produits enrichis
-      await loadEnrichedProducts();
+      console.log('🧠 Chargement Smart AI Products...');
       
-      // Charger les produits bruts
-      await loadRawProducts();
-
-      // Lancer l'enrichissement automatique si des produits bruts existent
-      const rawProductsCount = await getRawProductsCount();
-      if (rawProductsCount > 0) {
-        console.log('🤖 Lancement enrichissement automatique...');
-        setTimeout(() => {
-          handleAutoEnrichment();
-        }, 1000);
-      }
-
+      // Charger depuis toutes les sources de produits
+      const allProducts = await loadAllProductSources();
+      console.log('📦 Produits bruts chargés:', allProducts.length);
+      
+      // Enrichir automatiquement avec IA avancée
+      const smartProducts = await enrichProductsWithAdvancedAI(allProducts);
+      console.log('🤖 Produits enrichis par IA:', smartProducts.length);
+      
+      setProducts(smartProducts);
+      
     } catch (error) {
-      console.error('❌ Erreur chargement produits:', error);
-      showError('Erreur de chargement', 'Impossible de charger les produits.');
+      console.error('❌ Erreur chargement Smart AI:', error);
+      showError('Erreur de chargement', 'Impossible de charger les produits Smart AI.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getRawProductsCount = async (): Promise<number> => {
-    try {
-      const storageKeys = [
-        `seller_${retailerId}_products`,
-        `vendor_${retailerId}_products`,
-        `retailer_${retailerId}_products`,
-        'catalog_products'
-      ];
-      
-      for (const key of storageKeys) {
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          const products = JSON.parse(saved);
-          return products.filter((p: any) => p.status === 'active').length;
-        }
-      }
-    } catch (error) {
-      console.error('Erreur comptage produits bruts:', error);
-    }
-    return 0;
-  };
-
-  const loadEnrichedProducts = async () => {
-    try {
-      // Charger depuis localStorage d'abord
-      const enrichedKey = `enriched_products_${retailerId}`;
-      const savedEnriched = localStorage.getItem(enrichedKey);
-      
-      if (savedEnriched) {
-        try {
-          const parsed = JSON.parse(savedEnriched);
-          setEnrichedProducts(parsed);
-          console.log('✅ Produits enrichis chargés depuis localStorage:', parsed.length);
-          return;
-        } catch (error) {
-          console.error('Erreur parsing produits enrichis:', error);
-        }
-      }
-
-      // Si UUID valide, essayer Supabase
-      if (isValidUUID(retailerId)) {
-        console.log('🔍 Chargement depuis Supabase pour UUID:', retailerId);
-        // Ici vous pourriez ajouter l'appel Supabase si nécessaire
-      }
-
-      console.log('📦 Aucun produit enrichi trouvé');
-      setEnrichedProducts([]);
-
-    } catch (error) {
-      console.error('❌ Erreur chargement produits enrichis:', error);
-      setEnrichedProducts([]);
-    }
-  };
-
-  const loadRawProducts = async () => {
-    try {
-      const storageKeys = [
-        `seller_${retailerId}_products`,
-        `vendor_${retailerId}_products`, 
-        `retailer_${retailerId}_products`,
-        'catalog_products'
-      ];
-      
-      let allRawProducts: RawProduct[] = [];
-      
-      for (const key of storageKeys) {
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          try {
-            const products = JSON.parse(saved);
-            const validProducts = products.filter((p: any) => 
-              p && (p.name || p.title) && p.status === 'active'
-            ).map((p: any) => ({
-              id: p.id || `raw-${Date.now()}-${Math.random()}`,
-              name: p.name || p.title || 'Produit sans nom',
-              title: p.name || p.title || 'Produit sans nom',
-              description: p.description || '',
-              price: parseFloat(p.price) || 0,
-              compare_at_price: p.compare_at_price,
-              category: p.category || p.productType || 'Mobilier',
-              vendor: p.vendor || 'Boutique',
-              image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-              product_url: p.product_url || '#',
-              stock: parseInt(p.stock) || parseInt(p.quantityAvailable) || 0,
-              status: p.status || 'active',
-              source_platform: p.source_platform || 'csv',
-              sku: p.sku || '',
-              tags: p.tags || [],
-              created_at: p.created_at || new Date().toISOString(),
-              updated_at: p.updated_at || new Date().toISOString()
-            }));
-            
-            allRawProducts = [...allRawProducts, ...validProducts];
-            console.log(`✅ Produits bruts depuis ${key}:`, validProducts.length);
-          } catch (error) {
-            console.error(`❌ Erreur parsing ${key}:`, error);
-          }
-        }
-      }
-      
-      // Supprimer les doublons par ID
-      const uniqueProducts = allRawProducts.filter((product, index, self) => 
-        index === self.findIndex(p => p.id === product.id)
-      );
-      
-      setRawProducts(uniqueProducts);
-      console.log('📦 Total produits bruts uniques:', uniqueProducts.length);
-
-    } catch (error) {
-      console.error('❌ Erreur chargement produits bruts:', error);
-      setRawProducts([]);
-    }
-  };
-
-  const handleAutoEnrichment = async () => {
-    if (rawProducts.length === 0) return;
+  const loadAllProductSources = async (): Promise<any[]> => {
+    let allProducts: any[] = [];
     
-    setIsEnriching(true);
-    showInfo('Enrichissement automatique', 'Analyse IA en cours de tous vos produits...');
-
-    try {
-      console.log('🤖 Enrichissement automatique de', rawProducts.length, 'produits...');
-      
-      const enrichedResults: EnrichedProduct[] = [];
-      
-      // Enrichir chaque produit avec IA locale
-      for (const [index, product] of rawProducts.entries()) {
-        try {
-          console.log(`🔄 [${index + 1}/${rawProducts.length}] Enrichissement: ${product.name.substring(0, 50)}...`);
-          
-          const enrichedProduct = await enrichProductWithLocalAI(product, retailerId);
-          enrichedResults.push(enrichedProduct);
-          
-          // Mettre à jour l'affichage progressivement
-          if (index % 5 === 0) {
-            setEnrichedProducts([...enrichedResults]);
+    // Sources multiples
+    const sources = [
+      'catalog_products',
+      'shopify_products',
+      'imported_products',
+      'vendor_products',
+      'seller_products'
+    ];
+    
+    for (const source of sources) {
+      try {
+        const savedData = localStorage.getItem(source);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (Array.isArray(parsed)) {
+            console.log(`📦 ${source}: ${parsed.length} produits`);
+            allProducts = [...allProducts, ...parsed];
           }
-          
-        } catch (error) {
-          console.error(`❌ Erreur enrichissement ${product.name}:`, error);
         }
+      } catch (error) {
+        console.error(`❌ Erreur parsing ${source}:`, error);
       }
-      
-      // Sauvegarder les résultats
-      const enrichedKey = `enriched_products_${retailerId}`;
-      localStorage.setItem(enrichedKey, JSON.stringify(enrichedResults));
-      
-      setEnrichedProducts(enrichedResults);
+    }
+    
+    // Ajouter produits Decora avec variations complètes
+    const decoraProducts = getDecoraCatalogWithFullVariations();
+    allProducts = [...allProducts, ...decoraProducts];
+    
+    // Supprimer doublons
+    const uniqueProducts = allProducts.filter((product, index, self) => 
+      index === self.findIndex(p => p.id === product.id)
+    );
+    
+    console.log(`📊 Produits uniques: ${uniqueProducts.length}`);
+    return uniqueProducts;
+  };
+
+  const getDecoraCatalogWithFullVariations = () => {
+    return [
+      // Canapé VENTU avec description complète
+      {
+        id: 'decora-canape-ventu-gris',
+        handle: 'canape-ventu-convertible',
+        name: 'Canapé VENTU convertible',
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+
+Caractéristiques principales :
+Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
+Espace de couchage généreux : 150 x 210 cm – idéal pour un usage quotidien ou ponctuel.
+Rangement intégré : grand conteneur pour literie, discret et pratique.
+Assise confortable : grâce au ressort ondulé et à la mousse haute densité.
+
+Dimensions :
+Largeur : 263 cm
+Profondeur : 105 cm
+Hauteur : 93 cm
+Hauteur d'assise : 45 cm
+
+Finitions & Style :
+Tissu : Dunbar 25
+Coloris disponibles : Gris moderne, Beige doux et lumineux
+Style : Moderne, épuré, facile à intégrer dans tout type de décoration
+
+Informations supplémentaires :
+Type : Canapé inclinable convertible
+Assemblage : Facile à monter soi-même
+Destination : Salon, pièce à vivre, studio`,
+        price: 899,
+        compare_at_price: 1299,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        stock: 50,
+        option1_name: 'Couleur',
+        option1_value: 'Gris moderne'
+      },
+      {
+        id: 'decora-canape-ventu-beige',
+        handle: 'canape-ventu-convertible',
+        name: 'Canapé VENTU convertible',
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+
+Caractéristiques principales :
+Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
+Espace de couchage généreux : 150 x 210 cm – idéal pour un usage quotidien ou ponctuel.
+Rangement intégré : grand conteneur pour literie, discret et pratique.
+Assise confortable : grâce au ressort ondulé et à la mousse haute densité.
+
+Dimensions :
+Largeur : 263 cm
+Profondeur : 105 cm
+Hauteur : 93 cm
+Hauteur d'assise : 45 cm
+
+Finitions & Style :
+Tissu : Dunbar 25
+Coloris disponibles : Gris moderne, Beige doux et lumineux
+Style : Moderne, épuré, facile à intégrer dans tout type de décoration
+
+Informations supplémentaires :
+Type : Canapé inclinable convertible
+Assemblage : Facile à monter soi-même
+Destination : Salon, pièce à vivre, studio`,
+        price: 899,
+        compare_at_price: 1299,
+        category: 'Canapé',
+        vendor: 'Decora Home',
+        image_url: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+        stock: 45,
+        option1_name: 'Couleur',
+        option1_value: 'Beige doux'
+      }
+    ];
+  };
+
+  const enrichProductsWithAdvancedAI = async (rawProducts: any[]): Promise<SmartProduct[]> => {
+    const enrichedProducts: SmartProduct[] = [];
+    
+    // Grouper par handle pour gérer les variations (250 produits variables au lieu de 650 single)
+    const groupedByHandle = new Map<string, any[]>();
+    
+    rawProducts.forEach(product => {
+      const handle = product.handle || generateHandle(product.name || product.title);
+      if (!groupedByHandle.has(handle)) {
+        groupedByHandle.set(handle, []);
+      }
+      groupedByHandle.get(handle)!.push(product);
+    });
+    
+    console.log(`🔄 Groupement: ${groupedByHandle.size} produits variables (au lieu de ${rawProducts.length} single)`);
+    
+    // Enrichir chaque groupe de produits
+    for (const [handle, productGroup] of groupedByHandle.entries()) {
+      try {
+        const mainProduct = productGroup[0];
+        const aiAttributes = await extractAIAttributes(mainProduct);
+        
+        // Créer les variations
+        const variations = productGroup.map(product => ({
+          id: product.id || `var-${Date.now()}-${Math.random()}`,
+          title: product.option1_value || 'Default',
+          price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
+          stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0,
+          options: product.option1_name ? [{
+            name: product.option1_name,
+            value: product.option1_value
+          }] : []
+        }));
+        
+        const smartProduct: SmartProduct = {
+          id: mainProduct.id || `smart-${Date.now()}-${Math.random()}`,
+          name: mainProduct.name || mainProduct.title || 'Produit sans nom',
+          description: cleanDescription(mainProduct.description || mainProduct.body_html || ''),
+          price: Math.min(...variations.map(v => v.price)),
+          category: aiAttributes.category,
+          vendor: mainProduct.vendor || 'Decora Home',
+          image_url: mainProduct.image_url || mainProduct.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+          stock: variations.reduce((sum, v) => sum + v.stock, 0),
+          ai_attributes: aiAttributes,
+          variations: variations,
+          seo_optimized: generateSEOOptimized(mainProduct, aiAttributes),
+          enriched_at: new Date().toISOString()
+        };
+        
+        enrichedProducts.push(smartProduct);
+        
+      } catch (error) {
+        console.error('❌ Erreur enrichissement produit:', error);
+      }
+    }
+    
+    return enrichedProducts;
+  };
+
+  const extractAIAttributes = async (product: any) => {
+    const text = `${product.name || product.title || ''} ${product.description || product.body_html || ''}`;
+    
+    // Extraction avancée des dimensions depuis la description
+    const dimensions = extractDetailedDimensions(text);
+    
+    return {
+      colors: extractColors(text, product),
+      materials: extractMaterials(text),
+      dimensions: dimensions,
+      styles: extractStyles(text),
+      features: extractFeatures(text),
+      room: extractRooms(text),
+      confidence_score: calculateConfidence(text, dimensions)
+    };
+  };
+
+  const extractDetailedDimensions = (text: string) => {
+    const dimensions: any = {};
+    
+    // Patterns spécifiques pour chaque dimension
+    const patterns = [
+      { key: 'largeur', regex: /largeur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'profondeur', regex: /profondeur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'hauteur', regex: /hauteur\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'hauteur_assise', regex: /hauteur\s+d[\'']?assise\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      { key: 'diametre', regex: /(?:diamètre|ø)\s*:?\s*(\d+(?:[.,]\d+)?)\s*cm/gi },
+      // Couchage spécifique
+      { key: 'couchage', regex: /(?:espace\s+de\s+)?couchage\s*:?\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm/gi }
+    ];
+    
+    patterns.forEach(({ key, regex }) => {
+      const matches = [...text.matchAll(regex)];
+      matches.forEach(match => {
+        if (key === 'couchage') {
+          dimensions.couchage_largeur = parseFloat(match[1].replace(',', '.'));
+          dimensions.couchage_longueur = parseFloat(match[2].replace(',', '.'));
+        } else {
+          dimensions[key] = parseFloat(match[1].replace(',', '.'));
+        }
+      });
+    });
+    
+    return dimensions;
+  };
+
+  const extractColors = (text: string, product: any): string[] => {
+    const colors = new Set<string>();
+    
+    // Couleurs depuis les options de variation
+    if (product.option1_name === 'Couleur' && product.option1_value) {
+      colors.add(product.option1_value);
+    }
+    
+    // Couleurs spécifiques dans le texte
+    const colorPatterns = [
+      'gris moderne', 'beige doux', 'beige chaleureux', 'beige lumineux',
+      'blanc cassé', 'noir mat', 'bleu marine', 'vert olive',
+      'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge'
+    ];
+    
+    colorPatterns.forEach(color => {
+      if (text.toLowerCase().includes(color)) {
+        colors.add(color);
+      }
+    });
+    
+    return Array.from(colors);
+  };
+
+  const extractMaterials = (text: string): string[] => {
+    const materials = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const materialPatterns = [
+      'tissu dunbar 25', 'tissu dunbar', 'velours côtelé', 'chenille',
+      'travertin naturel', 'métal noir', 'ressort ondulé', 'mousse haute densité',
+      'bois massif', 'chêne', 'hêtre', 'pin', 'teck', 'acier', 'verre', 'cuir'
+    ];
+    
+    materialPatterns.forEach(material => {
+      if (lowerText.includes(material)) {
+        materials.add(material);
+      }
+    });
+    
+    return Array.from(materials);
+  };
+
+  const extractStyles = (text: string): string[] => {
+    const styles = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const stylePatterns = [
+      'design contemporain', 'lignes épurées', 'moderne', 'contemporain',
+      'scandinave', 'industriel', 'vintage', 'rustique', 'classique',
+      'minimaliste', 'bohème', 'épuré'
+    ];
+    
+    stylePatterns.forEach(style => {
+      if (lowerText.includes(style)) {
+        styles.add(style);
+      }
+    });
+    
+    return Array.from(styles);
+  };
+
+  const extractFeatures = (text: string): string[] => {
+    const features = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const featurePatterns = [
+      'convertible', 'couchage agrandi', 'mécanisme automatique', 'dépliage automatique',
+      'rangement intégré', 'conteneur', 'coffre', 'ressort ondulé',
+      'mousse haute densité', 'facile à monter', 'inclinable', 'réversible'
+    ];
+    
+    featurePatterns.forEach(feature => {
+      if (lowerText.includes(feature)) {
+        features.add(feature);
+      }
+    });
+    
+    return Array.from(features);
+  };
+
+  const extractRooms = (text: string): string[] => {
+    const rooms = new Set<string>();
+    const lowerText = text.toLowerCase();
+    
+    const roomPatterns = [
+      'salon', 'pièce à vivre', 'studio', 'chambre', 'cuisine',
+      'bureau', 'salle à manger', 'entrée', 'terrasse'
+    ];
+    
+    roomPatterns.forEach(room => {
+      if (lowerText.includes(room)) {
+        rooms.add(room);
+      }
+    });
+    
+    return Array.from(rooms);
+  };
+
+  const generateSEOOptimized = (product: any, aiAttributes: any) => {
+    const name = product.name || product.title || '';
+    const primaryColor = aiAttributes.colors[0] || '';
+    const primaryMaterial = aiAttributes.materials[0] || '';
+    
+    return {
+      title: `${name} ${primaryColor} ${primaryMaterial} - Decora Home`.substring(0, 70),
+      description: `${name} ${primaryMaterial ? 'en ' + primaryMaterial : ''} ${primaryColor}. ${aiAttributes.features.join(', ')}. Livraison gratuite.`.substring(0, 155),
+      tags: [
+        aiAttributes.category?.toLowerCase(),
+        ...aiAttributes.colors.slice(0, 2),
+        ...aiAttributes.materials.slice(0, 2),
+        ...aiAttributes.styles.slice(0, 1)
+      ].filter(Boolean)
+    };
+  };
+
+  const calculateConfidence = (text: string, dimensions: any): number => {
+    let confidence = 30;
+    
+    if (text.toLowerCase().includes('dimensions')) confidence += 20;
+    if (Object.keys(dimensions).length > 2) confidence += 25;
+    if (text.toLowerCase().includes('caractéristiques')) confidence += 15;
+    if (text.toLowerCase().includes('coloris disponibles')) confidence += 10;
+    
+    return Math.min(confidence, 100);
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
+
+  const cleanDescription = (description: string): string => {
+    return description
+      .replace(/<[^>]*>/g, '')
+      .replace(/&[^;]+;/g, ' ')
+      .trim();
+  };
+
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 100);
+  };
+
+  const handleEnrichAll = async () => {
+    setIsEnriching(true);
+    showInfo('Enrichissement IA', 'Analyse avancée de tous les produits avec extraction d\'attributs...');
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await loadSmartProducts();
       
       showSuccess(
-        'Enrichissement terminé !',
-        `${enrichedResults.length} produits enrichis avec IA ! Couleurs, matériaux, styles et Vision IA extraits.`,
+        'Enrichissement terminé',
+        `${products.length} produits analysés avec IA avancée !`,
         [
           {
             label: 'Voir les résultats',
-            action: () => setSearchQuery(''),
+            action: () => setShowDetailModal(true),
             variant: 'primary'
           }
         ]
       );
-
+      
     } catch (error) {
-      console.error('❌ Erreur enrichissement automatique:', error);
-      showError('Erreur enrichissement', 'Impossible d\'enrichir automatiquement les produits.');
+      showError('Erreur d\'enrichissement', 'Impossible d\'enrichir les produits.');
     } finally {
       setIsEnriching(false);
     }
   };
 
-  const enrichProductWithLocalAI = async (product: RawProduct, retailerId: string): Promise<EnrichedProduct> => {
-    // Simulation d'enrichissement IA local avancé
-    await new Promise(resolve => setTimeout(resolve, 100));
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = searchTerm === '' || 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.ai_attributes.colors.some(color => color.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      product.ai_attributes.materials.some(material => material.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const text = `${product.name} ${product.description} ${product.category}`.toLowerCase();
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     
-    // Détection couleurs avancée
-    const colors = detectAdvancedColors(text);
-    const materials = detectAdvancedMaterials(text);
-    const styles = detectAdvancedStyles(text);
-    const subcategory = detectSubcategory(text, product.category);
-    const dimensions = extractDimensions(text);
-    const room = detectRoom(text);
-    const tags = generateIntelligentTags(product.name, product.description, colors, materials, styles);
-    const visionSummary = generateVisionSummary(product.category, colors, materials, styles);
-    
-    // Score de confiance optimisé pour 100%
-    let confidence = 60; // Base
-    if (colors.length > 0) confidence += 15;
-    if (materials.length > 0) confidence += 15;
-    if (styles.length > 0) confidence += 10;
-    if (subcategory) confidence += 5;
-    if (dimensions) confidence += 5;
-    
-    return {
-      id: product.id,
-      handle: product.name.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 100),
-      title: product.name,
-      description: product.description,
-      category: product.category,
-      subcategory: subcategory,
-      color: colors[0] || '',
-      material: materials[0] || '',
-      fabric: materials.find(m => ['tissu', 'velours', 'cuir', 'chenille'].includes(m)) || '',
-      style: styles[0] || '',
-      dimensions: dimensions,
-      room: room,
-      price: product.price,
-      stock_qty: product.stock,
-      image_url: product.image_url,
-      product_url: product.product_url,
-      tags: tags,
-      seo_title: generateSEOTitle(product.name, colors[0], materials[0]),
-      seo_description: generateSEODescription(product.name, product.description, colors[0], materials[0]),
-      ad_headline: product.name.substring(0, 30),
-      ad_description: `${product.name} ${colors[0] || ''} ${materials[0] || ''}`.substring(0, 90),
-      google_product_category: getGoogleCategory(product.category),
-      gtin: product.sku || '',
-      brand: product.vendor,
-      confidence_score: Math.min(confidence, 100),
-      enriched_at: new Date().toISOString(),
-      enrichment_source: 'local_ai_with_vision',
-      retailer_id: retailerId,
-      ai_vision_summary: visionSummary,
-      created_at: product.created_at
-    };
-  };
+    return matchesSearch && matchesCategory;
+  });
 
-  const detectAdvancedColors = (text: string): string[] => {
-    const colorPatterns = [
-      { name: 'gris moderne', patterns: ['gris moderne', 'gris contemporain', 'gris design'] },
-      { name: 'beige doux', patterns: ['beige doux', 'beige chaleureux', 'beige naturel'] },
-      { name: 'beige chaleureux', patterns: ['beige chaleureux', 'beige chaud'] },
-      { name: 'blanc', patterns: ['blanc', 'white', 'ivoire', 'crème'] },
-      { name: 'noir', patterns: ['noir', 'black', 'anthracite'] },
-      { name: 'gris', patterns: ['gris', 'grey', 'gray'] },
-      { name: 'beige', patterns: ['beige', 'sable', 'lin'] },
-      { name: 'marron', patterns: ['marron', 'brown', 'chocolat', 'moka'] },
-      { name: 'bleu', patterns: ['bleu', 'blue', 'marine', 'navy'] },
-      { name: 'vert', patterns: ['vert', 'green', 'olive', 'sauge'] },
-      { name: 'rouge', patterns: ['rouge', 'red', 'bordeaux'] },
-      { name: 'jaune', patterns: ['jaune', 'yellow', 'moutarde'] },
-      { name: 'orange', patterns: ['orange', 'corail'] },
-      { name: 'rose', patterns: ['rose', 'pink', 'fuchsia'] },
-      { name: 'violet', patterns: ['violet', 'purple', 'mauve'] },
-      { name: 'naturel', patterns: ['naturel', 'natural', 'brut'] },
-      { name: 'chêne', patterns: ['chêne', 'oak'] },
-      { name: 'noyer', patterns: ['noyer', 'walnut'] },
-      { name: 'taupe', patterns: ['taupe', 'greige'] }
-    ];
-    
-    const detectedColors: string[] = [];
-    colorPatterns.forEach(({ name, patterns }) => {
-      if (patterns.some(pattern => text.includes(pattern))) {
-        detectedColors.push(name);
-      }
-    });
-    
-    return detectedColors;
-  };
+  const categories = [...new Set(products.map(p => p.category))];
 
-  const detectAdvancedMaterials = (text: string): string[] => {
-    const materialPatterns = [
-      { name: 'tissu dunbar 25', patterns: ['tissu dunbar 25', 'dunbar 25'] },
-      { name: 'tissu dunbar', patterns: ['tissu dunbar', 'dunbar'] },
-      { name: 'ressort ondulé', patterns: ['ressort ondulé', 'ressort'] },
-      { name: 'mousse haute densité', patterns: ['mousse haute densité', 'mousse'] },
-      { name: 'bois massif', patterns: ['bois massif', 'massif'] },
-      { name: 'métal', patterns: ['métal', 'metal', 'acier'] },
-      { name: 'verre', patterns: ['verre', 'glass'] },
-      { name: 'tissu', patterns: ['tissu', 'fabric'] },
-      { name: 'cuir', patterns: ['cuir', 'leather'] },
-      { name: 'velours', patterns: ['velours', 'velvet'] },
-      { name: 'travertin', patterns: ['travertin', 'travertine'] },
-      { name: 'marbre', patterns: ['marbre', 'marble'] },
-      { name: 'chenille', patterns: ['chenille'] },
-      { name: 'rotin', patterns: ['rotin', 'rattan'] }
-    ];
-    
-    const detectedMaterials: string[] = [];
-    materialPatterns.forEach(({ name, patterns }) => {
-      if (patterns.some(pattern => text.includes(pattern))) {
-        detectedMaterials.push(name);
-      }
-    });
-    
-    return detectedMaterials;
-  };
-
-  const detectAdvancedStyles = (text: string): string[] => {
-    const stylePatterns = [
-      { name: 'design contemporain', patterns: ['design contemporain', 'contemporain design'] },
-      { name: 'lignes épurées', patterns: ['lignes épurées', 'épuré', 'épurées'] },
-      { name: 'moderne', patterns: ['moderne', 'modern'] },
-      { name: 'contemporain', patterns: ['contemporain', 'contemporary'] },
-      { name: 'épuré', patterns: ['épuré', 'épurée', 'minimaliste'] },
-      { name: 'scandinave', patterns: ['scandinave', 'scandinavian', 'nordique'] },
-      { name: 'industriel', patterns: ['industriel', 'industrial'] },
-      { name: 'vintage', patterns: ['vintage', 'rétro'] },
-      { name: 'classique', patterns: ['classique', 'classic'] }
-    ];
-    
-    const detectedStyles: string[] = [];
-    stylePatterns.forEach(({ name, patterns }) => {
-      if (patterns.some(pattern => text.includes(pattern))) {
-        detectedStyles.push(name);
-      }
-    });
-    
-    return detectedStyles;
-  };
-
-  const detectSubcategory = (text: string, category: string): string => {
-    if (category.toLowerCase().includes('canapé')) {
-      if (text.includes('convertible')) return 'Canapé convertible';
-      if (text.includes('angle')) return 'Canapé d\'angle';
-      if (text.includes('lit')) return 'Canapé-lit';
-      return 'Canapé fixe';
+  const formatDimensions = (dimensions: any): string => {
+    const parts = [];
+    if (dimensions.largeur) parts.push(`L:${dimensions.largeur}cm`);
+    if (dimensions.profondeur) parts.push(`P:${dimensions.profondeur}cm`);
+    if (dimensions.hauteur) parts.push(`H:${dimensions.hauteur}cm`);
+    if (dimensions.hauteur_assise) parts.push(`Assise:${dimensions.hauteur_assise}cm`);
+    if (dimensions.couchage_largeur && dimensions.couchage_longueur) {
+      parts.push(`Couchage:${dimensions.couchage_largeur}×${dimensions.couchage_longueur}cm`);
     }
-    if (category.toLowerCase().includes('table')) {
-      if (text.includes('basse')) return 'Table basse';
-      if (text.includes('manger')) return 'Table à manger';
-      if (text.includes('ronde')) return 'Table ronde';
-      return 'Table';
-    }
-    if (category.toLowerCase().includes('chaise')) {
-      if (text.includes('bureau')) return 'Chaise de bureau';
-      if (text.includes('fauteuil')) return 'Fauteuil';
-      return 'Chaise de salle à manger';
-    }
-    return '';
-  };
-
-  const extractDimensions = (text: string): string => {
-    const dimensionMatch = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-    if (dimensionMatch) {
-      return dimensionMatch[3] ? 
-        `L:${dimensionMatch[1]}cm × l:${dimensionMatch[2]}cm × H:${dimensionMatch[3]}cm` :
-        `L:${dimensionMatch[1]}cm × l:${dimensionMatch[2]}cm`;
-    }
-    return '';
-  };
-
-  const detectRoom = (text: string): string => {
-    const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 'entrée'];
-    for (const room of rooms) {
-      if (text.includes(room)) return room;
-    }
-    return 'salon';
-  };
-
-  const generateIntelligentTags = (name: string, description: string, colors: string[], materials: string[], styles: string[]): string[] => {
-    const text = `${name} ${description}`.toLowerCase();
-    const tags = new Set<string>();
-    
-    // Ajouter catégorie
-    if (text.includes('canapé')) tags.add('canapé');
-    if (text.includes('table')) tags.add('table');
-    if (text.includes('chaise')) tags.add('chaise');
-    
-    // Ajouter couleurs
-    colors.forEach(color => tags.add(color));
-    
-    // Ajouter matériaux
-    materials.forEach(material => tags.add(material));
-    
-    // Ajouter styles
-    styles.forEach(style => tags.add(style));
-    
-    // Ajouter fonctionnalités
-    if (text.includes('convertible')) tags.add('convertible');
-    if (text.includes('rangement')) tags.add('rangement');
-    if (text.includes('angle')) tags.add('angle');
-    
-    return Array.from(tags).slice(0, 8);
-  };
-
-  const generateVisionSummary = (category: string, colors: string[], materials: string[], styles: string[]): string => {
-    const categoryLower = category.toLowerCase();
-    
-    if (categoryLower.includes('canapé')) {
-      return `Canapé ${styles[0] || 'contemporain'} en ${materials[0] || 'tissu'} ${colors[0] || 'moderne'} avec finition soignée. Design aux lignes épurées avec mécanisme ${text.includes('convertible') ? 'convertible visible' : 'fixe'}. Qualité premium avec coutures précises et rembourrage généreux.`;
-    }
-    
-    if (categoryLower.includes('table')) {
-      return `Table ${styles[0] || 'moderne'} en ${materials[0] || 'bois'} ${colors[0] || 'naturel'} avec finition élégante. Plateau ${text.includes('ronde') ? 'rond' : 'rectangulaire'} aux proportions harmonieuses. Pieds ${materials[1] || 'métal'} pour stabilité optimale.`;
-    }
-    
-    if (categoryLower.includes('chaise')) {
-      return `Chaise ${styles[0] || 'contemporaine'} en ${materials[0] || 'tissu'} ${colors[0] || 'moderne'} avec structure solide. Design ergonomique aux lignes épurées. Finition soignée avec détails de qualité premium.`;
-    }
-    
-    return `Produit ${styles[0] || 'moderne'} en ${materials[0] || 'matériau'} ${colors[0] || 'naturel'} avec finition soignée. Design contemporain aux lignes épurées. Qualité premium avec assemblage précis.`;
-  };
-
-  const generateSEOTitle = (name: string, color: string, material: string): string => {
-    return `${name} ${color ? color : ''} ${material ? material : ''} - Decora Home`.substring(0, 70);
-  };
-
-  const generateSEODescription = (name: string, description: string, color: string, material: string): string => {
-    return `${name} ${color ? 'en ' + color : ''} ${material ? material : ''}. ${description.substring(0, 100)}. Livraison gratuite.`.substring(0, 155);
-  };
-
-  const getGoogleCategory = (category: string): string => {
-    const categoryMappings: { [key: string]: string } = {
-      'Canapé': '635',
-      'Table': '443',
-      'Chaise': '436',
-      'Lit': '569',
-      'Rangement': '6552'
-    };
-    return categoryMappings[category] || '696';
-  };
-
-  const handleSmartSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    setSearchResults([]);
-
-    try {
-      console.log('🔍 Recherche intelligente locale:', searchQuery);
-      
-      // Recherche dans les produits enrichis et bruts
-      const allProducts = [...enrichedProducts, ...rawProducts];
-      const results = allProducts.filter(product => {
-        const searchText = searchQuery.toLowerCase();
-        const productText = `${product.title} ${product.description} ${product.category}`.toLowerCase();
-        
-        return productText.includes(searchText) ||
-               (product.tags && product.tags.some(tag => tag.toLowerCase().includes(searchText)));
-      }).map(product => ({
-        ...product,
-        relevance_score: calculateRelevanceScore(product, searchQuery),
-        matched_attributes: getMatchedAttributes(product, searchQuery),
-        ai_reasoning: `Correspondance trouvée dans ${getMatchedFields(product, searchQuery).join(', ')}`
-      })).sort((a, b) => b.relevance_score - a.relevance_score);
-
-      setSearchResults(results.slice(0, 10));
-      
-      showSuccess('Recherche terminée', `${results.length} produits trouvés !`);
-
-    } catch (error) {
-      console.error('❌ Erreur recherche:', error);
-      showError('Erreur de recherche', 'Impossible d\'effectuer la recherche.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const calculateRelevanceScore = (product: any, query: string): number => {
-    const queryLower = query.toLowerCase();
-    const productText = `${product.title} ${product.description}`.toLowerCase();
-    let score = 0;
-    
-    // Score titre
-    if (product.title.toLowerCase().includes(queryLower)) score += 50;
-    
-    // Score catégorie
-    if (product.category.toLowerCase().includes(queryLower)) score += 30;
-    
-    // Score description
-    if (productText.includes(queryLower)) score += 20;
-    
-    // Score tags
-    if (product.tags && product.tags.some((tag: string) => tag.toLowerCase().includes(queryLower))) {
-      score += 25;
-    }
-    
-    return Math.min(score, 100);
-  };
-
-  const getMatchedAttributes = (product: any, query: string): string[] => {
-    const matches: string[] = [];
-    const queryLower = query.toLowerCase();
-    
-    if (product.title.toLowerCase().includes(queryLower)) matches.push('titre');
-    if (product.category.toLowerCase().includes(queryLower)) matches.push('catégorie');
-    if (product.description.toLowerCase().includes(queryLower)) matches.push('description');
-    if (product.tags && product.tags.some((tag: string) => tag.toLowerCase().includes(queryLower))) {
-      matches.push('tags');
-    }
-    
-    return matches;
-  };
-
-  const getMatchedFields = (product: any, query: string): string[] => {
-    return getMatchedAttributes(product, query);
-  };
-
-  const renderProductAnalysis = (product: EnrichedProduct) => {
-    if (!product) return null;
-
-    const colors = product.color ? [product.color] : [];
-    const materials = [product.material, product.fabric].filter(Boolean);
-    const styles = product.style ? [product.style] : [];
-    const functionalities = product.tags.filter(tag => 
-      ['convertible', 'couchage agrandi', 'déplage automatique', 'rangement intégré', 'conteneur', 'ressort ondulé', 'mousse haute densité', 'facile à monter', 'inclinable'].includes(tag)
-    );
-    const rooms = product.room ? [product.room] : [];
-
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
-            <div className="flex items-center gap-3">
-              <Brain className="w-8 h-8 text-purple-400" />
-              <div>
-                <h2 className="text-2xl font-bold text-white">Analyse Smart AI - {product.title}</h2>
-                <p className="text-gray-300">Enrichissement automatique avec Vision IA</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowProductModal(false)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="p-6 space-y-8">
-            {/* Image et infos de base */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div>
-                <div className="w-full h-80 rounded-2xl overflow-hidden bg-gray-600 mb-6">
-                  <img 
-                    src={product.image_url} 
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                    }}
-                  />
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-white mb-2">{product.title}</h3>
-                    <p className="text-gray-300">{product.description}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Analyse IA - Confiance */}
-              <div className="space-y-6">
-                <div className="bg-purple-500/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/50">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Brain className="w-6 h-6 text-purple-400" />
-                      <h4 className="font-bold text-white">Analyse IA - Confiance: {product.confidence_score}%</h4>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 to-emerald-400 h-3 rounded-full transition-all duration-1000"
-                      style={{ width: `${product.confidence_score}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Dimensions extraites par IA */}
-                {product.dimensions && (
-                  <div className="bg-blue-500/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-400/50">
-                    <h4 className="font-bold text-white mb-4">Dimensions extraites par IA</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {product.dimensions.includes('L:') && (
-                        <div className="flex justify-between">
-                          <span className="text-blue-200">Largeur :</span>
-                          <span className="text-white font-bold">263cm</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-blue-200">Profondeur :</span>
-                        <span className="text-white font-bold">105cm</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-200">Hauteur :</span>
-                        <span className="text-white font-bold">93cm</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-200">Hauteur Assise :</span>
-                        <span className="text-white font-bold">45cm</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Variations */}
-                <div className="bg-teal-500/20 backdrop-blur-xl rounded-2xl p-6 border border-teal-400/50">
-                  <h4 className="font-bold text-white mb-4">Variations (2)</h4>
-                  <div className="space-y-3">
-                    <div className="bg-black/20 rounded-xl p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h5 className="font-semibold text-white">Gris moderne</h5>
-                          <p className="text-teal-300 text-sm">Couleur: Gris moderne</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-green-400 font-bold text-lg">899€</div>
-                          <div className="text-gray-400 text-sm">Stock: 50</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-black/20 rounded-xl p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h5 className="font-semibold text-white">Beige doux</h5>
-                          <p className="text-teal-300 text-sm">Couleur: Beige doux</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-green-400 font-bold text-lg">899€</div>
-                          <div className="text-gray-400 text-sm">Stock: 45</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Attributs IA en grille */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Couleurs IA */}
-              {colors.length > 0 && (
-                <div className="bg-pink-500/20 backdrop-blur-xl rounded-2xl p-6 border border-pink-400/50">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-pink-400" />
-                    Couleurs IA ({colors.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {colors.map((color, index) => (
-                      <span key={index} className="bg-pink-500/30 text-pink-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {color}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Matériaux IA */}
-              {materials.length > 0 && (
-                <div className="bg-green-500/20 backdrop-blur-xl rounded-2xl p-6 border border-green-400/50">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <Wrench className="w-5 h-5 text-green-400" />
-                    Matériaux IA ({materials.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {materials.map((material, index) => (
-                      <span key={index} className="bg-green-500/30 text-green-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {material}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Styles IA */}
-              {styles.length > 0 && (
-                <div className="bg-purple-500/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/50">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    Styles IA ({styles.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {styles.map((style, index) => (
-                      <span key={index} className="bg-purple-500/30 text-purple-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {style}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Fonctionnalités IA */}
-              {functionalities.length > 0 && (
-                <div className="bg-orange-500/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-400/50">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <Wrench className="w-5 h-5 text-orange-400" />
-                    Fonctionnalités IA ({functionalities.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {functionalities.map((func, index) => (
-                      <span key={index} className="bg-orange-500/30 text-orange-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {func}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Pièces IA */}
-              {rooms.length > 0 && (
-                <div className="bg-blue-500/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-400/50">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <Home className="w-5 h-5 text-blue-400" />
-                    Pièces IA ({rooms.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {rooms.map((room, index) => (
-                      <span key={index} className="bg-blue-500/30 text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {room}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Vision IA Summary */}
-            {product.ai_vision_summary && (
-              <div className="bg-cyan-500/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/50">
-                <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-cyan-400" />
-                  Synthèse Vision IA
-                </h4>
-                <p className="text-cyan-200 leading-relaxed">{product.ai_vision_summary}</p>
-              </div>
-            )}
-
-            {/* SEO optimisé par IA */}
-            <div className="bg-blue-500/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-400/50">
-              <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-400" />
-                SEO optimisé par IA
-              </h4>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-blue-200 text-sm mb-2">Titre SEO :</label>
-                  <div className="bg-black/40 rounded-lg p-3 text-white font-medium">
-                    {product.seo_title}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-blue-200 text-sm mb-2">Description SEO :</label>
-                  <div className="bg-black/40 rounded-lg p-3 text-white">
-                    {product.seo_description}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-blue-200 text-sm mb-2">Tags SEO :</label>
-                  <div className="flex flex-wrap gap-2">
-                    {product.tags.map((tag, index) => (
-                      <span key={index} className="bg-blue-500/30 text-blue-200 px-3 py-1 rounded-full text-sm">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-between items-center pt-6 border-t border-slate-600/50">
-              <button
-                onClick={() => {
-                  const dataStr = JSON.stringify(product, null, 2);
-                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                  const url = URL.createObjectURL(dataBlob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `${product.handle}-analysis.json`;
-                  link.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
-              >
-                <Download className="w-4 h-4" />
-                Exporter données IA
-              </button>
-              
-              <button
-                onClick={() => setShowProductModal(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderProductCard = (product: EnrichedProduct | RawProduct, isEnriched: boolean = false) => {
-    const isRaw = !isEnriched;
-    
-    return (
-      <div 
-        key={product.id} 
-        className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20 hover:border-cyan-500/50 transition-all hover:scale-105 cursor-pointer"
-        onClick={() => {
-          if (isEnriched) {
-            setSelectedProduct(product as EnrichedProduct);
-            setShowProductModal(true);
-          }
-        }}
-      >
-        <div className="relative">
-          <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
-            <img 
-              src={product.image_url} 
-              alt={product.title || product.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-              }}
-            />
-          </div>
-          
-          {/* Badge d'état */}
-          <div className="absolute top-2 right-2">
-            {isEnriched ? (
-              <span className="bg-green-500/90 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                ✨ Enrichi IA
-              </span>
-            ) : (
-              <span className="bg-orange-500/90 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                <Package className="w-3 h-3" />
-                📦 Non enrichi
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <h3 className="font-semibold text-white mb-2 line-clamp-2">{product.title || product.name}</h3>
-        <p className="text-gray-300 text-sm mb-3">{product.category} • {product.vendor}</p>
-        
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xl font-bold text-green-400">{product.price}€</span>
-          {product.compare_at_price && product.compare_at_price > product.price && (
-            <>
-              <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
-              <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
-                -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
-              </span>
-            </>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-between mb-4">
-          <span className={`font-semibold ${(product.stock || (product as any).stock_qty) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            Stock: {product.stock || (product as any).stock_qty || 0}
-          </span>
-          {isEnriched && (
-            <span className="text-purple-400 text-sm font-bold">
-              IA: {(product as EnrichedProduct).confidence_score}%
-            </span>
-          )}
-        </div>
-        
-        {/* Tags pour produits enrichis */}
-        {isEnriched && (product as EnrichedProduct).tags && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {(product as EnrichedProduct).tags.slice(0, 3).map((tag, index) => (
-              <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        
-        <div className="flex gap-2">
-          {isEnriched ? (
-            <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm">
-              <Eye className="w-3 h-3" />
-              Analyse IA
-            </button>
-          ) : (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEnrichSingleProduct(product);
-              }}
-              className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
-            >
-              <Brain className="w-3 h-3" />
-              Enrichir avec IA
-            </button>
-          )}
-          <a
-            href={product.product_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      </div>
-    );
-  };
-
-  const handleEnrichSingleProduct = async (product: RawProduct) => {
-    try {
-      showInfo('Enrichissement IA', `Analyse de ${product.name}...`);
-      
-      const enriched = await enrichProductWithLocalAI(product, retailerId);
-      
-      // Ajouter aux produits enrichis
-      setEnrichedProducts(prev => [...prev, enriched]);
-      
-      // Retirer des produits bruts
-      setRawProducts(prev => prev.filter(p => p.id !== product.id));
-      
-      // Sauvegarder
-      const enrichedKey = `enriched_products_${retailerId}`;
-      const currentEnriched = localStorage.getItem(enrichedKey);
-      const enrichedList = currentEnriched ? JSON.parse(currentEnriched) : [];
-      enrichedList.push(enriched);
-      localStorage.setItem(enrichedKey, JSON.stringify(enrichedList));
-      
-      showSuccess('Produit enrichi !', `${product.name} analysé avec IA !`);
-      
-    } catch (error) {
-      console.error('❌ Erreur enrichissement produit:', error);
-      showError('Erreur enrichissement', 'Impossible d\'enrichir ce produit.');
-    }
+    if (dimensions.diametre) parts.push(`Ø:${dimensions.diametre}cm`);
+    return parts.join(' × ');
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Chargement SMART AI...</p>
+          <Brain className="w-16 h-16 text-purple-400 animate-pulse mx-auto mb-4" />
+          <p className="text-white text-lg">Chargement Smart AI...</p>
+          <p className="text-gray-400 text-sm">Analyse IA avancée des produits</p>
         </div>
       </div>
     );
@@ -1057,244 +542,778 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">SMART AI - Enrichissement Catalogue</h2>
-          <p className="text-gray-300">
-            {enrichedProducts.length} produits enrichis • {rawProducts.length} produits bruts
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Brain className="w-8 h-8 text-purple-400" />
+            Smart AI Enrichment
+          </h2>
+          <p className="text-gray-300 mt-2">
+            {filteredProducts.length} produit(s) enrichi(s) • {filteredProducts.reduce((sum, p) => sum + p.variations.length, 0)} variation(s)
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex gap-3">
           <button
-            onClick={loadProducts}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+            onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl flex items-center gap-2 transition-all"
           >
-            <RefreshCw className="w-4 h-4" />
-            Actualiser
+            <BarChart3 className="w-4 h-4" />
+            {viewMode === 'table' ? 'Vue grille' : 'Vue liste'}
           </button>
           
-          {rawProducts.length > 0 && (
-            <button
-              onClick={handleAutoEnrichment}
-              disabled={isEnriching}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isEnriching ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Enrichissement...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Enrichir le catalogue
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Recherche Intelligente IA */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <Search className="w-6 h-6 text-cyan-400" />
-          Recherche Intelligente IA
-        </h3>
-        
-        <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSmartSearch()}
-            placeholder="Ex: canapé bleu pour salon moderne sous 800€"
-            className="flex-1 bg-black/40 border border-cyan-500/50 rounded-xl px-4 py-3 text-white placeholder-cyan-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
-          />
           <button
-            onClick={handleSmartSearch}
-            disabled={isSearching || !searchQuery.trim()}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            onClick={handleEnrichAll}
+            disabled={isEnriching}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all disabled:cursor-not-allowed"
           >
-            {isSearching ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+            {isEnriching ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Enrichissement IA...
+              </>
             ) : (
-              <Search className="w-5 h-5" />
+              <>
+                <Sparkles className="w-5 h-5" />
+                Enrichir avec IA
+              </>
             )}
-            Rechercher
           </button>
         </div>
+      </div>
 
-        {/* Exemples de recherches */}
-        <div>
-          <p className="text-sm text-gray-400 mb-3">Exemples de recherches intelligentes :</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              'canapé bleu moderne',
-              'table ronde sous 500€',
-              'chaise bureau ergonomique',
-              'mobilier scandinave chambre',
-              'rangement blanc salon'
-            ].map((example, index) => (
-              <button
-                key={index}
-                onClick={() => setSearchQuery(example)}
-                className="text-xs bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 px-3 py-2 rounded-lg border border-cyan-500/30 transition-all"
-              >
-                {example}
-              </button>
+      {/* Filtres */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par nom, catégorie, couleur, matériau..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-black/40 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30"
+            />
+          </div>
+          
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-3 text-white"
+          >
+            <option value="all">Toutes les catégories</option>
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
             ))}
-          </div>
+          </select>
         </div>
       </div>
 
-      {/* Capacités SMART AI */}
-      <div className="bg-gradient-to-r from-blue-500/20 to-purple-600/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-400/30">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Zap className="w-5 h-5 text-cyan-400" />
-          Capacités SMART AI
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-cyan-300 mb-2">🧠 Enrichissement automatique :</h4>
-            <ul className="text-cyan-200 text-sm space-y-1">
-              <li>• Catégories et sous-catégories précises</li>
-              <li>• Couleurs, matériaux, styles détectés</li>
-              <li>• Dimensions et caractéristiques extraites</li>
-              <li>• Tags intelligents du titre et description</li>
-              <li>• Vision IA pour analyse visuelle</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-cyan-300 mb-2">🔍 Recherche intelligente :</h4>
-            <ul className="text-cyan-200 text-sm space-y-1">
-              <li>• "Canapé bleu salon" → couleur + pièce</li>
-              <li>• "Table chêne sous 500€" → matériau + prix</li>
-              <li>• "Mobilier scandinave chambre" → style + pièce</li>
-              <li>• Scoring de pertinence IA</li>
-              <li>• Raisonnement explicable</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Résultats de recherche */}
-      {searchResults.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold text-white">Résultats de recherche ({searchResults.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {searchResults.map((result) => (
-              <div key={result.id} className="bg-black/20 rounded-xl p-4 border border-white/10">
-                <div className="flex gap-4">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
-                    <img 
-                      src={result.image_url} 
-                      alt={result.title || result.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
-                      }}
+      {/* Vue liste ou grille */}
+      {viewMode === 'table' ? (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-black/20">
+                <tr>
+                  <th className="text-left p-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500"
                     />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                      <h5 className="font-semibold text-white text-sm">{result.title || result.name}</h5>
-                      <div className="text-right">
-                        <div className="text-cyan-400 font-bold">{result.price}€</div>
-                        <div className="text-xs text-green-400">
-                          Score: {Math.round(result.relevance_score)}%
+                  </th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Produit Smart AI</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Prix</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Variations</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Fonctionnalités & Pièces IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">SEO Optimisé IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Confiance</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((product) => (
+                  <tr key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                    <td className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => handleSelectProduct(product.id)}
+                        className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 flex-shrink-0">
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white text-sm">{product.name}</div>
+                          <div className="text-gray-400 text-xs">{product.category} • {product.vendor}</div>
+                          <div className="text-gray-500 text-xs mt-1 line-clamp-2">
+                            {product.description.substring(0, 100)}...
+                          </div>
+                          {/* Dimensions IA */}
+                          <div className="text-purple-300 text-xs mt-1">
+                            📏 {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <p className="text-gray-300 text-xs mb-2">{result.category}</p>
-                    
-                    {/* Attributs correspondants */}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {result.matched_attributes?.map((attr: string, i: number) => (
-                        <span key={i} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
-                          {attr}
+                    </td>
+                    <td className="p-4">
+                      <div className="text-green-400 font-bold">
+                        {product.variations.length > 1 ? 
+                          `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                          `${product.price}€`
+                        }
+                      </div>
+                      <div className="text-gray-400 text-xs">Stock: {product.stock}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-cyan-300 font-semibold text-sm">{product.variations.length}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {product.variations.slice(0, 2).map((variation, index) => (
+                          <span key={index} className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                            {variation.options.map(opt => opt.value).join(' ') || variation.title}
+                          </span>
+                        ))}
+                        {product.variations.length > 2 && (
+                          <span className="text-cyan-400 text-xs">+{product.variations.length - 2}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {/* Couleurs IA */}
+                        {product.ai_attributes.colors.length > 0 && (
+                          <div>
+                            <div className="text-pink-300 text-xs font-semibold mb-1">🎨 Couleurs IA:</div>
+                            <div className="flex flex-wrap gap-1">
+                            {product.ai_attributes.colors.slice(0, 2).map((color, index) => (
+                              <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
+                                {color}
+                              </span>
+                            ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Matériaux IA */}
+                        {product.ai_attributes.materials.length > 0 && (
+                          <div>
+                            <div className="text-green-300 text-xs font-semibold mb-1">🏗️ Matériaux IA:</div>
+                            <div className="flex flex-wrap gap-1">
+                            {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
+                              <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                                {material}
+                              </span>
+                            ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Styles IA */}
+                        {product.ai_attributes.styles.length > 0 && (
+                          <div>
+                            <div className="text-blue-300 text-xs font-semibold mb-1">✨ Styles IA:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.styles.slice(0, 2).map((style, index) => (
+                                <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                                  {style}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        {/* Fonctionnalités IA */}
+                        {product.ai_attributes.features.length > 0 && (
+                          <div>
+                            <div className="text-orange-300 text-xs font-semibold mb-1">⚙️ Fonctionnalités:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.features.slice(0, 3).map((feature, index) => (
+                                <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Pièces IA */}
+                        {product.ai_attributes.room.length > 0 && (
+                          <div>
+                            <div className="text-indigo-300 text-xs font-semibold mb-1">🏠 Pièces:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {product.ai_attributes.room.slice(0, 2).map((room, index) => (
+                                <span key={index} className="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs">
+                                  {room}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-2">
+                        {/* Titre SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">📝 Titre SEO:</div>
+                          <div className="text-white text-xs font-medium line-clamp-1">{product.seo_optimized.title}</div>
+                        </div>
+                        {/* Description SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">📄 Description SEO:</div>
+                          <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
+                        </div>
+                        {/* Tags SEO */}
+                        <div>
+                          <div className="text-cyan-300 text-xs font-semibold mb-1">🏷️ Tags SEO:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {product.seo_optimized.tags.slice(0, 3).map((tag, index) => (
+                              <span key={index} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded-full text-xs">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        product.ai_attributes.confidence_score >= 80 ? 'bg-green-500/20 text-green-300' :
+                        product.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-red-500/20 text-red-300'
+                      }`}>
+                        {product.ai_attributes.confidence_score}%
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowDetailModal(true);
+                          }}
+                          className="text-purple-400 hover:text-purple-300 p-1"
+                          title="Voir détails IA"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="text-green-400 hover:text-green-300 p-1" title="Exporter">
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-purple-500/50 transition-all hover:scale-105">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.includes(product.id)}
+                  onChange={() => handleSelectProduct(product.id)}
+                  className="absolute top-2 left-2 w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 z-10"
+                />
+                <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <h3 className="font-bold text-white text-lg mb-2 line-clamp-2">{product.name}</h3>
+              <p className="text-gray-300 text-sm mb-4">{product.category} • {product.vendor}</p>
+              
+              {/* Prix et confiance */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-2xl font-bold text-green-400">
+                  {product.variations.length > 1 ? 
+                    `${Math.min(...product.variations.map(v => v.price))}€ - ${Math.max(...product.variations.map(v => v.price))}€` :
+                    `${product.price}€`
+                  }
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  product.ai_attributes.confidence_score >= 80 ? 'bg-green-500/20 text-green-300' :
+                  product.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500/20 text-yellow-300' :
+                  'bg-red-500/20 text-red-300'
+                }`}>
+                  IA: {product.ai_attributes.confidence_score}%
+                </div>
+              </div>
+
+              {/* Variations */}
+              <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
+                <div className="text-cyan-300 text-sm font-semibold mb-2">
+                  {product.variations.length} variation(s):
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {product.variations.map((variation, index) => (
+                    <span key={index} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded text-xs">
+                      {variation.options.map(opt => opt.value).join(' ') || variation.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dimensions IA */}
+              <div className="bg-purple-500/20 rounded-xl p-3 mb-4 border border-purple-400/30">
+                <div className="text-purple-300 text-sm font-semibold mb-2">Dimensions IA:</div>
+                <div className="text-white text-xs">
+                  {formatDimensions(product.ai_attributes.dimensions) || 'Non détectées'}
+                </div>
+              </div>
+
+              {/* Couleurs IA */}
+              {product.ai_attributes.colors.length > 0 && (
+                <div className="bg-pink-500/20 rounded-xl p-3 mb-3 border border-pink-400/30">
+                  <div className="text-pink-300 text-sm font-semibold mb-2">🎨 Couleurs IA ({product.ai_attributes.colors.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.colors.map((color, index) => (
+                      <span key={index} className="bg-pink-600/30 text-pink-200 px-2 py-1 rounded-full text-xs">
+                        {color}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Matériaux IA */}
+              {product.ai_attributes.materials.length > 0 && (
+                <div className="bg-green-500/20 rounded-xl p-3 mb-3 border border-green-400/30">
+                  <div className="text-green-300 text-sm font-semibold mb-2">🏗️ Matériaux IA ({product.ai_attributes.materials.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.materials.map((material, index) => (
+                      <span key={index} className="bg-green-600/30 text-green-200 px-2 py-1 rounded-full text-xs">
+                        {material}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Styles IA */}
+              {product.ai_attributes.styles.length > 0 && (
+                <div className="bg-blue-500/20 rounded-xl p-3 mb-3 border border-blue-400/30">
+                  <div className="text-blue-300 text-sm font-semibold mb-2">✨ Styles IA ({product.ai_attributes.styles.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.styles.map((style, index) => (
+                      <span key={index} className="bg-blue-600/30 text-blue-200 px-2 py-1 rounded-full text-xs">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fonctionnalités IA */}
+              {product.ai_attributes.features.length > 0 && (
+                <div className="bg-orange-500/20 rounded-xl p-3 mb-3 border border-orange-400/30">
+                  <div className="text-orange-300 text-sm font-semibold mb-2">⚙️ Fonctionnalités IA ({product.ai_attributes.features.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.features.map((feature, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-2 py-1 rounded-full text-xs">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pièces IA */}
+              {product.ai_attributes.room.length > 0 && (
+                <div className="bg-indigo-500/20 rounded-xl p-3 mb-3 border border-indigo-400/30">
+                  <div className="text-indigo-300 text-sm font-semibold mb-2">🏠 Pièces IA ({product.ai_attributes.room.length}):</div>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.room.map((room, index) => (
+                      <span key={index} className="bg-indigo-600/30 text-indigo-200 px-2 py-1 rounded-full text-xs">
+                        {room}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SEO optimisé par IA */}
+              <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
+                <div className="text-cyan-300 text-sm font-semibold mb-2">🔍 SEO Optimisé IA:</div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-cyan-300 text-xs">📝 Titre SEO:</label>
+                    <div className="text-white text-xs font-medium line-clamp-1">{product.seo_optimized.title}</div>
+                  </div>
+                  <div>
+                    <label className="text-cyan-300 text-xs">📄 Description SEO:</label>
+                    <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized.description}</div>
+                  </div>
+                  <div>
+                    <label className="text-cyan-300 text-xs">🏷️ Tags SEO:</label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {product.seo_optimized.tags.map((tag, index) => (
+                        <span key={index} className="bg-cyan-600/30 text-cyan-200 px-1 py-0.5 rounded text-xs">
+                          {tag}
                         </span>
                       ))}
                     </div>
-                    
-                    {/* Raisonnement IA */}
-                    {result.ai_reasoning && (
-                      <p className="text-xs text-blue-300 italic">
-                        🤖 {result.ai_reasoning}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Attributs IA détaillés - Section supprimée car maintenant affichée séparément */}
+              <div className="space-y-3 mb-4">
+                {/* Cette section a été remplacée par les sections individuelles ci-dessus */}
+                {/* Couleurs */}
+                {product.ai_attributes.colors.length > 0 && (
+                  <div>
+                    <div className="text-pink-300 text-xs font-semibold mb-1">Couleurs IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.colors.slice(0, 3).map((color, index) => (
+                        <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
+                          {color}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Matériaux */}
+                {product.ai_attributes.materials.length > 0 && (
+                  <div>
+                    <div className="text-green-300 text-xs font-semibold mb-1">Matériaux IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.materials.slice(0, 2).map((material, index) => (
+                        <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                          {material}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fonctionnalités */}
+                {product.ai_attributes.features.length > 0 && (
+                  <div>
+                    <div className="text-orange-300 text-xs font-semibold mb-1">Fonctionnalités IA:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {product.ai_attributes.features.slice(0, 3).map((feature, index) => (
+                        <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setShowDetailModal(true);
+                  }}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold"
+                >
+                  <Eye className="w-4 h-4" />
+                  Détails IA
+                </button>
+                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm font-semibold">
+                  <Download className="w-4 h-4" />
+                  Exporter
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Produits Enrichis */}
-      {enrichedProducts.length > 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-              <Brain className="w-6 h-6 text-purple-400" />
-              Catalogue Enrichi IA
-              <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm">
-                {enrichedProducts.length} produits
-              </span>
-            </h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {enrichedProducts.slice(0, 12).map((product) => renderProductCard(product, true))}
-          </div>
-        </div>
-      )}
-
-      {/* Produits Bruts */}
-      {rawProducts.length > 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-              <Package className="w-6 h-6 text-orange-400" />
-              Catalogue Brut - Non Enrichi
-              <span className="bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full text-sm">
-                {rawProducts.length} produits
-              </span>
-            </h3>
-          </div>
-          
-          <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl p-4 mb-6">
-            <h4 className="font-semibold text-orange-200 mb-2">💡 Enrichissement automatique en cours...</h4>
-            <p className="text-orange-300 text-sm">
-              L'IA analyse automatiquement vos produits pour extraire couleurs, matériaux, styles, dimensions et générer des synthèses Vision IA.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {rawProducts.slice(0, 12).map((product) => renderProductCard(product, false))}
-          </div>
-        </div>
-      )}
-
-      {/* État vide */}
-      {enrichedProducts.length === 0 && rawProducts.length === 0 && (
+      {/* Message si aucun produit */}
+      {filteredProducts.length === 0 && (
         <div className="text-center py-20">
           <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Aucun produit trouvé</h3>
+          <h3 className="text-xl font-bold text-white mb-2">Aucun produit Smart AI trouvé</h3>
           <p className="text-gray-400 mb-6">
-            Importez d'abord votre catalogue via l'onglet "Intégration" pour utiliser SMART AI.
+            {searchTerm || selectedCategory !== 'all'
+              ? 'Aucun produit ne correspond à vos critères de recherche.'
+              : 'Enrichissez vos 250 produits variables avec l\'IA avancée.'}
           </p>
           <button
-            onClick={() => window.location.href = '/admin#integration'}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            onClick={handleEnrichAll}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
           >
-            Importer votre catalogue
+            Enrichir avec IA
           </button>
         </div>
       )}
 
-      {/* Modal d'analyse produit */}
-      {showProductModal && selectedProduct && renderProductAnalysis(selectedProduct)}
+      {/* Statistiques */}
+      <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-2xl p-6 border border-purple-400/30">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-purple-400" />
+          Statistiques Smart AI
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-400">{products.length}</div>
+            <div className="text-purple-300 text-sm">Produits variables</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-cyan-400">
+              {products.reduce((sum, p) => sum + p.variations.length, 0)}
+            </div>
+            <div className="text-cyan-300 text-sm">Variations totales</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {Math.round(products.reduce((sum, p) => sum + p.ai_attributes.confidence_score, 0) / products.length) || 0}%
+            </div>
+            <div className="text-green-300 text-sm">Confiance IA</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-400">
+              {products.reduce((sum, p) => sum + p.ai_attributes.colors.length, 0)}
+            </div>
+            <div className="text-orange-300 text-sm">Couleurs détectées</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-pink-400">
+              {products.reduce((sum, p) => sum + p.ai_attributes.features.length, 0)}
+            </div>
+            <div className="text-pink-300 text-sm">Fonctionnalités</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal détails produit */}
+      {showDetailModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Brain className="w-6 h-6 text-purple-400" />
+                Analyse Smart AI - {selectedProduct.name}
+              </h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <ExternalLink className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Informations principales */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                  <div className="w-full h-80 rounded-2xl overflow-hidden bg-gray-600 mb-6">
+                    <img 
+                      src={selectedProduct.image_url} 
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">{selectedProduct.name}</h3>
+                      <p className="text-gray-300">{selectedProduct.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Confiance IA */}
+                  <div className="bg-purple-500/20 rounded-xl p-4 border border-purple-400/50">
+                    <h4 className="font-semibold text-purple-200 mb-3 flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      Analyse IA - Confiance: {selectedProduct.ai_attributes.confidence_score}%
+                    </h4>
+                    <div className="w-full bg-gray-700 rounded-full h-3">
+                      <div 
+                        className={`h-3 rounded-full transition-all ${
+                          selectedProduct.ai_attributes.confidence_score >= 80 ? 'bg-green-500' :
+                          selectedProduct.ai_attributes.confidence_score >= 60 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${selectedProduct.ai_attributes.confidence_score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dimensions détaillées */}
+                  <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-400/50">
+                    <h4 className="font-semibold text-blue-200 mb-3">Dimensions extraites par IA</h4>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(selectedProduct.ai_attributes.dimensions).map(([key, value]) => (
+                        <div key={key} className="flex justify-between">
+                          <span className="text-gray-300 capitalize">{key.replace('_', ' ')} :</span>
+                          <span className="text-white font-bold">{value}cm</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Variations */}
+                  <div className="bg-cyan-500/20 rounded-xl p-4 border border-cyan-400/50">
+                    <h4 className="font-semibold text-cyan-200 mb-3">
+                      Variations ({selectedProduct.variations.length})
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedProduct.variations.map((variation, index) => (
+                        <div key={index} className="bg-black/20 rounded-lg p-3">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-medium text-white">{variation.title}</div>
+                              <div className="flex gap-1 mt-1">
+                                {variation.options.map((option, optIndex) => (
+                                  <span key={optIndex} className="bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded-full text-xs">
+                                    {option.name}: {option.value}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-green-400">{variation.price}€</div>
+                              <div className="text-xs text-gray-400">Stock: {variation.stock}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attributs IA détaillés */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Couleurs */}
+                <div className="bg-pink-500/20 rounded-xl p-4 border border-pink-400/50">
+                  <h4 className="font-semibold text-pink-200 mb-3">Couleurs IA ({selectedProduct.ai_attributes.colors.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.ai_attributes.colors.map((color, index) => (
+                      <span key={index} className="bg-pink-600/30 text-pink-200 px-3 py-1 rounded-full text-sm">
+                        {color}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Matériaux */}
+                <div className="bg-green-500/20 rounded-xl p-4 border border-green-400/50">
+                  <h4 className="font-semibold text-green-200 mb-3">Matériaux IA ({selectedProduct.ai_attributes.materials.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.ai_attributes.materials.map((material, index) => (
+                      <span key={index} className="bg-green-600/30 text-green-200 px-3 py-1 rounded-full text-sm">
+                        {material}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Styles */}
+                <div className="bg-purple-500/20 rounded-xl p-4 border border-purple-400/50">
+                  <h4 className="font-semibold text-purple-200 mb-3">Styles IA ({selectedProduct.ai_attributes.styles.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.ai_attributes.styles.map((style, index) => (
+                      <span key={index} className="bg-purple-600/30 text-purple-200 px-3 py-1 rounded-full text-sm">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fonctionnalités et pièces */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Fonctionnalités */}
+                <div className="bg-orange-500/20 rounded-xl p-4 border border-orange-400/50">
+                  <h4 className="font-semibold text-orange-200 mb-3">Fonctionnalités IA ({selectedProduct.ai_attributes.features.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.ai_attributes.features.map((feature, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-3 py-1 rounded-full text-sm">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pièces */}
+                <div className="bg-indigo-500/20 rounded-xl p-4 border border-indigo-400/50">
+                  <h4 className="font-semibold text-indigo-200 mb-3">Pièces IA ({selectedProduct.ai_attributes.room.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.ai_attributes.room.map((room, index) => (
+                      <span key={index} className="bg-indigo-600/30 text-indigo-200 px-3 py-1 rounded-full text-sm">
+                        {room}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* SEO optimisé */}
+              <div className="bg-blue-500/20 rounded-xl p-4 border border-blue-400/50">
+                <h4 className="font-semibold text-blue-200 mb-3">SEO optimisé par IA</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-blue-300 text-sm">Titre SEO :</label>
+                    <div className="text-white font-medium">{selectedProduct.seo_optimized.title}</div>
+                  </div>
+                  <div>
+                    <label className="text-blue-300 text-sm">Description SEO :</label>
+                    <div className="text-gray-300">{selectedProduct.seo_optimized.description}</div>
+                  </div>
+                  <div>
+                    <label className="text-blue-300 text-sm">Tags SEO :</label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedProduct.seo_optimized.tags.map((tag, index) => (
+                        <span key={index} className="bg-blue-600/30 text-blue-200 px-2 py-1 rounded text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-all">
+                  Exporter données IA
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

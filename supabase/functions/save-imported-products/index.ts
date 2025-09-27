@@ -98,8 +98,6 @@ Deno.serve(async (req: Request) => {
 
     if (error) {
       console.error('❌ [save-imported-products] Erreur insertion DB:', error);
-      console.error('❌ [save-imported-products] Détails erreur:', insertError.message);
-      console.error('❌ [save-imported-products] Code erreur:', insertError.code);
       throw error;
     }
 
@@ -127,9 +125,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: false,
         error: 'Erreur lors de la sauvegarde des produits',
-        details: error.message,
-        error_code: error.code || 'unknown',
-        retailer_id: retailer_id
+        details: error.message
       }),
       {
         status: 500,

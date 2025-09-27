@@ -8,7 +8,6 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 interface TrainingRequest {
   csvData: string;
-  retailer_id?: string;
   isIncremental?: boolean;
 }
 
@@ -44,10 +43,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { csvData, retailer_id = '00000000-0000-0000-0000-000000000000', isIncremental = false }: TrainingRequest = await req.json();
+    const { csvData, isIncremental = false }: TrainingRequest = await req.json();
     
     console.log('🤖 Démarrage entraînement IA catalogue...');
-    console.log('🏪 Retailer ID:', retailer_id);
     console.log('📊 Mode incrémental:', isIncremental);
     
     // Initialize Supabase client
@@ -66,23 +64,8 @@ Deno.serve(async (req: Request) => {
       console.log(`🔍 Traitement: ${product.name?.substring(0, 30)}...`);
       
       const attributes = await extractAttributesWithAI(product);
-      
-      // NOUVEAU: Ajouter Vision IA automatique si image disponible
-      if (product.image_url && product.image_url !== 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg') {
-        try {
-          console.log('👁️ [auto-ai-trainer] Analyse Vision IA pour:', product.name?.substring(0, 30));
-          const visionAnalysis = await analyzeProductImageWithAI(product.image_url, attributes);
-          if (visionAnalysis) {
-            attributes.ai_vision_summary = visionAnalysis;
-          }
-        } catch (visionError) {
-          console.warn('⚠️ [auto-ai-trainer] Vision IA échouée:', visionError);
-        }
-      }
-      
       const processedProduct = {
         ...product,
-        store_id: retailer_id,
         extracted_attributes: attributes,
         processed_at: new Date().toISOString(),
         confidence_score: calculateConfidenceScore(attributes)
@@ -274,7 +257,7 @@ EXTRAIT UNIQUEMENT ces attributs au format JSON :
   "categories": ["catégorie1"],
   "features": ["fonctionnalité1", "fonctionnalité2"],
   "room": ["salon", "chambre"],
-  "tags": ["mot-clé1", "mot-clé2", "mot-clé3", "mot-clé4", "mot-clé5"]
+  "tags": ["mot-clé1", "mot-clé2", "mot-clé3"]
 }
 
 RÈGLES:
@@ -282,7 +265,7 @@ RÈGLES:
 - Couleurs: blanc, noir, gris, beige, marron, bleu, vert, rouge, etc.
 - Matériaux: bois, métal, verre, tissu, cuir, velours, travertin, etc.
 - Styles: moderne, scandinave, industriel, vintage, minimaliste, etc.
-- Tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION du produit. Inclure le nom exact du modèle (VENTU, ALYANA, AUREA, INAYA), la catégorie, les couleurs, matériaux et fonctionnalités. Exemple pour "Canapé VENTU convertible" → ["canapé", "ventu", "convertible", "design", "contemporain"]
+- Tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION (ex: pour "Canapé VENTU convertible" → ["canapé", "ventu", "convertible", "design", "contemporain"])
 - Dimensions en cm uniquement
 - Pièces: salon, chambre, cuisine, bureau, salle à manger
 - Réponse JSON uniquement, pas de texte`;

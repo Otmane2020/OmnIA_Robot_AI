@@ -92,23 +92,18 @@ Deno.serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Validate retailer exists (skip for demo UUID)
-    let retailer = null;
-    if (retailer_id !== '00000000-0000-0000-0000-000000000000') {
-      const { data: retailerData } = await supabase
-        .from('retailers')
-        .select('id, company_name')
-        .eq('id', retailer_id)
-        .single();
+    // Validate retailer exists
+    const { data: retailer } = await supabase
+      .from('retailers')
+      .select('id, company_name')
+      .eq('id', retailer_id)
+      .single();
 
-      if (!retailerData) {
-        throw new Error(`Retailer ${retailer_id} non trouvé`);
-      }
-      retailer = retailerData;
-      console.log(`🏪 [advanced-enricher] Enrichissement pour: ${retailer.company_name}`);
-    } else {
-      console.log(`🏪 [advanced-enricher] Enrichissement pour compte démo`);
+    if (!retailer) {
+      throw new Error(`Retailer ${retailer_id} non trouvé`);
     }
+
+    console.log(`🏪 [advanced-enricher] Enrichissement pour: ${retailer.company_name}`);
 
     // Process products in batches
     const enrichedProducts = [];

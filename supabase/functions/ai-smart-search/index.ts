@@ -8,7 +8,6 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 interface SmartSearchRequest {
   query: string;
-  retailer_id?: string;
   filters?: {
     priceMax?: number;
     priceMin?: number;
@@ -37,9 +36,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, retailer_id, filters = {}, limit = 10 }: SmartSearchRequest = await req.json();
+    const { query, filters = {}, limit = 10 }: SmartSearchRequest = await req.json();
     
-    console.log('🔍 Recherche intelligente pour retailer:', retailer_id, '-', query);
+    console.log('🔍 Recherche intelligente:', query);
     console.log('🎯 Filtres:', filters);
 
     // Initialize Supabase client
@@ -52,13 +51,14 @@ Deno.serve(async (req: Request) => {
     console.log('🧠 Intention détectée:', searchIntent);
 
     // Get all products from database
-    let productQuery = supabase
+    const { data: products, error } = await supabase
       .from('ai_products')
       .select(`
         id,
         name,
         description,
         price,
+        compare_at_price,
         category,
         vendor,
         image_url,
@@ -72,13 +72,6 @@ Deno.serve(async (req: Request) => {
         created_at,
         updated_at
       `);
-
-    // Filter by retailer if provided
-    if (retailer_id) {
-      productQuery = productQuery.eq('store_id', retailer_id);
-    }
-
-    const { data: products, error } = await productQuery;
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
@@ -385,17 +378,18 @@ function calculateRelevanceScore(product: any, intent: any, filters: any): any {
 }
 
 async function generateExpertResponse(message: string, relevantProducts: any[], context: any[], apiKey: string) {
-  const productsContext = relevantProducts.length > 0 
-    ? relevantProducts.map(p => {
-        let productInfo = `• ${p.name} - ${p.price}€`;
-        if (p.category) productInfo += ` - ${p.category}`;
-        if (p.extracted_attributes?.subcategory) productInfo += ` - ${p.extracted_attributes.subcategory}`;
-        if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
-        if (p.extracted_attributes?.tags && Array.isArray(p.extracted_attributes.tags)) {
-          productInfo += ` - Tags: ${p.extracted_attributes.tags.join(', ')}`;
-        }
-        return productInfo;
-      }).join('\n') : 'Aucun produit trouvé.';
+  const productsContext = relevantProducts.length > 0 ? 
+    relevantProducts.map(p => {
+      let productInfo = `• ${p.name} - ${p.price}€`;
+      if (p.compare_at_price && p.compare_at_price > p.price) {
+        const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
+        productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
+      }
+      if (p.category) productInfo += ` - ${p.category}`;
+      if (p.extracted_attributes?.subcategory) productInfo += ` (${p.extracted_attributes.subcategory})`;
+      if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
+      return productInfo;
+    }).join('\n') : 'Aucun produit trouvé.';
 
   const systemPrompt = `Tu es OmnIA, conseiller déco Decora Home.
 Réponds court (2 phrases max), engageant et humain.
@@ -407,7 +401,7 @@ ${productsContext}`;
   const messages = [
     { role: 'system', content: systemPrompt },
     ...context.slice(-2),
-    { role: 'user', content: message }
+    { role: 'user', content: query }
   ];
 
   const resp = await fetch('https://api.deepseek.com/chat/completions', {
@@ -420,7 +414,7 @@ ${productsContext}`;
   const msg = data.choices?.[0]?.message?.content || "Pouvez-vous préciser ?";
   return {
     message: msg,
-    selectedProducts: relevantProducts.slice(0, 2),
-    should_show_products: relevantProducts.length > 0
+    selectedProducts: products.slice(0, 2),
+    should_show_products: products.length > 0
   };
 }
