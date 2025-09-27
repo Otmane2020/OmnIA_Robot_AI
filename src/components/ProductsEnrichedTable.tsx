@@ -3,7 +3,7 @@ import {
   Search, Filter, Eye, Edit, Trash2, ExternalLink, 
   Package, Tag, DollarSign, Image, BarChart3, Settings,
   ChevronDown, ChevronUp, X, Save, AlertCircle, CheckCircle,
-  Brain, Sparkles, Zap, RefreshCw, Download, Upload
+  Brain, Sparkles, Zap, RefreshCw, Download, Upload, Camera, Loader2
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
@@ -21,6 +21,7 @@ interface EnrichedProduct {
   dimensions: string;
   room: string;
   price: number;
+  compare_at_price?: number;
   stock_qty: number;
   image_url: string;
   product_url: string;
@@ -36,13 +37,26 @@ interface EnrichedProduct {
   enriched_at: string;
   enrichment_source: string;
   created_at: string;
+  ai_attributes?: {
+    colors: string[];
+    materials: string[];
+    styles: string[];
+    features: string[];
+    room: string[];
+  };
+  seo_optimized?: {
+    title: string;
+    description: string;
+    tags: string[];
+  };
+  ai_vision_analysis?: string;
 }
 
 interface ProductsEnrichedTableProps {
-  vendorId?: string;
+  retailerId?: string;
 }
 
-export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ vendorId }) => {
+export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ retailerId }) => {
   const [products, setProducts] = useState<EnrichedProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<EnrichedProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,11 +69,15 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
   const [isLoading, setIsLoading] = useState(true);
   const [isEnriching, setIsEnriching] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [showAIVisionModal, setShowAIVisionModal] = useState(false);
+  const [selectedProductForVision, setSelectedProductForVision] = useState<EnrichedProduct | null>(null);
+  const [aiVisionAnalysis, setAiVisionAnalysis] = useState<string>('');
+  const [isAnalyzingVision, setIsAnalyzingVision] = useState(false);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
     loadEnrichedProducts();
-  }, [vendorId]);
+  }, [retailerId]);
 
   useEffect(() => {
     // Filtrer les produits
@@ -114,6 +132,85 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const calculateDiscount = (price: number, compareAtPrice?: number): number => {
+    if (!compareAtPrice || compareAtPrice <= price) return 0;
+    return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
+  };
+
+  const handleAnalyzeImage = async (product: EnrichedProduct) => {
+    setSelectedProductForVision(product);
+    setShowAIVisionModal(true);
+    setIsAnalyzingVision(true);
+    setAiVisionAnalysis('');
+
+    try {
+      showInfo('Analyse Vision IA', 'Analyse de l\'image du produit avec OpenAI Vision...');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseKey) {
+        const response = await fetch(`${supabaseUrl}/functions/v1/gpt-vision-analyzer`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image_url: product.image_url,
+            analysis_type: 'product_identification',
+            context: {
+              product_name: product.title,
+              category: product.category,
+              existing_description: product.description
+            }
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setAiVisionAnalysis(result.analysis || 'Analyse non disponible');
+          showSuccess('Vision IA terminée', 'Analyse de l\'image terminée avec succès !');
+        } else {
+          throw new Error('Erreur API Vision');
+        }
+      } else {
+        // Fallback analysis
+        const fallbackAnalysis = generateFallbackVisionAnalysis(product);
+        setAiVisionAnalysis(fallbackAnalysis);
+        showSuccess('Vision IA simulée', 'Analyse simulée générée avec succès !');
+      }
+    } catch (error) {
+      console.error('❌ Erreur analyse Vision IA:', error);
+      const fallbackAnalysis = generateFallbackVisionAnalysis(product);
+      setAiVisionAnalysis(fallbackAnalysis);
+      showError('Erreur Vision IA', 'Erreur lors de l\'analyse, analyse simulée générée.');
+    } finally {
+      setIsAnalyzingVision(false);
+    }
+  };
+
+  const generateFallbackVisionAnalysis = (product: EnrichedProduct): string => {
+    return `🔍 **Analyse Vision IA - ${product.title}**
+
+**Style visuel détecté :** ${product.style || 'Contemporain'} avec lignes épurées
+**Couleurs dominantes :** ${product.color || 'Tons neutres'} avec finitions soignées
+**Matériaux visibles :** ${product.material || 'Matériaux de qualité'} avec texture ${product.fabric ? product.fabric : 'lisse'}
+**Qualité perçue :** Premium avec attention aux détails
+**Ambiance :** ${product.room || 'Polyvalent'} - Design intemporel
+
+**💡 Points forts visuels :**
+• Finitions soignées et professionnelles
+• Proportions harmonieuses et équilibrées
+• Couleurs tendance et intemporelles
+• Design adapté aux intérieurs modernes
+
+**🎯 Recommandations :**
+• Parfait pour un intérieur ${product.style || 'contemporain'}
+• S'harmonise avec des tons ${product.color || 'neutres'}
+• Idéal pour ${product.room || 'salon'} moderne`;
   };
 
   const generateMockEnrichedProducts = (): EnrichedProduct[] => {
@@ -191,10 +288,11 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       dimensions: detectDimensions(text),
       room: detectRoom(text),
       price: product.price || 0,
+      compare_at_price: product.compare_at_price || product.compareAtPrice,
       stock_qty: product.stock || product.quantityAvailable || 0,
       image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
       product_url: product.product_url || '#',
-      tags: generateTags(text),
+      tags: generateTags(product.name || product.title || '', product.description || ''),
       seo_title: generateSEOTitle(product.name || product.title, detectColor(text), detectMaterial(text)),
       seo_description: generateSEODescription(product.name || product.title, detectStyle(text), detectMaterial(text)),
       ad_headline: generateAdHeadline(product.name || product.title),
@@ -205,10 +303,35 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
       confidence_score: calculateConfidence(text),
       enriched_at: new Date().toISOString(),
       enrichment_source: 'auto',
-      created_at: product.created_at || new Date().toISOString()
+      created_at: product.created_at || new Date().toISOString(),
+      ai_attributes: {
+        colors: detectColor(text) ? [detectColor(text)] : [],
+        materials: detectMaterial(text) ? [detectMaterial(text)] : [],
+        styles: detectStyle(text) ? [detectStyle(text)] : [],
+        features: extractFeatures(text),
+        room: detectRoom(text) ? [detectRoom(text)] : []
+      },
+      seo_optimized: {
+        title: generateSEOTitle(product.name || product.title, detectColor(text), detectMaterial(text)),
+        description: generateSEODescription(product.name || product.title, detectStyle(text), detectMaterial(text)),
+        tags: generateTags(product.name || product.title || '', product.description || '')
+      }
     };
     
     return enriched;
+  };
+
+  const extractFeatures = (text: string): string[] => {
+    const features = [];
+    if (text.includes('convertible')) features.push('convertible');
+    if (text.includes('rangement')) features.push('rangement');
+    if (text.includes('angle')) features.push('angle');
+    if (text.includes('réversible')) features.push('réversible');
+    if (text.includes('pliable')) features.push('pliable');
+    if (text.includes('extensible')) features.push('extensible');
+    if (text.includes('réglable')) features.push('réglable');
+    if (text.includes('pivotant')) features.push('pivotant');
+    return features;
   };
 
   // Fonctions de détection
@@ -276,14 +399,47 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
     return '';
   };
 
-  const generateTags = (text: string): string[] => {
-    const tags = [];
-    if (text.includes('convertible')) tags.push('convertible');
-    if (text.includes('rangement')) tags.push('rangement');
-    if (text.includes('angle')) tags.push('angle');
-    if (text.includes('moderne')) tags.push('moderne');
-    if (text.includes('design')) tags.push('design');
-    return tags;
+  const generateTags = (title: string, description: string): string[] => {
+    const text = `${title} ${description}`.toLowerCase();
+    const tags = new Set<string>();
+    
+    // Mots vides à exclure
+    const stopWords = ['le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'avec', 'sans', 'pour', 'dans', 'sur', 'sous', 'par', 'ce', 'cette', 'ces', 'son', 'sa', 'ses'];
+    
+    // Extraire les mots significatifs du titre et de la description
+    const words = text
+      .replace(/[^\w\s]/g, ' ') // Supprimer la ponctuation
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopWords.includes(word))
+      .filter(word => !['cm', 'mm', 'kg', 'eur', 'euro', 'euros'].includes(word));
+    
+    // Ajouter les mots les plus fréquents comme tags
+    const wordCount = new Map<string, number>();
+    words.forEach(word => {
+      wordCount.set(word, (wordCount.get(word) || 0) + 1);
+    });
+    
+    // Prendre les 3-5 mots les plus fréquents
+    const sortedWords = Array.from(wordCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
+    
+    sortedWords.forEach(word => tags.add(word));
+    
+    // Ajouter des tags spécifiques basés sur le contenu
+    if (text.includes('convertible')) tags.add('convertible');
+    if (text.includes('rangement')) tags.add('rangement');
+    if (text.includes('angle')) tags.add('angle');
+    if (text.includes('moderne')) tags.add('moderne');
+    if (text.includes('design')) tags.add('design');
+    if (text.includes('scandinave')) tags.add('scandinave');
+    if (text.includes('industriel')) tags.add('industriel');
+    if (text.includes('vintage')) tags.add('vintage');
+    if (text.includes('luxe')) tags.add('luxe');
+    if (text.includes('premium')) tags.add('premium');
+    
+    return Array.from(tags).slice(0, 5);
   };
 
   const generateSEOTitle = (name: string, color: string, material: string): string => {
@@ -627,8 +783,12 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               <thead className="bg-black/20">
                 <tr>
                   <th className="text-left p-4 text-purple-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">Attributs IA</th>
-                  <th className="text-left p-4 text-purple-300 font-semibold">SEO</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Prix & Promo</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Couleurs IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Matériaux IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Styles IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">Fonctionnalités IA</th>
+                  <th className="text-left p-4 text-purple-300 font-semibold">SEO Optimisé IA</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Confiance</th>
                   <th className="text-left p-4 text-purple-300 font-semibold">Actions</th>
                 </tr>
@@ -652,46 +812,92 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-white text-sm">{product.title}</div>
                           <div className="text-gray-400 text-xs">{product.brand}</div>
-                          <div className="text-green-400 font-bold">{product.price}€</div>
+                          {product.dimensions && (
+                            <div className="text-gray-500 text-xs">📏 {product.dimensions}</div>
+                          )}
                         </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                        {product.compare_at_price && product.compare_at_price > product.price && (
+                          <>
+                            <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                            <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs font-bold">
+                              -{calculateDiscount(product.price, product.compare_at_price)}%
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {product.ai_attributes?.colors.map((color, index) => (
+                          <span key={index} className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
+                            🎨 {color}
+                          </span>
+                        ))}
+                        {(!product.ai_attributes?.colors || product.ai_attributes.colors.length === 0) && (
+                          <span className="text-gray-500 text-xs">Aucune couleur détectée</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {product.ai_attributes?.materials.map((material, index) => (
+                          <span key={index} className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
+                            🏗️ {material}
+                          </span>
+                        ))}
+                        {(!product.ai_attributes?.materials || product.ai_attributes.materials.length === 0) && (
+                          <span className="text-gray-500 text-xs">Aucun matériau détecté</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {product.ai_attributes?.styles.map((style, index) => (
+                          <span key={index} className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
+                            ✨ {style}
+                          </span>
+                        ))}
+                        {(!product.ai_attributes?.styles || product.ai_attributes.styles.length === 0) && (
+                          <span className="text-gray-500 text-xs">Aucun style détecté</span>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="space-y-1">
                         <div className="flex flex-wrap gap-1">
-                          {product.category && (
-                            <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                              {product.category}
+                          {product.ai_attributes?.features.map((feature, index) => (
+                            <span key={index} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs">
+                              ⚙️ {feature}
                             </span>
-                          )}
-                          {product.color && (
-                            <span className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
-                              {product.color}
-                            </span>
-                          )}
-                          {product.material && (
-                            <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
-                              {product.material}
-                            </span>
-                          )}
-                          {product.style && (
-                            <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
-                              {product.style}
-                            </span>
-                          )}
+                          ))}
                         </div>
-                        {product.room && (
-                          <div className="text-gray-400 text-xs">📍 {product.room}</div>
-                        )}
-                        {product.dimensions && (
-                          <div className="text-gray-400 text-xs">📏 {product.dimensions}</div>
+                        {product.ai_attributes?.room.map((room, index) => (
+                          <span key={index} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                            🏠 {room}
+                          </span>
+                        ))}
+                        {(!product.ai_attributes?.features || product.ai_attributes.features.length === 0) && 
+                         (!product.ai_attributes?.room || product.ai_attributes.room.length === 0) && (
+                          <span className="text-gray-500 text-xs">Aucune fonctionnalité détectée</span>
                         )}
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="space-y-1">
-                        <div className="text-white text-xs font-medium">{product.seo_title}</div>
-                        <div className="text-gray-400 text-xs line-clamp-2">{product.seo_description}</div>
+                        <div className="text-white text-xs font-medium line-clamp-1">{product.seo_optimized?.title || product.seo_title}</div>
+                        <div className="text-gray-400 text-xs line-clamp-2">{product.seo_optimized?.description || product.seo_description}</div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(product.seo_optimized?.tags || product.tags).slice(0, 3).map((tag, index) => (
+                            <span key={index} className="bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-xs">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                         {product.google_product_category && (
                           <div className="text-cyan-400 text-xs">Google: {product.google_product_category}</div>
                         )}
@@ -709,6 +915,13 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAnalyzeImage(product)}
+                          className="text-purple-400 hover:text-purple-300 p-1"
+                          title="Analyse Vision IA"
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
                         <a
                           href={product.product_url}
                           target="_blank"
@@ -753,48 +966,122 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
               
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl font-bold text-green-400">{product.price}€</span>
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <>
+                    <span className="text-gray-400 line-through text-sm">{product.compare_at_price}€</span>
+                    <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs font-bold">
+                      -{calculateDiscount(product.price, product.compare_at_price)}%
+                    </span>
+                  </>
+                )}
                 <span className={`px-2 py-1 rounded-full text-xs ${getConfidenceColor(product.confidence_score)}`}>
                   {product.confidence_score}%
                 </span>
               </div>
               
-              {/* Attributs enrichis */}
-              <div className="space-y-2 mb-4">
-                <div className="flex flex-wrap gap-1">
-                  {product.color && (
-                    <span className="bg-pink-500/20 text-pink-300 px-2 py-1 rounded text-xs">
-                      🎨 {product.color}
-                    </span>
-                  )}
-                  {product.material && (
-                    <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs">
-                      🏗️ {product.material}
-                    </span>
-                  )}
-                  {product.style && (
-                    <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
-                      ✨ {product.style}
-                    </span>
-                  )}
+              {/* Couleurs IA */}
+              {product.ai_attributes?.colors && product.ai_attributes.colors.length > 0 && (
+                <div className="bg-pink-500/20 rounded-xl p-3 mb-3 border border-pink-400/30">
+                  <h4 className="text-pink-200 font-semibold text-xs mb-2">🎨 Couleurs IA ({product.ai_attributes.colors.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.colors.map((color, index) => (
+                      <span key={index} className="bg-pink-600/30 text-pink-200 px-2 py-1 rounded text-xs">
+                        {color}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                
-                {product.room && (
-                  <div className="text-gray-400 text-xs">📍 {product.room}</div>
-                )}
-                
-                {product.dimensions && (
-                  <div className="text-gray-400 text-xs">📏 {product.dimensions}</div>
-                )}
-              </div>
+              )}
+
+              {/* Matériaux IA */}
+              {product.ai_attributes?.materials && product.ai_attributes.materials.length > 0 && (
+                <div className="bg-green-500/20 rounded-xl p-3 mb-3 border border-green-400/30">
+                  <h4 className="text-green-200 font-semibold text-xs mb-2">🏗️ Matériaux IA ({product.ai_attributes.materials.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.materials.map((material, index) => (
+                      <span key={index} className="bg-green-600/30 text-green-200 px-2 py-1 rounded text-xs">
+                        {material}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Styles IA */}
+              {product.ai_attributes?.styles && product.ai_attributes.styles.length > 0 && (
+                <div className="bg-purple-500/20 rounded-xl p-3 mb-3 border border-purple-400/30">
+                  <h4 className="text-purple-200 font-semibold text-xs mb-2">✨ Styles IA ({product.ai_attributes.styles.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.styles.map((style, index) => (
+                      <span key={index} className="bg-purple-600/30 text-purple-200 px-2 py-1 rounded text-xs">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fonctionnalités IA */}
+              {product.ai_attributes?.features && product.ai_attributes.features.length > 0 && (
+                <div className="bg-orange-500/20 rounded-xl p-3 mb-3 border border-orange-400/30">
+                  <h4 className="text-orange-200 font-semibold text-xs mb-2">⚙️ Fonctionnalités IA ({product.ai_attributes.features.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.features.map((feature, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-2 py-1 rounded text-xs">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pièces IA */}
+              {product.ai_attributes?.room && product.ai_attributes.room.length > 0 && (
+                <div className="bg-blue-500/20 rounded-xl p-3 mb-3 border border-blue-400/30">
+                  <h4 className="text-blue-200 font-semibold text-xs mb-2">🏠 Pièces IA ({product.ai_attributes.room.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.room.map((room, index) => (
+                      <span key={index} className="bg-blue-600/30 text-blue-200 px-2 py-1 rounded text-xs">
+                        {room}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* SEO Preview */}
-              <div className="bg-black/20 rounded-lg p-3 mb-4">
-                <div className="text-cyan-400 text-xs font-medium mb-1">SEO Optimisé :</div>
-                <div className="text-white text-xs font-medium line-clamp-1">{product.seo_title}</div>
-                <div className="text-gray-400 text-xs line-clamp-2">{product.seo_description}</div>
+              <div className="bg-cyan-500/20 rounded-xl p-3 mb-4 border border-cyan-400/30">
+                <h4 className="text-cyan-200 font-semibold text-xs mb-2">🔍 SEO Optimisé IA</h4>
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-cyan-300 text-xs font-medium">Titre SEO :</div>
+                    <div className="text-white text-xs line-clamp-1">{product.seo_optimized?.title || product.seo_title}</div>
+                  </div>
+                  <div>
+                    <div className="text-cyan-300 text-xs font-medium">Description SEO :</div>
+                    <div className="text-gray-300 text-xs line-clamp-2">{product.seo_optimized?.description || product.seo_description}</div>
+                  </div>
+                  <div>
+                    <div className="text-cyan-300 text-xs font-medium">Tags SEO :</div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(product.seo_optimized?.tags || product.tags).slice(0, 4).map((tag, index) => (
+                        <span key={index} className="bg-cyan-600/30 text-cyan-200 px-1 py-0.5 rounded text-xs">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <div className="flex gap-2">
+                <button
+                  onClick={() => handleAnalyzeImage(product)}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm"
+                >
+                  <Camera className="w-3 h-3" />
+                  Vision IA
+                </button>
                 <a
                   href={product.product_url}
                   target="_blank"
@@ -804,10 +1091,6 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
                   <ExternalLink className="w-3 h-3" />
                   Voir
                 </a>
-                <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-1 text-sm">
-                  <Edit className="w-3 h-3" />
-                  Modifier
-                </button>
               </div>
             </div>
           ))}
@@ -837,6 +1120,154 @@ export const ProductsEnrichedTable: React.FC<ProductsEnrichedTableProps> = ({ ve
             >
               Enrichir avec IA
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Vision IA */}
+      {showAIVisionModal && selectedProductForVision && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-600/50">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/50">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                <Camera className="w-6 h-6 text-purple-400" />
+                Vision IA - Analyse d'image
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAIVisionModal(false);
+                  setSelectedProductForVision(null);
+                  setAiVisionAnalysis('');
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Produit analysé */}
+              <div className="bg-purple-500/20 rounded-xl p-4 border border-purple-400/30">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-600 flex-shrink-0">
+                    <img 
+                      src={selectedProductForVision.image_url} 
+                      alt={selectedProductForVision.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-1">{selectedProductForVision.title}</h3>
+                    <p className="text-purple-300">{selectedProductForVision.category} • {selectedProductForVision.brand}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-green-400 font-bold">{selectedProductForVision.price}€</span>
+                      {selectedProductForVision.compare_at_price && selectedProductForVision.compare_at_price > selectedProductForVision.price && (
+                        <>
+                          <span className="text-gray-400 line-through text-sm">{selectedProductForVision.compare_at_price}€</span>
+                          <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                            -{calculateDiscount(selectedProductForVision.price, selectedProductForVision.compare_at_price)}%
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Image analysée */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-white font-semibold mb-3">📸 Image analysée :</h4>
+                  <div className="w-full h-80 rounded-xl overflow-hidden bg-gray-600 border border-purple-400/30">
+                    <img 
+                      src={selectedProductForVision.image_url} 
+                      alt={selectedProductForVision.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-white font-semibold mb-3">🤖 Analyse Vision IA :</h4>
+                  <div className="bg-black/40 rounded-xl p-4 border border-purple-400/30 h-80 overflow-y-auto">
+                    {isAnalyzingVision ? (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
+                        <p className="text-purple-300 text-center">
+                          Analyse de l'image en cours avec OpenAI Vision...
+                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    ) : aiVisionAnalysis ? (
+                      <div className="text-white text-sm leading-relaxed whitespace-pre-line">
+                        {aiVisionAnalysis}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400">
+                        <p>Cliquez sur "Analyser" pour démarrer l'analyse Vision IA</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between items-center pt-6 border-t border-slate-600/50">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleAnalyzeImage(selectedProductForVision)}
+                    disabled={isAnalyzingVision}
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isAnalyzingVision ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Analyse...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-5 h-5" />
+                        {aiVisionAnalysis ? 'Réanalyser' : 'Analyser'}
+                      </>
+                    )}
+                  </button>
+                  
+                  <a
+                    href={selectedProductForVision.product_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    Voir le produit
+                  </a>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setShowAIVisionModal(false);
+                    setSelectedProductForVision(null);
+                    setAiVisionAnalysis('');
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
