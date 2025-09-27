@@ -74,7 +74,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const handleSyncCatalog = async () => {
     setIsSyncing(true);
     showInfo('Synchronisation démarrée', 'Récupération des produits depuis "Mes Produits"...');
-    
+      showInfo('Synchronisation démarrée', 'Récupération des produits depuis localStorage...');
     try {
       showInfo('Synchronisation démarrée', 'Récupération du catalogue depuis "Mes Produits"...');
       const storageKeys = [
@@ -103,62 +103,76 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         }
       }
       
-      // Récupérer les produits depuis TOUS les emplacements possibles
-      const storageKeys2 = [
-        'catalog_products',
-        'vendor_demo-retailer-id_products',
-        'seller_demo-retailer-id_products',
-        'retailer_demo-retailer-id_products'
-      ];
+      console.log('🔄 Démarrage synchronisation catalogue...');
+      
+      // Récupérer TOUS les produits depuis localStorage
+      const allStorageKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('products') || key.includes('catalog'))) {
+          allStorageKeys.push(key);
+        }
+      }
+      
+      // Essayer chaque clé de stockage
+      console.log('🔍 Clés localStorage trouvées:', allStorageKeys);
       
       let allProducts: any[] = [];
       
-      // Essayer chaque clé de stockage
-      for (const storageKey of storageKeys2) {
+      for (const storageKey of allStorageKeys) {
         const savedProducts = localStorage.getItem(storageKey);
-        if (savedProducts) {
-          try {
-            const parsedSaved = JSON.parse(savedProducts);
-            console.log(`📦 Produits trouvés dans ${storageKey}:`, parsedSaved.length);
+            if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
+              // Valider et nettoyer les produits
+              const validProducts = parsedProducts.filter((p: any) => {
+                const hasName = p && (p.name || p.title);
+                const hasPrice = (p.price > 0 || p.variant_price > 0);
+                return hasName && hasPrice;
+              }).map((p: any) => ({
+                id: p.id || `sync-${Date.now()}-${Math.random()}`,
+                name: p.name || p.title || 'Produit sans nom',
+                title: p.name || p.title || 'Produit sans nom',
+                description: p.description || p.body_html || '',
+                price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
+                compare_at_price: p.compare_at_price || p.variant_compare_at_price,
+                category: p.category || p.productType || p.product_type || 'Mobilier',
+                vendor: p.vendor || 'Boutique',
+                image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+                product_url: p.product_url || '#',
+                stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || parseInt(p.quantityAvailable) || 0,
+                status: p.status || 'active',
+                source_platform: p.source_platform || 'unknown',
+                sku: p.sku || p.variant_sku || '',
+                created_at: p.created_at || new Date().toISOString(),
+                updated_at: p.updated_at || new Date().toISOString()
+              }));
             
-            // Valider et nettoyer les produits
-            const validProducts = parsedSaved.filter((p: any) => {
-              const isValid = p && (p.name || p.title) && (p.price > 0 || p.variant_price > 0);
-              return isValid;
-            }).map((p: any) => ({
-              id: p.id || `catalog-${Date.now()}-${Math.random()}`,
-              name: p.name || p.title || 'Produit sans nom',
-              description: p.description || p.body_html || '',
-              price: parseFloat(p.price) || parseFloat(p.variant_price) || 0,
-              compare_at_price: p.compare_at_price || p.variant_compare_at_price,
-              category: p.category || p.productType || p.product_type || 'Mobilier',
-              vendor: p.vendor || 'Boutique',
-              image_url: p.image_url || p.image_src || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-              product_url: p.product_url || '#',
-              stock: parseInt(p.stock) || parseInt(p.variant_inventory_qty) || parseInt(p.quantityAvailable) || 0,
-              status: p.status || 'active',
-              source_platform: p.source_platform || 'csv',
-              sku: p.sku || p.variant_sku || '',
-              created_at: p.created_at || new Date().toISOString()
-            }));
-            
-            allProducts = [...allProducts, ...validProducts];
-            console.log(`✅ Produits validés depuis ${storageKey}:`, validProducts.length);
+              allProducts = [...allProducts, ...validProducts];
+              console.log(`✅ ${validProducts.length} produits valides depuis ${storageKey}`);
+            }
           } catch (error) {
             console.error(`❌ Erreur parsing ${storageKey}:`, error);
           }
         }
       }
       
-      // Supprimer les doublons par ID
+      console.log(`📦 Total produits récupérés: ${allProducts.length}`);
+      
+      if (allProducts.length === 0) {
+        showError('Aucun produit trouvé', 'Aucun produit n\'a été trouvé dans localStorage. Importez d\'abord votre catalogue.');
+        return;
+      }
+      
+      // Supprimer les doublons par nom + prix
       const uniqueProducts = allProducts.filter((product, index, self) => 
-        index === self.findIndex(p => p.id === product.id)
+        index === self.findIndex(p => 
+          p.name === product.name && p.price === product.price
+        )
       );
       
-      console.log('✅ Produits uniques trouvés:', uniqueProducts.length);
+      console.log(`✅ Produits uniques après déduplication: ${uniqueProducts.length}`);
       
       if (uniqueProducts.length === 0) {
-        showError('Aucun produit trouvé', 'Veuillez d\'abord importer des produits dans l\'onglet "Mes Produits" ou "Intégration".');
+        showError('Aucun produit unique', 'Aucun produit unique trouvé après déduplication.');
         return;
       }
       
@@ -173,6 +187,11 @@ export const SmartAIEnrichmentTab: React.FC = () => {
           // Simuler l'enrichissement IA (vous pouvez remplacer par un vrai appel API)
           const enrichedProduct = await enrichProductWithAI(product);
           enrichedResults.push(enrichedProduct);
+          
+          // Petite pause pour éviter de bloquer l'interface
+          if (index % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
           
         } catch (error) {
           console.error(`❌ Erreur enrichissement ${product.name}:`, error);
@@ -918,7 +937,9 @@ Destination : Salon, pièce à vivre, studio`,
     try {
       setIsAnalyzingVision(true);
       showInfo('Enrichissement Vision IA', 'Analyse automatique des images et extraction des attributs...');
+      showInfo('Enrichissement IA', `Enrichissement de ${uniqueProducts.length} produits avec l'IA locale...`);
       
+      // Enrichir les produits avec l'IA locale
       const enrichedProducts = [];
       
       // Enrichir chaque produit avec Vision IA
@@ -932,19 +953,25 @@ Destination : Salon, pièce à vivre, studio`,
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      setProducts(enrichedProducts);
+      console.log(`✅ Enrichissement terminé: ${enrichedProducts.length} produits enrichis`);
       
-      showSuccess(
-        'Enrichissement Vision IA terminé', 
-        `${products.length} produits enrichis avec analyse visuelle automatique !`,
-        [
-          {
-            label: 'Voir les résultats',
-            action: () => setSelectedProduct(enrichedProducts[0]),
-            variant: 'primary'
-          }
-        ]
-      );
+      if (enrichedProducts.length > 0) {
+        setProducts(enrichedProducts);
+        
+        showSuccess(
+          'Synchronisation terminée !',
+          `${enrichedProducts.length} produits enrichis avec succès !`,
+          [
+            {
+              label: 'Voir les résultats',
+              action: () => console.log('Résultats affichés dans le tableau'),
+              variant: 'primary'
+            }
+          ]
+        );
+      } else {
+        showError('Enrichissement échoué', 'Aucun produit n\'a pu être enrichi.');
+      }
       
     } catch (error) {
       console.error('❌ Erreur enrichissement global:', error);
