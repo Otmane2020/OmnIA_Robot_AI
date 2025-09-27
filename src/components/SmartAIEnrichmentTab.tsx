@@ -1441,7 +1441,6 @@ Destination : Salon, pièce à vivre, studio`,
       )}
 
       {/* Modal de détail */}
-      {showDetailModal && selectedProduct && <ProductDetailModal />}
     </div>
   );
 };
