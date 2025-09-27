@@ -1,5 +1,14 @@
+import { 
+  Search, Package, Eye, Edit, Trash2, Plus, Download, Upload, 
+  Filter, ChevronDown, ChevronUp, ExternalLink, Target,
+  RefreshCw, Brain, Zap, CheckCircle, AlertCircle, Loader2
+} from 'lucide-react';
+import { useNotifications } from './NotificationSystem';
 import React, { useState, useEffect } from 'react';
-import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw, ChevronUp, ChevronDown, Target, Edit, Trash2, Plus, Sparkles, Loader2, Settings, TrendingUp } from 'lucide-react';
+import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw } from 'lucide-react';
+  Package, Search, Eye, Edit, Trash2, Plus, Brain, RefreshCw, Loader2, CheckCircle, AlertCircle,
+  Filter, ChevronDown, ChevronUp, ExternalLink, Target,
+} from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface SmartProduct {
@@ -355,7 +364,11 @@ Destination : Salon, pièce à vivre, studio`,
           subcategory: detectSubcategory(mainProduct.name || mainProduct.title || '')
         };
         
-        enrichedProducts.push(smartProduct);
+        enrichedProducts.push(sma
+      }
+    }
+  }
+}rtProduct);
         
       } catch (error) {
         console.error('❌ Erreur enrichissement produit:', error);
@@ -1425,10 +1438,5 @@ Destination : Salon, pièce à vivre, studio`,
             </table>
           </div>
         </div>
+import React, { useState, useEffect } from 'react';
       )}
-
-      {/* Modal de détail */}
-      {selectedProduct && <ProductDetailModal />}
-    </div>
-  );
-};
