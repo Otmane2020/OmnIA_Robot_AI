@@ -260,8 +260,8 @@ function createEnrichedProduct(product: any, attributes: EnrichedAttributes, ret
     enriched_at: new Date().toISOString(),
     enrichment_source: attributes.enrichment_source || 'text_only',
     
-    // CRITICAL: Add retailer_id for proper isolation
-    retailer_id: retailerId,
+    // Use effective retailer_id (default UUID for demo accounts)
+    retailer_id: retailerId === '00000000-0000-0000-0000-000000000000' ? retailerId : retailerId,
     created_at: product.created_at || new Date().toISOString()
   };
 }

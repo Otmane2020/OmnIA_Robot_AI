@@ -273,6 +273,9 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         throw new Error('Supabase non configuré');
       }
 
+      // Use default UUID for non-UUID retailer IDs (demo accounts)
+      const effectiveRetailerId = isValidUUID(retailerId) ? retailerId : '00000000-0000-0000-0000-000000000000';
+      console.log('🔧 Enrichissement avec retailer_id:', effectiveRetailerId, '(original:', retailerId, ')');
       // Appeler l'enrichissement avancé
       const response = await fetch(`${supabaseUrl}/functions/v1/advanced-product-enricher`, {
         method: 'POST',
@@ -282,7 +285,7 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         },
         body: JSON.stringify({
           products: rawProducts,
-          retailer_id: retailerId,
+          retailer_id: effectiveRetailerId,
           source: 'smart_ai_tab',
           enable_image_analysis: true,
           batch_size: 5
@@ -338,6 +341,9 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         throw new Error('Supabase non configuré');
       }
 
+      // Use default UUID for non-UUID retailer IDs (demo accounts)
+      const effectiveRetailerId = isValidUUID(retailerId) ? retailerId : '00000000-0000-0000-0000-000000000000';
+      console.log('🔧 Ré-enrichissement avec retailer_id:', effectiveRetailerId, '(original:', retailerId, ')');
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-products-cron`, {
         method: 'POST',
         headers: {
@@ -346,7 +352,7 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         },
         body: JSON.stringify({
           products: enrichedProducts,
-          retailer_id: retailerId,
+          retailer_id: effectiveRetailerId,
           force_full_enrichment: true,
           enable_image_analysis: true
         }),
@@ -405,7 +411,7 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         },
         body: JSON.stringify({
           query: searchQuery,
-          retailer_id: retailerId,
+          retailer_id: isValidUUID(retailerId) ? retailerId : '00000000-0000-0000-0000-000000000000',
           limit: 10
         }),
       });
