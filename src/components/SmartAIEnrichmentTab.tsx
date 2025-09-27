@@ -600,6 +600,15 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         </div>
       )}
 
+      {/* Message pour produits non enrichis */}
+      {(!product.confidence_score || product.confidence_score === 0) && (
+        <div className="bg-orange-500/20 border border-orange-400/30 rounded-lg p-2 mb-3">
+          <p className="text-orange-300 text-xs">
+            🤖 Produit non enrichi - Cliquez "Enrichir avec IA" pour extraire couleurs, matériaux, styles automatiquement
+          </p>
+        </div>
+      )}
+
       {/* Raisonnement IA pour les résultats de recherche */}
       {(product as any).ai_reasoning && (
         <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-2 mb-3">
@@ -642,8 +651,6 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
         </div>
       );
     }
-
-
     return null;
   };
 
@@ -975,6 +982,56 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
 
       {/* État vide */}
       {renderEmptyState()}
+
+      {/* Catalogue brut (produits non enrichis) */}
+      {rawProducts.length > 0 && enrichedProducts.length === 0 && (
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Package className="w-6 h-6 text-orange-400" />
+              Catalogue Brut - Non Enrichi ({rawProducts.length})
+            </h3>
+            <button
+              onClick={handleEnrichRawProducts}
+              disabled={isEnriching}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isEnriching ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Enrichissement IA...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Enrichir avec IA
+                </>
+              )}
+            </button>
+          </div>
+          
+          <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-xl p-4 mb-6">
+            <h4 className="font-semibold text-yellow-200 mb-2">⚡ Enrichissement IA disponible :</h4>
+            <ul className="text-yellow-300 text-sm space-y-1">
+              <li>• Extraction automatique couleurs, matériaux, styles</li>
+              <li>• Génération sous-catégories précises</li>
+              <li>• Tags intelligents du titre et description</li>
+              <li>• Analyse Vision IA des images produits</li>
+              <li>• Scores de confiance IA</li>
+            </ul>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rawProducts.slice(0, 12).map((product) => renderProductCard(product))}
+          </div>
+          
+          {rawProducts.length > 12 && (
+            <div className="text-center mt-6">
+              <p className="text-gray-400">... et {rawProducts.length - 12} autres produits à enrichir</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recherche intelligente */}
       {(enrichedProducts.length > 0 || rawProducts.length > 0) && (
