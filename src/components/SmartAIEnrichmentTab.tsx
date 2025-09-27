@@ -28,6 +28,26 @@ interface EnrichedProduct {
   updated_at: string;
 }
 
+interface RawProduct {
+  id: string;
+  external_id: string;
+  retailer_id: string;
+  name: string;
+  description: string;
+  price: number;
+  compare_at_price?: number;
+  category: string;
+  vendor: string;
+  image_url: string;
+  product_url: string;
+  stock: number;
+  source_platform: string;
+  status: string;
+  extracted_attributes: any;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ProductPreview {
   id: string;
   name: string;
@@ -48,8 +68,13 @@ interface ProductPreview {
   ai_reasoning?: string;
 }
 
-export const SmartAIEnrichmentTab: React.FC = () => {
+interface SmartAIEnrichmentTabProps {
+  retailerId: string;
+}
+
+export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ retailerId }) => {
   const [enrichedProducts, setEnrichedProducts] = useState<EnrichedProduct[]>([]);
+  const [rawProducts, setRawProducts] = useState<RawProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductPreview[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -62,40 +87,176 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const { showSuccess, showError, showInfo } = useNotifications();
 
   useEffect(() => {
-    loadEnrichedProducts();
-  }, []);
+    loadCatalogData();
+  }, [retailerId]);
 
-  const loadEnrichedProducts = async () => {
+  const loadCatalogData = async () => {
     try {
       setIsLoading(true);
+      console.log('📦 Chargement automatique catalogue pour retailer:', retailerId);
       
-      // Charger depuis localStorage ou API
-      const savedProducts = localStorage.getItem('enriched_products');
-      if (savedProducts) {
-        const products = JSON.parse(savedProducts);
-        setEnrichedProducts(products);
-        console.log('📦 Produits enrichis chargés:', products.length);
-      } else {
-        console.log('📦 Aucun produit enrichi trouvé');
-        setEnrichedProducts([]);
-      }
+      // 1. Charger les produits enrichis depuis Supabase
+      await loadEnrichedProductsFromSupabase();
+      
+      // 2. Charger les produits bruts depuis Supabase
+      await loadRawProductsFromSupabase();
       
     } catch (error) {
-      console.error('❌ Erreur chargement produits enrichis:', error);
-      showError('Erreur de chargement', 'Impossible de charger les produits enrichis.');
+      console.error('❌ Erreur chargement catalogue:', error);
+      showError('Erreur de chargement', 'Impossible de charger le catalogue automatiquement.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const loadEnrichedProductsFromSupabase = async () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.log('⚠️ Supabase non configuré, chargement depuis localStorage');
+        loadEnrichedProductsFromStorage();
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?retailer_id=eq.${retailerId}&select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const products = await response.json();
+        setEnrichedProducts(products || []);
+        console.log('✅ Produits enrichis chargés depuis Supabase:', products?.length || 0);
+      } else {
+        console.log('⚠️ Erreur Supabase, fallback localStorage');
+        loadEnrichedProductsFromStorage();
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement Supabase enriched:', error);
+      loadEnrichedProductsFromStorage();
+    }
+  };
+
+  const loadRawProductsFromSupabase = async () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.log('⚠️ Supabase non configuré, chargement depuis localStorage');
+        loadRawProductsFromStorage();
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/imported_products?retailer_id=eq.${retailerId}&status=eq.active&select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const products = await response.json();
+        setRawProducts(products || []);
+        console.log('✅ Produits bruts chargés depuis Supabase:', products?.length || 0);
+      } else {
+        console.log('⚠️ Erreur Supabase, fallback localStorage');
+        loadRawProductsFromStorage();
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement Supabase raw:', error);
+      loadRawProductsFromStorage();
+    }
+  };
+
+  const loadEnrichedProductsFromStorage = () => {
+    try {
+      const savedProducts = localStorage.getItem('enriched_products');
+      if (savedProducts) {
+        const products = JSON.parse(savedProducts);
+        setEnrichedProducts(products);
+        console.log('📦 Produits enrichis chargés depuis localStorage:', products.length);
+      }
+    } catch (error) {
+      console.error('❌ Erreur localStorage enriched:', error);
+    }
+  };
+
+  const loadRawProductsFromStorage = () => {
+    try {
+      // Essayer plusieurs clés de stockage pour ce retailer
+      const storageKeys = [
+        `seller_${retailerId}_products`,
+        `retailer_${retailerId}_products`,
+        `vendor_${retailerId}_products`,
+        'catalog_products'
+      ];
+      
+      let allRawProducts: RawProduct[] = [];
+      
+      for (const storageKey of storageKeys) {
+        const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const products = JSON.parse(savedProducts);
+            const transformedProducts = products.map((p: any) => ({
+              id: p.id || `raw-${Date.now()}-${Math.random()}`,
+              external_id: p.external_id || p.id || `ext-${Date.now()}`,
+              retailer_id: retailerId,
+              name: p.name || p.title || 'Produit sans nom',
+              description: p.description || '',
+              price: parseFloat(p.price) || 0,
+              compare_at_price: p.compare_at_price ? parseFloat(p.compare_at_price) : undefined,
+              category: p.category || p.productType || 'Mobilier',
+              vendor: p.vendor || 'Boutique',
+              image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+              product_url: p.product_url || '#',
+              stock: parseInt(p.stock) || parseInt(p.quantityAvailable) || 0,
+              source_platform: p.source_platform || 'csv',
+              status: p.status || 'active',
+              extracted_attributes: p.extracted_attributes || {},
+              created_at: p.created_at || new Date().toISOString(),
+              updated_at: p.updated_at || new Date().toISOString()
+            }));
+            
+            allRawProducts = [...allRawProducts, ...transformedProducts];
+            console.log(`📦 Produits bruts trouvés dans ${storageKey}:`, transformedProducts.length);
+          } catch (error) {
+            console.error(`❌ Erreur parsing ${storageKey}:`, error);
+          }
+        }
+      }
+      
+      // Supprimer les doublons par ID
+      const uniqueRawProducts = allRawProducts.filter((product, index, self) => 
+        index === self.findIndex(p => p.id === product.id)
+      );
+      
+      setRawProducts(uniqueRawProducts);
+      console.log('📦 Total produits bruts uniques:', uniqueRawProducts.length);
+      
+    } catch (error) {
+      console.error('❌ Erreur localStorage raw:', error);
+    }
+  };
+
   const handleReEnrichAllProducts = async () => {
-    if (enrichedProducts.length === 0) {
+    // Utiliser les produits bruts si pas de produits enrichis
+    const productsToEnrich = enrichedProducts.length > 0 ? enrichedProducts : rawProducts;
+    
+    if (productsToEnrich.length === 0) {
       showError('Aucun produit', 'Aucun produit à enrichir. Importez d\'abord votre catalogue.');
       return;
     }
 
     setIsEnrichingAI(true);
-    showInfo('Enrichissement IA démarré', `Ré-analyse de ${enrichedProducts.length} produits avec Vision IA automatique...`);
+    showInfo('Enrichissement IA démarré', `Ré-analyse de ${productsToEnrich.length} produits avec Vision IA automatique...`);
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -113,8 +274,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          products: enrichedProducts,
-          retailer_id: '00000000-0000-0000-0000-000000000000',
+          products: productsToEnrich,
+          retailer_id: retailerId,
           source: 'smart_ai_re_enrichment',
           enable_image_analysis: true,
           batch_size: 5
@@ -125,12 +286,12 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         const result = await response.json();
         console.log('✅ Ré-enrichissement réussi:', result.stats);
         
-        // Rafraîchir les données
-        await loadEnrichedProducts();
+        // Rafraîchir les données depuis Supabase
+        await loadEnrichedProductsFromSupabase();
         
         showSuccess(
           'Enrichissement terminé !',
-          `${result.stats?.enriched_products || enrichedProducts.length} produits ré-enrichis avec Vision IA !`,
+          `${result.stats?.enriched_products || productsToEnrich.length} produits ré-enrichis avec Vision IA !`,
           [
             {
               label: 'Voir les résultats',
@@ -152,6 +313,37 @@ export const SmartAIEnrichmentTab: React.FC = () => {
     }
   };
 
+  const handleImportCatalog = () => {
+    // Si on a des produits bruts mais pas enrichis, lancer l'enrichissement
+    if (rawProducts.length > 0 && enrichedProducts.length === 0) {
+      showInfo(
+        'Catalogue détecté',
+        `${rawProducts.length} produits trouvés dans votre catalogue. Lancement de l'enrichissement IA...`,
+        [
+          {
+            label: 'Enrichir maintenant',
+            action: () => handleReEnrichAllProducts(),
+            variant: 'primary'
+          }
+        ]
+      );
+      return;
+    }
+    
+    // Sinon rediriger vers l'intégration
+    showInfo(
+      'Import de catalogue',
+      'Utilisez l\'onglet "Intégration" pour importer votre catalogue via CSV, Shopify ou XML.',
+      [
+        {
+          label: 'Aller à l\'intégration',
+          action: () => window.location.href = '/admin#integration',
+          variant: 'primary'
+        }
+      ]
+    );
+  };
+
   const handleSmartSearch = async () => {
     if (!searchQuery.trim()) return;
 
@@ -170,6 +362,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         },
         body: JSON.stringify({
           query: searchQuery,
+          retailer_id: retailerId,
           limit: 10
         }),
       });
@@ -282,7 +475,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Chargement SMART AI...</p>
+          <p className="text-white text-lg">Chargement automatique du catalogue...</p>
+          <p className="text-gray-400 text-sm">Recherche produits enrichis et bruts...</p>
         </div>
       </div>
     );
@@ -312,6 +506,10 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                 <span className="text-cyan-300">{enrichedProducts.length} produits enrichis</span>
               </div>
               <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-orange-400" />
+                <span className="text-orange-300">{rawProducts.length} produits bruts</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <Brain className="w-4 h-4 text-purple-400" />
                 <span className="text-purple-300">IA + Vision automatique</span>
               </div>
@@ -326,23 +524,54 @@ export const SmartAIEnrichmentTab: React.FC = () => {
             </div>
           </div>
           
-          <button
-            onClick={handleReEnrichAllProducts}
-            disabled={isEnrichingAI || enrichedProducts.length === 0}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isEnrichingAI ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Enrichissement IA...
-              </>
+          <div className="flex gap-3">
+            {/* Bouton Importer le catalogue - logique intelligente */}
+            {enrichedProducts.length === 0 && rawProducts.length === 0 ? (
+              <button
+                onClick={handleImportCatalog}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Importer le catalogue
+              </button>
+            ) : enrichedProducts.length === 0 && rawProducts.length > 0 ? (
+              <button
+                onClick={handleReEnrichAllProducts}
+                disabled={isEnrichingAI}
+                className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isEnrichingAI ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Enrichissement...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    Enrichir le catalogue
+                  </>
+                )}
+              </button>
             ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                Enrichir avec IA
-              </>
+              <button
+                onClick={handleReEnrichAllProducts}
+                disabled={isEnrichingAI}
+                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isEnrichingAI ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Enrichissement IA...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Enrichir avec IA
+                  </>
+                )}
+              </button>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -536,18 +765,44 @@ export const SmartAIEnrichmentTab: React.FC = () => {
           Catalogue Enrichi ({enrichedProducts.length} produits)
         </h3>
         
-        {enrichedProducts.length === 0 ? (
+        {/* État vide intelligent */}
+        {enrichedProducts.length === 0 && rawProducts.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-xl font-bold text-white mb-2">Aucun produit enrichi</h4>
+            <h4 className="text-xl font-bold text-white mb-2">Aucun produit trouvé</h4>
             <p className="text-gray-400 mb-6">
               Importez d'abord votre catalogue pour commencer l'enrichissement IA
             </p>
             <button
-              onClick={() => window.location.href = '/admin#integration'}
+              onClick={handleImportCatalog}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
             >
               Importer le catalogue
+            </button>
+          </div>
+        ) : enrichedProducts.length === 0 && rawProducts.length > 0 ? (
+          <div className="text-center py-12">
+            <Brain className="w-16 h-16 text-orange-400 mx-auto mb-4" />
+            <h4 className="text-xl font-bold text-white mb-2">Catalogue non enrichi</h4>
+            <p className="text-gray-400 mb-6">
+              {rawProducts.length} produits détectés dans votre catalogue. Lancez l'enrichissement IA pour les analyser.
+            </p>
+            <button
+              onClick={handleReEnrichAllProducts}
+              disabled={isEnrichingAI}
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isEnrichingAI ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Enrichissement en cours...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-5 h-5" />
+                  Enrichir {rawProducts.length} produits
+                </>
+              )}
             </button>
           </div>
         ) : (
@@ -692,8 +947,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                           <span className="text-green-400 font-bold">{selectedProduct.price}€</span>
                           {selectedProduct.compare_at_price && selectedProduct.compare_at_price > selectedProduct.price && (
                             <>
-                              <span className="text-gray-400 line-through text-sm">{selectedProduct.compare_at_price}€</span>
-                              <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                              <span className="text-gray-400 line-through text-lg">{selectedProduct.compare_at_price}€</span>
+                              <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs font-bold">
                                 -{calculateDiscount(selectedProduct.price, selectedProduct.compare_at_price)}%
                               </span>
                             </>
@@ -841,8 +1096,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Informations sur l'enrichissement */}
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/30">

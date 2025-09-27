@@ -8,6 +8,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 interface TrainingRequest {
   csvData: string;
+  retailer_id?: string;
   isIncremental?: boolean;
 }
 
@@ -43,9 +44,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { csvData, isIncremental = false }: TrainingRequest = await req.json();
+    const { csvData, retailer_id = '00000000-0000-0000-0000-000000000000', isIncremental = false }: TrainingRequest = await req.json();
     
     console.log('🤖 Démarrage entraînement IA catalogue...');
+    console.log('🏪 Retailer ID:', retailer_id);
     console.log('📊 Mode incrémental:', isIncremental);
     
     // Initialize Supabase client
@@ -80,6 +82,7 @@ Deno.serve(async (req: Request) => {
       
       const processedProduct = {
         ...product,
+        store_id: retailer_id,
         extracted_attributes: attributes,
         processed_at: new Date().toISOString(),
         confidence_score: calculateConfidenceScore(attributes)

@@ -8,6 +8,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 interface SmartSearchRequest {
   query: string;
+  retailer_id?: string;
   filters?: {
     priceMax?: number;
     priceMin?: number;
@@ -36,9 +37,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { query, filters = {}, limit = 10 }: SmartSearchRequest = await req.json();
+    const { query, retailer_id, filters = {}, limit = 10 }: SmartSearchRequest = await req.json();
     
-    console.log('🔍 Recherche intelligente:', query);
+    console.log('🔍 Recherche intelligente pour retailer:', retailer_id, '-', query);
     console.log('🎯 Filtres:', filters);
 
     // Initialize Supabase client
@@ -51,14 +52,13 @@ Deno.serve(async (req: Request) => {
     console.log('🧠 Intention détectée:', searchIntent);
 
     // Get all products from database
-    const { data: products, error } = await supabase
+    let query = supabase
       .from('ai_products')
       .select(`
         id,
         name,
         description,
         price,
-        compare_at_price,
         category,
         vendor,
         image_url,
@@ -72,6 +72,13 @@ Deno.serve(async (req: Request) => {
         created_at,
         updated_at
       `);
+
+    // Filter by retailer if provided
+    if (retailer_id) {
+      query = query.eq('store_id', retailer_id);
+    }
+
+    const { data: products, error } = await query;
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
@@ -381,13 +388,12 @@ async function generateExpertResponse(message: string, relevantProducts: any[], 
   const productsContext = relevantProducts.length > 0 
     ? relevantProducts.map(p => {
         let productInfo = `• ${p.name} - ${p.price}€`;
-        if (p.compare_at_price && p.compare_at_price > p.price) {
-          const discount = Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100);
-          productInfo += ` (était ${p.compare_at_price}€, -${discount}%)`;
-        }
         if (p.category) productInfo += ` - ${p.category}`;
-        if (p.extracted_attributes?.subcategory) productInfo += ` (${p.extracted_attributes.subcategory})`;
+        if (p.extracted_attributes?.subcategory) productInfo += ` - ${p.extracted_attributes.subcategory}`;
         if (p.extracted_attributes?.ai_vision_summary) productInfo += ` - Vision: ${p.extracted_attributes.ai_vision_summary}`;
+        if (p.extracted_attributes?.tags && Array.isArray(p.extracted_attributes.tags)) {
+          productInfo += ` - Tags: ${p.extracted_attributes.tags.join(', ')}`;
+        }
         return productInfo;
       }).join('\n') : 'Aucun produit trouvé.';
 
