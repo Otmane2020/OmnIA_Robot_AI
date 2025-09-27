@@ -100,8 +100,11 @@ export const SmartAIEnrichmentTab: React.FC = () => {
           } catch (error) {
             console.error(`❌ Erreur parsing ${storageKey}:`, error);
           }
+        }
+      }
+      
       // Récupérer les produits depuis TOUS les emplacements possibles
-      const storageKeys = [
+      const storageKeys2 = [
         'catalog_products',
         'vendor_demo-retailer-id_products',
         'seller_demo-retailer-id_products',
@@ -111,7 +114,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       let allProducts: any[] = [];
       
       // Essayer chaque clé de stockage
-      for (const storageKey of storageKeys) {
+      for (const storageKey of storageKeys2) {
         const savedProducts = localStorage.getItem(storageKey);
         if (savedProducts) {
           try {
@@ -136,8 +139,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
               status: p.status || 'active',
               source_platform: p.source_platform || 'csv',
               sku: p.sku || p.variant_sku || '',
-              created_at: p.created_at || new Date().toISOString(),
-          console.log(`🔄 [${index + 1}/${uniqueProducts.length}] Enrichissement: ${product.name?.substring(0, 50)}...`);
+              created_at: p.created_at || new Date().toISOString()
             }));
             
             allProducts = [...allProducts, ...validProducts];
@@ -160,14 +162,13 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         return;
       }
       
-      showInfo('Enrichissement IA', `Analyse de ${sourceProducts.length} produits avec l'IA...`);
       showInfo('Enrichissement IA', `Analyse de ${uniqueProducts.length} produits avec l'IA locale...`);
       // Enrichir les produits avec l'IA
       const enrichedResults = [];
       
       for (const [index, product] of uniqueProducts.entries()) {
         try {
-          console.log(`🔄 [${index + 1}/${sourceProducts.length}] Enrichissement: ${product.name?.substring(0, 30)}...`);
+          console.log(`🔄 [${index + 1}/${uniqueProducts.length}] Enrichissement: ${product.name?.substring(0, 50)}...`);
           
           // Simuler l'enrichissement IA (vous pouvez remplacer par un vrai appel API)
           const enrichedProduct = await enrichProductWithAI(product);
@@ -182,12 +183,11 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       const storageKey = `enriched_products_${retailerId}`;
       localStorage.setItem(storageKey, JSON.stringify(enrichedResults));
       
-        `${enrichedResults.length}/${uniqueProducts.length} produits enrichis avec l'IA locale !`,
       setProducts(enrichedResults);
       
       showSuccess(
         'Synchronisation terminée !',
-        `${enrichedResults.length} produits enrichis avec succès depuis "Mes Produits" !`,
+        `${enrichedResults.length}/${uniqueProducts.length} produits enrichis avec l'IA locale !`,
         [
           {
             label: 'Voir les résultats',
