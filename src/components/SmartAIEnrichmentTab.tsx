@@ -29,12 +29,14 @@ interface SmartProduct {
       diametre?: number;
     };
     styles: string[];
-    features: string[];
+      const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict avec catégories précises :
     room: string[];
     confidence_score: number;
   };
   variations: Array<{
     id: string;
+  "category": "Canapé|Table|Chaise|Lit|Rangement|Meuble TV|Décoration|Éclairage",
+  "subcategory": "Description précise (ex: Canapé d'angle convertible, Table basse ronde, Chaise de bureau ergonomique)",
     title: string;
     price: number;
     stock: number;
@@ -133,6 +135,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       'design', 'élégant', 'confort', 'qualité', 'premium', 'luxe',
       'dunbar', 'chenille', 'côtelé', 'épuré', 'arrondi', 'tendance'
     ];
+- category: Catégorie principale EXACTE (Canapé, Table, Chaise, Lit, Rangement, Meuble TV, Décoration, Éclairage)
+- subcategory: Description précise et spécifique du produit (ex: "Canapé d'angle convertible", "Table basse ronde", "Chaise de bureau ergonomique")
     
     // Compter la fréquence et prioriser
     const wordCount = new Map<string, number>();
@@ -154,7 +158,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         }
       });
     
-    // Combiner et limiter à 6 tags
+              content: 'Tu es un expert en mobilier et design d\'intérieur. Tu enrichis COMPLÈTEMENT les produits au format JSON strict avec catégories précises. Pour les catégories, utilise EXACTEMENT les valeurs listées. Pour les sous-catégories, sois précis et descriptif. Aucun texte supplémentaire.'
     const finalTags = [...priorityTags.slice(0, 4), ...regularTags.slice(0, 2)]
       .slice(0, 6)
       .filter((tag, index, array) => array.indexOf(tag) === index);
@@ -183,6 +187,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       
     } catch (error) {
       console.error('❌ Erreur chargement Smart AI:', error);
+              category: enriched.category,
+              subcategory: enriched.subcategory,
       showError('Erreur de chargement', 'Impossible de charger les produits Smart AI.');
     } finally {
       setIsLoading(false);
@@ -195,6 +201,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
     // Sources multiples
     const sources = [
       'catalog_products',
+              category: enriched.category || 'Mobilier',
+              subcategory: enriched.subcategory || '',
       'shopify_products',
       'imported_products',
       'vendor_products',
@@ -983,7 +991,7 @@ Destination : Salon, pièce à vivre, studio`,
                             <span key={optIndex} className="bg-teal-600/30 text-teal-200 px-2 py-1 rounded text-xs">
                               {option.name}: {option.value}
                             </span>
-                          ))}
+                      <div className="bg-blue-600/30 text-blue-200 px-3 py-2 rounded-lg font-semibold mt-1 inline-block">
                         </div>
                       </div>
                     </div>
@@ -1359,7 +1367,7 @@ Destination : Salon, pièce à vivre, studio`,
                           />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-white line-clamp-1">{product.name}</div>
+                        <div className="bg-purple-600/30 text-purple-200 px-3 py-2 rounded-lg font-semibold mt-1 inline-block">
                           <div className="text-sm text-gray-400">{product.category} • {product.vendor}</div>
                         </div>
                       </div>
