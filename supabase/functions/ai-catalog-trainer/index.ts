@@ -243,7 +243,7 @@ Catégorie: ${product.category || ''}
 Prix: ${product.price || 0}€
 
 EXTRAIT UNIQUEMENT ces attributs au format JSON :
-    const prompt = `Analyse ce produit mobilier et extrait UNIQUEMENT les attributs au format JSON strict.
+{
   "colors": ["couleur1", "couleur2"],
   "materials": ["matériau1", "matériau2"], 
   "subcategory": "Description précise du type (ex: Canapé d'angle convertible, Table basse ronde)",
@@ -256,8 +256,8 @@ EXTRAIT UNIQUEMENT ces attributs au format JSON :
   "styles": ["style1", "style2"],
   "categories": ["catégorie1"],
   "features": ["fonctionnalité1", "fonctionnalité2"],
-  "room": ["salon", "chambre"]
-  "tags": ["mot-clé1", "mot-clé2", "mot-clé3"],
+  "room": ["salon", "chambre"],
+  "tags": ["mot-clé1", "mot-clé2", "mot-clé3"]
 }
 
 RÈGLES:
@@ -313,8 +313,13 @@ RÈGLES:
             } catch (visionError) {
               console.warn('⚠️ [auto-ai-trainer] Vision IA échouée:', visionError);
             }
-            tags: extracted.tags?.length || 0,
           }
+          
+          console.log('✅ Attributs IA extraits:', {
+            colors: extracted.colors?.length || 0,
+            materials: extracted.materials?.length || 0,
+            tags: extracted.tags?.length || 0
+          });
           
           console.log('✅ Attributs IA extraits:', Object.keys(extracted));
           return {
