@@ -277,19 +277,13 @@ async function enrichProductWithAI(product: any, enableImageAnalysis: boolean): 
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
   if (!deepseekApiKey) {
-    `.trim();
+    throw new Error('DEEPSEEK_API_KEY manquant');
+  }
+
+  try {
+    const productText = `${product.name || ''} ${product.description || ''}`.trim();
 
     const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${deepseekApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-          },
-          {
-            role: 'user',
 
 ${productText}
 
@@ -332,7 +326,23 @@ RÈGLES STRICTES pour les tags:
 - Inclure: catégorie, couleur, matériau, style, fonctionnalités
 - Exemple pour "Canapé VENTU convertible": ["canapé", "ventu", "convertible", "design", "contemporain"]
 - Utiliser les mots exacts du titre quand pertinents
-- Éviter les mots vides (le, la, de, avec, etc.)`
+- Éviter les mots vides (le, la, de, avec, etc.)`;
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${deepseekApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert en mobilier qui enrichit les descriptions produits avec précision. Réponds uniquement en JSON valide.'
+          },
+          {
+            role: 'user',
             content: prompt
           }
         ],
@@ -363,7 +373,19 @@ RÈGLES STRICTES pour les tags:
     
     // Validation des champs requis
     if (!enriched.general_info || !enriched.technical_specs) {
+      throw new Error('Structure JSON invalide');
+    }
+
+    // Analyse d'image optionnelle
+    if (enableImageAnalysis && product.image_url) {
       try {
+        const imageAnalysis = await analyzeProductImageImproved(product.image_url, enriched);
+        if (imageAnalysis) {
+          // Fusionner les résultats d'analyse d'image
+          enriched.technical_specs.color = imageAnalysis.color || enriched.technical_specs.color;
+          enriched.technical_specs.material = imageAnalysis.material || enriched.technical_specs.material;
+          enriched.technical_specs.style = imageAnalysis.style || enriched.technical_specs.style;
+          enriched.enrichment_source = 'text_and_image';
         }
       } catch (imageError) {
         console.warn('⚠️ Analyse image échouée:', imageError);
@@ -388,6 +410,26 @@ async function analyzeProductImageImproved(imageUrl: string, textAttributes: any
     const expectedSubcategory = textAttributes.general_info?.subcategory || '';
     
     const prompt = `Analyse cette image de produit mobilier et corrige/confirme les attributs détectés par l'analyse textuelle.
+
+Attributs texte détectés:
+- Catégorie: ${expectedCategory}
+- Sous-catégorie: ${expectedSubcategory}
+- Couleur: ${textAttributes.technical_specs?.color || 'Non détectée'}
+- Matériau: ${textAttributes.technical_specs?.material || 'Non détecté'}
+
+Réponds en JSON avec:
+{
+  "image_matches_description": boolean,
+  "visual_product_type": "string",
+  "visual_attributes": {
+    "dominant_colors": ["string"],
+    "materials_visible": ["string"],
+    "style_visual": "string",
+    "storage_type": "string"
+  },
+  "inconsistencies": ["string"]
+}`;
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -395,8 +437,12 @@ async function analyzeProductImageImproved(imageUrl: string, textAttributes: any
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-            content: 'Tu es un expert en analyse visuelle de mobilier avec une spécialisation en meubles de rangement. Tu identifies précisément le type de produit et corriges les incohérences entre texte et image. Réponds uniquement en JSON valide.'
+        model: 'gpt-4-vision-preview',
         messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert en analyse visuelle de mobilier avec une spécialisation en meubles de rangement. Tu identifies précisément le type de produit et corriges les incohérences entre texte et image. Réponds uniquement en JSON valide.'
+          },
           {
             role: 'user',
             content: [
@@ -473,17 +519,12 @@ function enrichProductBasic(product: any): EnrichedAttributes {
       color: detectColorImproved(text) || 'Non spécifié',
       style: detectStyle(text) || 'Contemporain',
       room: detectRoomImproved(text) || 'Salon',
-      dimensions: extractDimensionsImproved(text),
-      storage_capacity: extractStorageCapacity(text),
-      density: extractDensity(text),
-      firmness: extractFirmness(text)
+      dimensions: extractDimensionsImproved(text)
     },
     features: {
       convertible: text.includes('convertible'),
       storage: text.includes('rangement') || text.includes('storage'),
-      adjustable: text.includes('réglable') || text.includes('ajustable'),
-      assembly_required: text.includes('monter') || text.includes('assemblage') || text.includes('montage'),
-      wall_mounted: text.includes('mural') || text.includes('fixation murale')
+      adjustable: text.includes('réglable') || text.includes('ajustable')
     },
     seo_marketing: {
       seo_title: generateSEOTitle(product),
@@ -505,16 +546,25 @@ function enrichProductBasic(product: any): EnrichedAttributes {
 }
 
 // Fonctions helper améliorées
-function detectCategory(text: string): string {
+function detectCategoryImproved(text: string): string {
   const categories = {
+    // Rangement spécialisé
+    'meuble à chaussures': 'Rangement',
+    'range-chaussures': 'Rangement',
+    'chaussures': 'Rangement',
+    'bibliothèque': 'Rangement',
+    'étagère': 'Rangement',
+    'commode': 'Rangement',
+    'armoire': 'Rangement',
+    'dressing': 'Rangement',
+    'console': 'Console',
+    // Mobilier principal
     'canapé': 'Canapé',
     'sofa': 'Canapé',
     'table': 'Table', 
     'chaise': 'Chaise',
     'fauteuil': 'Chaise',
     'lit': 'Lit',
-    'armoire': 'Rangement',
-    'commode': 'Rangement',
     'meuble tv': 'Meuble TV',
     'luminaire': 'Éclairage',
     'lampe': 'Éclairage',
@@ -527,21 +577,52 @@ function detectCategory(text: string): string {
   return 'Mobilier';
 }
 
-function detectSubcategory(text: string): string {
+function detectSubcategoryImproved(text: string): string {
+  // Rangement spécialisé
+  if (text.includes('meuble à chaussures') || text.includes('range-chaussures')) return 'Meuble à chaussures compact';
+  if (text.includes('bibliothèque') || text.includes('étagère livre')) return 'Bibliothèque';
+  if (text.includes('commode')) return 'Commode';
+  if (text.includes('armoire') && text.includes('penderie')) return 'Armoire penderie';
+  if (text.includes('armoire')) return 'Armoire';
+  if (text.includes('console') && text.includes('entrée')) return 'Console d\'entrée';
+  if (text.includes('console')) return 'Console';
+  
+  // Canapés
   if (text.includes('angle')) return 'Canapé d\'angle';
   if (text.includes('convertible')) return 'Canapé convertible';
+  
+  // Tables
   if (text.includes('basse')) return 'Table basse';
   if (text.includes('manger')) return 'Table à manger';
+  if (text.includes('console')) return 'Console';
+  
+  // Chaises
+  if (text.includes('bureau')) return 'Chaise de bureau';
+  if (text.includes('bar')) return 'Tabouret de bar';
+  
   return '';
 }
 
-function detectColor(text: string): string {
-  const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge'];
+function detectColorImproved(text: string): string {
+  const colors = [
+    'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 
+    'jaune', 'orange', 'rose', 'violet', 'naturel', 'chêne', 'noyer', 
+    'taupe', 'ivoire', 'anthracite', 'crème'
+  ];
   return colors.find(color => text.includes(color)) || '';
 }
 
-function detectMaterial(text: string): string {
-  const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'plastic'];
+function detectMaterialImproved(text: string): string {
+  const materials = [
+    // Panneaux et dérivés du bois
+    'mdf', 'contreplaqué', 'aggloméré', 'mélaminé', 'stratifié',
+    // Bois massifs
+    'bois massif', 'chêne', 'hêtre', 'pin', 'teck', 'noyer', 'bois',
+    // Métaux
+    'métal', 'acier', 'aluminium', 'fer', 'laiton', 'chrome',
+    // Autres
+    'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'plastique', 'rotin'
+  ];
   return materials.find(material => text.includes(material)) || '';
 }
 
@@ -550,14 +631,122 @@ function detectStyle(text: string): string {
   return styles.find(style => text.includes(style)) || '';
 }
 
-function detectRoom(text: string): string {
-  const rooms = ['salon', 'chambre', 'cuisine', 'bureau', 'salle à manger'];
+function detectRoomImproved(text: string): string {
+  const rooms = [
+    'salon', 'chambre', 'cuisine', 'bureau', 'salle à manger', 
+    'entrée', 'couloir', 'dressing', 'terrasse', 'balcon'
+  ];
   return rooms.find(room => text.includes(room)) || '';
 }
 
-function extractDimensions(text: string): string {
-  const match = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*cm/);
-  return match ? `L:${match[1]}cm × l:${match[2]}cm` + (match[3] ? ` × H:${match[3]}cm` : '') : '';
+function extractDimensionsImproved(text: string): string {
+  // Patterns pour différents formats de dimensions
+  const patterns = [
+    // Format standard: LxlxH
+    /(\d+)\s*[x×]\s*(\d+)\s*[x×]\s*(\d+)\s*cm/i,
+    // Format avec unités séparées
+    /l\.?\s*(\d+)\s*[x×]?\s*l\.?\s*(\d+)\s*[x×]?\s*h\.?\s*(\d+)\s*cm/i,
+    // Format diamètre
+    /ø\s*(\d+)\s*cm/i,
+    // Format simple LxH
+    /(\d+)\s*[x×]\s*(\d+)\s*cm/i
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      if (match.length === 4) { // LxlxH
+        return `L:${match[1]}cm x l:${match[2]}cm x H:${match[3]}cm`;
+      } else if (match.length === 2) { // Diamètre
+        return `Ø:${match[1]}cm`;
+      } else if (match.length === 3) { // LxH
+        return `L:${match[1]}cm x H:${match[2]}cm`;
+      }
+    }
+  }
+  
+  return '';
+}
+
+function extractStorageCapacity(text: string): string {
+  // Pour meubles à chaussures
+  const shoesMatch = text.match(/(\d+)\s*paires?\s*(?:de\s*)?chaussures?/i);
+  if (shoesMatch) return `${shoesMatch[1]} paires de chaussures`;
+  
+  // Pour bibliothèques
+  const booksMatch = text.match(/(\d+)\s*livres?/i);
+  if (booksMatch) return `${booksMatch[1]} livres`;
+  
+  // Pour tiroirs/étagères
+  const drawersMatch = text.match(/(\d+)\s*tiroirs?/i);
+  if (drawersMatch) return `${drawersMatch[1]} tiroirs`;
+  
+  const shelvesMatch = text.match(/(\d+)\s*étagères?/i);
+  if (shelvesMatch) return `${shelvesMatch[1]} étagères`;
+  
+  return '';
+}
+
+function extractDensity(text: string): string {
+  const densityMatch = text.match(/(\d+)\s*kg\/m[³3]/i);
+  if (densityMatch) return `${densityMatch[1]}kg/m³`;
+  return '';
+}
+
+function extractFirmness(text: string): string {
+  const firmness = ['très ferme', 'ferme', 'medium', 'souple'];
+  return firmness.find(f => text.includes(f)) || '';
+}
+
+function generateSEOTitle(product: any): string {
+  const name = product.name || product.title || 'Produit';
+  const brand = product.vendor || product.brand || '';
+  const color = detectColorImproved(`${name} ${product.description || ''}`);
+  
+  let seoTitle = name;
+  if (brand && !name.includes(brand)) {
+    seoTitle += ` ${brand}`;
+  }
+  if (color && !name.toLowerCase().includes(color)) {
+    seoTitle += ` ${color.charAt(0).toUpperCase() + color.slice(1)}`;
+  }
+  
+  return seoTitle.substring(0, 70);
+}
+
+function generateSEODescription(product: any): string {
+  const name = product.name || product.title || 'Produit';
+  const material = detectMaterialImproved(`${name} ${product.description || ''}`);
+  const color = detectColorImproved(`${name} ${product.description || ''}`);
+  const style = detectStyle(`${name} ${product.description || ''}`);
+  
+  let description = name;
+  if (material) description += ` en ${material}`;
+  if (color) description += ` ${color}`;
+  if (style) description += `. Style ${style}`;
+  description += '. Livraison gratuite.';
+  
+  return description.substring(0, 155);
+}
+
+function generateAdHeadline(product: any): string {
+  const name = product.name || product.title || 'Produit';
+  // Extraire le nom principal sans dimensions
+  const cleanName = name.replace(/\s*\([^)]*\)/g, '').trim();
+  return cleanName.substring(0, 30);
+}
+
+function generateAdDescription(product: any): string {
+  const name = product.name || product.title || 'Produit';
+  const material = detectMaterialImproved(`${name} ${product.description || ''}`);
+  const style = detectStyle(`${name} ${product.description || ''}`);
+  
+  let adDesc = name.split(' ').slice(0, 3).join(' '); // Premiers mots
+  if (material) adDesc += ` ${material}`;
+  if (style) adDesc += ` ${style}`;
+  adDesc += '. Promo !';
+  
+  return adDesc.substring(0, 90);
 }
 
 function extractFabricFromMaterial(material: string): string {
@@ -565,7 +754,7 @@ function extractFabricFromMaterial(material: string): string {
   return fabrics.find(fabric => material.includes(fabric)) || '';
 }
 
-function generateBasicTags(text: string): string[] {
+function generateImprovedTags(text: string, productName: string): string[] {
   const tags = new Set<string>();
   
   // Nettoyer le texte et extraire les mots
@@ -575,6 +764,8 @@ function generateBasicTags(text: string): string[] {
     .replace(/\s+/g, ' ')
     .trim();
   
+  const cleanProductName = productName.toLowerCase();
+  
   // Mots vides à exclure
   const stopWords = [
     'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'avec', 'sans', 'pour', 'par', 'sur', 'dans', 'à', 'au', 'aux',
@@ -582,7 +773,7 @@ function generateBasicTags(text: string): string[] {
     'qui', 'que', 'dont', 'où', 'quand', 'comment', 'pourquoi',
     'très', 'plus', 'moins', 'bien', 'mal', 'tout', 'tous', 'toute', 'toutes',
     'est', 'sont', 'était', 'étaient', 'sera', 'seront', 'avoir', 'être',
-    'cm', 'mm', 'm', 'kg', 'g', 'eur', 'euro', 'euros'
+    'cm', 'mm', 'm', 'kg', 'g', 'eur', 'euro', 'euros', 'dimensions', 'taille', 'couleur'
   ];
   
   // Extraire les mots significatifs
@@ -593,15 +784,34 @@ function generateBasicTags(text: string): string[] {
   
   // Mots-clés prioritaires mobilier
   const furnitureKeywords = [
+    // Rangement
+    'meuble', 'chaussures', 'rangement', 'monaco', 'compact', 'entrée', 'organisation',
+    'bibliothèque', 'étagère', 'commode', 'armoire', 'dressing', 'console',
+    // Canapés et sièges
     'canapé', 'ventu', 'alyana', 'aurea', 'inaya', 'convertible', 'angle', 'places', 'velours', 'tissu', 'cuir',
+    // Tables
     'table', 'ronde', 'rectangulaire', 'basse', 'manger', 'travertin', 'marbre', 'bois', 'métal',
+    // Chaises
     'chaise', 'fauteuil', 'bureau', 'ergonomique', 'pivotant',
+    // Lits
     'lit', 'matelas', 'sommier', 'tête', 'rangement',
+    // Styles
     'moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique',
+    // Pièces
     'salon', 'chambre', 'cuisine', 'bureau', 'salle',
+    // Couleurs
     'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge',
+    // Matériaux
+    'mdf', 'contreplaqué', 'aggloméré', 'mélaminé',
+    // Qualités
     'design', 'élégant', 'confort', 'qualité', 'premium', 'luxe'
   ];
+  
+  // Extraire les mots du nom du produit en priorité
+  const productWords = cleanProductName.split(' ')
+    .filter(word => word.length > 2)
+    .filter(word => !stopWords.includes(word))
+    .filter(word => !/^\d+$/.test(word));
   
   // Compter la fréquence et prioriser
   const wordCount = new Map<string, number>();
@@ -612,6 +822,14 @@ function generateBasicTags(text: string): string[] {
   // Séparer mots prioritaires et réguliers
   const priorityTags: string[] = [];
   const regularTags: string[] = [];
+  const productNameTags: string[] = [];
+  
+  // Ajouter les mots du nom du produit en priorité absolue
+  productWords.forEach(word => {
+    if (furnitureKeywords.includes(word)) {
+      productNameTags.push(word);
+    }
+  });
   
   Array.from(wordCount.entries())
     .sort((a, b) => b[1] - a[1])
@@ -624,11 +842,15 @@ function generateBasicTags(text: string): string[] {
     });
   
   // Combiner et limiter
-  const finalTags = [...priorityTags.slice(0, 3), ...regularTags.slice(0, 2)]
+  const finalTags = [
+    ...productNameTags.slice(0, 2), 
+    ...priorityTags.slice(0, 2), 
+    ...regularTags.slice(0, 1)
+  ]
     .slice(0, 5)
     .filter((tag, index, array) => array.indexOf(tag) === index);
   
-  return finalTags.length > 0 ? finalTags : ['mobilier', 'design', 'intérieur'];
+  return finalTags.length > 0 ? finalTags : ['mobilier', 'design'];
 }
 
 function generateHandle(name: string): string {
