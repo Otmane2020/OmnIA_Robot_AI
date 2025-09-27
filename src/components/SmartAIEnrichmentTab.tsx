@@ -67,6 +67,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isAnalyzingVision, setIsAnalyzingVision] = useState(false);
   const [visionAnalysisResults, setVisionAnalysisResults] = useState<{[key: string]: string}>({});
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [retailerId, setRetailerId] = useState('default');
   const { showSuccess, showError, showInfo } = useNotifications();
 
   const handleSyncCatalog = async () => {
@@ -129,8 +131,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       localStorage.setItem(storageKey, JSON.stringify(enrichedResults));
       
       // Mettre à jour l'affichage
-      setEnrichedProducts(enrichedResults);
-      setTotalProducts(sourceProducts.length);
+      setProducts(enrichedResults);
       
       showSuccess(
         'Synchronisation terminée !',
@@ -138,7 +139,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         [
           {
             label: 'Voir les résultats',
-            action: () => setActiveFilter('all'),
+            action: () => setSelectedCategory('all'),
             variant: 'primary'
           }
         ]
@@ -152,7 +153,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
     }
   };
 
-  const enrichProductWithAI = async (product: any): Promise<EnrichedProduct> => {
+  const enrichProductWithAI = async (product: any): Promise<SmartProduct> => {
     // Simuler l'enrichissement IA local
     const text = `${product.name || product.title || ''} ${product.description || ''}`.toLowerCase();
     
@@ -204,44 +205,38 @@ export const SmartAIEnrichmentTab: React.FC = () => {
     
     return {
       id: product.id || `enriched-${Date.now()}-${Math.random()}`,
-      handle: product.handle || product.id || generateHandle(product.name || product.title),
-      title: product.name || product.title || 'Produit sans nom',
+      name: product.name || product.title || 'Produit sans nom',
       description: product.description || '',
       category,
       subcategory,
-      color: detectedColor,
-      material: detectedMaterial,
-      fabric: detectedMaterial === 'tissu' || detectedMaterial === 'velours' || detectedMaterial === 'cuir' ? detectedMaterial : '',
-      style: detectedStyle,
-      dimensions: '',
-      room: category === 'Canapé' ? 'salon' : category === 'Table' ? 'salle à manger' : '',
       price: parseFloat(product.price) || 0,
-      stock_qty: parseInt(product.stock) || parseInt(product.quantityAvailable) || 0,
+      vendor: product.vendor || 'Marque',
       image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-      product_url: product.product_url || '#',
-      tags,
-      seo_title: (product.name || product.title || '').substring(0, 60),
-      seo_description: (product.description || '').substring(0, 150),
-      ad_headline: (product.name || product.title || '').substring(0, 25),
-      ad_description: (product.description || '').substring(0, 80),
-      google_product_category: category === 'Canapé' ? '635' : category === 'Table' ? '443' : category === 'Chaise' ? '436' : '',
-      gtin: '',
-      brand: product.vendor || 'Marque',
-      confidence_score: Math.min(confidence, 100),
-      enriched_at: new Date().toISOString(),
-      enrichment_source: 'local_ai',
-      retailer_id: retailerId
+      stock: parseInt(product.stock) || parseInt(product.quantityAvailable) || 0,
+      ai_attributes: {
+        colors: detectedColor ? [detectedColor] : [],
+        materials: detectedMaterial ? [detectedMaterial] : [],
+        dimensions: {},
+        styles: detectedStyle ? [detectedStyle] : [],
+        features: [],
+        room: category === 'Canapé' ? ['salon'] : category === 'Table' ? ['salle à manger'] : [],
+        confidence_score: Math.min(confidence, 100),
+        tags
+      },
+      variations: [{
+        id: product.id || `var-${Date.now()}`,
+        title: 'Default',
+        price: parseFloat(product.price) || 0,
+        stock: parseInt(product.stock) || 0,
+        options: []
+      }],
+      seo_optimized: {
+        title: (product.name || product.title || '').substring(0, 60),
+        description: (product.description || '').substring(0, 150),
+        tags
+      },
+      enriched_at: new Date().toISOString()
     };
-  };
-
-  const generateHandle = (name: string): string => {
-    return name
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .substring(0, 100);
   };
 
   // Fonction pour analyser une image avec Vision IA
@@ -907,10 +902,13 @@ Destination : Salon, pièce à vivre, studio`,
     }
   };
 
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
   }, [products, searchTerm, selectedCategory]);
 
   const categories = Array.from(new Set(products.map(p => p.category))).filter(Boolean);
@@ -1132,14 +1130,6 @@ Destination : Salon, pièce à vivre, studio`,
                         <h5 className="font-semibold text-white">{variation.title}</h5>
                         <div className="flex items-center gap-2">
                           <span className="text-green-400 font-bold">{Math.round(variation.price)}€</span>
-                          {variation.compare_at_price && variation.compare_at_price > variation.price && (
-                            <>
-                              <span className="text-gray-400 line-through text-sm">{Math.round(variation.compare_at_price)}€</span>
-                              <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
-                                -{calculateDiscount(variation.price, variation.compare_at_price)}%
-                              </span>
-                            </>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-sm">
@@ -1254,6 +1244,7 @@ Destination : Salon, pièce à vivre, studio`,
             {products.filter(p => p.ai_attributes.confidence_score >= 90).length} produits enrichis • {products.length} produits total
           </p>
         </div>
+        <div className="flex items-center gap-4">
           <button
             onClick={handleSyncCatalog}
             disabled={isSyncing}
@@ -1271,8 +1262,7 @@ Destination : Salon, pièce à vivre, studio`,
               </>
             )}
           </button>
-        
-        <div className="flex items-center gap-4">
+          
           <button
             onClick={loadSmartProducts}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
