@@ -349,7 +349,9 @@ RÈGLES STRICTES:
 - subcategory: Description spécifique et détaillée
 - seo_title: Inclure marque et bénéfices clés
 - seo_description: Inclure USP, livraison, promo si applicable
-- tags: 3-5 mots-clés pertinents pour le référencement
+- tags: 3-5 mots-clés pertinents extraits du TITRE et de la DESCRIPTION
+- Pour les tags, inclure: nom du produit, catégorie, couleur, matériau, style, fonctionnalités
+- Exemple pour "Canapé VENTU convertible": ["canapé", "ventu", "convertible", "design", "contemporain"]
 - ai_confidence: Scores 0-100 pour chaque attribut
 
 RÉPONSE JSON UNIQUEMENT:`;

@@ -342,7 +342,14 @@ Format de réponse REQUIS :
     "material": "number",
     "category": "number"
   }
-}`
+}
+
+RÈGLES STRICTES pour les tags:
+- Extraire 3-5 mots-clés pertinents du TITRE et de la DESCRIPTION
+- Inclure: catégorie, couleur, matériau, style, fonctionnalités
+- Exemple pour "Canapé VENTU convertible": ["canapé", "ventu", "convertible", "design", "contemporain"]
+- Utiliser les mots exacts du titre quand pertinents
+- Éviter les mots vides (le, la, de, avec, etc.)`
           }
         ],
         max_tokens: 1000,
@@ -550,21 +557,67 @@ function extractFabricFromMaterial(material: string): string {
 function generateBasicTags(text: string): string[] {
   const tags = new Set<string>();
   
-  // Ajouter catégorie
-  const category = detectCategory(text);
-  if (category !== 'Mobilier') tags.add(category.toLowerCase());
+  // Nettoyer le texte et extraire les mots
+  const cleanText = text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   
-  // Ajouter matériau et couleur
-  const material = detectMaterial(text);
-  const color = detectColor(text);
-  if (material) tags.add(material);
-  if (color) tags.add(color);
+  // Mots vides à exclure
+  const stopWords = [
+    'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'avec', 'sans', 'pour', 'par', 'sur', 'dans', 'à', 'au', 'aux',
+    'ce', 'cette', 'ces', 'son', 'sa', 'ses', 'notre', 'nos', 'votre', 'vos', 'leur', 'leurs',
+    'qui', 'que', 'dont', 'où', 'quand', 'comment', 'pourquoi',
+    'très', 'plus', 'moins', 'bien', 'mal', 'tout', 'tous', 'toute', 'toutes',
+    'est', 'sont', 'était', 'étaient', 'sera', 'seront', 'avoir', 'être',
+    'cm', 'mm', 'm', 'kg', 'g', 'eur', 'euro', 'euros'
+  ];
   
-  // Tags supplémentaires
-  if (text.includes('design')) tags.add('design');
-  if (text.includes('moderne')) tags.add('moderne');
+  // Extraire les mots significatifs
+  const words = cleanText.split(' ')
+    .filter(word => word.length > 2)
+    .filter(word => !stopWords.includes(word))
+    .filter(word => !/^\d+$/.test(word));
   
-  return Array.from(tags).slice(0, 5);
+  // Mots-clés prioritaires mobilier
+  const furnitureKeywords = [
+    'canapé', 'ventu', 'alyana', 'aurea', 'inaya', 'convertible', 'angle', 'places', 'velours', 'tissu', 'cuir',
+    'table', 'ronde', 'rectangulaire', 'basse', 'manger', 'travertin', 'marbre', 'bois', 'métal',
+    'chaise', 'fauteuil', 'bureau', 'ergonomique', 'pivotant',
+    'lit', 'matelas', 'sommier', 'tête', 'rangement',
+    'moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique',
+    'salon', 'chambre', 'cuisine', 'bureau', 'salle',
+    'blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge',
+    'design', 'élégant', 'confort', 'qualité', 'premium', 'luxe'
+  ];
+  
+  // Compter la fréquence et prioriser
+  const wordCount = new Map<string, number>();
+  words.forEach(word => {
+    wordCount.set(word, (wordCount.get(word) || 0) + 1);
+  });
+  
+  // Séparer mots prioritaires et réguliers
+  const priorityTags: string[] = [];
+  const regularTags: string[] = [];
+  
+  Array.from(wordCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([word, count]) => {
+      if (furnitureKeywords.includes(word)) {
+        priorityTags.push(word);
+      } else if (count > 1 || word.length > 4) {
+        regularTags.push(word);
+      }
+    });
+  
+  // Combiner et limiter
+  const finalTags = [...priorityTags.slice(0, 3), ...regularTags.slice(0, 2)]
+    .slice(0, 5)
+    .filter((tag, index, array) => array.indexOf(tag) === index);
+  
+  return finalTags.length > 0 ? finalTags : ['mobilier', 'design', 'intérieur'];
 }
 
 function generateHandle(name: string): string {
