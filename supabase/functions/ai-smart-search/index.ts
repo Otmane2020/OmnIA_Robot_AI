@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     console.log('🧠 Intention détectée:', searchIntent);
 
     // Get all products from database
-    let query = supabase
+    let productQuery = supabase
       .from('ai_products')
       .select(`
         id,
@@ -75,10 +75,10 @@ Deno.serve(async (req: Request) => {
 
     // Filter by retailer if provided
     if (retailer_id) {
-      query = query.eq('store_id', retailer_id);
+      productQuery = productQuery.eq('store_id', retailer_id);
     }
 
-    const { data: products, error } = await query;
+    const { data: products, error } = await productQuery;
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
