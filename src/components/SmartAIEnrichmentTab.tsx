@@ -68,6 +68,181 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [visionAnalysisResults, setVisionAnalysisResults] = useState<{[key: string]: string}>({});
   const { showSuccess, showError, showInfo } = useNotifications();
 
+  const handleSyncCatalog = async () => {
+    setIsSyncing(true);
+    showInfo('Synchronisation démarrée', 'Récupération des produits depuis "Mes Produits"...');
+    
+    try {
+      // Récupérer les produits depuis l'onglet "Mes Produits"
+      const storageKeys = [
+        'catalog_products',
+        `seller_${retailerId}_products`,
+        `vendor_${retailerId}_products`,
+        `retailer_${retailerId}_products`
+      ];
+      
+      let sourceProducts: any[] = [];
+      
+      // Essayer chaque clé de stockage
+      for (const storageKey of storageKeys) {
+        const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const parsedProducts = JSON.parse(savedProducts);
+            if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
+              sourceProducts = parsedProducts.filter(p => p.status === 'active' && p.stock > 0);
+              console.log(`📦 Produits trouvés dans ${storageKey}:`, sourceProducts.length);
+              break;
+            }
+          } catch (error) {
+            console.error(`❌ Erreur parsing ${storageKey}:`, error);
+          }
+        }
+      }
+      
+      if (sourceProducts.length === 0) {
+        showError('Aucun produit trouvé', 'Veuillez d\'abord importer des produits dans l\'onglet "Mes Produits" ou "Intégration".');
+        return;
+      }
+      
+      showInfo('Enrichissement IA', `Analyse de ${sourceProducts.length} produits avec l'IA...`);
+      
+      // Enrichir les produits avec l'IA
+      const enrichedResults = [];
+      
+      for (const [index, product] of sourceProducts.entries()) {
+        try {
+          console.log(`🔄 [${index + 1}/${sourceProducts.length}] Enrichissement: ${product.name?.substring(0, 30)}...`);
+          
+          // Simuler l'enrichissement IA (vous pouvez remplacer par un vrai appel API)
+          const enrichedProduct = await enrichProductWithAI(product);
+          enrichedResults.push(enrichedProduct);
+          
+        } catch (error) {
+          console.error(`❌ Erreur enrichissement ${product.name}:`, error);
+        }
+      }
+      
+      // Sauvegarder les produits enrichis
+      const storageKey = `enriched_products_${retailerId}`;
+      localStorage.setItem(storageKey, JSON.stringify(enrichedResults));
+      
+      // Mettre à jour l'affichage
+      setEnrichedProducts(enrichedResults);
+      setTotalProducts(sourceProducts.length);
+      
+      showSuccess(
+        'Synchronisation terminée !',
+        `${enrichedResults.length} produits enrichis avec succès depuis "Mes Produits" !`,
+        [
+          {
+            label: 'Voir les résultats',
+            action: () => setActiveFilter('all'),
+            variant: 'primary'
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Erreur synchronisation:', error);
+      showError('Erreur de synchronisation', error.message || 'Impossible de synchroniser le catalogue.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const enrichProductWithAI = async (product: any): Promise<EnrichedProduct> => {
+    // Simuler l'enrichissement IA local
+    const text = `${product.name || product.title || ''} ${product.description || ''}`.toLowerCase();
+    
+    // Détecter catégorie
+    let category = 'Mobilier';
+    let subcategory = '';
+    
+    if (text.includes('canapé') || text.includes('sofa')) {
+      category = 'Canapé';
+      if (text.includes('angle')) subcategory = 'Canapé d\'angle';
+      else if (text.includes('convertible')) subcategory = 'Canapé convertible';
+      else subcategory = 'Canapé fixe';
+    } else if (text.includes('table')) {
+      category = 'Table';
+      if (text.includes('basse')) subcategory = 'Table basse';
+      else if (text.includes('manger')) subcategory = 'Table à manger';
+      else subcategory = 'Table';
+    } else if (text.includes('chaise') || text.includes('fauteuil')) {
+      category = 'Chaise';
+      if (text.includes('bureau')) subcategory = 'Chaise de bureau';
+      else subcategory = 'Chaise';
+    }
+    
+    // Détecter couleur
+    const colors = ['blanc', 'noir', 'gris', 'beige', 'marron', 'bleu', 'vert', 'rouge', 'naturel', 'chêne', 'taupe'];
+    const detectedColor = colors.find(color => text.includes(color)) || '';
+    
+    // Détecter matériau
+    const materials = ['bois', 'métal', 'verre', 'tissu', 'cuir', 'velours', 'travertin', 'marbre', 'chenille'];
+    const detectedMaterial = materials.find(material => text.includes(material)) || '';
+    
+    // Détecter style
+    const styles = ['moderne', 'contemporain', 'scandinave', 'industriel', 'vintage', 'classique'];
+    const detectedStyle = styles.find(style => text.includes(style)) || '';
+    
+    // Générer tags
+    const tags = [
+      category.toLowerCase(),
+      detectedColor,
+      detectedMaterial,
+      detectedStyle
+    ].filter(Boolean);
+    
+    // Calculer score de confiance
+    let confidence = 60; // Base
+    if (detectedColor) confidence += 15;
+    if (detectedMaterial) confidence += 15;
+    if (detectedStyle) confidence += 10;
+    
+    return {
+      id: product.id || `enriched-${Date.now()}-${Math.random()}`,
+      handle: product.handle || product.id || generateHandle(product.name || product.title),
+      title: product.name || product.title || 'Produit sans nom',
+      description: product.description || '',
+      category,
+      subcategory,
+      color: detectedColor,
+      material: detectedMaterial,
+      fabric: detectedMaterial === 'tissu' || detectedMaterial === 'velours' || detectedMaterial === 'cuir' ? detectedMaterial : '',
+      style: detectedStyle,
+      dimensions: '',
+      room: category === 'Canapé' ? 'salon' : category === 'Table' ? 'salle à manger' : '',
+      price: parseFloat(product.price) || 0,
+      stock_qty: parseInt(product.stock) || parseInt(product.quantityAvailable) || 0,
+      image_url: product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+      product_url: product.product_url || '#',
+      tags,
+      seo_title: (product.name || product.title || '').substring(0, 60),
+      seo_description: (product.description || '').substring(0, 150),
+      ad_headline: (product.name || product.title || '').substring(0, 25),
+      ad_description: (product.description || '').substring(0, 80),
+      google_product_category: category === 'Canapé' ? '635' : category === 'Table' ? '443' : category === 'Chaise' ? '436' : '',
+      gtin: '',
+      brand: product.vendor || 'Marque',
+      confidence_score: Math.min(confidence, 100),
+      enriched_at: new Date().toISOString(),
+      enrichment_source: 'local_ai',
+      retailer_id: retailerId
+    };
+  };
+
+  const generateHandle = (name: string): string => {
+    return name
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .substring(0, 100);
+  };
+
   // Fonction pour analyser une image avec Vision IA
   const analyzeImageWithVisionAI = async (imageUrl: string, productName: string, category: string): Promise<string> => {
     try {
@@ -1088,6 +1263,23 @@ Destination : Salon, pièce à vivre, studio`,
             {products.filter(p => p.ai_attributes.confidence_score >= 90).length} produits enrichis • {products.length} produits total
           </p>
         </div>
+          <button
+            onClick={handleSyncCatalog}
+            disabled={isSyncing}
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSyncing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Synchronisation...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-5 h-5" />
+                Synchroniser le catalogue
+              </>
+            )}
+          </button>
         
         <div className="flex items-center gap-4">
           <button
