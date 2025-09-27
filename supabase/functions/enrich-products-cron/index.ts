@@ -339,7 +339,7 @@ RÈGLES STRICTES pour les tags:
         messages: [
           {
             role: 'system',
-            content: 'Tu es un expert en analyse de produits mobilier. Tu réponds uniquement en JSON valide.'
+            content: 'Tu es un expert en analyse de produits mobilier. Tu réponds uniquement en JSON valide sans texte supplémentaire.'
           },
           {
             role: 'user',
@@ -382,7 +382,9 @@ RÈGLES STRICTES pour les tags:
         const imageAnalysis = await analyzeProductImageImproved(product.image_url, enriched);
         if (imageAnalysis) {
           // Fusionner les résultats d'analyse d'image
-          enriched.technical_specs = { ...enriched.technical_specs, ...imageAnalysis };
+          enriched.technical_specs.color = imageAnalysis.color || enriched.technical_specs.color;
+          enriched.technical_specs.material = imageAnalysis.material || enriched.technical_specs.material;
+          enriched.technical_specs.style = imageAnalysis.style || enriched.technical_specs.style;
           enriched.enrichment_source = 'text_and_image';
         }
       } catch (imageError) {
@@ -409,13 +411,25 @@ async function analyzeProductImageImproved(imageUrl: string, textAttributes: any
     
     const prompt = `Analyse cette image de produit mobilier et corrige/confirme les attributs détectés par l'analyse textuelle.
 
-Attributs texte détectés:
+Attributs détectés par le texte:
 - Catégorie: ${expectedCategory}
 - Sous-catégorie: ${expectedSubcategory}
-- Couleur: ${textAttributes.technical_specs?.color || 'Non spécifiée'}
-- Matériau: ${textAttributes.technical_specs?.material || 'Non spécifié'}
+- Couleur: ${textAttributes.technical_specs?.color || 'Non détectée'}
+- Matériau: ${textAttributes.technical_specs?.material || 'Non détecté'}
+- Style: ${textAttributes.technical_specs?.style || 'Non détecté'}
 
-Réponds en JSON avec les corrections visuelles nécessaires.`;
+Réponds en JSON avec:
+{
+  "image_matches_description": boolean,
+  "visual_product_type": "string",
+  "visual_attributes": {
+    "dominant_colors": ["string"],
+    "materials_visible": ["string"],
+    "style_visual": "string",
+    "storage_type": "string"
+  },
+  "inconsistencies": ["string"]
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -498,32 +512,27 @@ function enrichProductBasic(product: any): EnrichedAttributes {
     general_info: {
       title: product.name || product.title || 'Produit sans nom',
       brand: product.vendor || product.brand || 'Marque inconnue',
-      product_type: detectCategoryImproved(text),
-      subcategory: detectSubcategoryImproved(text)
+      product_type: detectCategory(text),
+      subcategory: detectSubcategory(text)
     },
     technical_specs: {
-      material: detectMaterialImproved(text) || 'Non spécifié',
-      color: detectColorImproved(text) || 'Non spécifié',
+      material: detectMaterial(text) || 'Non spécifié',
+      color: detectColor(text) || 'Non spécifié',
       style: detectStyle(text) || 'Contemporain',
-      room: detectRoomImproved(text) || 'Salon',
-      dimensions: extractDimensionsImproved(text),
-      storage_capacity: extractStorageCapacity(text),
-      density: extractDensity(text),
-      firmness: extractFirmness(text)
+      room: detectRoom(text) || 'Salon',
+      dimensions: extractDimensions(text)
     },
     features: {
       convertible: text.includes('convertible'),
       storage: text.includes('rangement') || text.includes('storage'),
-      adjustable: text.includes('réglable') || text.includes('ajustable'),
-      assembly_required: text.includes('monter') || text.includes('assemblage') || text.includes('montage'),
-      wall_mounted: text.includes('mural') || text.includes('fixation murale')
+      adjustable: text.includes('réglable') || text.includes('ajustable')
     },
     seo_marketing: {
-      seo_title: generateSEOTitle(product),
-      seo_description: generateSEODescription(product),
-      ad_headline: generateAdHeadline(product),
-      ad_description: generateAdDescription(product),
-      tags: generateImprovedTags(text, product.name || ''),
+      seo_title: (product.name || 'Produit').substring(0, 60),
+      seo_description: (product.description || 'Description produit').substring(0, 150),
+      ad_headline: (product.name || 'Produit').substring(0, 25),
+      ad_description: (product.description || '').substring(0, 80),
+      tags: generateBasicTags(text),
       google_product_category: '696'
     },
     ai_confidence: {
@@ -672,61 +681,4 @@ function generateHandle(name: string): string {
     .trim()
     .replace(/\s+/g, '-')
     .substring(0, 100);
-}
-
-// Missing function implementations
-function detectCategoryImproved(text: string): string {
-  return detectCategory(text);
-}
-
-function detectSubcategoryImproved(text: string): string {
-  return detectSubcategory(text);
-}
-
-function detectColorImproved(text: string): string {
-  return detectColor(text);
-}
-
-function detectMaterialImproved(text: string): string {
-  return detectMaterial(text);
-}
-
-function detectRoomImproved(text: string): string {
-  return detectRoom(text);
-}
-
-function extractDimensionsImproved(text: string): string {
-  return extractDimensions(text);
-}
-
-function extractStorageCapacity(text: string): string {
-  return '';
-}
-
-function extractDensity(text: string): string {
-  return '';
-}
-
-function extractFirmness(text: string): string {
-  return '';
-}
-
-function generateSEOTitle(product: any): string {
-  return product.name || product.title || 'Produit';
-}
-
-function generateSEODescription(product: any): string {
-  return product.description || 'Description du produit';
-}
-
-function generateAdHeadline(product: any): string {
-  return product.name || product.title || 'Produit';
-}
-
-function generateAdDescription(product: any): string {
-  return product.description || 'Description du produit';
-}
-
-function generateImprovedTags(text: string, name: string): string[] {
-  return generateBasicTags(text);
 }
