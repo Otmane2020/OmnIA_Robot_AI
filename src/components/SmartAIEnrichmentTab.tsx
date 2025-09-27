@@ -121,6 +121,9 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       
       for (const storageKey of allStorageKeys) {
         const savedProducts = localStorage.getItem(storageKey);
+        if (savedProducts) {
+          try {
+            const parsedProducts = JSON.parse(savedProducts);
             if (Array.isArray(parsedProducts) && parsedProducts.length > 0) {
               // Valider et nettoyer les produits
               const validProducts = parsedProducts.filter((p: any) => {
@@ -149,9 +152,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
               allProducts = [...allProducts, ...validProducts];
               console.log(`✅ ${validProducts.length} produits valides depuis ${storageKey}`);
             }
-          } catch (error) {
-            console.error(`❌ Erreur parsing ${storageKey}:`, error);
-          }
+        } catch (error) {
+          console.error(`❌ Erreur parsing ${storageKey}:`, error);
         }
       }
       
