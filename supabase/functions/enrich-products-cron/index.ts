@@ -411,7 +411,7 @@ async function analyzeProductImageImproved(imageUrl: string, textAttributes: any
     
     const prompt = `Analyse cette image de produit mobilier et corrige/confirme les attributs détectés par l'analyse textuelle.
 
-Attributs détectés par le texte:
+Attributs texte détectés:
 - Catégorie: ${expectedCategory}
 - Sous-catégorie: ${expectedSubcategory}
 - Couleur: ${textAttributes.technical_specs?.color || 'Non détectée'}
