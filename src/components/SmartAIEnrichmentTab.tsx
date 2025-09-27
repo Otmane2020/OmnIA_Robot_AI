@@ -911,7 +911,7 @@ Destination : Salon, pièce à vivre, studio`,
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }, [products, searchTerm, selectedCategory]);
 
   const categories = Array.from(new Set(products.map(p => p.category))).filter(Boolean);
 
