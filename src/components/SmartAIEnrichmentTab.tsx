@@ -65,52 +65,60 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
       setIsLoading(true);
       console.log('📦 Chargement automatique catalogue SMART AI pour retailer:', retailerId);
 
-      // 1. Charger les produits enrichis depuis Supabase
+      // Vérifier si retailerId est un UUID valide
+      const isValidRetailerId = isValidUUID(retailerId);
+      console.log('🔍 Validation retailerId:', { retailerId, isValidUUID: isValidRetailerId });
+
+      // 1. Charger les produits enrichis depuis Supabase (seulement si UUID valide)
       let enrichedFromDB: ProductPreview[] = [];
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (isValidRetailerId) {
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-        if (supabaseUrl && supabaseKey) {
-          const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?retailer_id=eq.${retailerId}&select=*`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
+          if (supabaseUrl && supabaseKey) {
+            const response = await fetch(`${supabaseUrl}/rest/v1/products_enriched?retailer_id=eq.${retailerId}&select=*`, {
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              enrichedFromDB = data.map((p: any) => ({
+                id: p.id,
+                handle: p.handle,
+                title: p.title,
+                description: p.description || '',
+                price: p.price || 0,
+                compare_at_price: p.compare_at_price,
+                category: p.category || 'Mobilier',
+                subcategory: p.subcategory || '',
+                color: p.color || '',
+                material: p.material || '',
+                style: p.style || '',
+                dimensions: p.dimensions || '',
+                room: p.room || '',
+                vendor: p.brand || 'Boutique',
+                image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+                product_url: p.product_url || '#',
+                stock_qty: p.stock_qty || 0,
+                confidence_score: p.confidence_score || 0,
+                ai_vision_summary: p.ai_vision_summary || '',
+                tags: p.tags || [],
+                enriched_at: p.enriched_at,
+                brand: p.brand || 'Boutique'
+              }));
+              console.log('✅ Produits enrichis depuis Supabase:', enrichedFromDB.length);
             }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            enrichedFromDB = data.map((p: any) => ({
-              id: p.id,
-              handle: p.handle,
-              title: p.title,
-              description: p.description || '',
-              price: p.price || 0,
-              compare_at_price: p.compare_at_price,
-              category: p.category || 'Mobilier',
-              subcategory: p.subcategory || '',
-              color: p.color || '',
-              material: p.material || '',
-              style: p.style || '',
-              dimensions: p.dimensions || '',
-              room: p.room || '',
-              vendor: p.brand || 'Boutique',
-              image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-              product_url: p.product_url || '#',
-              stock_qty: p.stock_qty || 0,
-              confidence_score: p.confidence_score || 0,
-              ai_vision_summary: p.ai_vision_summary || '',
-              tags: p.tags || [],
-              enriched_at: p.enriched_at,
-              brand: p.brand || 'Boutique'
-            }));
-            console.log('✅ Produits enrichis depuis Supabase:', enrichedFromDB.length);
           }
+        } catch (error) {
+          console.log('⚠️ Erreur Supabase enriched, fallback localStorage');
         }
-      } catch (error) {
-        console.log('⚠️ Erreur Supabase enriched, fallback localStorage');
+      } else {
+        console.log('⚠️ RetailerId non-UUID, skip Supabase enriched products');
       }
 
       // 2. Charger les produits bruts depuis localStorage et Supabase
@@ -143,42 +151,46 @@ export const SmartAIEnrichmentTab: React.FC<SmartAIEnrichmentTabProps> = ({ reta
 
       // 3. Charger aussi depuis imported_products Supabase
       let rawFromDB: ProductPreview[] = [];
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (isValidRetailerId) {
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-        if (supabaseUrl && supabaseKey) {
-          const response = await fetch(`${supabaseUrl}/rest/v1/imported_products?retailer_id=eq.${retailerId}&status=eq.active&select=*`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
+          if (supabaseUrl && supabaseKey) {
+            const response = await fetch(`${supabaseUrl}/rest/v1/imported_products?retailer_id=eq.${retailerId}&status=eq.active&select=*`, {
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              rawFromDB = data.map((p: any) => ({
+                id: p.id,
+                handle: p.external_id,
+                title: p.name,
+                description: p.description || '',
+                price: p.price || 0,
+                compare_at_price: p.compare_at_price,
+                category: p.category || 'Mobilier',
+                subcategory: '',
+                vendor: p.vendor || 'Boutique',
+                image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
+                product_url: p.product_url || '#',
+                stock_qty: p.stock || 0,
+                confidence_score: 0,
+                tags: []
+              }));
+              console.log('✅ Produits bruts depuis Supabase:', rawFromDB.length);
             }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            rawFromDB = data.map((p: any) => ({
-              id: p.id,
-              handle: p.external_id,
-              title: p.name,
-              description: p.description || '',
-              price: p.price || 0,
-              compare_at_price: p.compare_at_price,
-              category: p.category || 'Mobilier',
-              subcategory: '',
-              vendor: p.vendor || 'Boutique',
-              image_url: p.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg',
-              product_url: p.product_url || '#',
-              stock_qty: p.stock || 0,
-              confidence_score: 0,
-              tags: []
-            }));
-            console.log('✅ Produits bruts depuis Supabase:', rawFromDB.length);
           }
+        } catch (error) {
+          console.log('⚠️ Erreur Supabase imported_products');
         }
-      } catch (error) {
-        console.log('⚠️ Erreur Supabase imported_products');
+      } else {
+        console.log('⚠️ RetailerId non-UUID, skip Supabase imported_products');
       }
 
       // 4. Combiner et dédupliquer
