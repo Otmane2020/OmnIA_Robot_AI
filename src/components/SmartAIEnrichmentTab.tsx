@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Brain, Sparkles, Zap, RefreshCw, Download, Upload, 
-  BarChart3, CheckCircle, AlertCircle, Loader2, Eye,
-  Package, Tag, DollarSign, Image, Settings, Search,
-  Filter, ChevronDown, ChevronUp, ExternalLink, Target
-} from 'lucide-react';
+import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw, ChevronUp, ChevronDown, Target, Edit, Trash2, Plus, Sparkles, Loader2, Settings, TrendingUp } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
 interface SmartProduct {
@@ -66,7 +61,6 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isAnalyzingVision, setIsAnalyzingVision] = useState(false);
   const [visionAnalysisResults, setVisionAnalysisResults] = useState<{[key: string]: string}>({});
-  const [isSyncing, setIsSyncing] = useState(false);
   const { showSuccess, showError, showInfo } = useNotifications();
 
   // Fonction pour analyser une image avec Vision IA
@@ -618,37 +612,6 @@ Destination : Salon, pièce à vivre, studio`,
       .trim();
   };
 
-  const handleSyncCatalog = async () => {
-    setIsSyncing(true);
-    showInfo('Synchronisation démarrée', 'Synchronisation du catalogue avec les dernières données...');
-    
-    try {
-      // Simuler la synchronisation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Recharger les produits enrichis
-      await loadSmartProducts();
-      
-      showSuccess(
-        'Catalogue synchronisé',
-        'Le catalogue a été synchronisé avec succès !',
-        [
-          {
-            label: 'Voir les produits',
-            action: () => setViewMode('grid'),
-            variant: 'primary'
-          }
-        ]
-      );
-      
-    } catch (error) {
-      console.error('❌ Erreur synchronisation:', error);
-      showError('Erreur de synchronisation', 'Impossible de synchroniser le catalogue.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   // Fonction pour calculer la remise
   const calculateDiscount = (price: number, compareAtPrice?: number): number => {
     if (!compareAtPrice || compareAtPrice <= price) return 0;
@@ -803,39 +766,127 @@ Destination : Salon, pièce à vivre, studio`,
                 )}
               </div>
             </div>
-            <div className="w-80 h-60 bg-gray-700 rounded-xl overflow-hidden">
+            <div className="w-80 h-60 rounded-xl overflow-hidden bg-gray-700 flex-shrink-0">
               <img 
                 src={selectedProduct?.image_url} 
                 alt={selectedProduct?.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                }}
               />
             </div>
           </div>
 
-          {/* Vision IA Summary */}
-          {selectedProduct?.ai_vision_summary && (
-            <div className="mb-8 p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
-              <div className="flex items-center gap-3 mb-4">
-                <Eye className="w-6 h-6 text-purple-400" />
-                <h3 className="text-xl font-bold text-white">Analyse Vision IA</h3>
+          {/* Description */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-white mb-4">Description</h3>
+            <p className="text-gray-300 leading-relaxed whitespace-pre-line">
+              {selectedProduct?.description}
+            </p>
+          </div>
+
+          {/* Grille d'informations */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Analyse IA */}
+            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-blue-200 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                📊 Analyse IA - Confiance: {selectedProduct?.ai_attributes.confidence_score}%
+              </h4>
+              <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
+                <div 
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all" 
+                  style={{ width: `${selectedProduct?.ai_attributes.confidence_score}%` }}
+                ></div>
               </div>
-              <p className="text-gray-300 leading-relaxed">{selectedProduct.ai_vision_summary}</p>
+              <p className="text-blue-300 text-sm">
+                Analyse complète avec extraction automatique des attributs produit
+              </p>
+            </div>
+          </div>
+
+          {/* Vision IA Section */}
+          {selectedProduct?.ai_vision_summary && (
+            <div className="bg-purple-500/20 border border-purple-400/50 rounded-xl p-6 mb-6">
+              <h4 className="font-semibold text-purple-200 mb-4 flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                👁️ Vision IA - Analyse Visuelle
+              </h4>
+              <div className="bg-black/20 rounded-lg p-4">
+                <p className="text-purple-100 leading-relaxed">
+                  {selectedProduct.ai_vision_summary}
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Attributs IA */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Categories Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-blue-500/20 border border-blue-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-blue-200 mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                📂 Catégories IA
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-blue-300 text-sm">Catégorie principale :</span>
+                  <div className="mt-1">
+                    <span className="bg-blue-600/30 text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
+                      {selectedProduct?.category || 'Mobilier'}
+                    </span>
+                  </div>
+                </div>
+                {selectedProduct?.subcategory && (
+                  <div>
+                    <span className="text-blue-300 text-sm">Sous-catégorie :</span>
+                    <div className="mt-1">
+                      <span className="bg-blue-500/30 text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
+                        {selectedProduct.subcategory}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-green-500/20 border border-green-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-green-200 mb-4 flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                🎯 Classification IA
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-green-300 text-sm">Type de produit :</span>
+                  <div className="mt-1">
+                    <span className="bg-green-600/30 text-green-200 px-3 py-1 rounded-full text-sm font-medium">
+                      {selectedProduct?.productType || selectedProduct?.category || 'Mobilier'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-green-300 text-sm">Marque/Vendeur :</span>
+                  <div className="mt-1">
+                    <span className="bg-green-500/30 text-green-200 px-3 py-1 rounded-full text-sm font-medium">
+                      {selectedProduct?.vendor || 'Decora Home'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Couleurs & Matériaux */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Dimensions */}
-            {Object.keys(selectedProduct?.ai_attributes.dimensions || {}).length > 0 && (
-              <div className="bg-slate-700/50 rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-blue-400" />
-                  Dimensions
-                </h3>
-                <div className="space-y-2">
-                  {Object.entries(selectedProduct?.ai_attributes.dimensions || {}).map(([key, value]) => (
+            {selectedProduct?.ai_attributes.dimensions && Object.keys(selectedProduct.ai_attributes.dimensions).length > 1 && (
+              <div className="bg-cyan-500/20 border border-cyan-400/50 rounded-xl p-6">
+                <h4 className="font-semibold text-cyan-200 mb-4">📏 Dimensions</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(selectedProduct.ai_attributes.dimensions).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
-                      <span className="text-gray-300 capitalize">{key.replace('_', ' ')}:</span>
+                      <span className="text-cyan-300 capitalize">{key.replace('_', ' ')}:</span>
                       <span className="text-white font-semibold">{value} cm</span>
                     </div>
                   ))}
@@ -843,144 +894,168 @@ Destination : Salon, pièce à vivre, studio`,
               </div>
             )}
 
-            {/* Matériaux & Couleurs */}
-            <div className="bg-slate-700/50 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Tag className="w-5 h-5 text-green-400" />
-                Matériaux & Couleurs
-              </h3>
+            {/* Couleurs et Matériaux */}
+            <div className="bg-emerald-500/20 border border-emerald-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-emerald-200 mb-4">🎨 Couleurs & Matériaux</h4>
               <div className="space-y-3">
-                {selectedProduct?.ai_attributes.materials.length > 0 && (
-                  <div>
-                    <span className="text-gray-300">Matériaux:</span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedProduct.ai_attributes.materials.map(material => (
-                        <span key={material} className="bg-green-500/20 text-green-300 px-2 py-1 rounded-lg text-sm">
-                          {material}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {selectedProduct?.ai_attributes.colors.length > 0 && (
-                  <div>
-                    <span className="text-gray-300">Couleurs:</span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedProduct.ai_attributes.colors.map(color => (
-                        <span key={color} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-lg text-sm">
-                          {color}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Variations */}
-          {selectedProduct?.variations && selectedProduct.variations.length > 1 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-white mb-4">Variations disponibles</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {selectedProduct.variations.map(variation => (
-                  <div key={variation.id} className="bg-slate-700/50 rounded-xl p-4">
-                    <h4 className="font-semibold text-white mb-2">{variation.title}</h4>
-                    <div className="flex justify-between items-center">
-                      <span className="text-green-400 font-bold">{Math.round(variation.price)}€</span>
-                      <span className="text-gray-300 text-sm">Stock: {variation.stock}</span>
-                    </div>
-                    {variation.options.map(option => (
-                      <div key={option.name} className="text-sm text-gray-400 mt-1">
-                        {option.name}: {option.value}
-                      </div>
+                <div>
+                  <span className="text-emerald-300 text-sm">Couleurs:</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedProduct?.ai_attributes.colors.map((color, index) => (
+                      <span key={index} className="bg-emerald-600/30 text-emerald-200 px-2 py-1 rounded text-xs">
+                        {color}
+                      </span>
                     ))}
                   </div>
-                ))}
+                </div>
+                <div>
+                  <span className="text-emerald-300 text-sm">Matériaux:</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedProduct?.ai_attributes.materials.map((material, index) => (
+                      <span key={index} className="bg-emerald-600/30 text-emerald-200 px-2 py-1 rounded text-xs">
+                        {material}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Tags intelligents */}
-          {selectedProduct?.ai_attributes.tags.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-yellow-400" />
-                Tags intelligents
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedProduct.ai_attributes.tags.map(tag => (
-                  <span key={tag} className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm font-medium">
-                    #{tag}
-                  </span>
-                ))}
+            {/* Styles et Caractéristiques */}
+            <div className="bg-amber-500/20 border border-amber-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-amber-200 mb-4">✨ Style & Caractéristiques</h4>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-amber-300 text-sm">Styles:</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedProduct?.ai_attributes.styles.map((style, index) => (
+                      <span key={index} className="bg-amber-600/30 text-amber-200 px-2 py-1 rounded text-xs">
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-amber-300 text-sm">Caractéristiques:</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedProduct?.ai_attributes.features.map((feature, index) => (
+                      <span key={index} className="bg-amber-600/30 text-amber-200 px-2 py-1 rounded text-xs">
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* SEO Optimisé */}
-          <div className="mb-8 bg-slate-700/30 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-orange-400" />
-              SEO Optimisé
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-300 text-sm">Titre SEO:</span>
-                <p className="text-white font-medium">{selectedProduct?.seo_optimized.title}</p>
-              </div>
-              <div>
-                <span className="text-gray-300 text-sm">Description SEO:</span>
-                <p className="text-gray-300">{selectedProduct?.seo_optimized.description}</p>
-              </div>
-              <div>
-                <span className="text-gray-300 text-sm">Tags SEO:</span>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedProduct?.seo_optimized.tags.map(tag => (
-                    <span key={tag} className="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-sm">
-                      {tag}
-                    </span>
+            {/* Variations avec prix */}
+            {selectedProduct?.variations && selectedProduct.variations.length > 0 && (
+              <div className="bg-teal-500/20 border border-teal-400/50 rounded-xl p-6">
+                <h4 className="font-semibold text-teal-200 mb-4">
+                  Variations ({selectedProduct.variations.length})
+                </h4>
+                <div className="space-y-3">
+                  {selectedProduct.variations.map((variation, index) => (
+                    <div key={index} className="bg-black/20 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-semibold text-white">{variation.title}</h5>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 font-bold">{Math.round(variation.price)}€</span>
+                          {variation.compare_at_price && variation.compare_at_price > variation.price && (
+                            <>
+                              <span className="text-gray-400 line-through text-sm">{Math.round(variation.compare_at_price)}€</span>
+                              <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
+                                -{calculateDiscount(variation.price, variation.compare_at_price)}%
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-teal-300">Stock: {variation.stock}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {variation.options.map((option, optIndex) => (
+                            <span key={optIndex} className="bg-teal-600/30 text-teal-200 px-2 py-1 rounded text-xs">
+                              {option.name}: {option.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tags et SEO */}
+            <div className="bg-orange-500/20 border border-orange-400/50 rounded-xl p-6">
+              <h4 className="font-semibold text-orange-200 mb-4">SEO optimisé par IA</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-orange-300 text-sm font-medium">Titre SEO :</label>
+                  <p className="text-white font-medium">{selectedProduct?.seo_optimized.title}</p>
+                </div>
+                <div>
+                  <label className="text-orange-300 text-sm font-medium">Description SEO :</label>
+                  <p className="text-orange-100 text-sm">{selectedProduct?.seo_optimized.description}</p>
+                </div>
+                <div>
+                  <label className="text-orange-300 text-sm font-medium">Tags SEO :</label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {(selectedProduct?.ai_attributes.tags || selectedProduct?.seo_optimized.tags).map((tag, index) => (
+                      <span key={index} className="bg-orange-600/30 text-orange-200 px-3 py-1 rounded-full text-sm">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex justify-between items-center pt-6 border-t border-gray-600">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                <span className="text-sm text-gray-300">
-                  Confiance IA: {selectedProduct?.ai_attributes.confidence_score}%
-                </span>
-              </div>
-              <span className="text-sm text-gray-400">
-                Enrichi le {new Date(selectedProduct?.enriched_at || '').toLocaleDateString('fr-FR')}
-              </span>
-            </div>
+          <div className="flex justify-between items-center pt-6 border-t border-slate-600/50">
+            <button
+              onClick={() => handleEnrichProduct(selectedProduct!.id)}
+              disabled={isAnalyzingVision}
+              className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all disabled:cursor-not-allowed"
+            >
+              {isAnalyzingVision ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Vision IA...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Enrichir avec Vision IA
+                </>
+              )}
+            </button>
             
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleEnrichProduct(selectedProduct?.id || '')}
-                disabled={isAnalyzingVision}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-              >
-                {isAnalyzingVision ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-                Re-enrichir
-              </button>
-              
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-xl transition-all"
-              >
-                Fermer
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                const dataStr = JSON.stringify(selectedProduct, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${selectedProduct!.name.replace(/[^a-z0-9]/gi, '_')}_smart_ai.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            >
+              <Download className="w-5 h-5" />
+              Exporter données IA
+            </button>
+            
+            <button
+              onClick={() => setShowDetailModal(false)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-all"
+            >
+              Fermer
+            </button>
           </div>
         </div>
       </div>
@@ -989,10 +1064,10 @@ Destination : Salon, pièce à vivre, studio`,
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />
-          <p className="text-gray-300">Chargement et enrichissement des produits...</p>
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Chargement Smart AI...</p>
         </div>
       </div>
     );
@@ -1004,227 +1079,343 @@ Destination : Salon, pièce à vivre, studio`,
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">SMART AI - Enrichissement Catalogue</h2>
-          <p className="text-gray-300">{products.length} produits enrichis • {products.length} produits total</p>
+          <p className="text-gray-300">
+            {products.filter(p => p.ai_attributes.confidence_score >= 90).length} produits enrichis • {products.length} produits total
+          </p>
         </div>
         
         <div className="flex items-center gap-4">
           <button
-            onClick={handleSyncCatalog}
-            disabled={isSyncing}
-            className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-400 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            onClick={loadSmartProducts}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
           >
-            {isSyncing ? (
+            <RefreshCw className="w-4 h-4" />
+            Actualiser
+          </button>
+          
+          <button
+            onClick={handleEnrichAll}
+            disabled={isAnalyzingVision}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isAnalyzingVision ? (
               <>
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                Synchronisation...
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Vision IA en cours...
               </>
             ) : (
               <>
-                <RefreshCw className="w-5 h-5" />
-                Synchroniser le catalogue
+                <Sparkles className="w-5 h-5" />
+                Enrichir avec Vision IA
               </>
             )}
           </button>
-          
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-black/40 border border-gray-600 rounded-xl px-4 py-2 text-white"
-          >
-            <option value="all">Toutes catégories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-            >
-              <BarChart3 className="w-4 h-4" />
-              {viewMode === 'table' ? 'Vue grille' : 'Vue tableau'}
-            </button>
-            
-            <button
-              onClick={handleEnrichAll}
-              disabled={isAnalyzingVision || products.length === 0}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isAnalyzingVision ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Enrichissement...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Enrichir avec Vision IA
-                </>
-              )}
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Barre de recherche */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Rechercher dans les produits enrichis..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-black/40 border border-gray-600 rounded-xl pl-12 pr-4 py-3 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
-        />
+      {/* Filtres */}
+      <div className="bg-slate-800/50 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Filtres</h3>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            {showFilters ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
+        </div>
+        
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Recherche</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Rechercher un produit..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Catégorie</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="all">Toutes les catégories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Affichage</label>
+              <div className="flex rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'table' 
+                      ? 'bg-cyan-600 text-white' 
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  Tableau
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-cyan-600 text-white' 
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  Grille
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-6 border border-purple-500/30">
+        <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/50 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-300 text-sm">Produits enrichis</p>
-              <p className="text-2xl font-bold text-white">{filteredProducts.length}</p>
+              <p className="text-blue-300 text-sm font-medium">Total Produits</p>
+              <p className="text-2xl font-bold text-white">{products.length}</p>
             </div>
-            <Brain className="w-8 h-8 text-purple-400" />
+            <Package className="w-8 h-8 text-blue-400" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl p-6 border border-green-500/30">
+        <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/50 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-300 text-sm">Confiance moyenne</p>
+              <p className="text-green-300 text-sm font-medium">Enrichis IA</p>
               <p className="text-2xl font-bold text-white">
-                {Math.round(products.reduce((sum, p) => sum + p.ai_attributes.confidence_score, 0) / products.length || 0)}%
+                {products.filter(p => p.ai_attributes.confidence_score >= 90).length}
               </p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-400" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-6 border border-blue-500/30">
+        <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/50 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-300 text-sm">Catégories</p>
-              <p className="text-2xl font-bold text-white">{categories.length}</p>
+              <p className="text-yellow-300 text-sm font-medium">En cours</p>
+              <p className="text-2xl font-bold text-white">
+                {products.filter(p => p.ai_attributes.confidence_score < 90 && p.ai_attributes.confidence_score >= 70).length}
+              </p>
             </div>
-            <Tag className="w-8 h-8 text-blue-400" />
+            <Loader2 className="w-8 h-8 text-yellow-400" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-6 border border-orange-500/30">
+        <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/50 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-300 text-sm">Valeur totale</p>
+              <p className="text-purple-300 text-sm font-medium">Valeur Stock</p>
               <p className="text-2xl font-bold text-white">
-                {Math.round(products.reduce((sum, p) => sum + p.price, 0)).toLocaleString()}€
+                {Math.round(products.reduce((sum, p) => sum + (p.price * p.stock), 0)).toLocaleString()}€
               </p>
             </div>
-            <DollarSign className="w-8 h-8 text-orange-400" />
+            <DollarSign className="w-8 h-8 text-purple-400" />
           </div>
         </div>
       </div>
 
       {/* Liste des produits */}
-      {viewMode === 'table' ? (
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-slate-800/50 border border-slate-600/50 rounded-xl p-6 hover:border-cyan-500/50 transition-all">
+              <div className="relative mb-4">
+                <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-600 mb-4">
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <h3 className="font-semibold text-white mb-2 line-clamp-2">{product.name}</h3>
+              <p className="text-gray-300 text-sm mb-3">{product.category} • {product.vendor}</p>
+              
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-xl font-bold text-green-400">{Math.round(product.price)}€</span>
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <>
+                    <span className="text-gray-400 line-through text-sm">{Math.round(product.compare_at_price)}€</span>
+                    <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+                      -{calculateDiscount(product.price, product.compare_at_price)}% OFF
+                    </span>
+                    <div className="w-full text-xs text-green-400 font-medium">
+                      Économie de {Math.round(product.compare_at_price - product.price)}€
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  product.ai_attributes.confidence_score >= 90 
+                    ? 'bg-green-500/20 text-green-300' 
+                    : product.ai_attributes.confidence_score >= 70
+                      ? 'bg-yellow-500/20 text-yellow-300'
+                      : 'bg-red-500/20 text-red-300'
+                }`}>
+                  ✨ Enrichi IA ({product.ai_attributes.confidence_score}%)
+                </span>
+                <span className={`font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  Stock: {product.stock}
+                </span>
+              </div>
+              
+              {/* Tags intelligents */}
+              {product.ai_attributes.tags && product.ai_attributes.tags.length > 0 && (
+                <div className="mb-3">
+                  <div className="flex flex-wrap gap-1">
+                    {product.ai_attributes.tags.slice(0, 4).map((tag, tagIndex) => (
+                      <span key={tagIndex} className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
+                        {tag}
+                      </span>
+                    ))}
+                    {product.ai_attributes.tags.length > 4 && (
+                      <span className="text-gray-400 text-xs">+{product.ai_attributes.tags.length - 4}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedProduct(product)}
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  Détails
+                </button>
+                <button
+                  onClick={() => handleEnrichProduct(product.id)}
+                  disabled={isAnalyzingVision}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isAnalyzingVision ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
         <div className="bg-slate-800/50 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-700/50">
                 <tr>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Produit</th>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Catégorie</th>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Prix</th>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Confiance IA</th>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Tags</th>
-                  <th className="text-left p-4 text-gray-300 font-semibold">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Produit</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Prix</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">IA Score</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-600/50">
                 {filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-t border-gray-700 hover:bg-slate-700/30">
-                    <td className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gray-700 rounded-lg overflow-hidden">
+                  <tr key={product.id} className="hover:bg-slate-700/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600 mr-4 flex-shrink-0">
                           <img 
                             src={product.image_url} 
                             alt={product.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg';
+                            }}
                           />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-white">{product.name}</h3>
-                          <p className="text-gray-400 text-sm">{product.vendor}</p>
-                          {product.variations.length > 1 && (
-                            <span className="text-xs text-purple-400">
-                              {product.variations.length} variations
-                            </span>
-                          )}
+                          <div className="text-sm font-medium text-white">{product.name}</div>
+                          <div className="text-sm text-gray-400">{product.category} • {product.vendor}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-lg text-sm">
-                        {product.category}
-                      </span>
-                      {product.subcategory && (
-                        <div className="text-xs text-gray-400 mt-1">{product.subcategory}</div>
-                      )}
-                    </td>
-                    <td className="p-4">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-green-400 font-bold">{Math.round(product.price)}€</span>
+                        <span className="text-sm font-bold text-green-400">{Math.round(product.price)}€</span>
                         {product.compare_at_price && product.compare_at_price > product.price && (
                           <>
-                            <span className="text-gray-400 line-through text-sm">{Math.round(product.compare_at_price)}€</span>
-                            <span className="bg-red-500/20 text-red-300 px-1 py-0.5 rounded text-xs">
+                            <span className="text-gray-400 line-through text-xs">{Math.round(product.compare_at_price)}€</span>
+                            <span className="bg-red-500/20 text-red-300 px-2 py-1 rounded-full text-xs">
                               -{calculateDiscount(product.price, product.compare_at_price)}%
                             </span>
                           </>
                         )}
                       </div>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-700 rounded-full h-2">
+                    <td className="px-6 py-4">
+                      <span className={`text-sm font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {product.stock}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-16 bg-gray-700 rounded-full h-2 mr-3">
                           <div 
-                            className="h-2 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"
+                            className={`h-2 rounded-full ${
+                              product.ai_attributes.confidence_score >= 90 
+                                ? 'bg-green-500' 
+                                : product.ai_attributes.confidence_score >= 70
+                                  ? 'bg-yellow-500'
+                                  : 'bg-red-500'
+                            }`}
                             style={{ width: `${product.ai_attributes.confidence_score}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-300">{product.ai_attributes.confidence_score}%</span>
+                        <span className="text-sm text-white font-medium">
+                          {product.ai_attributes.confidence_score}%
+                        </span>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {product.ai_attributes.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded text-xs">
-                            #{tag}
-                          </span>
-                        ))}
-                        {product.ai_attributes.tags.length > 3 && (
-                          <span className="text-xs text-gray-400">+{product.ai_attributes.tags.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedProduct(product);
-                            setShowDetailModal(true);
-                          }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg transition-all"
+                          onClick={() => setSelectedProduct(product)}
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1 rounded text-sm transition-all flex items-center gap-1"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3 h-3" />
+                          Voir
                         </button>
                         <button
                           onClick={() => handleEnrichProduct(product.id)}
                           disabled={isAnalyzingVision}
-                          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white p-2 rounded-lg transition-all"
+                          className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-3 py-1 rounded text-sm transition-all disabled:cursor-not-allowed flex items-center gap-1"
                         >
-                          <Sparkles className="w-4 h-4" />
+                          {isAnalyzingVision ? (
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          IA
                         </button>
                       </div>
                     </td>
@@ -1234,96 +1425,10 @@ Destination : Salon, pièce à vivre, studio`,
             </table>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="bg-slate-800/50 rounded-xl overflow-hidden hover:bg-slate-800/70 transition-all">
-              <div className="relative">
-                <img 
-                  src={product.image_url} 
-                  alt={product.name}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-3 right-3">
-                  <div className="bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
-                    <span className="text-xs text-white">{product.ai_attributes.confidence_score}%</span>
-                  </div>
-                </div>
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <div className="absolute top-3 left-3">
-                    <span className="bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-bold">
-                      -{calculateDiscount(product.price, product.compare_at_price)}% OFF
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-white text-sm leading-tight">{product.name}</h3>
-                </div>
-                
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                    {product.category}
-                  </span>
-                  {product.variations.length > 1 && (
-                    <span className="text-xs text-purple-400">
-                      {product.variations.length} var.
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-green-400 font-bold">{Math.round(product.price)}€</span>
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-gray-400 line-through text-sm">{Math.round(product.compare_at_price)}€</span>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {product.ai_attributes.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className="bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded text-xs">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setShowDetailModal(true);
-                    }}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Détails
-                  </button>
-                  <button
-                    onClick={() => handleEnrichProduct(product.id)}
-                    disabled={isAnalyzingVision}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white p-2 rounded-lg transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-300 mb-2">Aucun produit trouvé</h3>
-          <p className="text-gray-400">Essayez de modifier vos critères de recherche.</p>
-        </div>
       )}
 
       {/* Modal de détail */}
-      {showDetailModal && selectedProduct && <ProductDetailModal />}
+      {selectedProduct && <ProductDetailModal />}
     </div>
   );
 };
