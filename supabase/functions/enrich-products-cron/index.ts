@@ -277,21 +277,9 @@ async function enrichProductWithAI(product: any, enableImageAnalysis: boolean): 
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
   
   if (!deepseekApiKey) {
-    console.log('⚠️ DeepSeek non configuré, enrichissement basique');
-    return enrichProductBasic(product);
-  }
-
-  try {
-    const productText = `
-PRODUIT: ${product.name || product.title || 'Non spécifié'}
-DESCRIPTION: ${product.description || 'Aucune description'}
-CATÉGORIE: ${product.category || product.productType || 'Non spécifié'}
-PRIX: ${product.price || 0}€
-MARQUE: ${product.vendor || product.brand || 'Non spécifié'}
-TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || 'Aucun tag'}
     `.trim();
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const prompt = `Analyse ce produit mobilier et enrichis-le COMPLÈTEMENT au format JSON strict :
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${deepseekApiKey}`,
@@ -299,14 +287,9 @@ TAGS: ${Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || 
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert en mobilier. Réponds UNIQUEMENT avec du JSON valide sans texte supplémentaire.`
           },
           {
             role: 'user',
-            content: `Analyse ce produit mobilier et enrichis-le au format JSON strict :
 
 ${productText}
 
@@ -350,6 +333,7 @@ RÈGLES STRICTES pour les tags:
 - Exemple pour "Canapé VENTU convertible": ["canapé", "ventu", "convertible", "design", "contemporain"]
 - Utiliser les mots exacts du titre quand pertinents
 - Éviter les mots vides (le, la, de, avec, etc.)`
+            content: prompt
           }
         ],
         max_tokens: 1000,
@@ -379,16 +363,7 @@ RÈGLES STRICTES pour les tags:
     
     // Validation des champs requis
     if (!enriched.general_info || !enriched.technical_specs) {
-      throw new Error('Structure JSON invalide');
-    }
-
-    // Application de l'analyse d'image si demandée
-    if (enableImageAnalysis && product.image_url) {
       try {
-        const imageAnalysis = await analyzeProductImage(product.image_url, enriched);
-        if (imageAnalysis) {
-          enriched.technical_specs = { ...enriched.technical_specs, ...imageAnalysis };
-          enriched.enrichment_source = 'text_and_image';
         }
       } catch (imageError) {
         console.warn('⚠️ Analyse image échouée:', imageError);
@@ -403,11 +378,16 @@ RÈGLES STRICTES pour les tags:
   }
 }
 
-async function analyzeProductImage(imageUrl: string, textAttributes: any) {
+async function analyzeProductImageImproved(imageUrl: string, textAttributes: any) {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openaiApiKey) return null;
 
   try {
+    // Construire un prompt plus précis basé sur les attributs texte
+    const expectedCategory = textAttributes.general_info?.product_type || 'Mobilier';
+    const expectedSubcategory = textAttributes.general_info?.subcategory || '';
+    
+    const prompt = `Analyse cette image de produit mobilier et corrige/confirme les attributs détectés par l'analyse textuelle.
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -415,23 +395,24 @@ async function analyzeProductImage(imageUrl: string, textAttributes: any) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4-vision-preview',
+            content: 'Tu es un expert en analyse visuelle de mobilier avec une spécialisation en meubles de rangement. Tu identifies précisément le type de produit et corriges les incohérences entre texte et image. Réponds uniquement en JSON valide.'
         messages: [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Analyse cette image de mobilier. Réponds en JSON: {"color": "couleur", "material": "matériau", "style": "style"}`
+                text: prompt
               },
               {
                 type: 'image_url',
-                image_url: { url: imageUrl, detail: 'low' }
+                image_url: { url: imageUrl, detail: 'high' }
               }
             ]
           }
         ],
-        max_tokens: 200
+        max_tokens: 500,
+        temperature: 0.1
       }),
     });
 
@@ -442,7 +423,32 @@ async function analyzeProductImage(imageUrl: string, textAttributes: any) {
     
     if (content) {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if (jsonMatch) {
+        const imageAnalysis = JSON.parse(jsonMatch[0]);
+        
+        // Log des incohérences détectées
+        if (imageAnalysis.inconsistencies && imageAnalysis.inconsistencies.length > 0) {
+          console.warn('⚠️ Incohérences image/texte détectées:', imageAnalysis.inconsistencies);
+        }
+        
+        // Si l'image ne correspond pas à la description, utiliser les attributs visuels
+        if (!imageAnalysis.image_matches_description) {
+          console.warn('⚠️ Image ne correspond pas à la description textuelle');
+          return {
+            color: imageAnalysis.visual_attributes?.dominant_colors?.[0] || textAttributes.technical_specs?.color,
+            material: imageAnalysis.visual_attributes?.materials_visible?.[0] || textAttributes.technical_specs?.material,
+            style: imageAnalysis.visual_attributes?.style_visual || textAttributes.technical_specs?.style,
+            product_type_correction: imageAnalysis.visual_product_type,
+            storage_type: imageAnalysis.visual_attributes?.storage_type
+          };
+        }
+        
+        return {
+          color: imageAnalysis.visual_attributes?.dominant_colors?.[0] || textAttributes.technical_specs?.color,
+          material: imageAnalysis.visual_attributes?.materials_visible?.[0] || textAttributes.technical_specs?.material,
+          style: imageAnalysis.visual_attributes?.style_visual || textAttributes.technical_specs?.style
+        };
+      }
     }
 
   } catch (error) {
@@ -459,27 +465,32 @@ function enrichProductBasic(product: any): EnrichedAttributes {
     general_info: {
       title: product.name || product.title || 'Produit sans nom',
       brand: product.vendor || product.brand || 'Marque inconnue',
-      product_type: detectCategory(text),
-      subcategory: detectSubcategory(text)
+      product_type: detectCategoryImproved(text),
+      subcategory: detectSubcategoryImproved(text)
     },
     technical_specs: {
-      material: detectMaterial(text) || 'Non spécifié',
-      color: detectColor(text) || 'Non spécifié',
+      material: detectMaterialImproved(text) || 'Non spécifié',
+      color: detectColorImproved(text) || 'Non spécifié',
       style: detectStyle(text) || 'Contemporain',
-      room: detectRoom(text) || 'Salon',
-      dimensions: extractDimensions(text)
+      room: detectRoomImproved(text) || 'Salon',
+      dimensions: extractDimensionsImproved(text),
+      storage_capacity: extractStorageCapacity(text),
+      density: extractDensity(text),
+      firmness: extractFirmness(text)
     },
     features: {
       convertible: text.includes('convertible'),
       storage: text.includes('rangement') || text.includes('storage'),
-      adjustable: text.includes('réglable') || text.includes('ajustable')
+      adjustable: text.includes('réglable') || text.includes('ajustable'),
+      assembly_required: text.includes('monter') || text.includes('assemblage') || text.includes('montage'),
+      wall_mounted: text.includes('mural') || text.includes('fixation murale')
     },
     seo_marketing: {
-      seo_title: (product.name || 'Produit').substring(0, 60),
-      seo_description: (product.description || 'Description produit').substring(0, 150),
-      ad_headline: (product.name || 'Produit').substring(0, 25),
-      ad_description: (product.description || '').substring(0, 80),
-      tags: generateBasicTags(text),
+      seo_title: generateSEOTitle(product),
+      seo_description: generateSEODescription(product),
+      ad_headline: generateAdHeadline(product),
+      ad_description: generateAdDescription(product),
+      tags: generateImprovedTags(text, product.name || ''),
       google_product_category: '696'
     },
     ai_confidence: {
