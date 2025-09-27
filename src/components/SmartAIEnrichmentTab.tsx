@@ -63,6 +63,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<SmartProduct | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isAnalyzingVision, setIsAnalyzingVision] = useState(false);
   const [visionAnalysisResults, setVisionAnalysisResults] = useState<{[key: string]: string}>({});
