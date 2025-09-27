@@ -3,7 +3,6 @@ import { Upload, FileText, ArrowRight, CheckCircle, AlertCircle, Loader2, MapPin
 import { useNotifications } from './NotificationSystem';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { generateHandle } from '../utils/stringUtils';
 
 interface CSVField {
   csvColumn: string;
@@ -335,6 +334,16 @@ export const ShopifyCSVImporter: React.FC<{ onImportComplete: (data: any) => voi
         setProductPreviews(previews);
       });
     }
+  };
+
+  const generateHandle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 100);
   };
 
   const autoImportToCatalog = async (products: any[], stats: any) => {
