@@ -6,6 +6,7 @@ import {
   Filter, ChevronDown, ChevronUp, ExternalLink, Target
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
+import { generateHandle } from '../utils/stringUtils';
 
 interface SmartProduct {
   id: string;
@@ -906,16 +907,6 @@ Destination : Salon, pièce à vivre, studio`,
     }
   };
 
-  const generateHandle = (name: string): string => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
