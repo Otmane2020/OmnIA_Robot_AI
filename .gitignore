@@ -18,6 +18,7 @@ build/
 .next/
 out/
 .cache/
+.tmp/
 
 # OS / IDE files
 .DS_Store
@@ -40,5 +41,15 @@ Thumbs.db
 .netlify/
 .supabase/
 
-# Others
+# Coverage
 coverage/
+
+# Bolt.new heavy files (optional)
+# Ignore all large media/assets if not needed
+/src/assets/
+/public/uploads/
+/public/temp/
+/*.bak
+*.tar
+*.zip
+*.rar
