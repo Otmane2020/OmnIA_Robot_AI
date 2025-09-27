@@ -104,7 +104,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
 
   // Fonction améliorée pour générer des tags intelligents
   const generateIntelligentTags = (title: string, description: string, category: string): string[] => {
-    const text = \`${title} ${description}`.toLowerCase();
+    const text = `${title} ${description}`.toLowerCase();
     const tags = new Set<string>();
     
     // Mots vides à exclure
