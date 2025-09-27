@@ -5,9 +5,10 @@ import {
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 import React, { useState, useEffect } from 'react';
-import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw } from 'lucide-react';
-  Package, Search, Eye, Edit, Trash2, Plus, Brain, RefreshCw, Loader2, CheckCircle, AlertCircle,
-  Filter, ChevronDown, ChevronUp, ExternalLink, Target,
+import { 
+  Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, 
+  Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw, Edit, Trash2, Plus, Loader2,
+  Filter, ChevronDown, ChevronUp, ExternalLink, Target
 } from 'lucide-react';
 import { useNotifications } from './NotificationSystem';
 
