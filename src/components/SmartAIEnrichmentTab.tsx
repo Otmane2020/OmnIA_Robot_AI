@@ -421,7 +421,8 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                               ...result,
                               extracted_attributes: { ai_vision_summary: result.ai_vision_summary },
                               created_at: new Date().toISOString(),
-                              updated_at: new Date().toISOString()
+                              updated_at: new Date().toISOString(),
+                              source_platform: 'search'
                             };
                             handleAnalyzeImage(enrichedProduct);
                           }}
@@ -838,10 +839,10 @@ export const SmartAIEnrichmentTab: React.FC = () => {
                   )}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Informations sur l'enrichissement */}
       <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-cyan-400/30">
