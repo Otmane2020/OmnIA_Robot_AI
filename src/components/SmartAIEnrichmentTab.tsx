@@ -2,6 +2,7 @@ import { Search, Package, Eye, CreditCard as Edit, Trash2, Plus, Download, Uploa
 import { useNotifications } from './NotificationSystem';
 import React, { useState, useEffect } from 'react';
 import { Brain, Database, Search, BarChart3, FileText, CheckCircle, AlertCircle, Loader, Eye, Download, Upload, Zap, Package, Tag, DollarSign, Image, Info, Palette, Weight, X, RefreshCw, CreditCard as Edit, Trash2, Plus, Loader2, Filter, ChevronDown, ChevronUp, ExternalLink, Target, Sparkles } from 'lucide-react';
+import { useNotifications } from './NotificationSystem';
 
 interface SmartProduct {
   id: string;
@@ -29,7 +30,6 @@ interface SmartProduct {
     room: string[];
     confidence_score: number;
     tags: string[];
-    category: string;
   };
   variations: Array<{
     id: string;
@@ -37,7 +37,6 @@ interface SmartProduct {
     price: number;
     stock: number;
     options: { name: string; value: string }[];
-    compare_at_price?: number;
   }>;
   seo_optimized: {
     title: string;
