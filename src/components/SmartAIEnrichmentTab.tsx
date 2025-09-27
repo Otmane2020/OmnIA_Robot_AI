@@ -208,12 +208,12 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         if (savedData) {
           const parsed = JSON.parse(savedData);
           if (Array.isArray(parsed)) {
-            console.log(\`📦 ${source}: ${parsed.length} produits`);
+            console.log(`📦 ${source}: ${parsed.length} produits`);
             allProducts = [...allProducts, ...parsed];
           }
         }
       } catch (error) {
-        console.error(\`❌ Erreur parsing ${source}:`, error);
+        console.error(`❌ Erreur parsing ${source}:`, error);
       }
     }
     
@@ -226,7 +226,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
       index === self.findIndex(p => p.id === product.id)
     );
     
-    console.log(\`📊 Produits uniques: ${uniqueProducts.length}`);
+    console.log(`📊 Produits uniques: ${uniqueProducts.length}`);
     return uniqueProducts;
   };
 
@@ -237,7 +237,7 @@ export const SmartAIEnrichmentTab: React.FC = () => {
         id: 'decora-canape-ventu-gris',
         handle: 'canape-ventu-convertible',
         name: 'Canapé VENTU convertible',
-        description: \`Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
 
 Caractéristiques principales :
 Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
@@ -273,7 +273,7 @@ Destination : Salon, pièce à vivre, studio`,
         id: 'decora-canape-ventu-beige',
         handle: 'canape-ventu-convertible',
         name: 'Canapé VENTU convertible',
-        description: \`Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
+        description: `Alliant design contemporain, fonctionnalité intelligente et grand confort, le canapé VENTU se distingue par ses lignes épurées et son espace couchage élargi. Son tissu Dunbar 25 disponible en gris moderne ou en beige chaleureux apporte une touche d'élégance à tout intérieur.
 
 Caractéristiques principales :
 Convertible avec couchage agrandi : mécanisme de dépliage automatique DL pour une transformation rapide en lit.
@@ -322,7 +322,7 @@ Destination : Salon, pièce à vivre, studio`,
       groupedByHandle.get(handle)!.push(product);
     });
     
-    console.log(\`🔄 Groupement: ${groupedByHandle.size} produits variables (au lieu de ${rawProducts.length} single)`);
+    console.log(`🔄 Groupement: ${groupedByHandle.size} produits variables (au lieu de ${rawProducts.length} single)`);
     
     // Enrichir chaque groupe de produits
     for (const [handle, productGroup] of groupedByHandle.entries()) {
@@ -332,7 +332,7 @@ Destination : Salon, pièce à vivre, studio`,
         
         // Créer les variations
         const variations = productGroup.map(product => ({
-          id: product.id || \`var-${Date.now()}-${Math.random()}`,
+          id: product.id || `var-${Date.now()}-${Math.random()}`,
           title: product.option1_value || 'Default',
           price: parseFloat(product.price) || parseFloat(product.variant_price) || 0,
           stock: parseInt(product.stock) || parseInt(product.variant_inventory_qty) || 0,
@@ -343,7 +343,7 @@ Destination : Salon, pièce à vivre, studio`,
         }));
         
         const smartProduct: SmartProduct = {
-          id: mainProduct.id || \`smart-${Date.now()}-${Math.random()}`,
+          id: mainProduct.id || `smart-${Date.now()}-${Math.random()}`,
           name: mainProduct.name || mainProduct.title || 'Produit sans nom',
           description: cleanDescription(mainProduct.description || mainProduct.body_html || ''),
           price: Math.min(...variations.map(v => v.price)) || 0,
@@ -427,7 +427,7 @@ Destination : Salon, pièce à vivre, studio`,
   };
 
   const extractAIAttributes = async (product: any) => {
-    const text = \`${product.name || product.title || ''} ${product.description || product.body_html || ''}`;
+    const text = `${product.name || product.title || ''} ${product.description || product.body_html || ''}`;
     
     // Extraction avancée des dimensions depuis la description
     const dimensions = extractDetailedDimensions(text);
@@ -586,8 +586,8 @@ Destination : Salon, pièce à vivre, studio`,
     const primaryMaterial = aiAttributes.materials[0] || '';
     
     return {
-      title: \`${name} ${primaryColor} ${primaryMaterial} - Decora Home`.substring(0, 70),
-      description: \`${name} ${primaryMaterial ? 'en ' + primaryMaterial : ''} ${primaryColor}. ${aiAttributes.features.join(', ')}. Livraison gratuite.`.substring(0, 155),
+      title: `${name} ${primaryColor} ${primaryMaterial} - Decora Home`.substring(0, 70),
+      description: `${name} ${primaryMaterial ? 'en ' + primaryMaterial : ''} ${primaryColor}. ${aiAttributes.features.join(', ')}. Livraison gratuite.`.substring(0, 155),
       tags: [
         aiAttributes.category?.toLowerCase(),
         ...aiAttributes.colors.slice(0, 2),
@@ -680,7 +680,7 @@ Destination : Salon, pièce à vivre, studio`,
       
       showSuccess(
         'Produit enrichi avec Vision IA', 
-        \`${product.name.substring(0, 30)}... enrichi avec analyse visuelle !`
+        `${product.name.substring(0, 30)}... enrichi avec analyse visuelle !`
       );
       
     } catch (error) {
@@ -700,7 +700,7 @@ Destination : Salon, pièce à vivre, studio`,
       
       // Enrichir chaque produit avec Vision IA
       for (const [index, product] of products.entries()) {
-        console.log(\`🔄 Enrichissement ${index + 1}/${products.length}: ${product.name.substring(0, 30)}...`);
+        console.log(`🔄 Enrichissement ${index + 1}/${products.length}: ${product.name.substring(0, 30)}...`);
         
         const enrichedProduct = await enrichProductWithVisionAI(product);
         enrichedProducts.push(enrichedProduct);
@@ -713,7 +713,7 @@ Destination : Salon, pièce à vivre, studio`,
       
       showSuccess(
         'Enrichissement Vision IA terminé', 
-        \`${products.length} produits enrichis avec analyse visuelle automatique !`,
+        `${products.length} produits enrichis avec analyse visuelle automatique !`,
         [
           {
             label: 'Voir les résultats',
@@ -803,7 +803,7 @@ Destination : Salon, pièce à vivre, studio`,
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div 
                   className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all" 
-                  style={{ width: \`${selectedProduct?.ai_attributes.confidence_score}%` }}
+                  style={{ width: `${selectedProduct?.ai_attributes.confidence_score}%` }}
                 ></div>
               </div>
               <p className="text-blue-300 text-sm">
@@ -1045,7 +1045,7 @@ Destination : Salon, pièce à vivre, studio`,
                 const url = URL.createObjectURL(dataBlob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = \`${selectedProduct!.name.replace(/[^a-z0-9]/gi, '_')}_smart_ai.json`;
+                link.download = `${selectedProduct!.name.replace(/[^a-z0-9]/gi, '_')}_smart_ai.json`;
                 link.click();
                 URL.revokeObjectURL(url);
               }}
@@ -1165,7 +1165,7 @@ Destination : Salon, pièce à vivre, studio`,
               <div className="flex rounded-lg overflow-hidden">
                 <button
                   onClick={() => setViewMode('table')}
-                  className={\`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'table' 
                       ? 'bg-cyan-600 text-white' 
                       : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
@@ -1175,7 +1175,7 @@ Destination : Salon, pièce à vivre, studio`,
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={\`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'grid' 
                       ? 'bg-cyan-600 text-white' 
                       : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
@@ -1276,7 +1276,7 @@ Destination : Salon, pièce à vivre, studio`,
               </div>
               
               <div className="flex items-center justify-between mb-4">
-                <span className={\`px-2 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   product.ai_attributes.confidence_score >= 90 
                     ? 'bg-green-500/20 text-green-300' 
                     : product.ai_attributes.confidence_score >= 70
@@ -1285,7 +1285,7 @@ Destination : Salon, pièce à vivre, studio`,
                 }`}>
                   ✨ Enrichi IA ({product.ai_attributes.confidence_score}%)
                 </span>
-                <span className={\`font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
                   Stock: {product.stock}
                 </span>
               </div>
@@ -1378,7 +1378,7 @@ Destination : Salon, pièce à vivre, studio`,
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={\`text-sm font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`text-sm font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {product.stock}
                       </span>
                     </td>
@@ -1386,14 +1386,14 @@ Destination : Salon, pièce à vivre, studio`,
                       <div className="flex items-center">
                         <div className="w-16 bg-gray-700 rounded-full h-2 mr-3">
                           <div 
-                            className={\`h-2 rounded-full ${
+                            className={`h-2 rounded-full ${
                               product.ai_attributes.confidence_score >= 90 
                                 ? 'bg-green-500' 
                                 : product.ai_attributes.confidence_score >= 70
                                   ? 'bg-yellow-500'
                                   : 'bg-red-500'
                             }`}
-                            style={{ width: \`${product.ai_attributes.confidence_score}%` }}
+                            style={{ width: `${product.ai_attributes.confidence_score}%` }}
                           ></div>
                         </div>
                         <span className="text-sm text-white font-medium">
