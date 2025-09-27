@@ -838,6 +838,18 @@ Destination : Salon, pièce à vivre, studio`,
                   Variations ({selectedProduct.variations.length})
                 </h4>
                 <div className="space-y-3">
+                    
+                    {/* Categories next to price */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
+                        {getProductCategory(product.name)}
+                      </span>
+                      {getProductSubcategory(product.name) && (
+                        <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm">
+                          {getProductSubcategory(product.name)}
+                        </span>
+                      )}
+                    </div>
                   {selectedProduct.variations.map((variation, index) => (
                     <div key={index} className="bg-black/20 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -853,6 +865,25 @@ Destination : Salon, pièce à vivre, studio`,
                             </>
                           )}
                         </div>
+                        
+                        {/* Categories in modal */}
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-5 h-5 text-blue-400" />
+                            <span className="text-blue-300 font-medium">Catégorie:</span>
+                            <span className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
+                              {getProductCategory(selectedProduct.name)}
+                            </span>
+                          </div>
+                          {getProductSubcategory(selectedProduct.name) && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-purple-300 font-medium">Sous-catégorie:</span>
+                              <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm">
+                                {getProductSubcategory(selectedProduct.name)}
+                              </span>
+                            </div>
+                          )}
+                        </div>@@ .. @@
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-teal-300">Stock: {variation.stock}</span>
@@ -1179,6 +1210,16 @@ Destination : Salon, pièce à vivre, studio`,
                     ))}
                     {product.ai_attributes.tags.length > 4 && (
                       <span className="text-gray-400 text-xs">+{product.ai_attributes.tags.length - 4}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
+                      {getProductCategory(product.name)}
+                    </span>
+                    {getProductSubcategory(product.name) && (
+                      <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
+                        {getProductSubcategory(product.name)}
+                      </span>
                     )}
                   </div>
                 </div>
